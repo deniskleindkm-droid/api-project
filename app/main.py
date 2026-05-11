@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.routes.auth import router as auth_router
+from app.routes.products import router as products_router
 from app.database import create_db
 from dotenv import load_dotenv
 import os
@@ -19,17 +20,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+app.mount("/static", StaticFiles(directory="docs"), name="static")
 
 @app.on_event("startup")
 def on_startup():
     create_db()
 
 app.include_router(auth_router)
+app.include_router(products_router)
 
 @app.get("/")
 def serve_frontend():
-    return FileResponse("frontend/index.html")
+    return FileResponse("docs/index.html")
 
 @app.get("/health")
 def health_check():
