@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyAPI Frontend</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 24px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            color: #888;
+            font-weight: bold;
+        }
+
+        .tab.active {
+            color: #4f46e5;
+            border-bottom: 2px solid #4f46e5;
+            margin-bottom: -2px;
+        }
+
+        .form {
+            display: none;
+        }
+
+        .form.active {
+            display: block;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #4338ca;
+        }
+
+        .message {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+            display: block;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            display: block;
+        }
+
+        .profile {
+            display: none;
+            text-align: center;
+        }
+
+        .profile h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .profile p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .logout {
+            background: #ef4444;
+        }
+
+        .logout:hover {
+            background: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MyAPI</h1>
+
+        <!-- Auth Forms -->
+        <div id="auth-section">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('login')">Login</div>
+                <div class="tab" onclick="switchTab('register')">Register</div>
+            </div>
+
+            <!-- Login Form -->
+            <div class="form active" id="login-form">
+                <input type="email" id="login-email" placeholder="Email" />
+                <input type="password" id="login-password" placeholder="Password" />
+                <button onclick="login()">Login</button>
+                <div class="message" id="login-message"></div>
+            </div>
+
+            <!-- Register Form -->
+            <div class="form" id="register-form">
+                <input type="email" id="register-email" placeholder="Email" />
+                <input type="password" id="register-password" placeholder="Password (min 6 chars)" />
+                <button onclick="register()">Register</button>
+                <div class="message" id="register-message"></div>
+            </div>
+        </div>
+
+        <!-- Profile Section -->
+        <div class="profile" id="profile-section">
+            <h2>Welcome! 👋</h2>
+            <p id="profile-email"></p>
+            <button class="logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <script>
+        const API = "https://api-project-production-d424.up.railway.app";
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.form').forEach(f => f.classList.remove('active'));
+            document.getElementById(tab + '-form').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        async function register() {
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const msg = document.getElementById('register-message');
+
+            try {
+                const res = await fetch(`${API}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    msg.className = 'message success';
+                    msg.textContent = 'Registered! Please login.';
+                } else {
+                    msg.className = 'message error';
+                    msg.textContent = data.detail;
+                }
+            } catch {
+                msg.className = 'message error';
+                msg.textContent = 'Something went wrong.';
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const msg = document.getElementById('login-message');
+
+            try {
+                const res = await fetch(`${API}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    localStorage.setItem('token', data.access_token);
+                    showProfile(email);
+                } else {
+                    msg.className = 'message error';
+                    msg.textContent = data.detail;
+                }
+            } catch {
+                msg.className = 'message error';
+                msg.textContent = 'Something went wrong.';
+            }
+        }
+
+        function showProfile(email) {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('profile-section').style.display = 'block';
+            document.getElementById('profile-email').textContent = email;
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            document.getElementById('auth-section').style.display = 'block';
+            document.getElementById('profile-section').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
