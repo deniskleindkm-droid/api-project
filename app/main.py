@@ -15,12 +15,10 @@ app = FastAPI(title=os.getenv("APP_NAME", "MyAPI"))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
-
-app.mount("/static", StaticFiles(directory="docs"), name="static")
 
 @app.on_event("startup")
 def on_startup():
