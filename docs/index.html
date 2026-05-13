@@ -136,6 +136,7 @@
         .modal-msg.success { background: #d1fae5; color: #065f46; }
         .modal-msg.error { background: #fee2e2; color: #991b1b; }
         .close-modal { float: right; background: none; border: none; font-size: 24px; cursor: pointer; }
+        .stripe-badge { text-align: center; color: #888; font-size: 12px; margin-top: 8px; }
         .toast {
             position: fixed; bottom: 24px; right: 24px;
             background: #111; color: white; padding: 12px 24px;
@@ -144,6 +145,12 @@
         }
         .toast.show { opacity: 1; }
         .loading { text-align: center; padding: 60px; color: #888; font-size: 18px; }
+        .success-banner {
+            background: #d1fae5; color: #065f46; padding: 16px 32px;
+            text-align: center; font-weight: bold; font-size: 16px;
+            display: none;
+        }
+        .success-banner.show { display: block; }
     </style>
 </head>
 <body>
@@ -159,6 +166,10 @@
         <button class="nav-btn" id="logout-btn" style="display:none" onclick="logout()">Logout</button>
     </div>
 </nav>
+
+<div class="success-banner" id="success-banner">
+    ✅ Payment successful! Your order has been placed. Thank you for shopping with BrandDrop!
+</div>
 
 <div class="hero">
     <h1>Big Brands. <span>Bigger Discounts.</span></h1>
@@ -201,7 +212,7 @@
         <div id="modal-msg" class="modal-msg" style="display:none"></div>
         <input type="email" id="auth-email" placeholder="Email" />
         <input type="password" id="auth-password" placeholder="Password" />
-        <button class="modal-btn" onclick="submitAuth()">Login</button>
+        <button class="modal-btn" id="auth-submit-btn" onclick="submitAuth()">Login</button>
         <div class="modal-switch">
             Don't have an account? <a onclick="switchAuthMode()">Register</a>
         </div>
@@ -213,8 +224,11 @@
         <button class="close-modal" onclick="closeCheckout()">×</button>
         <h2>Checkout</h2>
         <div id="checkout-msg" class="modal-msg" style="display:none"></div>
-        <input type="text" id="shipping-address" placeholder="Full shipping address" />
-        <button class="modal-btn" style="background:#ff4444" onclick="placeOrder()">Place Order →</button>
+        <input type="text" id="shipping-address" placeholder="Full shipping address (e.g. 123 Main St, City, State)" />
+        <button class="modal-btn" style="background:#ff4444" onclick="placeOrder()" id="pay-btn">
+            Pay with Stripe →
+        </button>
+        <div class="stripe-badge">🔒 Secure payment powered by Stripe</div>
     </div>
 </div>
 
@@ -231,6 +245,17 @@
         loadProducts();
         updateAuthUI();
         if (token) loadCart();
+
+        // Check payment status from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('payment') === 'success') {
+            document.getElementById('success-banner').classList.add('show');
+            loadCart();
+            setTimeout(() => document.getElementById('success-banner').classList.remove('show'), 8000);
+        }
+        if (urlParams.get('payment') === 'cancelled') {
+            showToast('Payment cancelled. Your cart is still saved.');
+        }
     }
 
     async function loadBrands() {
@@ -359,17 +384,34 @@
     async function placeOrder() {
         const address = document.getElementById('shipping-address').value;
         if (!address) { showCheckoutMsg('Please enter your shipping address', 'error'); return; }
+        
+        const btn = document.getElementById('pay-btn');
+        btn.textContent = 'Processing...';
+        btn.disabled = true;
+
         try {
-            const res = await fetch(`${API}/cart/checkout?shipping_address=${encodeURIComponent(address)}`, {
-                method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+            const res = await fetch(`${API}/payments/create-checkout`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ shipping_address: address })
             });
+            
             const data = await res.json();
             if (res.ok) {
-                showCheckoutMsg(`Order placed! ${data.orders_created} item(s) ordered.`, 'success');
-                loadCart();
-                setTimeout(closeCheckout, 2000);
-            } else { showCheckoutMsg(data.detail || 'Something went wrong', 'error'); }
-        } catch { showCheckoutMsg('Failed to place order', 'error'); }
+                window.location.href = data.checkout_url;
+            } else {
+                showCheckoutMsg(data.detail || 'Something went wrong', 'error');
+                btn.textContent = 'Pay with Stripe →';
+                btn.disabled = false;
+            }
+        } catch { 
+            showCheckoutMsg('Failed to connect to payment system', 'error');
+            btn.textContent = 'Pay with Stripe →';
+            btn.disabled = false;
+        }
     }
 
     function showCheckoutMsg(msg, type) {
@@ -380,6 +422,7 @@
     function openAuthModal() {
         authMode = 'login';
         document.getElementById('modal-title').textContent = 'Login';
+        document.getElementById('auth-submit-btn').textContent = 'Login';
         document.getElementById('auth-modal').classList.add('open');
     }
 
@@ -391,10 +434,10 @@
     function switchAuthMode() {
         authMode = authMode === 'login' ? 'register' : 'login';
         document.getElementById('modal-title').textContent = authMode === 'login' ? 'Login' : 'Register';
+        document.getElementById('auth-submit-btn').textContent = authMode === 'login' ? 'Login' : 'Register';
         document.querySelector('.modal-switch').innerHTML = authMode === 'login'
             ? "Don't have an account? <a onclick='switchAuthMode()'>Register</a>"
             : "Already have an account? <a onclick='switchAuthMode()'>Login</a>";
-        document.querySelector('.modal-btn').textContent = authMode === 'login' ? 'Login' : 'Register';
     }
 
     async function submitAuth() {
