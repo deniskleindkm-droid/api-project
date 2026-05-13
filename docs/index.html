@@ -9,33 +9,24 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #fff; color: #111; overflow-x: hidden; }
 
-        /* NAVBAR */
         nav {
             background: #fff; color: #111; padding: 0 40px;
             display: flex; justify-content: space-between; align-items: center;
             height: 72px; position: sticky; top: 0; z-index: 100;
-            border-bottom: 1px solid #eee;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border-bottom: 1px solid #eee; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
         }
-        .logo {
-            font-family: 'Playfair Display', serif;
-            font-size: 24px; font-weight: 900; letter-spacing: 2px; color: #111;
-        }
+        .logo { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 900; letter-spacing: 2px; color: #111; }
         .logo span { color: #ff2020; }
         .nav-center { display: flex; gap: 32px; }
         .nav-link {
-            color: #555; font-size: 13px; font-weight: 500;
-            letter-spacing: 1px; text-transform: uppercase;
-            cursor: pointer; transition: color 0.2s;
+            color: #555; font-size: 13px; font-weight: 500; letter-spacing: 1px;
+            text-transform: uppercase; cursor: pointer; transition: color 0.2s;
             background: none; border: none; font-family: 'Inter', sans-serif;
             padding: 4px 0; border-bottom: 2px solid transparent;
         }
         .nav-link:hover { color: #111; border-bottom-color: #ff2020; }
         .nav-right { display: flex; align-items: center; gap: 20px; }
-        .nav-icon-btn {
-            background: none; border: none; color: #111;
-            cursor: pointer; font-size: 20px; padding: 8px; position: relative;
-        }
+        .nav-icon-btn { background: none; border: none; color: #111; cursor: pointer; padding: 8px; position: relative; }
         .cart-count {
             position: absolute; top: 2px; right: 2px;
             background: #ff2020; color: white; border-radius: 50%;
@@ -43,24 +34,18 @@
             display: flex; align-items: center; justify-content: center;
         }
         .nav-login-btn {
-            background: #111; color: white; border: none;
-            padding: 10px 24px; border-radius: 24px;
-            font-size: 13px; font-weight: 600; cursor: pointer;
-            letter-spacing: 0.5px; transition: background 0.2s;
-            font-family: 'Inter', sans-serif;
+            background: #111; color: white; border: none; padding: 10px 24px;
+            border-radius: 24px; font-size: 13px; font-weight: 600; cursor: pointer;
+            font-family: 'Inter', sans-serif; transition: background 0.2s;
         }
         .nav-login-btn:hover { background: #ff2020; }
-        .nav-login-btn.outline {
-            background: none; color: #111; border: 1.5px solid #111;
-        }
+        .nav-login-btn.outline { background: none; color: #111; border: 1.5px solid #111; }
         .nav-login-btn.outline:hover { background: #111; color: white; }
         .nav-user { color: #555; font-size: 13px; font-weight: 500; }
 
-        /* HERO */
         .hero {
-            background: #0a0a0a; color: white;
-            padding: 120px 40px; position: relative; overflow: hidden;
-            min-height: 500px; display: flex; align-items: center;
+            background: #0a0a0a; color: white; padding: 120px 40px;
+            position: relative; overflow: hidden; min-height: 500px; display: flex; align-items: center;
         }
         .hero-content { max-width: 620px; position: relative; z-index: 2; }
         .hero-tag {
@@ -73,338 +58,199 @@
         .hero-tag::before { content: '●'; font-size: 8px; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
         .hero h1 {
-            font-family: 'Playfair Display', serif;
-            font-size: 72px; font-weight: 900; line-height: 1.05;
-            letter-spacing: -1px; margin-bottom: 20px;
+            font-family: 'Playfair Display', serif; font-size: 72px; font-weight: 900;
+            line-height: 1.05; letter-spacing: -1px; margin-bottom: 20px;
         }
         .hero h1 span { color: #ff2020; font-style: italic; }
-        .hero p {
-            font-size: 17px; color: #999; margin-bottom: 36px;
-            font-weight: 300; line-height: 1.7; max-width: 480px;
-        }
+        .hero p { font-size: 17px; color: #999; margin-bottom: 36px; font-weight: 300; line-height: 1.7; max-width: 480px; }
         .hero-btns { display: flex; gap: 16px; flex-wrap: wrap; }
         .hero-btn-primary {
-            background: #ff2020; color: white; border: none;
-            padding: 16px 36px; font-size: 13px; font-weight: 700;
-            letter-spacing: 1.5px; text-transform: uppercase;
-            cursor: pointer; border-radius: 28px; transition: all 0.2s;
-            font-family: 'Inter', sans-serif;
+            background: #ff2020; color: white; border: none; padding: 16px 36px;
+            font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+            cursor: pointer; border-radius: 28px; transition: all 0.2s; font-family: 'Inter', sans-serif;
         }
-        .hero-btn-primary:hover { background: #e00; transform: translateY(-1px); box-shadow: 0 8px 20px rgba(255,32,32,0.3); }
+        .hero-btn-primary:hover { background: #e00; transform: translateY(-1px); }
         .hero-btn-secondary {
-            background: none; color: white;
-            border: 1.5px solid rgba(255,255,255,0.3); padding: 16px 36px;
-            font-size: 13px; font-weight: 600; cursor: pointer;
-            border-radius: 28px; transition: all 0.2s;
-            font-family: 'Inter', sans-serif; letter-spacing: 1px;
+            background: none; color: white; border: 1.5px solid rgba(255,255,255,0.3);
+            padding: 16px 36px; font-size: 13px; font-weight: 600; cursor: pointer;
+            border-radius: 28px; transition: all 0.2s; font-family: 'Inter', sans-serif;
         }
         .hero-btn-secondary:hover { border-color: white; }
         .hero-bg-text {
-            position: absolute; right: -40px; top: 50%;
-            transform: translateY(-50%);
-            font-family: 'Playfair Display', serif;
-            font-size: 260px; font-weight: 900; color: rgba(255,255,255,0.03);
-            letter-spacing: -10px; user-select: none; z-index: 1; line-height: 1;
+            position: absolute; right: -40px; top: 50%; transform: translateY(-50%);
+            font-family: 'Playfair Display', serif; font-size: 260px; font-weight: 900;
+            color: rgba(255,255,255,0.03); letter-spacing: -10px; user-select: none; z-index: 1;
         }
-        .hero-stats {
-            display: flex; gap: 40px; margin-top: 48px;
-            padding-top: 40px; border-top: 1px solid rgba(255,255,255,0.1);
-        }
-        .hero-stat-num {
-            font-family: 'Playfair Display', serif;
-            font-size: 28px; font-weight: 700; color: white;
-        }
+        .hero-stats { display: flex; gap: 40px; margin-top: 48px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; }
+        .hero-stat-num { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: white; }
         .hero-stat-label { font-size: 12px; color: #666; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
 
-        /* TRUST BAR */
         .trust-bar {
-            background: #f9f9f9; border-bottom: 1px solid #eee;
-            padding: 20px 40px;
+            background: #f9f9f9; border-bottom: 1px solid #eee; padding: 20px 40px;
             display: flex; justify-content: center; gap: 60px; flex-wrap: wrap;
         }
-        .trust-item {
-            display: flex; align-items: center; gap: 10px;
-            font-size: 13px; font-weight: 500; color: #444;
-        }
+        .trust-item { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; color: #444; }
         .trust-icon {
-            width: 36px; height: 36px; background: #fff;
-            border: 1.5px solid #e0e0e0; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
+            width: 36px; height: 36px; background: #fff; border: 1.5px solid #e0e0e0;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
         }
 
-        /* FILTERS */
-        .filters-section { padding: 32px 40px 0; }
-        .filters-title {
-            font-size: 11px; font-weight: 700; letter-spacing: 2px;
-            text-transform: uppercase; color: #aaa; margin-bottom: 16px;
+        .success-banner {
+            background: #022c22; color: #4ade80; padding: 16px 40px;
+            display: none; align-items: center; justify-content: center; gap: 12px;
+            font-size: 14px; font-weight: 600;
         }
+        .success-banner.show { display: flex; }
+
+        .filters-section { padding: 32px 40px 0; }
+        .filters-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #aaa; margin-bottom: 16px; }
         .filters { display: flex; gap: 10px; flex-wrap: wrap; padding-bottom: 24px; border-bottom: 1px solid #eee; }
         .filter-btn {
-            padding: 8px 22px; border: 1.5px solid #e0e0e0;
-            background: white; cursor: pointer; font-size: 13px;
-            font-weight: 500; transition: all 0.15s; border-radius: 24px;
-            letter-spacing: 0.5px; font-family: 'Inter', sans-serif;
+            padding: 8px 22px; border: 1.5px solid #e0e0e0; background: white;
+            cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s;
+            border-radius: 24px; font-family: 'Inter', sans-serif;
         }
         .filter-btn:hover { border-color: #111; }
         .filter-btn.active { background: #111; color: white; border-color: #111; }
 
-        /* PRODUCTS SECTION */
         .products-section { padding: 40px; }
-        .section-header {
-            display: flex; justify-content: space-between;
-            align-items: baseline; margin-bottom: 32px;
-        }
-        .section-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 32px; font-weight: 700; letter-spacing: -0.5px;
-        }
-        .section-subtitle { font-size: 14px; color: #aaa; font-weight: 400; margin-top: 4px; }
+        .section-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 32px; }
+        .section-title { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 700; }
+        .section-subtitle { font-size: 14px; color: #aaa; margin-top: 4px; }
         .products-count { font-size: 13px; color: #aaa; }
 
-        /* PRODUCT GRID */
-        .products-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 24px;
-        }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
 
-        /* PRODUCT CARD */
         .product-card {
             background: white; cursor: pointer; border-radius: 16px; overflow: hidden;
             border: 1px solid #f0f0f0; transition: transform 0.2s, box-shadow 0.2s;
         }
         .product-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(0,0,0,0.1); }
         .product-image {
-            background: #f7f7f7; height: 280px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 80px; position: relative; overflow: hidden;
+            background: #f7f7f7; height: 280px; display: flex; align-items: center;
+            justify-content: center; font-size: 80px; position: relative; overflow: hidden;
         }
         .product-image:hover .product-quick-add { opacity: 1; transform: translateY(0); }
         .product-quick-add {
-            position: absolute; bottom: 0; left: 0; right: 0;
-            background: rgba(0,0,0,0.9); color: white;
-            padding: 14px; text-align: center; font-size: 12px;
-            font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
-            opacity: 0; transform: translateY(10px);
-            transition: all 0.2s; cursor: pointer; border: none; width: 100%;
-            font-family: 'Inter', sans-serif;
+            position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.9);
+            color: white; padding: 14px; text-align: center; font-size: 12px; font-weight: 700;
+            letter-spacing: 1.5px; text-transform: uppercase; opacity: 0; transform: translateY(10px);
+            transition: all 0.2s; cursor: pointer; border: none; width: 100%; font-family: 'Inter', sans-serif;
         }
         .product-quick-add:hover { background: #ff2020; }
         .discount-badge {
-            position: absolute; top: 16px; left: 16px;
-            background: #ff2020; color: white;
-            padding: 5px 12px; font-size: 11px; font-weight: 800;
-            letter-spacing: 1px; border-radius: 20px;
+            position: absolute; top: 16px; left: 16px; background: #ff2020; color: white;
+            padding: 5px 12px; font-size: 11px; font-weight: 800; letter-spacing: 1px; border-radius: 20px;
         }
         .brand-badge {
-            position: absolute; top: 16px; right: 16px;
-            background: rgba(0,0,0,0.75); color: white;
-            padding: 5px 12px; font-size: 10px; font-weight: 700;
-            letter-spacing: 2px; text-transform: uppercase; border-radius: 20px;
-            backdrop-filter: blur(4px);
+            position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.75); color: white;
+            padding: 5px 12px; font-size: 10px; font-weight: 700; letter-spacing: 2px;
+            text-transform: uppercase; border-radius: 20px;
         }
         .product-info { padding: 20px; }
-        .product-brand {
-            font-size: 11px; font-weight: 700; color: #aaa;
-            letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px;
-        }
-        .product-name {
-            font-family: 'Playfair Display', serif;
-            font-size: 18px; font-weight: 700; margin-bottom: 6px;
-        }
+        .product-brand { font-size: 11px; font-weight: 700; color: #aaa; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+        .product-name { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; margin-bottom: 6px; }
         .product-desc { font-size: 13px; color: #999; margin-bottom: 16px; line-height: 1.6; }
         .product-pricing { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
-        .price-final {
-            font-family: 'Playfair Display', serif;
-            font-size: 24px; font-weight: 700; color: #111;
-        }
+        .price-final { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: #111; }
         .price-original { font-size: 14px; color: #ccc; text-decoration: line-through; }
-        .price-saving {
-            font-size: 12px; color: #ff2020; font-weight: 700;
-            background: rgba(255,32,32,0.08); padding: 3px 8px; border-radius: 12px;
-        }
+        .price-saving { font-size: 12px; color: #ff2020; font-weight: 700; background: rgba(255,32,32,0.08); padding: 3px 8px; border-radius: 12px; }
         .shipping-info { font-size: 12px; color: #bbb; margin-bottom: 16px; display: flex; align-items: center; gap: 6px; }
         .stock-bar { height: 3px; background: #f0f0f0; border-radius: 2px; margin-bottom: 6px; }
         .stock-fill { height: 100%; background: #ff2020; border-radius: 2px; }
         .stock-text { font-size: 11px; color: #ff2020; font-weight: 700; margin-bottom: 16px; }
         .add-to-cart {
-            width: 100%; padding: 14px; background: #111; color: white;
-            border: none; cursor: pointer; font-size: 12px; font-weight: 700;
-            letter-spacing: 1.5px; text-transform: uppercase;
-            transition: background 0.2s; border-radius: 28px;
+            width: 100%; padding: 14px; background: #111; color: white; border: none;
+            cursor: pointer; font-size: 12px; font-weight: 700; letter-spacing: 1.5px;
+            text-transform: uppercase; transition: background 0.2s; border-radius: 28px;
             font-family: 'Inter', sans-serif;
         }
         .add-to-cart:hover { background: #ff2020; }
 
-        /* URGENCY BAR */
         .urgency-bar {
             background: #111; color: white; padding: 20px 40px;
             display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap;
         }
         .urgency-text { font-size: 14px; font-weight: 500; color: #aaa; }
-        .urgency-timer {
-            background: #ff2020; padding: 6px 16px; border-radius: 8px;
-            font-size: 18px; font-weight: 800; letter-spacing: 3px; font-family: monospace;
-        }
+        .urgency-timer { background: #ff2020; padding: 6px 16px; border-radius: 8px; font-size: 18px; font-weight: 800; letter-spacing: 3px; font-family: monospace; }
 
-        /* ABOUT SECTION */
         .about-section {
             padding: 80px 40px; background: #f9f9f9;
-            display: flex; gap: 60px; align-items: center; flex-wrap: wrap;
+            display: none; gap: 60px; align-items: center; flex-wrap: wrap;
         }
         .about-content { flex: 1; min-width: 280px; }
         .about-tag { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #ff2020; margin-bottom: 16px; }
-        .about-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 40px; font-weight: 700; line-height: 1.2; margin-bottom: 20px;
-        }
+        .about-title { font-family: 'Playfair Display', serif; font-size: 40px; font-weight: 700; line-height: 1.2; margin-bottom: 20px; }
         .about-text { font-size: 15px; color: #666; line-height: 1.8; margin-bottom: 24px; }
         .about-stats { display: flex; gap: 32px; flex-wrap: wrap; }
-        .about-stat-num {
-            font-family: 'Playfair Display', serif;
-            font-size: 36px; font-weight: 700; color: #111;
-        }
+        .about-stat-num { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; color: #111; }
         .about-stat-label { font-size: 12px; color: #aaa; letter-spacing: 1px; text-transform: uppercase; }
-        .about-image {
-            flex: 1; min-width: 280px; background: #111;
-            border-radius: 16px; height: 320px;
-            display: flex; align-items: center; justify-content: center; font-size: 80px;
-        }
+        .about-image { flex: 1; min-width: 280px; background: #111; border-radius: 16px; height: 320px; display: flex; align-items: center; justify-content: center; font-size: 80px; }
 
-        /* CART SIDEBAR */
-        .cart-overlay {
-            display: none; position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200;
-            backdrop-filter: blur(4px);
-        }
+        .cart-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; }
         .cart-overlay.open { display: block; }
         .cart-sidebar {
             position: fixed; top: 0; right: -480px; width: 480px; height: 100%;
             background: white; z-index: 201; transition: right 0.3s cubic-bezier(0.4,0,0.2,1);
-            display: flex; flex-direction: column;
-            box-shadow: -8px 0 40px rgba(0,0,0,0.15);
+            display: flex; flex-direction: column; box-shadow: -8px 0 40px rgba(0,0,0,0.15);
         }
         .cart-sidebar.open { right: 0; }
-        .cart-header {
-            padding: 24px 28px; border-bottom: 1px solid #f0f0f0;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .cart-header-title {
-            font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700;
-        }
+        .cart-header { padding: 24px 28px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .cart-header-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; }
         .close-btn { background: none; border: none; color: #aaa; font-size: 24px; cursor: pointer; }
         .close-btn:hover { color: #111; }
         .cart-items { flex: 1; overflow-y: auto; padding: 24px 28px; }
         .cart-item { display: flex; gap: 16px; padding: 16px 0; border-bottom: 1px solid #f5f5f5; align-items: center; }
-        .cart-item-img {
-            width: 80px; height: 80px; background: #f5f5f5;
-            border-radius: 12px; display: flex; align-items: center;
-            justify-content: center; font-size: 36px; flex-shrink: 0;
-        }
+        .cart-item-img { width: 80px; height: 80px; background: #f5f5f5; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 36px; flex-shrink: 0; }
         .cart-item-details { flex: 1; }
         .cart-item-brand { font-size: 10px; color: #aaa; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
         .cart-item-name { font-weight: 600; font-size: 15px; margin: 2px 0 4px; }
         .cart-item-price { font-size: 15px; font-weight: 700; color: #111; }
-        .remove-item {
-            background: none; border: none; color: #ddd; cursor: pointer;
-            font-size: 11px; font-weight: 600; letter-spacing: 1px;
-            text-transform: uppercase; margin-top: 4px; display: block; transition: color 0.2s;
-        }
+        .remove-item { background: none; border: none; color: #ddd; cursor: pointer; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; display: block; transition: color 0.2s; }
         .remove-item:hover { color: #ff2020; }
         .cart-footer { padding: 24px 28px; border-top: 1px solid #f0f0f0; background: #fafafa; }
         .cart-total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .cart-total-label { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; }
         .cart-total-amount { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; }
         .checkout-btn {
-            width: 100%; padding: 16px; background: #ff2020; color: white;
-            border: none; cursor: pointer; font-size: 13px; font-weight: 700;
-            letter-spacing: 1.5px; text-transform: uppercase; border-radius: 28px;
-            transition: all 0.2s; margin-bottom: 12px; font-family: 'Inter', sans-serif;
+            width: 100%; padding: 16px; background: #ff2020; color: white; border: none;
+            cursor: pointer; font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
+            text-transform: uppercase; border-radius: 28px; transition: all 0.2s;
+            margin-bottom: 12px; font-family: 'Inter', sans-serif;
         }
-        .checkout-btn:hover { background: #e00; transform: translateY(-1px); }
+        .checkout-btn:hover { background: #e00; }
         .cart-trust { text-align: center; font-size: 12px; color: #bbb; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .empty-cart { text-align: center; padding: 60px 0; color: #ccc; }
         .empty-cart-icon { font-size: 56px; margin-bottom: 16px; }
         .empty-cart p { font-size: 16px; font-weight: 600; color: #aaa; margin-bottom: 6px; }
         .empty-cart small { font-size: 13px; }
 
-        /* MODALS */
-        .modal-overlay {
-            display: none; position: fixed; top: 0; left: 0;
-            width: 100%; height: 100%; background: rgba(0,0,0,0.6);
-            z-index: 300; align-items: center; justify-content: center;
-            backdrop-filter: blur(4px); padding: 16px;
-        }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 300; align-items: center; justify-content: center; padding: 16px; }
         .modal-overlay.open { display: flex; }
-        .modal {
-            background: white; width: 100%; max-width: 440px;
-            border-radius: 20px; overflow: hidden; position: relative;
-            box-shadow: 0 24px 60px rgba(0,0,0,0.2);
-        }
+        .modal { background: white; width: 100%; max-width: 440px; border-radius: 20px; overflow: hidden; position: relative; box-shadow: 0 24px 60px rgba(0,0,0,0.2); }
         .modal-top { padding: 36px 40px 24px; border-bottom: 1px solid #f0f0f0; }
         .modal-top h2 { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; margin-bottom: 6px; }
         .modal-top p { font-size: 14px; color: #aaa; }
         .modal-body { padding: 28px 40px 36px; }
         .modal-input-group { margin-bottom: 18px; }
         .modal-input-group label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #aaa; margin-bottom: 8px; }
-        .modal-input-group input {
-            width: 100%; padding: 14px 16px; border: 1.5px solid #e8e8e8;
-            border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif;
-            transition: border-color 0.2s; outline: none;
-        }
+        .modal-input-group input { width: 100%; padding: 14px 16px; border: 1.5px solid #e8e8e8; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; transition: border-color 0.2s; outline: none; }
         .modal-input-group input:focus { border-color: #111; }
-        .modal-btn {
-            width: 100%; padding: 15px; background: #111; color: white;
-            border: none; border-radius: 28px; cursor: pointer;
-            font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
-            text-transform: uppercase; margin-bottom: 16px;
-            font-family: 'Inter', sans-serif; transition: background 0.2s;
-        }
+        .modal-btn { width: 100%; padding: 15px; background: #111; color: white; border: none; border-radius: 28px; cursor: pointer; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 16px; font-family: 'Inter', sans-serif; transition: background 0.2s; }
         .modal-btn:hover { background: #ff2020; }
         .modal-msg { padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; text-align: center; font-size: 13px; font-weight: 500; }
         .modal-msg.success { background: #d1fae5; color: #065f46; }
         .modal-msg.error { background: #fee2e2; color: #991b1b; }
         .modal-switch { text-align: center; color: #aaa; font-size: 13px; }
         .modal-switch a { color: #ff2020; cursor: pointer; font-weight: 600; }
-        .close-modal {
-            position: absolute; top: 20px; right: 20px;
-            background: #f5f5f5; border: none; color: #888;
-            width: 32px; height: 32px; border-radius: 50%;
-            font-size: 18px; cursor: pointer; display: flex;
-            align-items: center; justify-content: center; transition: background 0.2s;
-        }
+        .close-modal { position: absolute; top: 20px; right: 20px; background: #f5f5f5; border: none; color: #888; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .close-modal:hover { background: #eee; color: #111; }
 
-        /* SUCCESS BANNER */
-        .success-banner {
-            background: #022c22; color: #4ade80; padding: 16px 40px;
-            display: none; align-items: center; justify-content: center;
-            gap: 12px; font-size: 14px; font-weight: 600;
-        }
-        .success-banner.show { display: flex; }
-
-        /* TOAST */
-        .toast {
-            position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
-            background: #111; color: white; padding: 14px 28px;
-            border-radius: 28px; font-size: 14px; font-weight: 500;
-            z-index: 400; opacity: 0; transition: opacity 0.3s;
-            white-space: nowrap; box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-        }
+        .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #111; color: white; padding: 14px 28px; border-radius: 28px; font-size: 14px; font-weight: 500; z-index: 400; opacity: 0; transition: opacity 0.3s; white-space: nowrap; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
         .toast.show { opacity: 1; }
+        .loading { text-align: center; padding: 80px; color: #ccc; font-size: 15px; grid-column: 1/-1; font-family: 'Playfair Display', serif; font-style: italic; }
 
-        .loading {
-            text-align: center; padding: 80px; color: #ccc;
-            font-size: 15px; grid-column: 1/-1;
-            font-family: 'Playfair Display', serif; font-style: italic;
-        }
-
-        /* FOOTER */
-        footer {
-            background: #0a0a0a; color: #555; padding: 48px 40px;
-            display: flex; justify-content: space-between; align-items: center;
-            flex-wrap: wrap; gap: 20px;
-        }
+        footer { background: #0a0a0a; color: #555; padding: 48px 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
         .footer-logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: white; }
         .footer-logo span { color: #ff2020; }
         .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
@@ -412,29 +258,21 @@
         .footer-link:hover { color: white; }
         .footer-copy { font-size: 12px; color: #333; }
 
-        /* MOBILE RESPONSIVE */
         @media (max-width: 768px) {
             nav { padding: 0 16px; height: 60px; }
             .nav-center { display: none; }
             .logo { font-size: 20px; }
             .nav-user { display: none; }
-
             .hero { padding: 60px 20px; min-height: auto; }
             .hero h1 { font-size: 40px; }
             .hero p { font-size: 15px; }
             .hero-bg-text { display: none; }
-            .hero-stats { gap: 24px; flex-wrap: wrap; }
-            .hero-stat-num { font-size: 22px; }
+            .hero-stats { gap: 24px; }
             .hero-btns { flex-direction: column; }
-            .hero-btn-primary, .hero-btn-secondary { text-align: center; }
-
             .trust-bar { gap: 16px; padding: 16px 20px; justify-content: flex-start; }
             .trust-item { font-size: 12px; }
-
             .filters-section { padding: 20px 16px 0; }
-            .filters { gap: 8px; }
             .filter-btn { padding: 6px 16px; font-size: 12px; }
-
             .products-section { padding: 24px 16px; }
             .section-title { font-size: 24px; }
             .products-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -445,22 +283,16 @@
             .price-final { font-size: 18px; }
             .price-saving { display: none; }
             .add-to-cart { padding: 11px; font-size: 11px; }
-
             .urgency-bar { padding: 16px 20px; gap: 10px; }
             .urgency-text { font-size: 12px; }
-            .urgency-timer { font-size: 16px; }
-
             .about-section { padding: 48px 20px; flex-direction: column; gap: 32px; }
             .about-title { font-size: 28px; }
             .about-image { height: 200px; min-width: unset; width: 100%; }
-
             .cart-sidebar { width: 100%; right: -100%; }
             .cart-sidebar.open { right: 0; }
-
             .modal-top { padding: 24px 24px 16px; }
             .modal-top h2 { font-size: 22px; }
             .modal-body { padding: 20px 24px 28px; }
-
             footer { flex-direction: column; text-align: center; padding: 32px 20px; gap: 16px; }
             .footer-links { justify-content: center; }
         }
@@ -469,13 +301,11 @@
             .products-grid { grid-template-columns: 1fr; }
             .hero h1 { font-size: 32px; }
             .trust-bar { flex-direction: column; gap: 12px; }
-            .hero-stats { gap: 20px; }
         }
     </style>
 </head>
 <body>
 
-<!-- Navbar -->
 <nav>
     <div class="logo">Brand<span>Drop</span></div>
     <div class="nav-center">
@@ -499,7 +329,6 @@
     </div>
 </nav>
 
-<!-- Hero -->
 <div class="hero">
     <div class="hero-bg-text">BD</div>
     <div class="hero-content">
@@ -511,56 +340,36 @@
             <button class="hero-btn-secondary" onclick="scrollToAbout()">Our Story</button>
         </div>
         <div class="hero-stats">
-            <div>
-                <div class="hero-stat-num">40%</div>
-                <div class="hero-stat-label">Max Discount</div>
-            </div>
-            <div>
-                <div class="hero-stat-num">100%</div>
-                <div class="hero-stat-label">Authentic</div>
-            </div>
-            <div>
-                <div class="hero-stat-num">3+</div>
-                <div class="hero-stat-label">Top Brands</div>
-            </div>
+            <div><div class="hero-stat-num">40%</div><div class="hero-stat-label">Max Discount</div></div>
+            <div><div class="hero-stat-num">100%</div><div class="hero-stat-label">Authentic</div></div>
+            <div><div class="hero-stat-num">3+</div><div class="hero-stat-label">Top Brands</div></div>
         </div>
     </div>
 </div>
 
-<!-- Trust bar -->
 <div class="trust-bar">
     <div class="trust-item">
-        <div class="trust-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
+        <div class="trust-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
         100% Authentic
     </div>
     <div class="trust-item">
-        <div class="trust-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-        </div>
+        <div class="trust-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
         Fast Shipping
     </div>
     <div class="trust-item">
-        <div class="trust-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-        </div>
+        <div class="trust-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
         Secure Checkout
     </div>
     <div class="trust-item">
-        <div class="trust-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-        </div>
+        <div class="trust-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></div>
         Easy Returns
     </div>
 </div>
 
-<!-- Success banner -->
 <div class="success-banner" id="success-banner">
     ✓ Payment confirmed! Your order is being processed. Check your email for updates.
 </div>
 
-<!-- Filters -->
 <div class="filters-section" id="shop">
     <div class="filters-title">Filter by Brand</div>
     <div class="filters">
@@ -570,7 +379,6 @@
     </div>
 </div>
 
-<!-- Products -->
 <div class="products-section">
     <div class="section-header">
         <div>
@@ -584,40 +392,26 @@
     </div>
 </div>
 
-<!-- Urgency bar -->
 <div class="urgency-bar">
     <div class="urgency-text">Flash sale ends in</div>
     <div class="urgency-timer" id="timer">23:59:59</div>
     <div class="urgency-text">— Don't miss out</div>
 </div>
 
-<!-- About Section -->
 <div class="about-section" id="about">
     <div class="about-content">
         <div class="about-tag">About BrandDrop</div>
         <div class="about-title">Premium Brands.<br>Real Discounts.</div>
-        <div class="about-text">
-            BrandDrop was built on a simple idea — everyone deserves access to premium sneakers and sportswear without paying premium prices. We work directly with suppliers to bring you authentic Nike, Adidas, New Balance and more at up to 40% off retail.
-        </div>
+        <div class="about-text">BrandDrop was built on a simple idea — everyone deserves access to premium sneakers and sportswear without paying premium prices. We work directly with suppliers to bring you authentic Nike, Adidas, New Balance and more at up to 40% off retail.</div>
         <div class="about-stats">
-            <div>
-                <div class="about-stat-num">40%</div>
-                <div class="about-stat-label">Max savings</div>
-            </div>
-            <div>
-                <div class="about-stat-num">3+</div>
-                <div class="about-stat-label">Top brands</div>
-            </div>
-            <div>
-                <div class="about-stat-num">100%</div>
-                <div class="about-stat-label">Authentic</div>
-            </div>
+            <div><div class="about-stat-num">40%</div><div class="about-stat-label">Max savings</div></div>
+            <div><div class="about-stat-num">3+</div><div class="about-stat-label">Top brands</div></div>
+            <div><div class="about-stat-num">100%</div><div class="about-stat-label">Authentic</div></div>
         </div>
     </div>
     <div class="about-image">👟</div>
 </div>
 
-<!-- Cart Sidebar -->
 <div class="cart-overlay" id="cart-overlay" onclick="toggleCart()"></div>
 <div class="cart-sidebar" id="cart-sidebar">
     <div class="cart-header">
@@ -636,7 +430,7 @@
             <div class="cart-total-label">Total</div>
             <div class="cart-total-amount">$<span id="cart-total">0.00</span></div>
         </div>
-        <button class="checkout-btn" onclick="openCheckout()">proceed to checkout →</button>
+        <button class="checkout-btn" onclick="openCheckout()">Proceed to Checkout →</button>
         <div class="cart-trust">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
             Secure · Encrypted · Protected by Stripe
@@ -644,7 +438,6 @@
     </div>
 </div>
 
-<!-- Auth Modal -->
 <div class="modal-overlay" id="auth-modal">
     <div class="modal">
         <button class="close-modal" onclick="closeAuthModal()">×</button>
@@ -654,23 +447,14 @@
         </div>
         <div class="modal-body">
             <div id="modal-msg" class="modal-msg" style="display:none"></div>
-            <div class="modal-input-group">
-                <label>Email address</label>
-                <input type="email" id="auth-email" placeholder="your@email.com" />
-            </div>
-            <div class="modal-input-group">
-                <label>Password</label>
-                <input type="password" id="auth-password" placeholder="••••••••" />
-            </div>
+            <div class="modal-input-group"><label>Email address</label><input type="email" id="auth-email" placeholder="your@email.com" /></div>
+            <div class="modal-input-group"><label>Password</label><input type="password" id="auth-password" placeholder="••••••••" /></div>
             <button class="modal-btn" id="auth-submit-btn" onclick="submitAuth()">Sign In</button>
-            <div class="modal-switch" id="modal-switch-text">
-                New to BrandDrop? <a onclick="switchAuthMode()">Create account</a>
-            </div>
+            <div class="modal-switch" id="modal-switch-text">New to BrandDrop? <a onclick="switchAuthMode()">Create account</a></div>
         </div>
     </div>
 </div>
 
-<!-- Checkout Modal -->
 <div class="modal-overlay" id="checkout-modal">
     <div class="modal">
         <button class="close-modal" onclick="closeCheckout()">×</button>
@@ -680,13 +464,8 @@
         </div>
         <div class="modal-body">
             <div id="checkout-msg" class="modal-msg" style="display:none"></div>
-            <div class="modal-input-group">
-                <label>Shipping Address</label>
-                <input type="text" id="shipping-address" placeholder="123 Main St, City, State, ZIP" />
-            </div>
-            <button class="modal-btn" style="background:#ff2020" onclick="placeOrder()" id="pay-btn">
-                Pay Securely with Stripe →
-            </button>
+            <div class="modal-input-group"><label>Shipping Address</label><input type="text" id="shipping-address" placeholder="123 Main St, City, State, ZIP" /></div>
+            <button class="modal-btn" style="background:#ff2020" onclick="placeOrder()" id="pay-btn">Pay Securely →</button>
             <div class="cart-trust" style="margin-top:0">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
                 256-bit SSL encryption · Powered by Stripe
@@ -695,10 +474,8 @@
     </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<!-- Footer -->
 <footer>
     <div class="footer-logo">Brand<span>Drop</span></div>
     <div class="footer-links">
@@ -722,24 +499,21 @@
         updateAuthUI();
         if (token) loadCart();
         startTimer();
-
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('payment') === 'success') {
             document.getElementById('success-banner').classList.add('show');
             loadCart();
             setTimeout(() => document.getElementById('success-banner').classList.remove('show'), 10000);
         }
-        if (urlParams.get('payment') === 'cancelled') {
-            showToast('Payment cancelled — your cart is still saved');
-        }
+        if (urlParams.get('payment') === 'cancelled') showToast('Payment cancelled — your cart is still saved');
     }
 
-    function scrollToProducts() {
-        document.getElementById('shop').scrollIntoView({ behavior: 'smooth' });
-    }
+    function scrollToProducts() { document.getElementById('shop').scrollIntoView({ behavior: 'smooth' }); }
 
     function scrollToAbout() {
-        document.getElementById('about').scrollIntoView({ behavior: 'smooth' });
+        const about = document.getElementById('about');
+        about.style.display = 'flex';
+        setTimeout(() => about.scrollIntoView({ behavior: 'smooth' }), 100);
     }
 
     function startTimer() {
@@ -749,8 +523,7 @@
             if (secs < 0) { secs = 59; mins--; }
             if (mins < 0) { mins = 59; hours--; }
             if (hours < 0) { hours = 23; }
-            document.getElementById('timer').textContent =
-                `${String(hours).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+            document.getElementById('timer').textContent = `${String(hours).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
         }, 1000);
     }
 
@@ -779,44 +552,23 @@
             const products = await res.json();
             document.getElementById('products-count').textContent = `${products.length} products`;
             renderProducts(products);
-        } catch {
-            grid.innerHTML = '<div class="loading">Failed to load products</div>';
-        }
+        } catch { grid.innerHTML = '<div class="loading">Failed to load products</div>'; }
     }
 
-    function getStockPercent(stock) {
-        if (stock > 80) return 80;
-        if (stock > 50) return 55;
-        if (stock > 20) return 30;
-        return 15;
-    }
-
-    function getStockText(stock) {
-        if (stock > 50) return '';
-        if (stock > 20) return `Only ${stock} left`;
-        if (stock > 5) return `⚠️ Almost gone — ${stock} left`;
-        return `🔥 Last ${stock}!`;
-    }
-
-    function getSaving(original, final) {
-        return (original - final).toFixed(2);
-    }
+    function getStockPercent(stock) { if (stock > 80) return 80; if (stock > 50) return 55; if (stock > 20) return 30; return 15; }
+    function getStockText(stock) { if (stock > 50) return ''; if (stock > 20) return `Only ${stock} left`; if (stock > 5) return `⚠️ Almost gone — ${stock} left`; return `🔥 Last ${stock}!`; }
+    function getSaving(original, final) { return (original - final).toFixed(2); }
 
     function renderProducts(products) {
         const grid = document.getElementById('products-grid');
-        if (!products.length) {
-            grid.innerHTML = '<div class="loading">No products found</div>';
-            return;
-        }
+        if (!products.length) { grid.innerHTML = '<div class="loading">No products found</div>'; return; }
         grid.innerHTML = products.map(p => `
             <div class="product-card">
                 <div class="product-image">
                     👟
                     <div class="discount-badge">-${p.discount_percent}%</div>
                     <div class="brand-badge">${p.brand.toUpperCase()}</div>
-                    <button class="product-quick-add" onclick="addToCart(${p.id}, '${p.name}')">
-                        + Quick Add to Cart
-                    </button>
+                    <button class="product-quick-add" onclick="addToCart(${p.id}, '${p.name}')">+ Quick Add to Cart</button>
                 </div>
                 <div class="product-info">
                     <div class="product-brand">${p.brand}</div>
@@ -827,10 +579,7 @@
                         <span class="price-original">$${p.original_price.toFixed(2)}</span>
                         <span class="price-saving">Save $${getSaving(p.original_price, p.final_price)}</span>
                     </div>
-                    ${getStockText(p.stock) ? `
-                    <div class="stock-bar"><div class="stock-fill" style="width:${getStockPercent(p.stock)}%"></div></div>
-                    <div class="stock-text">${getStockText(p.stock)}</div>
-                    ` : `<div style="margin-bottom:16px"></div>`}
+                    ${getStockText(p.stock) ? `<div class="stock-bar"><div class="stock-fill" style="width:${getStockPercent(p.stock)}%"></div></div><div class="stock-text">${getStockText(p.stock)}</div>` : `<div style="margin-bottom:16px"></div>`}
                     <div class="shipping-info">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                         Ships in ${p.shipping_days} days
@@ -873,10 +622,7 @@
         document.getElementById('cart-count').textContent = items.length;
         document.getElementById('cart-total').textContent = (data.total || 0).toFixed(2);
         const cartDiv = document.getElementById('cart-items');
-        if (!items.length) {
-            cartDiv.innerHTML = `<div class="empty-cart"><div class="empty-cart-icon">🛍️</div><p>Your cart is empty</p><small>Add some fire kicks to get started</small></div>`;
-            return;
-        }
+        if (!items.length) { cartDiv.innerHTML = `<div class="empty-cart"><div class="empty-cart-icon">🛍️</div><p>Your cart is empty</p><small>Add some fire kicks to get started</small></div>`; return; }
         cartDiv.innerHTML = items.map(item => `
             <div class="cart-item">
                 <div class="cart-item-img">👟</div>
@@ -916,7 +662,7 @@
         const address = document.getElementById('shipping-address').value;
         if (!address) { showCheckoutMsg('Please enter your shipping address', 'error'); return; }
         const btn = document.getElementById('pay-btn');
-        btn.textContent = 'Redirecting to Stripe...';
+        btn.textContent = 'Redirecting...';
         btn.disabled = true;
         try {
             const res = await fetch(`${API}/payments/create-checkout`, {
@@ -925,24 +671,12 @@
                 body: JSON.stringify({ shipping_address: address })
             });
             const data = await res.json();
-            if (res.ok) {
-                window.location.href = data.checkout_url;
-            } else {
-                showCheckoutMsg(data.detail || 'Something went wrong', 'error');
-                btn.textContent = 'Pay Securely with Stripe →';
-                btn.disabled = false;
-            }
-        } catch {
-            showCheckoutMsg('Connection error', 'error');
-            btn.textContent = 'Pay Securely with Stripe →';
-            btn.disabled = false;
-        }
+            if (res.ok) { window.location.href = data.checkout_url; }
+            else { showCheckoutMsg(data.detail || 'Something went wrong', 'error'); btn.textContent = 'Pay Securely →'; btn.disabled = false; }
+        } catch { showCheckoutMsg('Connection error', 'error'); btn.textContent = 'Pay Securely →'; btn.disabled = false; }
     }
 
-    function showCheckoutMsg(msg, type) {
-        const el = document.getElementById('checkout-msg');
-        el.textContent = msg; el.className = `modal-msg ${type}`; el.style.display = 'block';
-    }
+    function showCheckoutMsg(msg, type) { const el = document.getElementById('checkout-msg'); el.textContent = msg; el.className = `modal-msg ${type}`; el.style.display = 'block'; }
 
     function openAuthModal() {
         authMode = 'login';
@@ -953,10 +687,7 @@
         document.getElementById('auth-modal').classList.add('open');
     }
 
-    function closeAuthModal() {
-        document.getElementById('auth-modal').classList.remove('open');
-        document.getElementById('modal-msg').style.display = 'none';
-    }
+    function closeAuthModal() { document.getElementById('auth-modal').classList.remove('open'); document.getElementById('modal-msg').style.display = 'none'; }
 
     function switchAuthMode() {
         authMode = authMode === 'login' ? 'register' : 'login';
@@ -978,31 +709,21 @@
         const password = document.getElementById('auth-password').value;
         try {
             const res = await fetch(`${API}/${authMode === 'login' ? 'login' : 'register'}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
             const data = await res.json();
             if (res.ok) {
                 if (authMode === 'login') {
-                    token = data.access_token;
-                    localStorage.setItem('token', token);
-                    localStorage.setItem('userEmail', email);
-                    userEmail = email;
-                    updateAuthUI(); loadCart(); closeAuthModal();
-                    showToast('Welcome back to BrandDrop!');
-                } else {
-                    showModalMsg('Account created! Please sign in.', 'success');
-                    switchAuthMode();
-                }
+                    token = data.access_token; localStorage.setItem('token', token);
+                    localStorage.setItem('userEmail', email); userEmail = email;
+                    updateAuthUI(); loadCart(); closeAuthModal(); showToast('Welcome back to BrandDrop!');
+                } else { showModalMsg('Account created! Please sign in.', 'success'); switchAuthMode(); }
             } else { showModalMsg(data.detail || 'Something went wrong', 'error'); }
         } catch { showModalMsg('Connection error. Try again.', 'error'); }
     }
 
-    function showModalMsg(msg, type) {
-        const el = document.getElementById('modal-msg');
-        el.textContent = msg; el.className = `modal-msg ${type}`; el.style.display = 'block';
-    }
+    function showModalMsg(msg, type) { const el = document.getElementById('modal-msg'); el.textContent = msg; el.className = `modal-msg ${type}`; el.style.display = 'block'; }
 
     function logout() {
         token = null; userEmail = null;
@@ -1020,21 +741,11 @@
         const logoutBtn = document.getElementById('logout-btn');
         if (token && userEmail) {
             greeting.textContent = `Hi, ${userEmail.split('@')[0]}`;
-            greeting.style.display = 'block';
-            authBtn.style.display = 'none';
-            logoutBtn.style.display = 'block';
-        } else {
-            greeting.style.display = 'none';
-            authBtn.style.display = 'block';
-            logoutBtn.style.display = 'none';
-        }
+            greeting.style.display = 'block'; authBtn.style.display = 'none'; logoutBtn.style.display = 'block';
+        } else { greeting.style.display = 'none'; authBtn.style.display = 'block'; logoutBtn.style.display = 'none'; }
     }
 
-    function showToast(msg) {
-        const toast = document.getElementById('toast');
-        toast.textContent = msg; toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
-    }
+    function showToast(msg) { const toast = document.getElementById('toast'); toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
 </script>
 </body>
 </html>
