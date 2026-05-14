@@ -3,7 +3,7 @@ from app.models.user import User
 from app.models.product import Product
 from app.models.order import Order
 from app.models.cart import CartItem
-from app.models.agent import AgentMemory, AgentTask, MarketInsight, MonthlyVision
+from app.models.agent import AgentMemory, AgentTask, MarketInsight, MonthlyVision, AgentLearning, AgentGoal
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users.db")

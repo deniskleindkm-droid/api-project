@@ -3,6 +3,7 @@ from sqlmodel import Session, select
 from app.database import get_session
 from app.models.agent import AgentMemory, AgentTask, MarketInsight, MonthlyVision
 from app.agents.orchestrator import run_full_cycle, set_monthly_vision, get_agent_status
+from app.agents.goal_engine import set_goal, update_goal_progress, reflect_and_learn, get_active_goal, generate_improvement_plan
 from app.agents.customer_service import run_customer_service
 from pydantic import BaseModel
 from typing import Optional
@@ -103,3 +104,66 @@ def get_vision(session: Session = Depends(get_session)):
     if not vision:
         return {"message": "No active vision"}
     return vision
+
+class GoalRequest(BaseModel):
+    goal: str
+    deadline: str
+    metric: str
+    target_value: float
+
+class LearningRequest(BaseModel):
+    agent_name: str
+    action: str
+    outcome: str
+    lesson: str
+    metric: Optional[str] = None
+    metric_value: Optional[float] = None
+
+@router.post("/agents/goal")
+def set_agent_goal(request: GoalRequest):
+    try:
+        goal, breakdown = set_goal(
+            goal=request.goal,
+            deadline=request.deadline,
+            metric=request.metric,
+            target_value=request.target_value
+        )
+        return {"message": "Goal set successfully", "breakdown": breakdown}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/agents/goal")
+def get_goal():
+    goal = get_active_goal()
+    if not goal:
+        return {"message": "No active goal"}
+    return goal
+
+@router.post("/agents/goal/progress")
+def check_progress():
+    goal = update_goal_progress()
+    if not goal:
+        return {"message": "No active goal"}
+    return {"goal": goal.goal, "current": goal.current_value, "target": goal.target_value, "status": goal.status}
+
+@router.post("/agents/reflect")
+def add_learning(request: LearningRequest):
+    reflect_and_learn(
+        agent_name=request.agent_name,
+        action=request.action,
+        outcome=request.outcome,
+        lesson=request.lesson,
+        metric=request.metric,
+        metric_value=request.metric_value
+    )
+    return {"message": "Learning recorded"}
+
+@router.post("/agents/improve")
+def improve():
+    try:
+        plan = generate_improvement_plan()
+        if not plan:
+            return {"message": "Set a goal first using POST /agents/goal"}
+        return plan
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
