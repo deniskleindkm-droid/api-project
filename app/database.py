@@ -3,11 +3,11 @@ from app.models.user import User
 from app.models.product import Product
 from app.models.order import Order
 from app.models.cart import CartItem
+from app.models.agent import AgentMemory, AgentTask, MarketInsight, MonthlyVision
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users.db")
 
-# Fix for Railway PostgreSQL URL format
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 

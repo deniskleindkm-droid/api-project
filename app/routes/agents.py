@@ -1,0 +1,105 @@
+from fastapi import APIRouter, HTTPException, Depends
+from sqlmodel import Session, select
+from app.database import get_session
+from app.models.agent import AgentMemory, AgentTask, MarketInsight, MonthlyVision
+from app.agents.orchestrator import run_full_cycle, set_monthly_vision, get_agent_status
+from app.agents.customer_service import run_customer_service
+from pydantic import BaseModel
+from typing import Optional
+import json
+
+router = APIRouter()
+
+class VisionRequest(BaseModel):
+    vision: str
+    target_market: str
+    target_products: str
+    target_locations: str
+
+class MarketRequest(BaseModel):
+    topic: str
+    platform: str
+    content: str
+
+class CustomerQuestion(BaseModel):
+    question: str
+    customer_email: Optional[str] = None
+
+@router.post("/agents/vision")
+def set_vision(request: VisionRequest):
+    set_monthly_vision(
+        vision=request.vision,
+        target_market=request.target_market,
+        target_products=request.target_products,
+        target_locations=request.target_locations
+    )
+    return {"message": "Vision set successfully"}
+
+@router.post("/agents/run")
+def run_agents(request: Optional[MarketRequest] = None):
+    try:
+        if request:
+            report = run_full_cycle(
+                market_topic=request.topic,
+                market_platform=request.platform,
+                market_content=request.content
+            )
+        else:
+            report = run_full_cycle()
+        return {"message": "Agent cycle complete", "report": report}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/agents/status")
+def agent_status():
+    return get_agent_status()
+
+@router.get("/agents/memories")
+def get_memories(session: Session = Depends(get_session)):
+    memories = session.exec(
+        select(AgentMemory).order_by(AgentMemory.created_at.desc()).limit(50)
+    ).all()
+    return memories
+
+@router.get("/agents/tasks")
+def get_tasks(session: Session = Depends(get_session)):
+    tasks = session.exec(
+        select(AgentTask).order_by(AgentTask.created_at.desc()).limit(50)
+    ).all()
+    return tasks
+
+@router.get("/agents/insights")
+def get_insights(session: Session = Depends(get_session)):
+    insights = session.exec(
+        select(MarketInsight).order_by(MarketInsight.created_at.desc()).limit(20)
+    ).all()
+    return insights
+
+@router.get("/agents/report")
+def get_latest_report(session: Session = Depends(get_session)):
+    memory = session.exec(
+        select(AgentMemory).where(
+            AgentMemory.agent_name == "analytics",
+            AgentMemory.memory_type == "report"
+        ).order_by(AgentMemory.created_at.desc())
+    ).first()
+    if not memory:
+        return {"message": "No report yet"}
+    return json.loads(memory.content)
+
+@router.post("/agents/ask")
+def ask_customer_service(question: CustomerQuestion):
+    result = run_customer_service(
+        question=question.question,
+        customer_email=question.customer_email
+    )
+    return result
+
+@router.get("/agents/vision")
+def get_vision(session: Session = Depends(get_session)):
+    vision = session.exec(
+        select(MonthlyVision).where(MonthlyVision.is_active == True)
+    ).first()
+    if not vision:
+        return {"message": "No active vision"}
+    return vision
