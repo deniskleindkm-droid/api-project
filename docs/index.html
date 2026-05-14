@@ -25,7 +25,7 @@
             padding: 4px 0; border-bottom: 2px solid transparent;
         }
         .nav-link:hover { color: #111; border-bottom-color: #ff2020; }
-        .nav-right { display: flex; align-items: center; gap: 20px; }
+        .nav-right { display: flex; align-items: center; gap: 12px; }
         .nav-icon-btn { background: none; border: none; color: #111; cursor: pointer; padding: 8px; position: relative; }
         .cart-count {
             position: absolute; top: 2px; right: 2px;
@@ -34,18 +34,18 @@
             display: flex; align-items: center; justify-content: center;
         }
         .nav-login-btn {
-            background: #111; color: white; border: none; padding: 10px 24px;
-            border-radius: 24px; font-size: 13px; font-weight: 600; cursor: pointer;
-            font-family: 'Inter', sans-serif; transition: background 0.2s;
+            background: #111; color: white; border: none; padding: 8px 20px;
+            border-radius: 24px; font-size: 12px; font-weight: 600; cursor: pointer;
+            font-family: 'Inter', sans-serif; transition: background 0.2s; white-space: nowrap;
         }
         .nav-login-btn:hover { background: #ff2020; }
-        .nav-login-btn.outline { background: none; color: #111; border: 1.5px solid #111; }
-        .nav-login-btn.outline:hover { background: #111; color: white; }
-        .nav-user { color: #555; font-size: 13px; font-weight: 500; }
+        .nav-login-btn.outline { background: none; color: #111; border: 1.5px solid #ddd; }
+        .nav-login-btn.outline:hover { background: #111; color: white; border-color: #111; }
+        .nav-user { color: #555; font-size: 13px; font-weight: 500; white-space: nowrap; }
 
         .hero {
-            background: #0a0a0a; color: white; padding: 120px 40px;
-            position: relative; overflow: hidden; min-height: 500px; display: flex; align-items: center;
+            background: #0a0a0a; color: white; padding: 80px 40px;
+            position: relative; overflow: hidden; display: flex; align-items: center;
         }
         .hero-content { max-width: 620px; position: relative; z-index: 2; }
         .hero-tag {
@@ -58,21 +58,21 @@
         .hero-tag::before { content: '●'; font-size: 8px; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
         .hero h1 {
-            font-family: 'Playfair Display', serif; font-size: 72px; font-weight: 900;
+            font-family: 'Playfair Display', serif; font-size: 64px; font-weight: 900;
             line-height: 1.05; letter-spacing: -1px; margin-bottom: 20px;
         }
         .hero h1 span { color: #ff2020; font-style: italic; }
-        .hero p { font-size: 17px; color: #999; margin-bottom: 36px; font-weight: 300; line-height: 1.7; max-width: 480px; }
+        .hero p { font-size: 16px; color: #999; margin-bottom: 32px; font-weight: 300; line-height: 1.7; max-width: 480px; }
         .hero-btns { display: flex; gap: 16px; flex-wrap: wrap; }
         .hero-btn-primary {
-            background: #ff2020; color: white; border: none; padding: 16px 36px;
+            background: #ff2020; color: white; border: none; padding: 14px 32px;
             font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
             cursor: pointer; border-radius: 28px; transition: all 0.2s; font-family: 'Inter', sans-serif;
         }
         .hero-btn-primary:hover { background: #e00; transform: translateY(-1px); }
         .hero-btn-secondary {
             background: none; color: white; border: 1.5px solid rgba(255,255,255,0.3);
-            padding: 16px 36px; font-size: 13px; font-weight: 600; cursor: pointer;
+            padding: 14px 32px; font-size: 13px; font-weight: 600; cursor: pointer;
             border-radius: 28px; transition: all 0.2s; font-family: 'Inter', sans-serif;
         }
         .hero-btn-secondary:hover { border-color: white; }
@@ -81,103 +81,65 @@
             font-family: 'Playfair Display', serif; font-size: 260px; font-weight: 900;
             color: rgba(255,255,255,0.03); letter-spacing: -10px; user-select: none; z-index: 1;
         }
-        .hero-stats { display: flex; gap: 40px; margin-top: 48px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; }
-        .hero-stat-num { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; color: white; }
-        .hero-stat-label { font-size: 12px; color: #666; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+        .hero-stats {
+            display: flex; gap: 40px; margin-top: 40px;
+            padding-top: 32px; border-top: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap;
+        }
+        .hero-stat-num { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: white; }
+        .hero-stat-label { font-size: 11px; color: #666; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
 
         .trust-bar {
-            background: #f9f9f9; border-bottom: 1px solid #eee; padding: 20px 40px;
-            display: flex; justify-content: center; gap: 60px; flex-wrap: wrap;
+            background: #f9f9f9; border-bottom: 1px solid #eee; padding: 16px 40px;
+            display: flex; justify-content: center; gap: 48px; flex-wrap: wrap;
         }
         .trust-item { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; color: #444; }
-        .trust-icon {
-            width: 36px; height: 36px; background: #fff; border: 1.5px solid #e0e0e0;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        }
+        .trust-icon { width: 32px; height: 32px; background: #fff; border: 1.5px solid #e0e0e0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
-        .success-banner {
-            background: #022c22; color: #4ade80; padding: 16px 40px;
-            display: none; align-items: center; justify-content: center; gap: 12px;
-            font-size: 14px; font-weight: 600;
-        }
+        .success-banner { background: #022c22; color: #4ade80; padding: 14px 40px; display: none; align-items: center; justify-content: center; gap: 12px; font-size: 14px; font-weight: 600; }
         .success-banner.show { display: flex; }
 
-        .filters-section { padding: 32px 40px 0; }
-        .filters-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #aaa; margin-bottom: 16px; }
+        .filters-section { padding: 28px 40px 0; }
+        .filters-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #aaa; margin-bottom: 14px; }
         .filters { display: flex; gap: 10px; flex-wrap: wrap; padding-bottom: 24px; border-bottom: 1px solid #eee; }
-        .filter-btn {
-            padding: 8px 22px; border: 1.5px solid #e0e0e0; background: white;
-            cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s;
-            border-radius: 24px; font-family: 'Inter', sans-serif;
-        }
+        .filter-btn { padding: 7px 20px; border: 1.5px solid #e0e0e0; background: white; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; border-radius: 24px; font-family: 'Inter', sans-serif; }
         .filter-btn:hover { border-color: #111; }
         .filter-btn.active { background: #111; color: white; border-color: #111; }
 
-        .products-section { padding: 40px; }
-        .section-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 32px; }
-        .section-title { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 700; }
-        .section-subtitle { font-size: 14px; color: #aaa; margin-top: 4px; }
+        .products-section { padding: 36px 40px; }
+        .section-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 28px; }
+        .section-title { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; }
+        .section-subtitle { font-size: 13px; color: #aaa; margin-top: 4px; }
         .products-count { font-size: 13px; color: #aaa; }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
 
-        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
-
-        .product-card {
-            background: white; cursor: pointer; border-radius: 16px; overflow: hidden;
-            border: 1px solid #f0f0f0; transition: transform 0.2s, box-shadow 0.2s;
-        }
+        .product-card { background: white; cursor: pointer; border-radius: 16px; overflow: hidden; border: 1px solid #f0f0f0; transition: transform 0.2s, box-shadow 0.2s; }
         .product-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(0,0,0,0.1); }
-        .product-image {
-            background: #f7f7f7; height: 280px; display: flex; align-items: center;
-            justify-content: center; font-size: 80px; position: relative; overflow: hidden;
-        }
+        .product-image { background: #f7f7f7; height: 260px; display: flex; align-items: center; justify-content: center; font-size: 80px; position: relative; overflow: hidden; }
         .product-image:hover .product-quick-add { opacity: 1; transform: translateY(0); }
-        .product-quick-add {
-            position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.9);
-            color: white; padding: 14px; text-align: center; font-size: 12px; font-weight: 700;
-            letter-spacing: 1.5px; text-transform: uppercase; opacity: 0; transform: translateY(10px);
-            transition: all 0.2s; cursor: pointer; border: none; width: 100%; font-family: 'Inter', sans-serif;
-        }
+        .product-quick-add { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.9); color: white; padding: 13px; text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0; transform: translateY(10px); transition: all 0.2s; cursor: pointer; border: none; width: 100%; font-family: 'Inter', sans-serif; }
         .product-quick-add:hover { background: #ff2020; }
-        .discount-badge {
-            position: absolute; top: 16px; left: 16px; background: #ff2020; color: white;
-            padding: 5px 12px; font-size: 11px; font-weight: 800; letter-spacing: 1px; border-radius: 20px;
-        }
-        .brand-badge {
-            position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.75); color: white;
-            padding: 5px 12px; font-size: 10px; font-weight: 700; letter-spacing: 2px;
-            text-transform: uppercase; border-radius: 20px;
-        }
-        .product-info { padding: 20px; }
+        .discount-badge { position: absolute; top: 16px; left: 16px; background: #ff2020; color: white; padding: 5px 12px; font-size: 11px; font-weight: 800; letter-spacing: 1px; border-radius: 20px; }
+        .brand-badge { position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.75); color: white; padding: 5px 12px; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; border-radius: 20px; }
+        .product-info { padding: 18px; }
         .product-brand { font-size: 11px; font-weight: 700; color: #aaa; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
-        .product-name { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; margin-bottom: 6px; }
-        .product-desc { font-size: 13px; color: #999; margin-bottom: 16px; line-height: 1.6; }
+        .product-name { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; margin-bottom: 6px; }
+        .product-desc { font-size: 13px; color: #999; margin-bottom: 14px; line-height: 1.6; }
         .product-pricing { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
-        .price-final { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: #111; }
+        .price-final { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: #111; }
         .price-original { font-size: 14px; color: #ccc; text-decoration: line-through; }
         .price-saving { font-size: 12px; color: #ff2020; font-weight: 700; background: rgba(255,32,32,0.08); padding: 3px 8px; border-radius: 12px; }
-        .shipping-info { font-size: 12px; color: #bbb; margin-bottom: 16px; display: flex; align-items: center; gap: 6px; }
+        .shipping-info { font-size: 12px; color: #bbb; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
         .stock-bar { height: 3px; background: #f0f0f0; border-radius: 2px; margin-bottom: 6px; }
         .stock-fill { height: 100%; background: #ff2020; border-radius: 2px; }
-        .stock-text { font-size: 11px; color: #ff2020; font-weight: 700; margin-bottom: 16px; }
-        .add-to-cart {
-            width: 100%; padding: 14px; background: #111; color: white; border: none;
-            cursor: pointer; font-size: 12px; font-weight: 700; letter-spacing: 1.5px;
-            text-transform: uppercase; transition: background 0.2s; border-radius: 28px;
-            font-family: 'Inter', sans-serif;
-        }
+        .stock-text { font-size: 11px; color: #ff2020; font-weight: 700; margin-bottom: 14px; }
+        .add-to-cart { width: 100%; padding: 13px; background: #111; color: white; border: none; cursor: pointer; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; transition: background 0.2s; border-radius: 28px; font-family: 'Inter', sans-serif; }
         .add-to-cart:hover { background: #ff2020; }
 
-        .urgency-bar {
-            background: #111; color: white; padding: 20px 40px;
-            display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap;
-        }
-        .urgency-text { font-size: 14px; font-weight: 500; color: #aaa; }
-        .urgency-timer { background: #ff2020; padding: 6px 16px; border-radius: 8px; font-size: 18px; font-weight: 800; letter-spacing: 3px; font-family: monospace; }
+        .urgency-bar { background: #111; color: white; padding: 18px 40px; display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; }
+        .urgency-text { font-size: 13px; font-weight: 500; color: #aaa; }
+        .urgency-timer { background: #ff2020; padding: 6px 16px; border-radius: 8px; font-size: 17px; font-weight: 800; letter-spacing: 3px; font-family: monospace; }
 
-        .about-section {
-            padding: 80px 40px; background: #f9f9f9;
-            display: none; gap: 60px; align-items: center; flex-wrap: wrap;
-        }
+        .about-section { padding: 80px 40px; background: #f9f9f9; display: none; gap: 60px; align-items: center; flex-wrap: wrap; }
         .about-content { flex: 1; min-width: 280px; }
         .about-tag { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #ff2020; margin-bottom: 16px; }
         .about-title { font-family: 'Playfair Display', serif; font-size: 40px; font-weight: 700; line-height: 1.2; margin-bottom: 20px; }
@@ -189,11 +151,7 @@
 
         .cart-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; }
         .cart-overlay.open { display: block; }
-        .cart-sidebar {
-            position: fixed; top: 0; right: -480px; width: 480px; height: 100%;
-            background: white; z-index: 201; transition: right 0.3s cubic-bezier(0.4,0,0.2,1);
-            display: flex; flex-direction: column; box-shadow: -8px 0 40px rgba(0,0,0,0.15);
-        }
+        .cart-sidebar { position: fixed; top: 0; right: -480px; width: 480px; height: 100%; background: white; z-index: 201; transition: right 0.3s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; box-shadow: -8px 0 40px rgba(0,0,0,0.15); }
         .cart-sidebar.open { right: 0; }
         .cart-header { padding: 24px 28px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
         .cart-header-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; }
@@ -212,45 +170,39 @@
         .cart-total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .cart-total-label { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; }
         .cart-total-amount { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; }
-        .checkout-btn {
-            width: 100%; padding: 16px; background: #ff2020; color: white; border: none;
-            cursor: pointer; font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
-            text-transform: uppercase; border-radius: 28px; transition: all 0.2s;
-            margin-bottom: 12px; font-family: 'Inter', sans-serif;
-        }
+        .checkout-btn { width: 100%; padding: 16px; background: #ff2020; color: white; border: none; cursor: pointer; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; border-radius: 28px; transition: all 0.2s; margin-bottom: 12px; font-family: 'Inter', sans-serif; }
         .checkout-btn:hover { background: #e00; }
         .cart-trust { text-align: center; font-size: 12px; color: #bbb; display: flex; align-items: center; justify-content: center; gap: 6px; }
         .empty-cart { text-align: center; padding: 60px 0; color: #ccc; }
         .empty-cart-icon { font-size: 56px; margin-bottom: 16px; }
         .empty-cart p { font-size: 16px; font-weight: 600; color: #aaa; margin-bottom: 6px; }
-        .empty-cart small { font-size: 13px; }
 
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 300; align-items: center; justify-content: center; padding: 16px; }
         .modal-overlay.open { display: flex; }
         .modal { background: white; width: 100%; max-width: 440px; border-radius: 20px; overflow: hidden; position: relative; box-shadow: 0 24px 60px rgba(0,0,0,0.2); }
-        .modal-top { padding: 36px 40px 24px; border-bottom: 1px solid #f0f0f0; }
-        .modal-top h2 { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+        .modal-top { padding: 32px 36px 20px; border-bottom: 1px solid #f0f0f0; }
+        .modal-top h2 { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; margin-bottom: 6px; }
         .modal-top p { font-size: 14px; color: #aaa; }
-        .modal-body { padding: 28px 40px 36px; }
-        .modal-input-group { margin-bottom: 18px; }
+        .modal-body { padding: 24px 36px 32px; }
+        .modal-input-group { margin-bottom: 16px; }
         .modal-input-group label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #aaa; margin-bottom: 8px; }
-        .modal-input-group input { width: 100%; padding: 14px 16px; border: 1.5px solid #e8e8e8; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; transition: border-color 0.2s; outline: none; }
+        .modal-input-group input { width: 100%; padding: 13px 16px; border: 1.5px solid #e8e8e8; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; transition: border-color 0.2s; outline: none; }
         .modal-input-group input:focus { border-color: #111; }
-        .modal-btn { width: 100%; padding: 15px; background: #111; color: white; border: none; border-radius: 28px; cursor: pointer; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 16px; font-family: 'Inter', sans-serif; transition: background 0.2s; }
+        .modal-btn { width: 100%; padding: 14px; background: #111; color: white; border: none; border-radius: 28px; cursor: pointer; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 16px; font-family: 'Inter', sans-serif; transition: background 0.2s; }
         .modal-btn:hover { background: #ff2020; }
         .modal-msg { padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; text-align: center; font-size: 13px; font-weight: 500; }
         .modal-msg.success { background: #d1fae5; color: #065f46; }
         .modal-msg.error { background: #fee2e2; color: #991b1b; }
         .modal-switch { text-align: center; color: #aaa; font-size: 13px; }
         .modal-switch a { color: #ff2020; cursor: pointer; font-weight: 600; }
-        .close-modal { position: absolute; top: 20px; right: 20px; background: #f5f5f5; border: none; color: #888; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .close-modal { position: absolute; top: 16px; right: 16px; background: #f5f5f5; border: none; color: #888; width: 30px; height: 30px; border-radius: 50%; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .close-modal:hover { background: #eee; color: #111; }
 
-        .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #111; color: white; padding: 14px 28px; border-radius: 28px; font-size: 14px; font-weight: 500; z-index: 400; opacity: 0; transition: opacity 0.3s; white-space: nowrap; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
+        .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); background: #111; color: white; padding: 12px 24px; border-radius: 28px; font-size: 14px; font-weight: 500; z-index: 400; opacity: 0; transition: opacity 0.3s; white-space: nowrap; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
         .toast.show { opacity: 1; }
         .loading { text-align: center; padding: 80px; color: #ccc; font-size: 15px; grid-column: 1/-1; font-family: 'Playfair Display', serif; font-style: italic; }
 
-        footer { background: #0a0a0a; color: #555; padding: 48px 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+        footer { background: #0a0a0a; color: #555; padding: 40px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
         .footer-logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: white; }
         .footer-logo span { color: #ff2020; }
         .footer-links { display: flex; gap: 24px; flex-wrap: wrap; }
@@ -258,49 +210,63 @@
         .footer-link:hover { color: white; }
         .footer-copy { font-size: 12px; color: #333; }
 
+        /* MOBILE */
         @media (max-width: 768px) {
             nav { padding: 0 16px; height: 60px; }
             .nav-center { display: none; }
-            .logo { font-size: 20px; }
-            .nav-user { display: none; }
-            .hero { padding: 60px 20px; min-height: auto; }
-            .hero h1 { font-size: 40px; }
-            .hero p { font-size: 15px; }
+            .logo { font-size: 18px; letter-spacing: 1px; }
+            .nav-right { gap: 8px; }
+            .nav-user { font-size: 11px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+            .nav-login-btn { padding: 6px 12px; font-size: 11px; }
+
+            .hero { padding: 48px 20px; }
+            .hero h1 { font-size: 36px; }
+            .hero p { font-size: 14px; margin-bottom: 24px; }
             .hero-bg-text { display: none; }
-            .hero-stats { gap: 24px; }
-            .hero-btns { flex-direction: column; }
-            .trust-bar { gap: 16px; padding: 16px 20px; justify-content: flex-start; }
+            .hero-stats { gap: 20px; margin-top: 28px; padding-top: 24px; }
+            .hero-stat-num { font-size: 22px; }
+            .hero-btns { flex-direction: column; gap: 10px; }
+            .hero-btn-primary, .hero-btn-secondary { text-align: center; padding: 14px; }
+
+            .trust-bar { gap: 12px; padding: 14px 16px; flex-direction: column; align-items: flex-start; }
             .trust-item { font-size: 12px; }
+
             .filters-section { padding: 20px 16px 0; }
-            .filter-btn { padding: 6px 16px; font-size: 12px; }
+            .filter-btn { padding: 6px 14px; font-size: 12px; }
+
             .products-section { padding: 24px 16px; }
-            .section-title { font-size: 24px; }
-            .products-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
-            .product-image { height: 160px; font-size: 48px; }
-            .product-info { padding: 12px; }
-            .product-name { font-size: 14px; }
+            .section-title { font-size: 22px; }
+            .products-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .product-image { height: 150px; font-size: 44px; }
+            .product-info { padding: 10px; }
+            .product-name { font-size: 13px; }
             .product-desc { display: none; }
-            .price-final { font-size: 18px; }
+            .price-final { font-size: 16px; }
             .price-saving { display: none; }
-            .add-to-cart { padding: 11px; font-size: 11px; }
-            .urgency-bar { padding: 16px 20px; gap: 10px; }
-            .urgency-text { font-size: 12px; }
-            .about-section { padding: 48px 20px; flex-direction: column; gap: 32px; }
-            .about-title { font-size: 28px; }
-            .about-image { height: 200px; min-width: unset; width: 100%; }
+            .add-to-cart { padding: 10px; font-size: 10px; letter-spacing: 0.5px; }
+
+            .urgency-bar { padding: 14px 16px; gap: 8px; }
+            .urgency-text { font-size: 11px; }
+            .urgency-timer { font-size: 15px; padding: 4px 12px; }
+
+            .about-section { padding: 40px 16px; flex-direction: column; gap: 24px; }
+            .about-title { font-size: 26px; }
+            .about-image { height: 180px; min-width: unset; width: 100%; }
+
             .cart-sidebar { width: 100%; right: -100%; }
             .cart-sidebar.open { right: 0; }
-            .modal-top { padding: 24px 24px 16px; }
+
+            .modal-top { padding: 24px 20px 16px; }
             .modal-top h2 { font-size: 22px; }
-            .modal-body { padding: 20px 24px 28px; }
-            footer { flex-direction: column; text-align: center; padding: 32px 20px; gap: 16px; }
-            .footer-links { justify-content: center; }
+            .modal-body { padding: 20px 20px 28px; }
+
+            footer { flex-direction: column; text-align: center; padding: 28px 16px; gap: 14px; }
+            .footer-links { justify-content: center; gap: 16px; }
         }
 
         @media (max-width: 480px) {
             .products-grid { grid-template-columns: 1fr; }
-            .hero h1 { font-size: 32px; }
-            .trust-bar { flex-direction: column; gap: 12px; }
+            .hero h1 { font-size: 30px; }
         }
     </style>
 </head>
@@ -319,13 +285,13 @@
     <div class="nav-right">
         <span id="user-greeting" class="nav-user" style="display:none"></span>
         <button class="nav-icon-btn" onclick="toggleCart()">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/>
             </svg>
             <span class="cart-count" id="cart-count">0</span>
         </button>
         <button class="nav-login-btn" id="auth-btn" onclick="openAuthModal()">Sign In</button>
-        <button class="nav-login-btn outline" id="logout-btn" style="display:none" onclick="logout()">Sign Out</button>
+        <button class="nav-login-btn outline" id="logout-btn" style="display:none" onclick="logout()">Out</button>
     </div>
 </nav>
 
@@ -348,27 +314,13 @@
 </div>
 
 <div class="trust-bar">
-    <div class="trust-item">
-        <div class="trust-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-        100% Authentic
-    </div>
-    <div class="trust-item">
-        <div class="trust-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
-        Fast Shipping
-    </div>
-    <div class="trust-item">
-        <div class="trust-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
-        Secure Checkout
-    </div>
-    <div class="trust-item">
-        <div class="trust-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></div>
-        Easy Returns
-    </div>
+    <div class="trust-item"><div class="trust-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>100% Authentic</div>
+    <div class="trust-item"><div class="trust-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>Fast Shipping</div>
+    <div class="trust-item"><div class="trust-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>Secure Checkout</div>
+    <div class="trust-item"><div class="trust-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></div>Easy Returns</div>
 </div>
 
-<div class="success-banner" id="success-banner">
-    ✓ Payment confirmed! Your order is being processed. Check your email for updates.
-</div>
+<div class="success-banner" id="success-banner">✓ Payment confirmed! Your order is being processed.</div>
 
 <div class="filters-section" id="shop">
     <div class="filters-title">Filter by Brand</div>
@@ -419,11 +371,7 @@
         <button class="close-btn" onclick="toggleCart()">×</button>
     </div>
     <div class="cart-items" id="cart-items">
-        <div class="empty-cart">
-            <div class="empty-cart-icon">🛍️</div>
-            <p>Your cart is empty</p>
-            <small>Add some fire kicks to get started</small>
-        </div>
+        <div class="empty-cart"><div class="empty-cart-icon">🛍️</div><p>Your cart is empty</p></div>
     </div>
     <div class="cart-footer">
         <div class="cart-total-row">
@@ -431,10 +379,7 @@
             <div class="cart-total-amount">$<span id="cart-total">0.00</span></div>
         </div>
         <button class="checkout-btn" onclick="openCheckout()">Proceed to Checkout →</button>
-        <div class="cart-trust">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-            Secure · Encrypted · Protected by Stripe
-        </div>
+        <div class="cart-trust"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Secure · Encrypted · Protected by Stripe</div>
     </div>
 </div>
 
@@ -447,6 +392,10 @@
         </div>
         <div class="modal-body">
             <div id="modal-msg" class="modal-msg" style="display:none"></div>
+            <div class="modal-input-group" id="name-group" style="display:none">
+                <label>Full Name</label>
+                <input type="text" id="auth-name" placeholder="Your full name" />
+            </div>
             <div class="modal-input-group"><label>Email address</label><input type="email" id="auth-email" placeholder="your@email.com" /></div>
             <div class="modal-input-group"><label>Password</label><input type="password" id="auth-password" placeholder="••••••••" /></div>
             <button class="modal-btn" id="auth-submit-btn" onclick="submitAuth()">Sign In</button>
@@ -466,10 +415,7 @@
             <div id="checkout-msg" class="modal-msg" style="display:none"></div>
             <div class="modal-input-group"><label>Shipping Address</label><input type="text" id="shipping-address" placeholder="123 Main St, City, State, ZIP" /></div>
             <button class="modal-btn" style="background:#ff2020" onclick="placeOrder()" id="pay-btn">Pay Securely →</button>
-            <div class="cart-trust" style="margin-top:0">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                256-bit SSL encryption · Powered by Stripe
-            </div>
+            <div class="cart-trust" style="margin-top:0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>256-bit SSL · Powered by Stripe</div>
         </div>
     </div>
 </div>
@@ -491,12 +437,11 @@
     const API = "https://api-project-production-d424.up.railway.app";
     let token = localStorage.getItem('token');
     let userEmail = localStorage.getItem('userEmail');
+    let userName = localStorage.getItem('userName');
     let authMode = 'login';
 
     window.onload = () => {
-        loadBrands();
-        loadProducts();
-        updateAuthUI();
+        loadBrands(); loadProducts(); updateAuthUI();
         if (token) loadCart();
         startTimer();
         const urlParams = new URLSearchParams(window.location.search);
@@ -509,7 +454,6 @@
     }
 
     function scrollToProducts() { document.getElementById('shop').scrollIntoView({ behavior: 'smooth' }); }
-
     function scrollToAbout() {
         const about = document.getElementById('about');
         about.style.display = 'flex';
@@ -517,13 +461,10 @@
     }
 
     function startTimer() {
-        let hours = 23, mins = 59, secs = 59;
+        let h = 23, m = 59, s = 59;
         setInterval(() => {
-            secs--;
-            if (secs < 0) { secs = 59; mins--; }
-            if (mins < 0) { mins = 59; hours--; }
-            if (hours < 0) { hours = 23; }
-            document.getElementById('timer').textContent = `${String(hours).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+            s--; if (s < 0) { s = 59; m--; } if (m < 0) { m = 59; h--; } if (h < 0) h = 23;
+            document.getElementById('timer').textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
         }, 1000);
     }
 
@@ -534,8 +475,7 @@
             const container = document.getElementById('brand-filters');
             data.brands.forEach(brand => {
                 const btn = document.createElement('button');
-                btn.className = 'filter-btn';
-                btn.textContent = brand;
+                btn.className = 'filter-btn'; btn.textContent = brand;
                 btn.onclick = () => filterBrand(brand, btn);
                 container.appendChild(btn);
             });
@@ -555,9 +495,9 @@
         } catch { grid.innerHTML = '<div class="loading">Failed to load products</div>'; }
     }
 
-    function getStockPercent(stock) { if (stock > 80) return 80; if (stock > 50) return 55; if (stock > 20) return 30; return 15; }
-    function getStockText(stock) { if (stock > 50) return ''; if (stock > 20) return `Only ${stock} left`; if (stock > 5) return `⚠️ Almost gone — ${stock} left`; return `🔥 Last ${stock}!`; }
-    function getSaving(original, final) { return (original - final).toFixed(2); }
+    function getStockPercent(s) { return s > 80 ? 80 : s > 50 ? 55 : s > 20 ? 30 : 15; }
+    function getStockText(s) { return s > 50 ? '' : s > 20 ? `Only ${s} left` : s > 5 ? `⚠️ Almost gone — ${s} left` : `🔥 Last ${s}!`; }
+    function getSaving(o, f) { return (o - f).toFixed(2); }
 
     function renderProducts(products) {
         const grid = document.getElementById('products-grid');
@@ -568,7 +508,7 @@
                     👟
                     <div class="discount-badge">-${p.discount_percent}%</div>
                     <div class="brand-badge">${p.brand.toUpperCase()}</div>
-                    <button class="product-quick-add" onclick="addToCart(${p.id}, '${p.name}')">+ Quick Add to Cart</button>
+                    <button class="product-quick-add" onclick="addToCart(${p.id},'${p.name}')">+ Quick Add</button>
                 </div>
                 <div class="product-info">
                     <div class="product-brand">${p.brand}</div>
@@ -579,15 +519,11 @@
                         <span class="price-original">$${p.original_price.toFixed(2)}</span>
                         <span class="price-saving">Save $${getSaving(p.original_price, p.final_price)}</span>
                     </div>
-                    ${getStockText(p.stock) ? `<div class="stock-bar"><div class="stock-fill" style="width:${getStockPercent(p.stock)}%"></div></div><div class="stock-text">${getStockText(p.stock)}</div>` : `<div style="margin-bottom:16px"></div>`}
-                    <div class="shipping-info">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-                        Ships in ${p.shipping_days} days
-                    </div>
-                    <button class="add-to-cart" onclick="addToCart(${p.id}, '${p.name}')">Add to Cart</button>
+                    ${getStockText(p.stock) ? `<div class="stock-bar"><div class="stock-fill" style="width:${getStockPercent(p.stock)}%"></div></div><div class="stock-text">${getStockText(p.stock)}</div>` : '<div style="margin-bottom:14px"></div>'}
+                    <div class="shipping-info"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="2.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>Ships in ${p.shipping_days} days</div>
+                    <button class="add-to-cart" onclick="addToCart(${p.id},'${p.name}')">Add to Cart</button>
                 </div>
-            </div>
-        `).join('');
+            </div>`).join('');
     }
 
     function filterBrand(brand, btn) {
@@ -622,7 +558,7 @@
         document.getElementById('cart-count').textContent = items.length;
         document.getElementById('cart-total').textContent = (data.total || 0).toFixed(2);
         const cartDiv = document.getElementById('cart-items');
-        if (!items.length) { cartDiv.innerHTML = `<div class="empty-cart"><div class="empty-cart-icon">🛍️</div><p>Your cart is empty</p><small>Add some fire kicks to get started</small></div>`; return; }
+        if (!items.length) { cartDiv.innerHTML = `<div class="empty-cart"><div class="empty-cart-icon">🛍️</div><p>Your cart is empty</p></div>`; return; }
         cartDiv.innerHTML = items.map(item => `
             <div class="cart-item">
                 <div class="cart-item-img">👟</div>
@@ -632,8 +568,7 @@
                     <div class="cart-item-price">$${item.subtotal.toFixed(2)} · Qty: ${item.quantity}</div>
                     <button class="remove-item" onclick="removeFromCart(${item.cart_item_id})">Remove</button>
                 </div>
-            </div>
-        `).join('');
+            </div>`).join('');
     }
 
     async function removeFromCart(id) {
@@ -662,8 +597,7 @@
         const address = document.getElementById('shipping-address').value;
         if (!address) { showCheckoutMsg('Please enter your shipping address', 'error'); return; }
         const btn = document.getElementById('pay-btn');
-        btn.textContent = 'Redirecting...';
-        btn.disabled = true;
+        btn.textContent = 'Redirecting...'; btn.disabled = true;
         try {
             const res = await fetch(`${API}/payments/create-checkout`, {
                 method: 'POST',
@@ -684,6 +618,7 @@
         document.getElementById('modal-subtitle').textContent = 'Sign in to your BrandDrop account';
         document.getElementById('auth-submit-btn').textContent = 'Sign In';
         document.getElementById('modal-switch-text').innerHTML = "New to BrandDrop? <a onclick='switchAuthMode()'>Create account</a>";
+        document.getElementById('name-group').style.display = 'none';
         document.getElementById('auth-modal').classList.add('open');
     }
 
@@ -696,28 +631,37 @@
             document.getElementById('modal-subtitle').textContent = 'Join BrandDrop and start saving';
             document.getElementById('auth-submit-btn').textContent = 'Create Account';
             document.getElementById('modal-switch-text').innerHTML = "Already have an account? <a onclick='switchAuthMode()'>Sign in</a>";
+            document.getElementById('name-group').style.display = 'block';
         } else {
             document.getElementById('modal-title').textContent = 'Welcome back';
             document.getElementById('modal-subtitle').textContent = 'Sign in to your BrandDrop account';
             document.getElementById('auth-submit-btn').textContent = 'Sign In';
             document.getElementById('modal-switch-text').innerHTML = "New to BrandDrop? <a onclick='switchAuthMode()'>Create account</a>";
+            document.getElementById('name-group').style.display = 'none';
         }
     }
 
     async function submitAuth() {
         const email = document.getElementById('auth-email').value;
         const password = document.getElementById('auth-password').value;
+        const fullName = document.getElementById('auth-name').value;
+        const body = authMode === 'register' ? { email, password, full_name: fullName } : { email, password };
         try {
             const res = await fetch(`${API}/${authMode === 'login' ? 'login' : 'register'}`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify(body)
             });
             const data = await res.json();
             if (res.ok) {
                 if (authMode === 'login') {
-                    token = data.access_token; localStorage.setItem('token', token);
-                    localStorage.setItem('userEmail', email); userEmail = email;
-                    updateAuthUI(); loadCart(); closeAuthModal(); showToast('Welcome back to BrandDrop!');
+                    token = data.access_token;
+                    const displayName = data.full_name || email.split('@')[0];
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('userEmail', email);
+                    localStorage.setItem('userName', displayName);
+                    userEmail = email; userName = displayName;
+                    updateAuthUI(); loadCart(); closeAuthModal();
+                    showToast(`Welcome back, ${displayName}!`);
                 } else { showModalMsg('Account created! Please sign in.', 'success'); switchAuthMode(); }
             } else { showModalMsg(data.detail || 'Something went wrong', 'error'); }
         } catch { showModalMsg('Connection error. Try again.', 'error'); }
@@ -726,11 +670,11 @@
     function showModalMsg(msg, type) { const el = document.getElementById('modal-msg'); el.textContent = msg; el.className = `modal-msg ${type}`; el.style.display = 'block'; }
 
     function logout() {
-        token = null; userEmail = null;
-        localStorage.removeItem('token'); localStorage.removeItem('userEmail');
+        token = null; userEmail = null; userName = null;
+        localStorage.removeItem('token'); localStorage.removeItem('userEmail'); localStorage.removeItem('userName');
         updateAuthUI();
         document.getElementById('cart-count').textContent = '0';
-        document.getElementById('cart-items').innerHTML = `<div class="empty-cart"><div class="empty-cart-icon">🛍️</div><p>Your cart is empty</p><small>Add some fire kicks to get started</small></div>`;
+        document.getElementById('cart-items').innerHTML = `<div class="empty-cart"><div class="empty-cart-icon">🛍️</div><p>Your cart is empty</p></div>`;
         document.getElementById('cart-total').textContent = '0.00';
         showToast('Signed out successfully');
     }
@@ -740,7 +684,8 @@
         const authBtn = document.getElementById('auth-btn');
         const logoutBtn = document.getElementById('logout-btn');
         if (token && userEmail) {
-            greeting.textContent = `Hi, ${userEmail.split('@')[0]}`;
+            const name = userName || userEmail.split('@')[0];
+            greeting.textContent = `Hi, ${name}`;
             greeting.style.display = 'block'; authBtn.style.display = 'none'; logoutBtn.style.display = 'block';
         } else { greeting.style.display = 'none'; authBtn.style.display = 'block'; logoutBtn.style.display = 'none'; }
     }
