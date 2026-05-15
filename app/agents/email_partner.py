@@ -69,12 +69,18 @@ def get_gmail_service():
     
     return build('gmail', 'v1', credentials=creds)
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 def send_email(to, subject, body, is_html=False):
     try:
-        service = get_gmail_service()
+        gmail_user = os.getenv("GMAIL_USER")
+        gmail_password = os.getenv("GMAIL_APP_PASSWORD")
         
         message = MIMEMultipart('alternative')
         message['to'] = to
+        message['from'] = gmail_user
         message['subject'] = subject
         
         if is_html:
@@ -84,8 +90,9 @@ def send_email(to, subject, body, is_html=False):
         
         message.attach(part)
         
-        raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
-        service.users().messages().send(userId='me', body={'raw': raw}).execute()
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(gmail_user, gmail_password)
+            server.sendmail(gmail_user, to, message.as_string())
         
         print(f"[ARIA] ✅ Email sent to {to}: {subject}")
         return True
