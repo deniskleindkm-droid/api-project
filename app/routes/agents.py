@@ -4,6 +4,7 @@ from app.database import get_session
 from app.models.agent import AgentMemory, AgentTask, MarketInsight, MonthlyVision
 from app.agents.orchestrator import run_full_cycle, set_monthly_vision, get_agent_status
 from app.agents.goal_engine import set_goal, update_goal_progress, reflect_and_learn, get_active_goal, generate_improvement_plan
+from app.agents.email_partner import send_opportunity_alert, send_sales_alert, check_inbox_for_replies, get_gmail_service
 from app.agents.customer_service import run_customer_service
 from pydantic import BaseModel
 from typing import Optional
@@ -165,5 +166,58 @@ def improve():
         if not plan:
             return {"message": "Set a goal first using POST /agents/goal"}
         return plan
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+class AlertRequest(BaseModel):
+    opportunity: str
+    platform: str
+    data: str
+
+class SalesAlertRequest(BaseModel):
+    metric: str
+    value: str
+    context: str
+
+@router.post("/agents/email/opportunity")
+def send_opportunity(request: AlertRequest):
+    try:
+        result = send_opportunity_alert(
+            opportunity=request.opportunity,
+            platform=request.platform,
+            data=request.data
+        )
+        return {"message": "Alert sent", "email": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/agents/email/sales-alert")
+def send_sales(request: SalesAlertRequest):
+    try:
+        result = send_sales_alert(
+            metric=request.metric,
+            value=request.value,
+            context=request.context
+        )
+        return {"message": "Sales alert sent", "email": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/agents/email/check-inbox")
+def check_inbox():
+    try:
+        reply = check_inbox_for_replies()
+        if reply:
+            return {"found": True, "reply": reply}
+        return {"found": False, "message": "No new replies"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/agents/email/setup")
+def setup_gmail():
+    try:
+        service = get_gmail_service()
+        profile = service.users().getProfile(userId='me').execute()
+        return {"message": "Gmail connected", "email": profile.get('emailAddress')}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
