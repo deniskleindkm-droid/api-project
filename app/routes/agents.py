@@ -8,6 +8,7 @@ from app.agents.email_partner import send_opportunity_alert, send_sales_alert, c
 from app.agents.customer_service import run_customer_service
 from app.agents.aria_intelligence import why_engine, quantum_possibilities, challenge_assumptions, aria_think, aria_analyze_market, aria_morning_briefing
 from app.agents.aria_security import verify_master_key, scan_for_injection, scan_for_data_poisoning, devils_advocate, get_security_report, check_immutable_core_violation
+from app.agents.market_data import run_market_data_collection, get_latest_market_data
 from pydantic import BaseModel
 from typing import Optional
 import json
@@ -370,3 +371,23 @@ def aria_think_protected(request: AriaThinkRequest, master_key: str = ""):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))  
+    
+@router.post("/market/fetch")
+def fetch_market_data():
+    try:
+        result = run_market_data_collection()
+        if result:
+            return {"message": "Market data fetched", "data": result}
+        return {"message": "No data retrieved"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/market/latest")
+def get_market_data():
+    try:
+        data = get_latest_market_data()
+        if data:
+            return data
+        return {"message": "No market data yet — run POST /market/fetch first"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))    
