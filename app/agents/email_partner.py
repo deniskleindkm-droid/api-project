@@ -78,6 +78,12 @@ def send_email(to, subject, body, is_html=False):
         gmail_user = os.getenv("GMAIL_USER")
         gmail_password = os.getenv("GMAIL_APP_PASSWORD")
         
+        print(f"[ARIA] Attempting to send email to {to} from {gmail_user}")
+        
+        if not gmail_user or not gmail_password:
+            print(f"[ARIA] ERROR: Missing GMAIL_USER or GMAIL_APP_PASSWORD env vars")
+            return False
+        
         message = MIMEMultipart('alternative')
         message['to'] = to
         message['from'] = gmail_user
@@ -90,14 +96,19 @@ def send_email(to, subject, body, is_html=False):
         
         message.attach(part)
         
+        print(f"[ARIA] Connecting to Gmail SMTP...")
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            print(f"[ARIA] Logging in...")
             server.login(gmail_user, gmail_password)
+            print(f"[ARIA] Sending...")
             server.sendmail(gmail_user, to, message.as_string())
         
         print(f"[ARIA] ✅ Email sent to {to}: {subject}")
         return True
     except Exception as e:
         print(f"[ARIA] Error sending email: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def get_store_status():
