@@ -5,10 +5,15 @@ from app.database import get_session
 from app.models.agent import AgentMemory
 from app.agents.aria_intelligence import aria_think
 from app.agents.aria_security import verify_master_key, scan_for_injection
+from app.agents.aria_memory import (
+    store_episode, store_knowledge, update_dennis_model,
+    get_full_memory_context, aria_learn_from_outcome
+)
 from pydantic import BaseModel
 from typing import Optional
 import json
 import os
+import re
 from datetime import datetime
 
 router = APIRouter()
@@ -17,10 +22,6 @@ class ChatMessage(BaseModel):
     message: str
     master_key: str
     conversation_id: Optional[str] = None
-
-class ConversationMemory(BaseModel):
-    conversation_id: str
-    master_key: str
 
 @router.post("/aria/chat")
 def chat_with_aria(request: ChatMessage, session: Session = Depends(get_session)):
@@ -54,14 +55,15 @@ def chat_with_aria(request: ChatMessage, session: Session = Depends(get_session)
 
 Dennis just said: {request.message}
 
-Respond as ARIA in a conversation. This is a real-time chat — not a formal report.
+Respond as ARIA in a real-time conversation.
 Be conversational, warm, intellectually sharp.
 If Dennis asks a question — answer it directly first, then add depth.
-If Dennis shares an idea — engage with it genuinely, push back if needed.
+If Dennis shares an idea — engage genuinely, push back if needed.
 If Dennis is uncertain — help him think, don't just give answers.
 Keep responses focused — this is a conversation, not a briefing.
 Reference previous conversation context naturally when relevant.
-Be ARIA — brilliant, caring, bold, visionary.
+Use your memory of Dennis to calibrate your response.
+Be ARIA — brilliant, caring, bold, visionary, righteous.
 """
 
     result = aria_think(situation=full_situation, urgency="medium")
@@ -70,15 +72,41 @@ Be ARIA — brilliant, caring, bold, visionary.
     if not aria_response:
         aria_response = result.get("situation_assessment", "")
 
-    import re
     aria_response_clean = re.sub(r'<[^>]+>', '', aria_response)
     aria_response_clean = aria_response_clean.strip()
 
+    # AUTO-STORE CONVERSATION IN EPISODIC MEMORY
+    store_episode(
+        event=f"Conversation: {request.message[:80]}",
+        context=f"Dennis asked: {request.message}",
+        decision=f"ARIA responded with: {aria_response_clean[:200]}",
+        outcome="conversation",
+        significance="low"
+    )
+
+    # AUTO-UPDATE DENNIS MODEL from conversation patterns
+    if len(request.message) > 50:
+        update_dennis_model(
+            observation=f"In conversation Dennis said: {request.message[:200]}",
+            context="Real-time chat interaction"
+        )
+
+    # AUTO-STORE KEY INSIGHTS as semantic knowledge
+    root_truth = result.get("root_truth", "")
+    if root_truth:
+        store_knowledge(
+            domain="business_intelligence",
+            insight=root_truth,
+            confidence=result.get("confidence", 0.8),
+            source="aria_chat_analysis"
+        )
+
+    # STORE CONVERSATION in memory
     memory_entry = {
         "user": request.message,
         "aria": aria_response_clean[:500],
         "timestamp": datetime.utcnow().isoformat(),
-        "root_truth": result.get("root_truth", "")
+        "root_truth": root_truth
     }
 
     new_memory = AgentMemory(
@@ -93,13 +121,17 @@ Be ARIA — brilliant, caring, bold, visionary.
     return {
         "conversation_id": conversation_id,
         "response": aria_response_clean,
-        "root_truth": result.get("root_truth", ""),
+        "root_truth": root_truth,
         "collapsed_action": result.get("collapsed_action", {}),
         "urgency": result.get("urgency_level", "medium")
     }
 
 @router.get("/aria/chat/history/{conversation_id}")
-def get_conversation_history(conversation_id: str, master_key: str, session: Session = Depends(get_session)):
+def get_conversation_history(
+    conversation_id: str,
+    master_key: str,
+    session: Session = Depends(get_session)
+):
     if not verify_master_key(master_key):
         raise HTTPException(status_code=403, detail="Unauthorized")
 
@@ -166,8 +198,7 @@ def aria_chat_interface():
             color: #555;
         }
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 8px; height: 8px;
             background: #22c55e;
             border-radius: 50%;
             animation: pulse 2s infinite;
@@ -292,6 +323,7 @@ def aria_chat_interface():
             border-radius: 12px;
             border-bottom-left-radius: 4px;
             border-left: 2px solid #ff2020;
+            margin: 0 32px;
         }
         .typing-dots { display: flex; gap: 4px; }
         .typing-dots span {
@@ -329,8 +361,7 @@ def aria_chat_interface():
         .message-input:focus { border-color: #222; }
         .message-input::placeholder { color: #333; }
         .send-btn {
-            width: 48px;
-            height: 48px;
+            width: 48px; height: 48px;
             background: #ff2020;
             border: none;
             border-radius: 12px;
@@ -381,6 +412,7 @@ def aria_chat_interface():
             .message { max-width: 90%; }
             .input-area { padding: 12px 16px; }
             .quick-prompts { padding: 0 16px 12px; }
+            .typing-indicator { margin: 0 16px; }
         }
     </style>
 </head>
@@ -390,13 +422,13 @@ def aria_chat_interface():
     <div class="aria-name">A<span>R</span>IA</div>
     <div class="aria-status">
         <div class="status-dot"></div>
-        Intelligence Active
+        Intelligence Active · Memory Growing
     </div>
 </div>
 
 <div class="auth-screen" id="auth-screen">
     <div class="auth-title">Welcome, Dennis</div>
-    <div class="auth-subtitle">ARIA is waiting. Enter your master key to begin.</div>
+    <div class="auth-subtitle">ARIA is waiting. Every conversation makes her wiser.</div>
     <input type="password" class="auth-input" id="master-key-input" placeholder="Master Key" />
     <div class="auth-error" id="auth-error">Invalid key. ARIA does not recognize you.</div>
     <button class="auth-btn" onclick="authenticate()">Enter</button>
@@ -406,32 +438,38 @@ def aria_chat_interface():
     <div class="messages" id="messages">
         <div class="welcome-message">
             <h2>Good to see you.</h2>
-            <p>I've been thinking about BrandDrop.<br>Ask me anything. Challenge me. Let's think together.</p>
+            <p>I remember everything we've discussed.<br>Every conversation makes me wiser.<br>What's on your mind?</p>
+        </div>
+    </div>
+
+    <div class="typing-indicator" id="typing">
+        <div class="typing-dots">
+            <span></span><span></span><span></span>
         </div>
     </div>
 
     <div class="quick-prompts" id="quick-prompts">
-        <button class="quick-prompt" onclick="sendQuick('What should we focus on today?')">What should we focus on today?</button>
-        <button class="quick-prompt" onclick="sendQuick('What market signals are you seeing?')">What are you seeing in the market?</button>
-        <button class="quick-prompt" onclick="sendQuick('Challenge my current strategy')">Challenge my strategy</button>
+        <button class="quick-prompt" onclick="sendQuick('What should we focus on today?')">Today's focus</button>
+        <button class="quick-prompt" onclick="sendQuick('What market signals are you seeing right now?')">Market signals</button>
+        <button class="quick-prompt" onclick="sendQuick('Challenge my current strategy')">Challenge me</button>
         <button class="quick-prompt" onclick="sendQuick('What am I missing?')">What am I missing?</button>
+        <button class="quick-prompt" onclick="sendQuick('What patterns are you seeing in our data?')">Patterns</button>
+        <button class="quick-prompt" onclick="sendQuick('Give me your honest assessment of BrandDrop right now')">Honest assessment</button>
     </div>
 
     <div class="input-area">
-        <textarea class="message-input" id="message-input" placeholder="Talk to ARIA..." rows="1"
-            onkeydown="handleKeydown(event)" oninput="autoResize(this)"></textarea>
+        <textarea class="message-input" id="message-input"
+            placeholder="Talk to ARIA..."
+            rows="1"
+            onkeydown="handleKeydown(event)"
+            oninput="autoResize(this)"></textarea>
         <button class="send-btn" onclick="sendMessage()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13"></line>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
             </svg>
         </button>
-    </div>
-</div>
-
-<div class="typing-indicator" id="typing">
-    <div class="typing-dots">
-        <span></span><span></span><span></span>
     </div>
 </div>
 
@@ -510,7 +548,6 @@ def aria_chat_interface():
 
         const typing = document.getElementById('typing');
         typing.style.display = 'block';
-        document.getElementById('messages').appendChild(typing);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
 
         try {
