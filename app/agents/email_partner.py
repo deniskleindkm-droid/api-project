@@ -75,36 +75,22 @@ from email.mime.multipart import MIMEMultipart
 
 def send_email(to, subject, body, is_html=False):
     try:
-        gmail_user = os.getenv("GMAIL_USER")
-        gmail_password = os.getenv("GMAIL_APP_PASSWORD")
+        import resend
+        resend.api_key = os.getenv("RESEND_API_KEY")
         
-        print(f"[ARIA] Attempting to send email to {to} from {gmail_user}")
+        print(f"[ARIA] Sending email to {to} via Resend...")
         
-        if not gmail_user or not gmail_password:
-            print(f"[ARIA] ERROR: Missing GMAIL_USER or GMAIL_APP_PASSWORD env vars")
-            return False
+        params = {
+            "from": "ARIA <onboarding@resend.dev>",
+            "to": [to],
+            "subject": subject,
+            "html": body if is_html else f"<p>{body}</p>"
+        }
         
-        message = MIMEMultipart('alternative')
-        message['to'] = to
-        message['from'] = gmail_user
-        message['subject'] = subject
-        
-        if is_html:
-            part = MIMEText(body, 'html')
-        else:
-            part = MIMEText(body, 'plain')
-        
-        message.attach(part)
-        
-        print(f"[ARIA] Connecting to Gmail SMTP...")
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            print(f"[ARIA] Logging in...")
-            server.login(gmail_user, gmail_password)
-            print(f"[ARIA] Sending...")
-            server.sendmail(gmail_user, to, message.as_string())
-        
-        print(f"[ARIA] ✅ Email sent to {to}: {subject}")
+        email = resend.Emails.send(params)
+        print(f"[ARIA] ✅ Email sent! ID: {email['id']}")
         return True
+        
     except Exception as e:
         print(f"[ARIA] Error sending email: {e}")
         import traceback
