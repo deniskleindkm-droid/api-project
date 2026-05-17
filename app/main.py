@@ -8,6 +8,7 @@ from app.routes.orders import router as orders_router
 from app.routes.cart import router as cart_router
 from app.routes.payments import router as payments_router
 from app.routes.agents import router as agents_router
+from app.scheduler import start_scheduler
 from app.database import create_db
 from dotenv import load_dotenv
 import os
@@ -27,6 +28,7 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     create_db()
+    start_scheduler()
 
 app.include_router(auth_router)
 app.include_router(products_router)
