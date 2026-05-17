@@ -6,6 +6,8 @@ from app.agents.orchestrator import run_full_cycle, set_monthly_vision, get_agen
 from app.agents.goal_engine import set_goal, update_goal_progress, reflect_and_learn, get_active_goal, generate_improvement_plan
 from app.agents.email_partner import send_opportunity_alert, send_sales_alert, check_inbox_for_replies, get_gmail_service
 from app.agents.customer_service import run_customer_service
+from app.agents.aria_intelligence import why_engine, quantum_possibilities, challenge_assumptions, aria_think, aria_analyze_market, aria_morning_briefing
+from app.agents.aria_security import verify_master_key, scan_for_injection, scan_for_data_poisoning, devils_advocate, get_security_report, check_immutable_core_violation
 from pydantic import BaseModel
 from typing import Optional
 import json
@@ -221,3 +223,150 @@ def setup_gmail():
         return {"message": "Gmail connected", "email": profile.get('emailAddress')}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+    
+class AriaThinkRequest(BaseModel):
+    situation: str
+    urgency: Optional[str] = "medium"
+
+class AriaMarketRequest(BaseModel):
+    platform: str
+    content: str
+    topic: str
+
+class WhyRequest(BaseModel):
+    observation: str
+    context: Optional[str] = ""
+
+class AssumptionRequest(BaseModel):
+    belief: str
+    evidence: Optional[str] = ""
+
+class QuantumRequest(BaseModel):
+    situation: str
+    constraints: Optional[str] = ""
+
+@router.post("/aria/think")
+def aria_think_route(request: AriaThinkRequest):
+    try:
+        result = aria_think(
+            situation=request.situation,
+            urgency=request.urgency
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/aria/why")
+def aria_why_route(request: WhyRequest):
+    try:
+        result = why_engine(
+            observation=request.observation,
+            context=request.context
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/aria/quantum")
+def aria_quantum_route(request: QuantumRequest):
+    try:
+        result = quantum_possibilities(
+            situation=request.situation,
+            constraints=request.constraints
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/aria/challenge")
+def aria_challenge_route(request: AssumptionRequest):
+    try:
+        result = challenge_assumptions(
+            belief=request.belief,
+            evidence=request.evidence
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/aria/market")
+def aria_market_route(request: AriaMarketRequest):
+    try:
+        result = aria_analyze_market(
+            platform=request.platform,
+            content=request.content,
+            topic=request.topic
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/aria/briefing")
+def aria_briefing_route():
+    try:
+        result = aria_morning_briefing()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+class MasterKeyRequest(BaseModel):
+    master_key: str
+
+class SecurityScanRequest(BaseModel):
+    master_key: str
+    content: str
+    source: Optional[str] = "unknown"
+
+class DevilsAdvocateRequest(BaseModel):
+    master_key: str
+    recommendation: str
+    context: Optional[str] = ""
+
+class ImmutableCoreCheckRequest(BaseModel):
+    master_key: str
+    recommendation: str
+
+@router.get("/aria/security/report")
+def security_report(master_key: str):
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized — invalid master key")
+    return get_security_report()
+
+@router.post("/aria/security/scan")
+def security_scan(request: SecurityScanRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized — invalid master key")
+    injection_check = scan_for_injection(request.content)
+    data_check = scan_for_data_poisoning(request.content, request.source)
+    return {
+        "injection_scan": injection_check,
+        "data_poisoning_scan": data_check,
+        "overall_safe": injection_check["safe"] and data_check["safe"]
+    }
+
+@router.post("/aria/security/devils-advocate")
+def devils_advocate_route(request: DevilsAdvocateRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized — invalid master key")
+    try:
+        result = devils_advocate(request.recommendation, request.context)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/aria/security/check-core")
+def check_core_route(request: ImmutableCoreCheckRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized — invalid master key")
+    return check_immutable_core_violation(request.recommendation)
+
+@router.post("/aria/think")
+def aria_think_protected(request: AriaThinkRequest, master_key: str = ""):
+    if master_key and not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    try:
+        result = aria_think(request.situation, request.urgency)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))  
