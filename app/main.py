@@ -8,6 +8,7 @@ from app.routes.orders import router as orders_router
 from app.routes.cart import router as cart_router
 from app.routes.payments import router as payments_router
 from app.routes.agents import router as agents_router
+from app.routes.aria_chat import router as aria_chat_router
 from app.scheduler import start_scheduler
 from app.database import create_db
 from dotenv import load_dotenv
@@ -36,6 +37,7 @@ app.include_router(orders_router)
 app.include_router(cart_router)
 app.include_router(payments_router)
 app.include_router(agents_router)
+app.include_router(aria_chat_router)
 
 @app.get("/")
 def serve_frontend():
