@@ -84,11 +84,7 @@ def get_cart(
     return {"items": result, "total": total}
 
 @router.delete("/cart/{cart_item_id}")
-def remove_from_cart(
-    cart_item_id: int,
-    session: Session = Depends(get_session),
-    token: str = Depends(oauth2_scheme)
-):
+def remove_from_cart(cart_item_id: int, session: Session = Depends(get_session), token: str = Depends(oauth2_scheme)):
     payload = verify_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -96,12 +92,16 @@ def remove_from_cart(
     item = session.get(CartItem, cart_item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
-    if item.user_id != payload.get("sub"):
-        raise HTTPException(status_code=403, detail="Not your cart")
     
-    session.delete(item)
-    session.commit()
-    return {"message": "Item removed from cart"}
+    if item.quantity > 1:
+        item.quantity -= 1
+        session.add(item)
+        session.commit()
+        return {"message": "Quantity reduced", "quantity": item.quantity}
+    else:
+        session.delete(item)
+        session.commit()
+        return {"message": "Item removed"}
 
 @router.post("/cart/checkout")
 def checkout(
