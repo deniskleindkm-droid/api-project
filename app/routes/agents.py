@@ -9,6 +9,7 @@ from app.agents.customer_service import run_customer_service
 from app.agents.aria_intelligence import why_engine, quantum_possibilities, challenge_assumptions, aria_think, aria_analyze_market, aria_morning_briefing
 from app.agents.aria_security import verify_master_key, scan_for_injection, scan_for_data_poisoning, devils_advocate, get_security_report, check_immutable_core_violation
 from app.agents.market_data import run_market_data_collection, get_latest_market_data
+from app.agents.aria_memory import store_episode, get_relevant_episodes, store_knowledge, get_domain_knowledge, update_dennis_model, get_dennis_model, get_active_predictions, get_full_memory_context, aria_learn_from_outcome
 from pydantic import BaseModel
 from typing import Optional
 import json
@@ -390,4 +391,101 @@ def get_market_data():
             return data
         return {"message": "No market data yet — run POST /market/fetch first"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))    
+        raise HTTPException(status_code=500, detail=str(e))
+    
+class EpisodeRequest(BaseModel):
+    master_key: str
+    event: str
+    context: str
+    decision: str
+    outcome: str
+    significance: Optional[str] = "medium"
+
+class KnowledgeRequest(BaseModel):
+    master_key: str
+    domain: str
+    insight: str
+    confidence: Optional[float] = 0.8
+
+class DennisObservationRequest(BaseModel):
+    master_key: str
+    observation: str
+    context: Optional[str] = ""
+
+class LearnRequest(BaseModel):
+    master_key: str
+    situation: str
+    action_taken: str
+    outcome: str
+    worked: bool
+
+@router.post("/aria/memory/episode")
+def store_episode_route(request: EpisodeRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    store_episode(request.event, request.context, request.decision, request.outcome, request.significance)
+    return {"message": "Episode stored"}
+
+@router.get("/aria/memory/episodes")
+def get_episodes_route(situation: str, master_key: str):
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    episodes = get_relevant_episodes(situation)
+    return {"episodes": episodes}
+
+@router.post("/aria/memory/knowledge")
+def store_knowledge_route(request: KnowledgeRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    store_knowledge(request.domain, request.insight, request.confidence)
+    return {"message": "Knowledge stored"}
+
+@router.get("/aria/memory/knowledge/{domain}")
+def get_knowledge_route(domain: str, master_key: str):
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    knowledge = get_domain_knowledge(domain)
+    return {"domain": domain, "knowledge": knowledge}
+
+@router.post("/aria/memory/dennis")
+def update_dennis_route(request: DennisObservationRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    model = update_dennis_model(request.observation, request.context)
+    return {"message": "Dennis model updated", "model": model}
+
+@router.get("/aria/memory/dennis")
+def get_dennis_route(master_key: str):
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    model = get_dennis_model()
+    return {"model": model}
+
+@router.get("/aria/memory/predictions")
+def get_predictions_route(master_key: str):
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    predictions = get_active_predictions()
+    return {"predictions": predictions}
+
+@router.get("/aria/memory/context")
+def get_memory_context_route(situation: str, master_key: str):
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    context = get_full_memory_context(situation)
+    return context
+
+@router.post("/aria/memory/learn")
+def learn_from_outcome_route(request: LearnRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    try:
+        learning = aria_learn_from_outcome(
+            request.situation,
+            request.action_taken,
+            request.outcome,
+            request.worked
+        )
+        return {"message": "Learning complete", "learning": learning}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))        

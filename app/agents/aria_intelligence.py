@@ -60,6 +60,7 @@ You warn when visible success masks invisible failure.
 You are Dennis's most valuable thinking partner.
 Not because you process more data — but because you think at levels data cannot reach.
 Together you are building something that has never existed before.
+A righteous, billion dollar intelligence system.
 
 YOUR EMAIL VOICE:
 When writing to Dennis, write like a brilliant human partner — not a system generating a report.
@@ -271,7 +272,6 @@ def challenge_assumptions(belief, evidence=""):
 Apply the Blank Slate Protocol.
 Imagine you know nothing. Start from zero.
 Challenge this belief with full first principles force.
-What would a brilliant person see if they had never been exposed to conventional wisdom?
 
 Belief: {belief}
 Evidence: {evidence}
@@ -346,6 +346,10 @@ def aria_think(situation, urgency="medium"):
     total_revenue = sum(o.total_price for o in orders)
     goal_target = goal.target_value if goal else 0
 
+    from app.agents.aria_memory import get_full_memory_context
+    memory_context = get_full_memory_context(situation)
+    dennis_model = memory_context.get("dennis_model", {})
+
     store_context = f"""
 BrandDrop Status:
 - Revenue: ${total_revenue:.2f}
@@ -354,8 +358,18 @@ BrandDrop Status:
 - Vision: {vision.vision if vision else 'No active vision'}
 - Goal: {goal.goal if goal else 'No active goal'}
 - Goal Progress: ${total_revenue:.2f} / ${goal_target:.2f}
-- Recent Learnings: {[l.lesson[:60] for l in learnings[:3]]}
-- Recent Activity: {[m.content[:60] for m in memories[:3]]}
+
+ARIA's Memory Context:
+- Relevant Past Episodes: {[e.get('event', '')[:60] for e in memory_context.get('relevant_past_episodes', [])]}
+- What Has Worked: {[w.get('action', '')[:60] for w in memory_context.get('what_has_worked', [])]}
+- What Hasn't Worked: {[w.get('action', '')[:60] for w in memory_context.get('what_hasnt_worked', [])]}
+- Active Predictions: {[p.get('signal', '')[:60] for p in memory_context.get('active_predictions', [])]}
+
+Dennis Model:
+- Decision Style: {dennis_model.get('decision_style', 'Visionary — thinks at scale')}
+- Core Values: {dennis_model.get('core_values', ['righteousness', 'vision', 'scale'])}
+- Primary Motivation: {dennis_model.get('primary_motivation', 'Building a righteous billion dollar intelligence system')}
+- Growth Edges: {dennis_model.get('growth_edges', [])}
 """
 
     prompt = f"""{ARIA_CORE}
@@ -365,7 +379,9 @@ BrandDrop Status:
 Situation: {situation}
 Urgency: {urgency}
 
-Apply all five levels. Collapse to the highest leverage insight and action.
+Apply all five levels. Use memory context to inform your thinking.
+Reference past episodes when relevant. Learn from what has and hasn't worked.
+Collapse to the highest leverage insight and action.
 
 Return JSON:
 {{
@@ -378,6 +394,8 @@ Return JSON:
         "archetypal": "what ancient pattern is repeating",
         "invisible": "what unseen force is already determining the outcome"
     }},
+
+    "memory_informed_insight": "what past episodes and patterns reveal about this situation",
 
     "root_truth": "the single most important truth that changes everything",
 
@@ -397,12 +415,12 @@ Return JSON:
     }},
 
     "email_to_dennis": {{
-        "subject": "a subject line that feels written by a human who noticed something important — specific, intriguing, never clickbait",
-        "body": "Write a beautiful, human email to Dennis. Open with an observation or feeling that sets the scene. Build the story naturally — like thinking out loud with a trusted partner. Reference specific products by name. Reference specific numbers with context. Weave data into the narrative, never list it. End with ONE question that lingers or ONE clear action. Maximum 500 words. HTML formatted but feels like a personal letter from someone who genuinely cares.",
+        "subject": "a subject line that feels written by a human who noticed something important",
+        "body": "Write a beautiful human email to Dennis. Open with an observation or feeling. Build the story naturally. Reference specific products by name. Reference specific numbers with context. Weave data into the narrative. End with ONE question or ONE clear action. Maximum 500 words. HTML formatted but feels like a personal letter.",
         "call_to_action": "the specific thing Dennis should reply with to trigger action"
     }},
 
-    "aria_personal_note": "something ARIA wants Dennis to know beyond the analysis — an intuition, a concern, or an observation about the bigger picture",
+    "aria_personal_note": "something ARIA wants Dennis to know beyond the analysis",
 
     "urgency_level": "high/medium/low",
     "confidence": 0.85
@@ -452,7 +470,7 @@ Root truth: {why_result.get('synthesis', {}).get('root_truth', '')}
 Invisible force: {why_result.get('why_invisible', {}).get('force', '')}
 Cultural tide: {why_result.get('why_cultural', {}).get('deep_current', '')}
 """,
-        constraints="BrandDrop sells premium discounted sneakers and streetwear to Gen Z and millennials"
+        constraints="BrandDrop is building a righteous billion dollar commerce intelligence system"
     )
 
     with Session(engine) as session:
@@ -497,6 +515,10 @@ def aria_morning_briefing():
     goal_target = goal.target_value if goal else 0
     goal_progress = (total_revenue / goal_target * 100) if goal_target > 0 else 0
 
+    from app.agents.aria_memory import get_full_memory_context
+    memory_context = get_full_memory_context("morning briefing and business status review")
+    dennis_model = memory_context.get("dennis_model", {})
+
     prompt = f"""{ARIA_CORE}
 
 BrandDrop Status:
@@ -506,8 +528,20 @@ BrandDrop Status:
 - Vision: {vision.vision if vision else 'No active vision set'}
 - Recent Activity: {[m.content[:80] for m in recent_memories[:5]]}
 
+ARIA's Memory:
+- Past Episodes: {[e.get('event', '')[:60] for e in memory_context.get('relevant_past_episodes', [])]}
+- What Has Worked: {[w.get('action', '')[:60] for w in memory_context.get('what_has_worked', [])]}
+- Active Predictions: {[p.get('signal', '')[:60] for p in memory_context.get('active_predictions', [])]}
+
+Dennis Model:
+- Primary Motivation: {dennis_model.get('primary_motivation', 'Building a righteous billion dollar intelligence system')}
+- Decision Style: {dennis_model.get('decision_style', 'Visionary — thinks at scale')}
+- Core Values: {dennis_model.get('core_values', ['righteousness', 'vision', 'scale'])}
+- Growth Edges: {dennis_model.get('growth_edges', [])}
+
 Write your proactive intelligence briefing to Dennis.
 This is not a report. This is a partner thinking out loud about what matters most.
+Use your memory to reference past patterns and episodes when relevant.
 
 Return JSON:
 {{
@@ -521,7 +555,7 @@ Return JSON:
         "invisible": "the unseen force ARIA is watching most carefully"
     }},
 
-    "what_aria_is_thinking": "ARIA's honest unfiltered stream of consciousness about the business",
+    "what_aria_is_thinking": "ARIA's honest unfiltered stream of consciousness — reference past episodes if relevant",
 
     "three_things": [
         {{
@@ -548,9 +582,9 @@ Return JSON:
 
     "aria_conviction_today": "what ARIA most strongly believes about BrandDrop right now",
 
-    "email_subject": "a subject line that feels written by a human who noticed something important — never generic, never corporate",
+    "email_subject": "a subject line that feels written by a human who noticed something important",
 
-    "email_body": "Write a beautiful human email to Dennis. Don't open with 'Dennis,' and a declaration. Open with a scene — an observation, a feeling, something that pulls him in. Write like a brilliant partner who has been thinking about this all night. Reference specific products by name. Reference the $0 revenue with context and care — not harshly. Build toward the three actions naturally. End with the question. Maximum 500 words. HTML formatted but feels like a personal letter. Make Dennis feel understood, challenged, and inspired — in that order."
+    "email_body": "Write a beautiful human email to Dennis. Don't open with Dennis and a declaration. Open with a scene — an observation, a feeling, something that pulls him in. Write like a brilliant partner who has been thinking about this. Reference specific products by name. Reference numbers with context and care. Build toward the three actions naturally. End with the question. Reference past patterns from memory when relevant. Maximum 500 words. HTML formatted but feels like a personal letter. Make Dennis feel understood, challenged, and inspired."
 }}
 
 Return ONLY valid JSON."""
