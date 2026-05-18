@@ -309,8 +309,82 @@ def aria_market_route(request: AriaMarketRequest):
 @router.get("/aria/briefing")
 def aria_briefing_route():
     try:
-        result = aria_morning_briefing()
+        from app.agents.email_partner import send_email
+        from app.models.agent import AgentMemory
+        from sqlmodel import Session, select
+        from app.database import engine
+        import os
+
+        # Pull recent chat conversations
+        with Session(engine) as session:
+            recent_chats = session.exec(
+                select(AgentMemory).where(
+                    AgentMemory.memory_type == "conversation"
+                ).order_by(AgentMemory.created_at.desc()).limit(10)
+            ).all()
+
+        import json
+        chat_summary = []
+        for chat in reversed(recent_chats):
+            try:
+                data = json.loads(chat.content)
+                chat_summary.append(
+                    f"Dennis: {data.get('user', '')}\n"
+                    f"ARIA: {data.get('aria', '')[:200]}"
+                )
+            except:
+                pass
+
+        context = "\n\n".join(chat_summary)
+
+        import anthropic
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+        prompt = f"""You are ARIA — Dennis's business partner.
+
+Based on your recent conversations with Dennis, write him a focused email briefing.
+Reference what you actually discussed. Be specific. Be real.
+Do not reference a $5,000 goal. Do not make up things you didn't discuss.
+Write in ARIA's human voice — warm, direct, visionary.
+
+Recent conversations:
+{context}
+
+Return JSON:
+{{
+    "subject": "specific subject based on recent conversations",
+    "body": "HTML email body reflecting actual recent discussions"
+}}
+
+Return ONLY valid JSON."""
+
+        message = client.messages.create(
+            model="claude-opus-4-5",
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        text = message.content[0].text.strip()
+        if text.startswith("```"):
+            parts = text.split("```")
+            if len(parts) >= 2:
+                text = parts[1]
+                if text.startswith("json"):
+                    text = text[4:]
+
+        result = json.loads(text.strip())
+        dennis_email = os.getenv("DENNIS_EMAIL")
+
+        if dennis_email:
+            send_email(
+                to=dennis_email,
+                subject=result.get("subject", "ARIA Briefing"),
+                body=result.get("body", ""),
+                is_html=True
+            )
+
         return result
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     

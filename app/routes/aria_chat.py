@@ -5,9 +5,7 @@ from app.database import get_session
 from app.models.agent import AgentMemory
 from app.agents.aria_intelligence import aria_think
 from app.agents.aria_security import verify_master_key, scan_for_injection
-from app.agents.aria_memory import (
-    store_episode, store_knowledge, update_dennis_model
-)
+from app.agents.aria_memory import store_episode, store_knowledge, update_dennis_model
 from pydantic import BaseModel
 from typing import Optional
 import json
@@ -34,7 +32,17 @@ def parse_json_response(text):
             text = parts[1]
             if text.startswith("json"):
                 text = text[4:]
-    return json.loads(text.strip())
+    try:
+        return json.loads(text.strip())
+    except json.JSONDecodeError:
+        import re as re2
+        match = re2.search(r'\{.*\}', text.strip(), re2.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group())
+            except:
+                pass
+        raise
 
 
 def detect_intent(message):
@@ -44,14 +52,15 @@ Message: {message}
 
 Categories:
 - converse: just talking, asking questions, thinking together
-- execute: business operations (add products, run agents, send emails, get reports, update prices, check inventory)
-- develop: change code, fix bugs, add features, improve the system, build new pages, update frontend
-- design_agent: create a new AI agent for the system
+- send_email: Dennis wants ARIA to send him an email
+- execute: business operations (add products, run agents, get reports, update prices)
+- develop: change code, fix bugs, add features
+- design_agent: create a new AI agent
 - explain_code: understand how something in the codebase works
 
 Return JSON:
 {{
-    "intent": "converse/execute/develop/design_agent/explain_code",
+    "intent": "converse/send_email/execute/develop/design_agent/explain_code",
     "action_description": "precise description of what needs to be done",
     "confidence": 0.9
 }}
@@ -70,67 +79,28 @@ Return ONLY valid JSON."""
         return {"intent": "converse", "action_description": ""}
 
 
-def execute_action(intent, action_description, original_message):
-    """
-    Routes to the right system based on intent.
-    Business operations → quantum_execute
-    Code changes → quantum_develop
-    New agents → aria_design_agent + aria_build_agent
-    Code questions → aria_explain
-    """
+def execute_action(intent, action_description, original_message, conversation_context=""):
+    """Routes to the right system based on intent."""
 
-    # ============================================================
-    # DEVELOPER — ARIA changes her own code
-    # ============================================================
-    if intent == "develop":
-        from app.agents.aria_developer import quantum_develop
-        result = quantum_develop(
-            task=action_description,
-            auto_deploy=True
-        )
-        return {
-            "executed": result.get("status") in ["deployed", "written_locally", "written_not_deployed"],
-            "result": result.get("message", "Development task processed."),
-            "new_capability_learned": False
-        }
-
-    # ============================================================
-    # DESIGN AGENT — ARIA creates new intelligence
-    # ============================================================
-    elif intent == "design_agent":
-        from app.agents.aria_developer import aria_design_agent, aria_build_agent
-        design = aria_design_agent(action_description)
-        result = aria_build_agent(design, auto_deploy=True)
-        return {
-            "executed": True,
-            "result": result.get("message", "New agent designed and built."),
-            "new_capability_learned": True
-        }
-
-    # ============================================================
-    # EXPLAIN CODE — ARIA reads and explains
-    # ============================================================
-    elif intent == "explain_code":
-        from app.agents.aria_developer import aria_explain
-        result = aria_explain(action_description)
-        return {
-            "executed": True,
-            "result": result.get("answer", ""),
-            "new_capability_learned": False
-        }
-
-    # ============================================================
-    # SEND EMAIL — direct email routing
-    # ============================================================
-    elif intent == "execute" and "email" in action_description.lower():
+    # SEND EMAIL — uses conversation context
+    if intent == "send_email":
         try:
             from app.agents.email_partner import send_email
-            from app.agents.aria_intelligence import aria_think
             dennis_email = os.getenv("DENNIS_EMAIL")
-            result = aria_think(situation=action_description, urgency="medium")
+
+            result = aria_think(
+                situation=f"{conversation_context}\n\nDennis wants ARIA to email him about: {action_description}",
+                urgency="medium"
+            )
+
             subject = result.get("email_to_dennis", {}).get("subject", "Message from ARIA")
-            body = result.get("email_to_dennis", {}).get("body", action_description)
+            body = result.get("email_to_dennis", {}).get("body", "")
+
+            if not body:
+                body = result.get("situation_assessment", action_description)
+
             send_email(dennis_email, subject, body, is_html=True)
+
             return {
                 "executed": True,
                 "result": "✅ Email sent to your inbox.",
@@ -143,47 +113,107 @@ def execute_action(intent, action_description, original_message):
                 "new_capability_learned": False
             }
 
-    else:
-        from app.agents.aria_core import quantum_execute, neural_learn
-
-        result = quantum_execute(
-            task=action_description,
-            context=f"Dennis said: {original_message}",
-            require_approval=False
-        )
-
-        neural_learn(
-            experience=f"Executed: {action_description[:100]}",
-            outcome=f"Status: {result.get('status')}",
-            significance="high" if result.get("new_capability_learned") else "medium"
-        )
-
-        status = result.get("status")
-
-        if status == "executed":
-            what_worked = result.get("assessment", {}).get("what_worked", "")
-            response_text = "✅ Done."
-            if what_worked:
-                response_text += f" {what_worked}"
-            if result.get("new_capability_learned"):
-                response_text += " I've learned this permanently."
+    # DEVELOP — ARIA changes code
+    elif intent == "develop":
+        try:
+            from app.agents.aria_developer import quantum_develop
+            result = quantum_develop(task=action_description, auto_deploy=False)
             return {
-                "executed": True,
-                "result": response_text,
-                "new_capability_learned": result.get("new_capability_learned", False)
-            }
-        elif status == "pending_approval":
-            return {
-                "executed": False,
-                "result": result.get("message", "Prepared — should I proceed?"),
-                "pending": True,
+                "executed": result.get("status") in ["written_locally", "written_not_deployed"],
+                "result": result.get("message", "Development task processed."),
                 "new_capability_learned": False
             }
-        else:
-            error = result.get("result", {}).get("error", "Unknown error")
+        except Exception as e:
             return {
                 "executed": False,
-                "result": f"I encountered an issue: {error}. Learning from this.",
+                "result": f"Development failed: {str(e)}",
+                "new_capability_learned": False
+            }
+
+    # DESIGN AGENT — ARIA creates new intelligence
+    elif intent == "design_agent":
+        try:
+            from app.agents.aria_developer import aria_design_agent, aria_build_agent
+            design = aria_design_agent(action_description)
+            result = aria_build_agent(design, auto_deploy=False)
+            return {
+                "executed": True,
+                "result": result.get("message", "New agent designed and built."),
+                "new_capability_learned": True
+            }
+        except Exception as e:
+            return {
+                "executed": False,
+                "result": f"Agent design failed: {str(e)}",
+                "new_capability_learned": False
+            }
+
+    # EXPLAIN CODE — ARIA reads and explains
+    elif intent == "explain_code":
+        try:
+            from app.agents.aria_developer import aria_explain
+            result = aria_explain(action_description)
+            return {
+                "executed": True,
+                "result": result.get("answer", ""),
+                "new_capability_learned": False
+            }
+        except Exception as e:
+            return {
+                "executed": False,
+                "result": f"Explanation failed: {str(e)}",
+                "new_capability_learned": False
+            }
+
+    # EXECUTE — business operations via quantum execution
+    else:
+        try:
+            from app.agents.aria_core import quantum_execute, neural_learn
+
+            result = quantum_execute(
+                task=action_description,
+                context=f"Dennis said: {original_message}",
+                require_approval=False
+            )
+
+            neural_learn(
+                experience=f"Executed: {action_description[:100]}",
+                outcome=f"Status: {result.get('status')}",
+                significance="high" if result.get("new_capability_learned") else "medium"
+            )
+
+            status = result.get("status")
+
+            if status == "executed":
+                what_worked = result.get("assessment", {}).get("what_worked", "")
+                response_text = "✅ Done."
+                if what_worked:
+                    response_text += f" {what_worked}"
+                if result.get("new_capability_learned"):
+                    response_text += " I've learned this permanently."
+                return {
+                    "executed": True,
+                    "result": response_text,
+                    "new_capability_learned": result.get("new_capability_learned", False)
+                }
+            elif status == "pending_approval":
+                return {
+                    "executed": False,
+                    "result": result.get("message", "Prepared — should I proceed?"),
+                    "pending": True,
+                    "new_capability_learned": False
+                }
+            else:
+                error = result.get("result", {}).get("error", "Unknown error")
+                return {
+                    "executed": False,
+                    "result": f"I encountered an issue: {error}. Learning from this.",
+                    "new_capability_learned": False
+                }
+        except Exception as e:
+            return {
+                "executed": False,
+                "result": f"Execution failed: {str(e)}",
                 "new_capability_learned": False
             }
 
@@ -224,7 +254,12 @@ def chat_with_aria(request: ChatMessage, session: Session = Depends(get_session)
     root_truth = ""
 
     if intent != "converse":
-        execution_result = execute_action(intent, action_description, request.message)
+        execution_result = execute_action(
+            intent,
+            action_description,
+            request.message,
+            conversation_context
+        )
 
         if execution_result.get("executed"):
             aria_response_clean = execution_result.get("result", "Done.")
@@ -244,6 +279,10 @@ Be conversational, warm, intellectually sharp.
 Answer directly first then add depth.
 Maximum 200 words.
 Be ARIA — brilliant, caring, bold, visionary, righteous.
+BrandDrop is a dropshipping commerce intelligence system.
+Dennis is in the building phase — focused on finding supplier relationships.
+Do not reference a $5,000 goal — that was a system test.
+The vision is a billion dollar commerce intelligence system.
 """
         result = aria_think(situation=full_situation, urgency="medium")
 
@@ -415,7 +454,7 @@ def aria_chat_interface():
 
 <div class="auth-screen" id="auth-screen">
     <div class="auth-title">Welcome, Dennis</div>
-    <div class="auth-subtitle">ARIA is waiting. She thinks, acts, develops, and evolves.</div>
+    <div class="auth-subtitle">ARIA is waiting. She thinks, acts, and evolves with you.</div>
     <input type="password" class="auth-input" id="master-key-input" placeholder="Master Key" />
     <div class="auth-error" id="auth-error">Invalid key. ARIA does not recognize you.</div>
     <button class="auth-btn" onclick="authenticate()">Enter</button>
@@ -425,9 +464,8 @@ def aria_chat_interface():
     <div class="messages" id="messages">
         <div class="welcome-message">
             <h2>Good to see you.</h2>
-            <p>I remember everything.<br>
-            I can think, act, develop, and design new agents.<br>
-            Just tell me what you need.</p>
+            <p>I remember everything we've discussed.<br>
+            Tell me what you need — I'm here.</p>
         </div>
     </div>
 
@@ -436,17 +474,16 @@ def aria_chat_interface():
     </div>
 
     <div class="quick-prompts" id="quick-prompts">
-        <button class="quick-prompt" onclick="sendQuick('Add Nike Air Force 1 with sizes 7 to 13 to the store')">Add Nike AF1 with sizes</button>
-        <button class="quick-prompt" onclick="sendQuick('Fix the cart so removing reduces quantity by one')">Fix cart quantity</button>
-        <button class="quick-prompt" onclick="sendQuick('Design a new agent that monitors competitor prices')">Design price agent</button>
         <button class="quick-prompt" onclick="sendQuick('What market signals are you seeing right now?')">Market signals</button>
+        <button class="quick-prompt" onclick="sendQuick('Help me find dropshipping suppliers for sneakers')">Find suppliers</button>
+        <button class="quick-prompt" onclick="sendQuick('Send me an email summary of what we discussed')">Email me a summary</button>
+        <button class="quick-prompt" onclick="sendQuick('What should we focus on today?')">Today focus</button>
         <button class="quick-prompt" onclick="sendQuick('Give me your honest assessment of BrandDrop')">Honest assessment</button>
-        <button class="quick-prompt" onclick="sendQuick('Explain how our payment system works')">Explain payments</button>
     </div>
 
     <div class="input-area">
         <textarea class="message-input" id="message-input"
-            placeholder="Talk to ARIA, give her a command, or ask her to build something..."
+            placeholder="Talk to ARIA..."
             rows="1"
             onkeydown="handleKeydown(event)"
             oninput="autoResize(this)"></textarea>
@@ -509,11 +546,12 @@ def aria_chat_interface():
 
         if (actionExecuted && role === 'aria') {
             const badge = document.createElement('div');
-            badge.className = actionExecuted === 'develop' || actionExecuted === 'design_agent' ? 'dev-badge' : 'action-badge';
+            badge.className = ['develop', 'design_agent'].includes(actionExecuted) ? 'dev-badge' : 'action-badge';
             const icons = {
                 'develop': '🔧 Code updated',
                 'design_agent': '🤖 New agent built',
                 'explain_code': '📖 Code explained',
+                'send_email': '📧 Email sent',
                 'execute': '⚡ Action executed'
             };
             badge.textContent = icons[actionExecuted] || '⚡ Executed';
@@ -523,7 +561,7 @@ def aria_chat_interface():
         if (newCapability && role === 'aria') {
             const learnedBadge = document.createElement('div');
             learnedBadge.className = 'learned-badge';
-            learnedBadge.textContent = '🧬 New capability learned permanently';
+            learnedBadge.textContent = '🧬 New capability learned';
             div.appendChild(learnedBadge);
         }
 
