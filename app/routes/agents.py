@@ -10,6 +10,8 @@ from app.agents.aria_intelligence import why_engine, quantum_possibilities, chal
 from app.agents.aria_security import verify_master_key, scan_for_injection, scan_for_data_poisoning, devils_advocate, get_security_report, check_immutable_core_violation
 from app.agents.market_data import run_market_data_collection, get_latest_market_data
 from app.agents.aria_memory import store_episode, get_relevant_episodes, store_knowledge, get_domain_knowledge, update_dennis_model, get_dennis_model, get_active_predictions, get_full_memory_context, aria_learn_from_outcome
+from app.agents.aria_core import quantum_execute, get_pending_actions, approve_action, reject_action, neural_learn, get_aria_intelligence_summary, list_capabilities
+from app.agents.aria_developer import quantum_develop, aria_design_agent, aria_build_agent, aria_explain, get_changelog
 from pydantic import BaseModel
 from typing import Optional
 import json
@@ -489,3 +491,130 @@ def learn_from_outcome_route(request: LearnRequest):
         return {"message": "Learning complete", "learning": learning}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))        
+    
+class QuantumExecuteRequest(BaseModel):
+    master_key: str
+    task: str
+    context: Optional[str] = ""
+    require_approval: Optional[bool] = False
+
+class ApproveActionRequest(BaseModel):
+    master_key: str
+    action_id: int
+
+class RejectActionRequest(BaseModel):
+    master_key: str
+    action_id: int
+    reason: Optional[str] = ""
+
+class NeuralLearnRequest(BaseModel):
+    master_key: str
+    experience: str
+    outcome: str
+    significance: Optional[str] = "medium"
+
+@router.post("/aria/execute")
+def aria_execute(request: QuantumExecuteRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    try:
+        result = quantum_execute(
+            task=request.task,
+            context=request.context,
+            require_approval=request.require_approval
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/aria/pending")
+def get_pending(master_key: str):
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return {"pending_actions": get_pending_actions()}
+
+@router.post("/aria/approve")
+def approve(request: ApproveActionRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return approve_action(request.action_id)
+
+@router.post("/aria/reject")
+def reject(request: RejectActionRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return reject_action(request.action_id, request.reason)
+
+@router.post("/aria/neural-learn")
+def neural_learn_route(request: NeuralLearnRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    try:
+        result = neural_learn(request.experience, request.outcome, request.significance)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/aria/intelligence")
+def aria_intelligence(master_key: str):
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return get_aria_intelligence_summary()
+
+@router.get("/aria/capabilities")
+def aria_capabilities(master_key: str):
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return {"capabilities": list_capabilities()}    
+
+class DevelopRequest(BaseModel):
+    master_key: str
+    task: str
+    auto_deploy: Optional[bool] = True
+
+class DesignAgentRequest(BaseModel):
+    master_key: str
+    agent_vision: str
+    auto_deploy: Optional[bool] = False
+
+class ExplainRequest(BaseModel):
+    master_key: str
+    question: str
+
+@router.post("/aria/develop")
+def aria_develop_route(request: DevelopRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    try:
+        result = quantum_develop(request.task, request.auto_deploy)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/aria/design-agent")
+def aria_design_agent_route(request: DesignAgentRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    try:
+        design = aria_design_agent(request.agent_vision)
+        if request.auto_deploy:
+            result = aria_build_agent(design, auto_deploy=True)
+            return result
+        return {"design": design}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/aria/explain")
+def aria_explain_route(request: ExplainRequest):
+    if not verify_master_key(request.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    try:
+        return aria_explain(request.question)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/aria/changelog")
+def aria_changelog_route(master_key: str):
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    return {"changelog": get_changelog()}
