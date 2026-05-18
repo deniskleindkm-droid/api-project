@@ -30,7 +30,15 @@ def parse_json_response(text):
             text = parts[1]
             if text.startswith("json"):
                 text = text[4:]
-    return json.loads(text.strip())
+    try:
+        return json.loads(text.strip())
+    except:
+        # Extract JSON object if wrapped in other text
+        import re
+        match = re.search(r'\{.*\}', text.strip(), re.DOTALL)
+        if match:
+            return json.loads(match.group())
+        return {}
 
 
 # ============================================================
