@@ -327,7 +327,18 @@ Return ONLY valid JSON. The code field must be raw Python, not markdown."""
             if text.startswith("json"):
                 text = text[4:]
 
-    return json.loads(text.strip())
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        import re
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group())
+            except:
+                pass
+        raise
 
 
 # ============================================================

@@ -120,8 +120,29 @@ def execute_action(intent, action_description, original_message):
         }
 
     # ============================================================
-    # EXECUTE — business operations via quantum execution
+    # SEND EMAIL — direct email routing
     # ============================================================
+    elif intent == "execute" and "email" in action_description.lower():
+        try:
+            from app.agents.email_partner import send_email
+            from app.agents.aria_intelligence import aria_think
+            dennis_email = os.getenv("DENNIS_EMAIL")
+            result = aria_think(situation=action_description, urgency="medium")
+            subject = result.get("email_to_dennis", {}).get("subject", "Message from ARIA")
+            body = result.get("email_to_dennis", {}).get("body", action_description)
+            send_email(dennis_email, subject, body, is_html=True)
+            return {
+                "executed": True,
+                "result": "✅ Email sent to your inbox.",
+                "new_capability_learned": False
+            }
+        except Exception as e:
+            return {
+                "executed": False,
+                "result": f"Email failed: {str(e)}",
+                "new_capability_learned": False
+            }
+
     else:
         from app.agents.aria_core import quantum_execute, neural_learn
 
