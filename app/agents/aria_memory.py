@@ -37,10 +37,12 @@ def parse_json_response(text):
         import re
         match = re.search(r'\{.*\}', text.strip(), re.DOTALL)
         if match:
-            return json.loads(match.group())
+            try:
+                return json.loads(match.group())
+            except:
+                pass
         return {}
-
-
+    
 # ============================================================
 # EPISODIC MEMORY
 # ============================================================
