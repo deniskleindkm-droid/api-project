@@ -49,7 +49,10 @@ def save_memory(content, memory_type, confidence):
 def add_product_to_store(product_data):
     with Session(engine) as session:
         existing = session.exec(
-            select(Product).where(Product.name == product_data["name"])
+            select(Product).where(
+                Product.name == product_data["name"],
+                Product.is_active == True
+            )
         ).first()
         
         if existing:
