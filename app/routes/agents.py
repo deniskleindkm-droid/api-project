@@ -13,6 +13,7 @@ from app.agents.aria_memory import store_episode, get_relevant_episodes, store_k
 from app.agents.aria_core import quantum_execute, get_pending_actions, approve_action, reject_action, neural_learn, get_aria_intelligence_summary, list_capabilities
 from app.agents.aria_developer import quantum_develop, aria_design_agent, aria_build_agent, aria_explain, get_changelog
 from app.agents.cj_dropshipping import search_and_import, search_products
+from app.agents.cj_dropshipping import search_and_import, search_products, import_product_by_id
 from pydantic import BaseModel
 from typing import Optional
 import json
