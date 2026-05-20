@@ -12,6 +12,7 @@ from app.agents.market_data import run_market_data_collection, get_latest_market
 from app.agents.aria_memory import store_episode, get_relevant_episodes, store_knowledge, get_domain_knowledge, update_dennis_model, get_dennis_model, get_active_predictions, get_full_memory_context, aria_learn_from_outcome
 from app.agents.aria_core import quantum_execute, get_pending_actions, approve_action, reject_action, neural_learn, get_aria_intelligence_summary, list_capabilities
 from app.agents.aria_developer import quantum_develop, aria_design_agent, aria_build_agent, aria_explain, get_changelog
+from app.agents.cj_dropshipping import search_and_import, search_products
 from pydantic import BaseModel
 from typing import Optional
 import json
@@ -692,3 +693,19 @@ def aria_changelog_route(master_key: str):
     if not verify_master_key(master_key):
         raise HTTPException(status_code=403, detail="Unauthorized")
     return {"changelog": get_changelog()}
+
+@router.get("/cj/search")
+def cj_search(keyword: str, limit: int = 5):
+    try:
+        results = search_products(keyword, limit=limit)
+        return {"products": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/cj/import")
+def cj_import(keyword: str, limit: int = 5):
+    try:
+        result = search_and_import(keyword, limit)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
