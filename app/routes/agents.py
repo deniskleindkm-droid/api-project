@@ -709,3 +709,12 @@ def cj_import(keyword: str, limit: int = 5):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/cj/import-by-id")
+def cj_import_by_id(pid: str):
+    try:
+        from app.agents.cj_dropshipping import import_product_by_id
+        result = import_product_by_id(pid)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))    

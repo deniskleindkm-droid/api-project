@@ -139,3 +139,13 @@ def search_and_import(keyword, limit=5):
         "products": imported,
         "keyword": keyword
     }
+
+def import_product_by_id(pid):
+    """Import a specific CJ product by its product ID"""
+    print(f"[CJ] Fetching product: {pid}")
+    product = get_product_details(pid)
+    
+    if not product:
+        return {"success": False, "reason": "Product not found"}
+    
+    return import_product_to_store(product)
