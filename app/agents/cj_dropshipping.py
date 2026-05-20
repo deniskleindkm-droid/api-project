@@ -79,18 +79,20 @@ def get_product_details(pid):
         return None
 
 
-def import_product_to_store(cj_product):
-    """Import a CJ product into Mikisi store"""
+def import_product_to_store(cj_product, markup=3.0):
     from app.agents.store_manager import add_product_to_store
-
     try:
         name = cj_product.get("productNameEn", "")
         category = cj_product.get("categoryName", "Beauty")
         sell_price = float(cj_product.get("sellPrice", 0))
-        original_price = round(sell_price * 1.8, 2)
-        discount = round((1 - sell_price / original_price) * 100, 1)
+
+        marked_up = sell_price * markup
+        final_price = int(marked_up) + 0.99
+        original_price = int(final_price * 1.4) + 0.99
+        discount = round((1 - final_price / original_price) * 100)
+
         image_url = cj_product.get("productImage", "")
-        
+
         product_data = {
             "name": name[:100],
             "brand": "Mikisi",
@@ -98,7 +100,7 @@ def import_product_to_store(cj_product):
             "description": cj_product.get("description", name),
             "original_price": original_price,
             "discount_percent": discount,
-            "final_price": sell_price,
+            "final_price": final_price,
             "image_url": image_url,
             "stock": 999,
             "shipping_days": 7,
@@ -107,17 +109,17 @@ def import_product_to_store(cj_product):
         }
 
         product, status = add_product_to_store(product_data)
-        
         if status == "added":
-            print(f"[CJ] ✅ Imported: {name[:60]}")
-            return {"success": True, "product": name, "price": sell_price}
-        else:
-            return {"success": False, "reason": "Already exists"}
-
+            return {
+                "success": True,
+                "product": name,
+                "cj_cost": sell_price,
+                "store_price": final_price,
+                "markup_applied": markup
+            }
+        return {"success": False, "reason": "Already exists"}
     except Exception as e:
-        print(f"[CJ] Import error: {e}")
         return {"success": False, "reason": str(e)}
-
 
 def search_and_import(keyword, limit=5):
     """Search CJ and import products to Mikisi"""
@@ -140,12 +142,9 @@ def search_and_import(keyword, limit=5):
         "keyword": keyword
     }
 
-def import_product_by_id(pid):
-    """Import a specific CJ product by its product ID"""
+def import_product_by_id(pid, markup=3.0):
     print(f"[CJ] Fetching product: {pid}")
     product = get_product_details(pid)
-    
     if not product:
         return {"success": False, "reason": "Product not found"}
-    
-    return import_product_to_store(product)
+    return import_product_to_store(product, markup)
