@@ -1,14 +1,15 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from sqlmodel import Session, select
 from app.models.cart import CartItem
 from app.models.product import Product
 from app.models.order import Order
-from app.database import get_session
+from app.database import get_session, engine
 from app.auth_utils import verify_token
 from app.routes.auth import oauth2_scheme
 from pydantic import BaseModel
 import stripe
 import os
+import json
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -45,14 +46,14 @@ def create_checkout_session(
                     "currency": "usd",
                     "product_data": {
                         "name": f"{product.brand} - {product.name}",
-                        "description": product.description,
+                        "description": (product.description or "")[:50],
                     },
                     "unit_amount": int(product.final_price * 100),
                 },
                 "quantity": item.quantity,
             })
 
-    frontend_url = "https://mikisi.co"
+    frontend_url = "https://deniskleindkm-droid.github.io/api-project"
 
     checkout_session = stripe.checkout.Session.create(
         payment_method_types=["card"],
@@ -70,63 +71,50 @@ def create_checkout_session(
     return {"checkout_url": checkout_session.url}
 
 
-@router.post("/payments/webhook")
-async def stripe_webhook(request: Request, session: Session = Depends(get_session)):
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
-    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-
+def process_order_background(checkout_data: dict):
+    """Process order in background so webhook returns fast"""
     try:
-        if webhook_secret:
-            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-        else:
-            import json
-            event = json.loads(payload)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        user_email = checkout_data["metadata"]["user_email"]
+        shipping_address = checkout_data["metadata"]["shipping_address"]
 
-    if event["type"] == "checkout.session.completed":
-        checkout = event["data"]["object"]
-        user_email = checkout["metadata"]["user_email"]
-        shipping_address = checkout["metadata"]["shipping_address"]
+        with Session(engine) as session:
+            cart_items = session.exec(
+                select(CartItem).where(CartItem.user_id == user_email)
+            ).all()
 
-        cart_items = session.exec(
-            select(CartItem).where(CartItem.user_id == user_email)
-        ).all()
+            order_details = []
+            total = 0
 
-        order_summary = ""
-        total = 0
-        order_details = []
+            for item in cart_items:
+                product = session.get(Product, item.product_id)
+                if product:
+                    subtotal = product.final_price * item.quantity
+                    total += subtotal
+                    order_details.append({
+                        "name": product.name,
+                        "qty": item.quantity,
+                        "price": product.final_price,
+                        "subtotal": subtotal,
+                        "supplier": product.supplier_name,
+                        "supplier_url": product.supplier_url
+                    })
 
-        for item in cart_items:
-            product = session.get(Product, item.product_id)
-            if product:
-                subtotal = product.final_price * item.quantity
-                total += subtotal
-                order_summary += f"- {product.name} x{item.quantity} = ${subtotal:.2f}\n"
-                order_details.append({
-                    "name": product.name,
-                    "qty": item.quantity,
-                    "price": product.final_price,
-                    "subtotal": subtotal,
-                    "supplier": product.supplier_name,
-                    "supplier_url": product.supplier_url
-                })
+                    order = Order(
+                        user_id=user_email,
+                        product_id=item.product_id,
+                        quantity=item.quantity,
+                        total_price=subtotal,
+                        status="paid",
+                        shipping_address=shipping_address
+                    )
+                    product.stock -= item.quantity
+                    session.add(product)
+                    session.add(order)
+                    session.delete(item)
 
-                order = Order(
-                    user_id=user_email,
-                    product_id=item.product_id,
-                    quantity=item.quantity,
-                    total_price=subtotal,
-                    status="paid",
-                    shipping_address=shipping_address
-                )
-                product.stock -= item.quantity
-                session.add(product)
-                session.add(order)
-                session.delete(item)
+            session.commit()
 
-        # Send notification email to Dennis
+        # Send email after DB is done
         try:
             from app.agents.email_partner import send_email
             dennis_email = os.getenv("DENNIS_EMAIL")
@@ -164,8 +152,33 @@ async def stripe_webhook(request: Request, session: Session = Depends(get_sessio
             )
             print(f"[Payments] Order notification sent to Dennis")
         except Exception as e:
-            print(f"[Payments] Email notification failed: {e}")
+            print(f"[Payments] Email failed: {e}")
 
-        session.commit()
+    except Exception as e:
+        print(f"[Payments] Background processing failed: {e}")
+
+
+@router.post("/payments/webhook")
+async def stripe_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_session)
+):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
+    try:
+        if webhook_secret:
+            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+        else:
+            event = json.loads(payload)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if event["type"] == "checkout.session.completed":
+        checkout_data = event["data"]["object"]
+        # Return immediately, process in background
+        background_tasks.add_task(process_order_background, checkout_data)
 
     return {"status": "ok"}
