@@ -72,18 +72,18 @@ def create_checkout_session(
 
 
 def process_order_background(checkout_data: dict):
-    """Process order in background so webhook returns fast"""
     try:
         user_email = checkout_data["metadata"]["user_email"]
         shipping_address = checkout_data["metadata"]["shipping_address"]
 
+        order_details = []
+        total = 0
+
         with Session(engine) as session:
+            # Get cart items first before they are deleted
             cart_items = session.exec(
                 select(CartItem).where(CartItem.user_id == user_email)
             ).all()
-
-            order_details = []
-            total = 0
 
             for item in cart_items:
                 product = session.get(Product, item.product_id)
@@ -98,7 +98,6 @@ def process_order_background(checkout_data: dict):
                         "supplier": product.supplier_name,
                         "supplier_url": product.supplier_url
                     })
-
                     order = Order(
                         user_id=user_email,
                         product_id=item.product_id,
@@ -108,13 +107,13 @@ def process_order_background(checkout_data: dict):
                         shipping_address=shipping_address
                     )
                     product.stock -= item.quantity
-                    session.add(product)
                     session.add(order)
+                    session.add(product)
                     session.delete(item)
 
             session.commit()
 
-        # Send email after DB is done
+        # Send email notification
         try:
             from app.agents.email_partner import send_email
             dennis_email = os.getenv("DENNIS_EMAIL")
@@ -146,11 +145,10 @@ def process_order_background(checkout_data: dict):
 <br>
 <p style="color:#e8739a;font-weight:bold;">Action Required: Log in to CJ Dropshipping and fulfill this order.</p>
 <p>Ship to: {shipping_address}</p>
-</body></html>
-                """,
+</body></html>""",
                 is_html=True
             )
-            print(f"[Payments] Order notification sent to Dennis")
+            print(f"[Payments] Order notification sent to Dennis — ${total:.2f}")
         except Exception as e:
             print(f"[Payments] Email failed: {e}")
 
@@ -178,7 +176,6 @@ async def stripe_webhook(
 
     if event["type"] == "checkout.session.completed":
         checkout_data = event["data"]["object"]
-        # Return immediately, process in background
         background_tasks.add_task(process_order_background, checkout_data)
 
     return {"status": "ok"}
