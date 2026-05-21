@@ -26,16 +26,16 @@ def create_checkout_session(
     payload = verify_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
-    
+
     user_email = payload.get("sub")
-    
+
     items = session.exec(
         select(CartItem).where(CartItem.user_id == user_email)
     ).all()
-    
+
     if not items:
         raise HTTPException(status_code=400, detail="Cart is empty")
-    
+
     line_items = []
     for item in items:
         product = session.get(Product, item.product_id)
@@ -51,9 +51,9 @@ def create_checkout_session(
                 },
                 "quantity": item.quantity,
             })
-    
-    frontend_url = "https://deniskleindkm-droid.github.io/api-project"
-    
+
+    frontend_url = "https://mikisi.co"
+
     checkout_session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         line_items=line_items,
@@ -66,15 +66,16 @@ def create_checkout_session(
             "shipping_address": request.shipping_address
         }
     )
-    
+
     return {"checkout_url": checkout_session.url}
+
 
 @router.post("/payments/webhook")
 async def stripe_webhook(request: Request, session: Session = Depends(get_session)):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
     webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-    
+
     try:
         if webhook_secret:
             event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
@@ -83,24 +84,40 @@ async def stripe_webhook(request: Request, session: Session = Depends(get_sessio
             event = json.loads(payload)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
     if event["type"] == "checkout.session.completed":
         checkout = event["data"]["object"]
         user_email = checkout["metadata"]["user_email"]
         shipping_address = checkout["metadata"]["shipping_address"]
-        
+
         cart_items = session.exec(
             select(CartItem).where(CartItem.user_id == user_email)
         ).all()
-        
+
+        order_summary = ""
+        total = 0
+        order_details = []
+
         for item in cart_items:
             product = session.get(Product, item.product_id)
             if product:
+                subtotal = product.final_price * item.quantity
+                total += subtotal
+                order_summary += f"- {product.name} x{item.quantity} = ${subtotal:.2f}\n"
+                order_details.append({
+                    "name": product.name,
+                    "qty": item.quantity,
+                    "price": product.final_price,
+                    "subtotal": subtotal,
+                    "supplier": product.supplier_name,
+                    "supplier_url": product.supplier_url
+                })
+
                 order = Order(
                     user_id=user_email,
                     product_id=item.product_id,
                     quantity=item.quantity,
-                    total_price=product.final_price * item.quantity,
+                    total_price=subtotal,
                     status="paid",
                     shipping_address=shipping_address
                 )
@@ -108,7 +125,47 @@ async def stripe_webhook(request: Request, session: Session = Depends(get_sessio
                 session.add(product)
                 session.add(order)
                 session.delete(item)
-        
+
+        # Send notification email to Dennis
+        try:
+            from app.agents.email_partner import send_email
+            dennis_email = os.getenv("DENNIS_EMAIL")
+
+            items_html = "".join([
+                f"<tr><td>{d['name']}</td><td>{d['qty']}</td><td>${d['price']:.2f}</td><td>${d['subtotal']:.2f}</td></tr>"
+                for d in order_details
+            ])
+
+            send_email(
+                to=dennis_email,
+                subject=f"New Mikisi Order — ${total:.2f}",
+                body=f"""
+<html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+<h2 style="color:#e8739a;">New Order Received!</h2>
+<p><strong>Customer:</strong> {user_email}</p>
+<p><strong>Shipping Address:</strong> {shipping_address}</p>
+<h3>Order Details:</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="width:100%;border-collapse:collapse;">
+<tr style="background:#f5f5f5;">
+    <th>Product</th><th>Qty</th><th>Price</th><th>Subtotal</th>
+</tr>
+{items_html}
+<tr style="background:#fff5f7;">
+    <td colspan="3"><strong>Total</strong></td>
+    <td><strong>${total:.2f}</strong></td>
+</tr>
+</table>
+<br>
+<p style="color:#e8739a;font-weight:bold;">Action Required: Log in to CJ Dropshipping and fulfill this order.</p>
+<p>Ship to: {shipping_address}</p>
+</body></html>
+                """,
+                is_html=True
+            )
+            print(f"[Payments] Order notification sent to Dennis")
+        except Exception as e:
+            print(f"[Payments] Email notification failed: {e}")
+
         session.commit()
-    
+
     return {"status": "ok"}
