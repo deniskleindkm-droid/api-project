@@ -11,6 +11,8 @@ from app.routes.agents import router as agents_router
 from app.routes.aria_chat import router as aria_chat_router
 from app.scheduler import start_scheduler
 from app.database import create_db
+from app.routes.collections import router as collections_router
+
 from dotenv import load_dotenv
 import os
 
@@ -38,6 +40,8 @@ app.include_router(cart_router)
 app.include_router(payments_router)
 app.include_router(agents_router)
 app.include_router(aria_chat_router)
+app.include_router(collections_router)
+
 
 @app.get("/")
 def serve_frontend():

@@ -18,6 +18,7 @@ class Product(SQLModel, table=True):
     shipping_days: int = 7
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    collection_id: Optional[int] = Field(default=None, foreign_key="collection.id")
 
 class ProductCreate(SQLModel):
     name: str
