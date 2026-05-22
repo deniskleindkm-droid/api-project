@@ -84,6 +84,8 @@ def process_order_background(checkout_data: dict):
                 select(CartItem).where(CartItem.user_id == user_email)
             ).all()
 
+            print(f"[Payments] Found {len(cart_items)} cart items for {user_email}")
+
             for item in cart_items:
                 product = session.get(Product, item.product_id)
                 if product:
@@ -100,6 +102,7 @@ def process_order_background(checkout_data: dict):
                         "cj_sku": product.cj_sku,
                         "cj_product_id": product.cj_product_id,
                     })
+                    print(f"[Payments] Item: {product.name} — CJ SKU: {product.cj_sku}")
                     order = Order(
                         user_id=user_email,
                         product_id=item.product_id,
@@ -115,10 +118,14 @@ def process_order_background(checkout_data: dict):
 
             session.commit()
 
+        print(f"[Payments] Order details collected: {len(order_details)} items, total ${total:.2f}")
+
         # Auto-forward to CJ Dropshipping
         try:
             from app.agents.cj_dropshipping import place_order_on_cj
+            print(f"[Payments] Starting CJ forwarding for {len(order_details)} items")
             for d in order_details:
+                print(f"[Payments] Checking SKU for {d['name']}: {d.get('cj_sku')}")
                 if d.get("cj_sku"):
                     cj_result = place_order_on_cj(
                         cj_sku=d["cj_sku"],
