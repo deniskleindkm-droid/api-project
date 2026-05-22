@@ -178,6 +178,7 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
             "orderNumber": f"MIKISI-{int(datetime.now().timestamp())}",
             "fromCountryCode": "US",
             "shippingCountry": country.strip(),
+            "shippingCountryCode": country.strip(),
             "shippingCustomerName": f"{first_name} {last_name}".strip(),
             "shippingAddress": street,
             "shippingCity": city,
