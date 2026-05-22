@@ -153,3 +153,61 @@ def import_product_by_id(pid, markup=3.0):
     if not product:
         return {"success": False, "reason": "Product not found"}
     return import_product_to_store(product, markup)
+
+def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
+    """Automatically place order on CJ when customer buys"""
+    token = get_access_token()
+    if not token:
+        return {"success": False, "reason": "CJ auth failed"}
+
+    try:
+        parts = [p.strip() for p in shipping_address.split(",")]
+        street = parts[0] if len(parts) > 0 else ""
+        city = parts[1] if len(parts) > 1 else ""
+        state_zip = parts[2] if len(parts) > 2 else ""
+        country = parts[3] if len(parts) > 3 else "US"
+        state_zip_parts = state_zip.split(" ")
+        state = state_zip_parts[0] if state_zip_parts else ""
+        zipcode = state_zip_parts[1] if len(state_zip_parts) > 1 else ""
+
+        name_parts = customer_name.split(" ")
+        first_name = name_parts[0]
+        last_name = name_parts[-1] if len(name_parts) > 1 else ""
+
+        payload = {
+            "orderNumber": f"MIKISI-{int(datetime.now().timestamp())}",
+            "shippingCountry": country.strip(),
+            "shippingFirstName": first_name,
+            "shippingLastName": last_name,
+            "shippingAddress": street,
+            "shippingCity": city,
+            "shippingProvince": state,
+            "shippingZip": zipcode,
+            "shippingPhone": "0000000000",
+            "products": [
+                {
+                    "vid": cj_sku,
+                    "quantity": quantity,
+                }
+            ]
+        }
+
+        response = requests.post(
+            f"{CJ_API_BASE}/shopping/order/createOrder",
+            headers={
+                "CJ-Access-Token": token,
+                "Content-Type": "application/json"
+            },
+            json=payload
+        )
+        data = response.json()
+        if data.get("result"):
+            cj_order_id = data.get("data", {}).get("orderId", "")
+            print(f"[CJ] ✅ Order placed: {cj_order_id}")
+            return {"success": True, "cj_order_id": cj_order_id}
+        else:
+            print(f"[CJ] Order failed: {data.get('message')}")
+            return {"success": False, "reason": data.get("message")}
+    except Exception as e:
+        print(f"[CJ] Order error: {e}")
+        return {"success": False, "reason": str(e)}

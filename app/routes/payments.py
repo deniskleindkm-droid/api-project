@@ -80,7 +80,6 @@ def process_order_background(checkout_data: dict):
         total = 0
 
         with Session(engine) as session:
-            # Get cart items first before they are deleted
             cart_items = session.exec(
                 select(CartItem).where(CartItem.user_id == user_email)
             ).all()
@@ -96,7 +95,10 @@ def process_order_background(checkout_data: dict):
                         "price": product.final_price,
                         "subtotal": subtotal,
                         "supplier": product.supplier_name,
-                        "supplier_url": product.supplier_url
+                        "supplier_url": product.supplier_url,
+                        "product_id": item.product_id,
+                        "cj_sku": product.cj_sku,
+                        "cj_product_id": product.cj_product_id,
                     })
                     order = Order(
                         user_id=user_email,
@@ -113,6 +115,23 @@ def process_order_background(checkout_data: dict):
 
             session.commit()
 
+        # Auto-forward to CJ Dropshipping
+        try:
+            from app.agents.cj_dropshipping import place_order_on_cj
+            for d in order_details:
+                if d.get("cj_sku"):
+                    cj_result = place_order_on_cj(
+                        cj_sku=d["cj_sku"],
+                        customer_name=user_email.split("@")[0],
+                        shipping_address=shipping_address,
+                        quantity=d["qty"]
+                    )
+                    print(f"[Payments] CJ order result: {cj_result}")
+                else:
+                    print(f"[Payments] No CJ SKU for: {d['name']} — manual fulfillment needed")
+        except Exception as e:
+            print(f"[Payments] CJ forwarding failed: {e}")
+
         # Send email notification
         try:
             from app.agents.email_partner import send_email
@@ -128,7 +147,7 @@ def process_order_background(checkout_data: dict):
                 subject=f"New Mikisi Order — ${total:.2f}",
                 body=f"""
 <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-<h2 style="color:#e8739a;">New Order Received!</h2>
+<h2 style="color:#d4849c;">New Order Received!</h2>
 <p><strong>Customer:</strong> {user_email}</p>
 <p><strong>Shipping Address:</strong> {shipping_address}</p>
 <h3>Order Details:</h3>
@@ -143,12 +162,12 @@ def process_order_background(checkout_data: dict):
 </tr>
 </table>
 <br>
-<p style="color:#e8739a;font-weight:bold;">Action Required: Log in to CJ Dropshipping and fulfill this order.</p>
+<p style="color:#d4849c;font-weight:bold;">CJ order forwarding attempted automatically.</p>
 <p>Ship to: {shipping_address}</p>
 </body></html>""",
                 is_html=True
             )
-            print(f"[Payments] Order notification sent to Dennis — ${total:.2f}")
+            print(f"[Payments] Order notification sent — ${total:.2f}")
         except Exception as e:
             print(f"[Payments] Email failed: {e}")
 
