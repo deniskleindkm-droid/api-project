@@ -20,3 +20,12 @@ def create_db():
 def get_session():
     with Session(engine) as session:
         yield session
+
+def create_db():
+    SQLModel.metadata.create_all(engine)
+    # Fix column types if needed
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE product ALTER COLUMN cj_sku TYPE varchar(200)"))
+        conn.execute(text("ALTER TABLE product ALTER COLUMN cj_product_id TYPE varchar(200)"))
+        conn.commit()        
