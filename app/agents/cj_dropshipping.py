@@ -91,7 +91,14 @@ def import_product_to_store(cj_product, markup=3.0):
         original_price = int(final_price * 1.4) + 0.99
         discount = round((1 - final_price / original_price) * 100)
 
-        image_url = cj_product.get("productImage", "")
+        image_url = (
+            cj_product.get("productImage") or
+            cj_product.get("productImageUrl") or
+            cj_product.get("mainImage") or
+            cj_product.get("imageUrl") or
+            ""
+        )
+        print(f"[CJ] Image: {image_url[:60] if image_url else 'NONE'}")
 
         product_data = {
             "name": name[:100],
@@ -120,7 +127,6 @@ def import_product_to_store(cj_product, markup=3.0):
         return {"success": False, "reason": "Already exists"}
     except Exception as e:
         return {"success": False, "reason": str(e)}
-
 def search_and_import(keyword, limit=5):
     """Search CJ and import products to Mikisi"""
     print(f"[CJ] Searching: {keyword}")
