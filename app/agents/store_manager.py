@@ -6,6 +6,7 @@ from app.database import engine
 from app.models.agent import AgentMemory, AgentTask
 from app.models.product import Product
 
+
 def get_pending_tasks():
     with Session(engine) as session:
         tasks = session.exec(
@@ -15,6 +16,7 @@ def get_pending_tasks():
             )
         ).all()
         return tasks
+
 
 def mark_task_done(task_id, result):
     with Session(engine) as session:
@@ -26,6 +28,7 @@ def mark_task_done(task_id, result):
             session.add(task)
             session.commit()
 
+
 def mark_task_failed(task_id, error):
     with Session(engine) as session:
         task = session.get(AgentTask, task_id)
@@ -34,6 +37,7 @@ def mark_task_failed(task_id, error):
             task.result = error
             session.add(task)
             session.commit()
+
 
 def save_memory(content, memory_type, confidence):
     with Session(engine) as session:
@@ -46,6 +50,7 @@ def save_memory(content, memory_type, confidence):
         session.add(memory)
         session.commit()
 
+
 def add_product_to_store(product_data):
     with Session(engine) as session:
         existing = session.exec(
@@ -54,27 +59,30 @@ def add_product_to_store(product_data):
                 Product.is_active == True
             )
         ).first()
-        
+
         if existing:
             return None, "already_exists"
-        
+
         product = Product(
             name=product_data["name"],
             brand=product_data["brand"],
-            category=product_data.get("category", "Shoes"),
+            category=product_data.get("category", "Beauty"),
             description=product_data["description"],
             original_price=float(product_data["original_price"]),
             discount_percent=float(product_data["discount_percent"]),
             final_price=float(product_data["final_price"]),
+            image_url=product_data.get("image_url", ""),
             stock=int(product_data.get("stock", 50)),
             shipping_days=int(product_data.get("shipping_days", 7)),
             supplier_name=product_data.get("supplier_name"),
+            supplier_url=product_data.get("supplier_url"),
             is_active=True
         )
         session.add(product)
         session.commit()
         session.refresh(product)
         return product, "added"
+
 
 def create_task_for_marketing(product_data, product_id):
     with Session(engine) as session:
@@ -87,20 +95,21 @@ def create_task_for_marketing(product_data, product_id):
         session.add(task)
         session.commit()
 
+
 def run_store_manager():
     print("[Store Manager] Checking for pending tasks...")
     tasks = get_pending_tasks()
-    
+
     if not tasks:
         print("[Store Manager] No pending tasks")
         return
-    
+
     for task in tasks:
         print(f"[Store Manager] Processing task {task.id}")
         try:
             product_data = json.loads(task.payload)
             product, status = add_product_to_store(product_data)
-            
+
             if status == "added" and product:
                 print(f"[Store Manager] ✅ Added to store: {product.name}")
                 save_memory(
@@ -113,7 +122,7 @@ def run_store_manager():
             else:
                 print(f"[Store Manager] Product already exists: {product_data['name']}")
                 mark_task_done(task.id, "Product already exists")
-                
+
         except Exception as e:
             print(f"[Store Manager] Error on task {task.id}: {e}")
             mark_task_failed(task.id, str(e))
