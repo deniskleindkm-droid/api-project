@@ -176,6 +176,7 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
 
         payload = {
             "orderNumber": f"MIKISI-{int(datetime.now().timestamp())}",
+            "fromCountryCode": "US",
             "shippingCountry": country.strip(),
             "shippingFirstName": first_name,
             "shippingLastName": last_name,
