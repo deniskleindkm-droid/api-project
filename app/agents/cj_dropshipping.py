@@ -87,6 +87,33 @@ def extract_image_url(cj_product):
     return raw
 
 
+def get_shipping_methods(cj_sku, country_code="US"):
+    """Get available shipping methods for a product"""
+    token = get_access_token()
+    if not token:
+        return []
+    try:
+        response = requests.get(
+            f"{CJ_API_BASE}/logistic/freightCalculate",
+            headers={"CJ-Access-Token": token},
+            params={
+                "startCountryCode": "CN",
+                "endCountryCode": country_code,
+                "vid": cj_sku,
+                "quantity": 1
+            },
+            timeout=30
+        )
+        data = response.json()
+        print(f"[CJ] Shipping methods response: {data}")
+        if data.get("result"):
+            return data.get("data", [])
+        return []
+    except Exception as e:
+        print(f"[CJ] Shipping methods error: {e}")
+        return []
+
+
 def import_product_to_store(cj_product, markup=3.0):
     from app.agents.store_manager import add_product_to_store
     try:
@@ -154,6 +181,7 @@ def import_product_by_id(pid, markup=3.0):
         return {"success": False, "reason": "Product not found"}
     return import_product_to_store(product, markup)
 
+
 def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
     """Automatically place order on CJ when customer buys"""
     token = get_access_token()
@@ -175,11 +203,21 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
         first_name = name_parts[0]
         last_name = name_parts[-1] if len(name_parts) > 1 else first_name
 
+        # Get shipping method from CJ
+        country_code = country.strip()
+        methods = get_shipping_methods(cj_sku, country_code)
+        if methods:
+            logistic_name = methods[0].get("logisticName", "")
+            print(f"[CJ] Using shipping: {logistic_name}")
+        else:
+            logistic_name = "CJPacket Ordinary"
+            print(f"[CJ] No shipping methods found, using default: {logistic_name}")
+
         payload = {
             "orderNumber": f"MIKISI-{int(datetime.now().timestamp())}",
             "fromCountryCode": "US",
-            "shippingCountry": country.strip(),
-            "shippingCountryCode": country.strip(),
+            "shippingCountry": country_code,
+            "shippingCountryCode": country_code,
             "shippingCustomerName": f"{first_name} {last_name}".strip(),
             "shippingFirstName": first_name,
             "shippingLastName": last_name,
@@ -188,6 +226,7 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
             "shippingProvince": state,
             "shippingZip": zipcode,
             "shippingPhone": "0000000000",
+            "logisticName": logistic_name,
             "products": [
                 {
                     "vid": cj_sku,
@@ -197,8 +236,6 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
         }
 
         print(f"[CJ] Placing order for SKU: {cj_sku}")
-        print(f"[CJ] Payload: {json.dumps(payload)}")
-
         response = requests.post(
             f"{CJ_API_BASE}/shopping/order/createOrder",
             headers={
@@ -210,7 +247,7 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
         )
         print(f"[CJ] Response status: {response.status_code}")
         data = response.json()
-        print(f"[CJ] Response data: {data}")
+        print(f"[CJ] Response: {data}")
 
         if data.get("result"):
             cj_order_id = data.get("data", {}).get("orderId", "")
