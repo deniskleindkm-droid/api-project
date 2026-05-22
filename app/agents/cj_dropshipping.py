@@ -158,6 +158,7 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
     """Automatically place order on CJ when customer buys"""
     token = get_access_token()
     if not token:
+        print(f"[CJ] Auth failed — cannot place order")
         return {"success": False, "reason": "CJ auth failed"}
 
     try:
@@ -172,7 +173,7 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
 
         name_parts = customer_name.split(" ")
         first_name = name_parts[0]
-        last_name = name_parts[-1] if len(name_parts) > 1 else ""
+        last_name = name_parts[-1] if len(name_parts) > 1 else first_name
 
         payload = {
             "orderNumber": f"MIKISI-{int(datetime.now().timestamp())}",
@@ -180,6 +181,8 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
             "shippingCountry": country.strip(),
             "shippingCountryCode": country.strip(),
             "shippingCustomerName": f"{first_name} {last_name}".strip(),
+            "shippingFirstName": first_name,
+            "shippingLastName": last_name,
             "shippingAddress": street,
             "shippingCity": city,
             "shippingProvince": state,
@@ -193,15 +196,22 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
             ]
         }
 
+        print(f"[CJ] Placing order for SKU: {cj_sku}")
+        print(f"[CJ] Payload: {json.dumps(payload)}")
+
         response = requests.post(
             f"{CJ_API_BASE}/shopping/order/createOrder",
             headers={
                 "CJ-Access-Token": token,
                 "Content-Type": "application/json"
             },
-            json=payload
+            json=payload,
+            timeout=30
         )
+        print(f"[CJ] Response status: {response.status_code}")
         data = response.json()
+        print(f"[CJ] Response data: {data}")
+
         if data.get("result"):
             cj_order_id = data.get("data", {}).get("orderId", "")
             print(f"[CJ] ✅ Order placed: {cj_order_id}")
