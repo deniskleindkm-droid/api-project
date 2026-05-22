@@ -61,14 +61,14 @@ def create_collection(
     session: Session = Depends(get_session)
 ):
     collection = Collection(
-        name=data.name,
-        description=data.description,
-        image_url=data.image_url,
-        parent_id=data.parent_id,
-        sort_order=data.sort_order,
-        is_active=True,
-        created_at=datetime.utcnow()
-    )
+    name=data.name,
+    description=data.description,
+    image_url=data.image_url,
+    parent_id=data.parent_id if data.parent_id and data.parent_id > 0 else None,
+    sort_order=data.sort_order,
+    is_active=True,
+    created_at=datetime.utcnow()
+)
     session.add(collection)
     session.commit()
     session.refresh(collection)

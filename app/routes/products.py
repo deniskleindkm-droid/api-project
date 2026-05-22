@@ -24,6 +24,7 @@ def get_products(
         query = query.where(Product.final_price >= min_price)
     if max_price:
         query = query.where(Product.final_price <= max_price)
+    collection_id: Optional[int] = None,    
     
     products = session.exec(query).all()
     return products
@@ -42,6 +43,22 @@ def create_product(product: ProductCreate, session: Session = Depends(get_sessio
     session.commit()
     session.refresh(db_product)
     return db_product
+@router.put("/products/{product_id}")
+def update_product(
+    product_id: int,
+    data: dict,
+    session: Session = Depends(get_session)
+):
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    for key, value in data.items():
+        if hasattr(product, key):
+            setattr(product, key, value)
+    session.add(product)
+    session.commit()
+    session.refresh(product)
+    return product
 
 @router.delete("/products/{product_id}")
 def delete_product(product_id: int, session: Session = Depends(get_session)):

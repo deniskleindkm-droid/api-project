@@ -1,31 +1,55 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from app.routes.auth import router as auth_router
+from app.routes.products import router as products_router
+from app.routes.orders import router as orders_router
+from app.routes.cart import router as cart_router
+from app.routes.payments import router as payments_router
+from app.routes.agents import router as agents_router
+from app.routes.aria_chat import router as aria_chat_router
+from app.scheduler import start_scheduler
+from app.database import create_db
+from app.routes.collections import router as collections_router
 
-app = FastAPI()
+from dotenv import load_dotenv
+import os
 
-# In-memory "database" for now
-users_db = {}
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-# This defines the shape of data we expect from the client
-class UserRequest(BaseModel):
-    email: str
-    password: str
+app = FastAPI(title=os.getenv("APP_NAME", "MyAPI"))
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+@app.on_event("startup")
+def on_startup():
+    create_db()
+    start_scheduler()
+
+app.include_router(auth_router)
+app.include_router(products_router)
+app.include_router(orders_router)
+app.include_router(cart_router)
+app.include_router(payments_router)
+app.include_router(agents_router)
+app.include_router(aria_chat_router)
+app.include_router(collections_router)
+
+
+@app.get("/")
+def serve_frontend():
+    return FileResponse("docs/index.html")
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
-
-@app.post("/register")
-def register(user: UserRequest):
-    if user.email in users_db:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    users_db[user.email] = user.password
-    return {"message": "User registered successfully"}
-
-@app.post("/login")
-def login(user: UserRequest):
-    if user.email not in users_db:
-        raise HTTPException(status_code=404, detail="User not found")
-    if users_db[user.email] != user.password:
-        raise HTTPException(status_code=401, detail="Incorrect password")
-    return {"message": "Logged in successfully"}
+    return {
+        "status": "ok",
+        "app": os.getenv("APP_NAME", "MyAPI")
+    }
