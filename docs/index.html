@@ -296,7 +296,11 @@
             .tiles-grid { grid-template-columns: repeat(2, 1fr); gap: 1px; }
             .products-grid { grid-template-columns: 1fr 1fr; gap: 1px; width: 100%; }
             .product-card { width: 100%; min-width: 0; }
-            .pc-image { aspect-ratio: 1; max-height: 180px; width: 100%; }
+            .pc-image { aspect-ratio: 1 / 1; height: 160px; width: 100%; overflow: hidden; }
+            .pc-image img { width: 100%; height: 100%; object-fit: cover; }
+            .pc-name { min-height: auto; font-size: 14px; }
+            .pc-desc { display: none; }
+            .pc-info { padding: 12px; }
             .cart-sidebar { width: 100%; right: -100%; }
             .pm-box { flex-direction: column; }
             .pm-images { width: 100%; }
@@ -315,7 +319,7 @@
     <div class="logo">Mik<em>i</em>si</div>
     <div class="nav-search">
         <span class="search-icon">⌕</span>
-        <input type="text" id="search-input" placeholder="Search the collection..." oninput="doSearch(this.value)" autocomplete="off" />
+        <input type="text" id="search-input" placeholder="Search the collection..." oninput="doSearch(this.value)" autocomplete="off" name="search-mikisi" readonly onfocus="this.removeAttribute('readonly')" />
         <div class="search-results" id="search-results"></div>
     </div>
     <div class="nav-links">
@@ -825,7 +829,9 @@ async function submitAuth() {
     const body = authMode === 'register' ? { email, password: pw, full_name: name } : { email, password: pw };
     try {
         const res = await fetch(`${API}/${authMode === 'login' ? 'login' : 'register'}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
         });
         const data = await res.json();
         if (res.ok) {
@@ -835,33 +841,77 @@ async function submitAuth() {
                 localStorage.setItem('token', token);
                 localStorage.setItem('userEmail', email);
                 localStorage.setItem('userName', dn);
-                userEmail = email; userName = dn;
-                updateAuthUI(); loadCart(); closeAuth();
+                userEmail = email;
+                userName = dn;
+                updateAuthUI();
+                loadCart();
+                closeAuth();
                 showToast(`Welcome back, ${dn}`);
-            } else { showMMsg('Account created! Please sign in.', 'success'); switchAuth(); }
-        } else showMMsg(data.detail || 'Something went wrong', 'error');
-    } catch { showMMsg('Connection error. Please try again.', 'error'); }
+            } else {
+                showMMsg('Account created! Please sign in.', 'success');
+                switchAuth();
+            }
+        } else {
+            const errMsg = typeof data.detail === 'string'
+                ? data.detail
+                : Array.isArray(data.detail)
+                ? data.detail.map(e => e.msg || e.message || 'Invalid input').join(', ')
+                : 'Invalid email or password. Please try again.';
+            showMMsg(errMsg, 'error');
+        }
+    } catch {
+        showMMsg('Connection error. Please try again.', 'error');
+    }
 }
-function showMMsg(m, t) { const el = document.getElementById('m-msg'); el.textContent = m; el.className = `m-msg ${t}`; el.style.display = 'block'; }
+
+function showMMsg(m, t) {
+    const el = document.getElementById('m-msg');
+    el.textContent = m;
+    el.className = `m-msg ${t}`;
+    el.style.display = 'block';
+}
+
 function logout() {
-    token = null; userEmail = null; userName = null;
-    localStorage.removeItem('token'); localStorage.removeItem('userEmail'); localStorage.removeItem('userName');
+    token = null;
+    userEmail = null;
+    userName = null;
+    localStorage.removeItem('token');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
     updateAuthUI();
     document.getElementById('cart-count').textContent = '0';
     document.getElementById('cart-body').innerHTML = '<div class="empty-cart"><div class="empty-icon">◇</div><p>Your cart is empty</p></div>';
     document.getElementById('cart-total').textContent = '0.00';
     showToast('Signed out');
 }
+
 function updateAuthUI() {
-    const g = document.getElementById('user-greeting'), ab = document.getElementById('auth-btn'), lb = document.getElementById('logout-btn');
+    const g = document.getElementById('user-greeting');
+    const ab = document.getElementById('auth-btn');
+    const lb = document.getElementById('logout-btn');
     if (token && userEmail) {
         const n = userName || userEmail.split('@')[0];
-        g.textContent = n; g.style.display = 'block'; ab.style.display = 'none'; lb.style.display = 'block';
-    } else { g.style.display = 'none'; ab.style.display = 'block'; lb.style.display = 'none'; }
+        g.textContent = n;
+        g.style.display = 'block';
+        ab.style.display = 'none';
+        lb.style.display = 'block';
+    } else {
+        g.style.display = 'none';
+        ab.style.display = 'block';
+        lb.style.display = 'none';
+    }
 }
 
-function scrollToProducts() { document.getElementById('shop').scrollIntoView({ behavior: 'smooth' }); }
-function scrollToAbout() { const a = document.getElementById('about'); a.style.display = 'flex'; setTimeout(() => a.scrollIntoView({ behavior: 'smooth' }), 100); }
+function scrollToProducts() {
+    document.getElementById('shop').scrollIntoView({ behavior: 'smooth' });
+}
+
+function scrollToAbout() {
+    const a = document.getElementById('about');
+    a.style.display = 'flex';
+    setTimeout(() => a.scrollIntoView({ behavior: 'smooth' }), 100);
+}
+
 function goHome() {
     document.getElementById('breadcrumb').style.display = 'none';
     document.getElementById('prod-title').textContent = 'New Arrivals';
@@ -870,7 +920,13 @@ function goHome() {
     renderTiles(allCollections);
     renderProducts(allProducts);
 }
-function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
 </script>
 </body>
 </html>
