@@ -719,3 +719,9 @@ def cj_import_by_id(pid: str, markup: float = 3.0):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))   
+    
+@router.get("/cj/product-debug/{pid}")
+def cj_debug(pid: str):
+    from app.agents.cj_dropshipping import get_product_details
+    data = get_product_details(pid)
+    return data    
