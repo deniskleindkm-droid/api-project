@@ -294,8 +294,9 @@
             .trust-bar { padding: 16px 20px; gap: 24px; }
             .tiles-section, .products-section { padding-left: 20px; padding-right: 20px; }
             .tiles-grid { grid-template-columns: repeat(2, 1fr); gap: 1px; }
-            .products-grid { grid-template-columns: 1fr 1fr; }
-            .pc-image { aspect-ratio: 1; max-height: 180px; }
+            .products-grid { grid-template-columns: 1fr 1fr; gap: 1px; width: 100%; }
+            .product-card { width: 100%; min-width: 0; }
+            .pc-image { aspect-ratio: 1; max-height: 180px; width: 100%; }
             .cart-sidebar { width: 100%; right: -100%; }
             .pm-box { flex-direction: column; }
             .pm-images { width: 100%; }
@@ -314,7 +315,7 @@
     <div class="logo">Mik<em>i</em>si</div>
     <div class="nav-search">
         <span class="search-icon">⌕</span>
-        <input type="text" id="search-input" placeholder="Search the collection..." oninput="doSearch(this.value)" />
+        <input type="text" id="search-input" placeholder="Search the collection..." oninput="doSearch(this.value)" autocomplete="off" />
         <div class="search-results" id="search-results"></div>
     </div>
     <div class="nav-links">
