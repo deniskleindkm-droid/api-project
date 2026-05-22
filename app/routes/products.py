@@ -81,3 +81,18 @@ def get_categories(session: Session = Depends(get_session)):
     products = session.exec(select(Product).where(Product.is_active == True)).all()
     categories = list(set([p.category for p in products]))
     return {"categories": sorted(categories)}
+
+@router.put("/products/{product_id}/collection")
+def assign_collection(
+    product_id: int,
+    collection_id: Optional[int] = None,
+    session: Session = Depends(get_session)
+):
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    product.collection_id = collection_id
+    session.add(product)
+    session.commit()
+    session.refresh(product)
+    return {"product_id": product_id, "collection_id": collection_id, "message": "Collection assigned"}
