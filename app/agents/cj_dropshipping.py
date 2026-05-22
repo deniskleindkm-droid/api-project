@@ -114,7 +114,9 @@ def import_product_to_store(cj_product, markup=3.0):
             "stock": 999,
             "shipping_days": 7,
             "supplier_name": "CJDropshipping",
-            "supplier_url": f"https://cjdropshipping.com/product/{cj_product.get('pid', '')}"
+            "supplier_url": f"https://cjdropshipping.com/product/{cj_product.get('pid', '')}",
+            "cj_product_id": cj_product.get("pid", ""),
+            "cj_sku": cj_product.get("productSku", ""),
         }
 
         product, status = add_product_to_store(product_data)

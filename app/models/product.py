@@ -19,6 +19,8 @@ class Product(SQLModel, table=True):
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
     collection_id: Optional[int] = Field(default=None, foreign_key="collection.id")
+    cj_product_id: Optional[str] = None
+    cj_sku: Optional[str] = None
 
 class ProductCreate(SQLModel):
     name: str
@@ -33,3 +35,5 @@ class ProductCreate(SQLModel):
     supplier_name: Optional[str] = None
     supplier_url: Optional[str] = None
     shipping_days: int = 7
+    cj_product_id: Optional[str] = None
+    cj_sku: Optional[str] = None

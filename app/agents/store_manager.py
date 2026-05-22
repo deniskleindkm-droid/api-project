@@ -76,6 +76,8 @@ def add_product_to_store(product_data):
             shipping_days=int(product_data.get("shipping_days", 7)),
             supplier_name=product_data.get("supplier_name"),
             supplier_url=product_data.get("supplier_url"),
+            cj_product_id=product_data.get("cj_product_id"),
+            cj_sku=product_data.get("cj_sku"),
             is_active=True
         )
         session.add(product)
