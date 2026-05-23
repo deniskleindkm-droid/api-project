@@ -87,7 +87,7 @@ def extract_image_url(cj_product):
     return raw
 
 
-def get_shipping_methods(cj_sku, country_code="US"):
+def get_shipping_methods(cj_vid, country_code="US"):
     token = get_access_token()
     if not token:
         return []
@@ -101,8 +101,12 @@ def get_shipping_methods(cj_sku, country_code="US"):
             json={
                 "startCountryCode": "CN",
                 "endCountryCode": country_code,
-                "vid": cj_sku,
-                "quantity": 1
+                "products": [
+                    {
+                        "vid": cj_vid,
+                        "quantity": 1
+                    }
+                ]
             },
             timeout=30
         )
