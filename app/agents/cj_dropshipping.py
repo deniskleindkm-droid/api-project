@@ -280,7 +280,9 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
         print(f"[CJ] Response: {data}")
 
         if data.get("result"):
-            cj_order_id = data.get("data", {}).get("orderId", "")
+            cj_order_id = data.get("data", "")
+            if isinstance(cj_order_id, dict):
+                cj_order_id = cj_order_id.get("orderId", "")
             print(f"[CJ] ✅ Order placed: {cj_order_id}")
             return {"success": True, "cj_order_id": cj_order_id}
         else:
