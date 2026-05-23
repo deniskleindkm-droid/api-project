@@ -88,15 +88,17 @@ def extract_image_url(cj_product):
 
 
 def get_shipping_methods(cj_sku, country_code="US"):
-    """Get available shipping methods for a product"""
     token = get_access_token()
     if not token:
         return []
     try:
-        response = requests.get(
+        response = requests.post(
             f"{CJ_API_BASE}/logistic/freightCalculate",
-            headers={"CJ-Access-Token": token},
-            params={
+            headers={
+                "CJ-Access-Token": token,
+                "Content-Type": "application/json"
+            },
+            json={
                 "startCountryCode": "CN",
                 "endCountryCode": country_code,
                 "vid": cj_sku,
@@ -105,12 +107,12 @@ def get_shipping_methods(cj_sku, country_code="US"):
             timeout=30
         )
         data = response.json()
-        print(f"[CJ] Shipping methods response: {data}")
+        print(f"[CJ] Shipping methods: {data}")
         if data.get("result"):
             return data.get("data", [])
         return []
     except Exception as e:
-        print(f"[CJ] Shipping methods error: {e}")
+        print(f"[CJ] Shipping error: {e}")
         return []
 
 
