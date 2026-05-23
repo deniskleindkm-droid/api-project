@@ -4,6 +4,7 @@ load_dotenv()
 import requests
 import json
 import os
+import time
 from datetime import datetime
 from sqlmodel import Session, select
 from app.database import engine
@@ -13,16 +14,27 @@ CJ_API_BASE = "https://developers.cjdropshipping.com/api2.0/v1"
 CJ_EMAIL = os.getenv("CJ_EMAIL")
 CJ_API_KEY = os.getenv("CJ_API_KEY")
 
+# Token cache
+_token_cache = {"token": None, "expires_at": 0}
+
 
 def get_access_token():
+    global _token_cache
+    now = time.time()
+    if _token_cache["token"] and now < _token_cache["expires_at"]:
+        return _token_cache["token"]
     try:
         response = requests.post(
             f"{CJ_API_BASE}/authentication/getAccessToken",
-            json={"email": CJ_EMAIL, "password": CJ_API_KEY}
+            json={"email": CJ_EMAIL, "password": CJ_API_KEY},
+            timeout=30
         )
         data = response.json()
         if data.get("result"):
-            return data["data"]["accessToken"]
+            token = data["data"]["accessToken"]
+            _token_cache["token"] = token
+            _token_cache["expires_at"] = now + 3600
+            return token
         print(f"[CJ] Auth failed: {data.get('message')}")
         return None
     except Exception as e:
@@ -38,7 +50,8 @@ def search_products(keyword, page=1, limit=20):
         response = requests.get(
             f"{CJ_API_BASE}/product/list",
             headers={"CJ-Access-Token": token},
-            params={"productNameEn": keyword, "pageNum": page, "pageSize": limit}
+            params={"productNameEn": keyword, "pageNum": page, "pageSize": limit},
+            timeout=30
         )
         data = response.json()
         if data.get("result"):
@@ -57,7 +70,8 @@ def get_product_details(pid):
         response = requests.get(
             f"{CJ_API_BASE}/product/query",
             headers={"CJ-Access-Token": token},
-            params={"pid": pid}
+            params={"pid": pid},
+            timeout=30
         )
         data = response.json()
         if data.get("result"):
@@ -92,6 +106,7 @@ def get_shipping_methods(cj_vid, country_code="US"):
     if not token:
         return []
     try:
+        time.sleep(1)
         response = requests.post(
             f"{CJ_API_BASE}/logistic/freightCalculate",
             headers={
@@ -135,6 +150,10 @@ def import_product_to_store(cj_product, markup=3.0):
         image_url = extract_image_url(cj_product)
         print(f"[CJ] Image: {image_url[:80] if image_url else 'NONE'}")
 
+        variants = cj_product.get("variants", [])
+        cj_vid = variants[0].get("vid", "") if variants else ""
+        cj_sku = variants[0].get("variantSku", cj_product.get("productSku", "")) if variants else cj_product.get("productSku", "")
+
         product_data = {
             "name": name[:100],
             "brand": "Mikisi",
@@ -149,7 +168,7 @@ def import_product_to_store(cj_product, markup=3.0):
             "supplier_name": "CJDropshipping",
             "supplier_url": f"https://cjdropshipping.com/product/{cj_product.get('pid', '')}",
             "cj_product_id": cj_product.get("pid", ""),
-            "cj_sku": cj_product.get("productSku", ""),
+            "cj_sku": cj_sku,
         }
 
         product, status = add_product_to_store(product_data)
@@ -159,7 +178,8 @@ def import_product_to_store(cj_product, markup=3.0):
                 "product": name,
                 "cj_cost": sell_price,
                 "store_price": final_price,
-                "markup_applied": markup
+                "markup_applied": markup,
+                "cj_vid": cj_vid
             }
         return {"success": False, "reason": "Already exists"}
     except Exception as e:
@@ -189,7 +209,6 @@ def import_product_by_id(pid, markup=3.0):
 
 
 def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
-    """Automatically place order on CJ when customer buys"""
     token = get_access_token()
     if not token:
         print(f"[CJ] Auth failed — cannot place order")
@@ -209,19 +228,24 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
         first_name = name_parts[0]
         last_name = name_parts[-1] if len(name_parts) > 1 else first_name
 
-        # Get shipping method from CJ
+        # Get shipping method with rate limit delay
         country_code = country.strip()
+        print(f"[CJ] Getting shipping methods for {cj_sku}")
         methods = get_shipping_methods(cj_sku, country_code)
+
         if methods:
             logistic_name = methods[0].get("logisticName", "")
             print(f"[CJ] Using shipping: {logistic_name}")
         else:
             logistic_name = "CJPacket Ordinary"
-            print(f"[CJ] No shipping methods found, using default: {logistic_name}")
+            print(f"[CJ] Defaulting to: {logistic_name}")
+
+        # Rate limit delay before placing order
+        time.sleep(1)
 
         payload = {
             "orderNumber": f"MIKISI-{int(datetime.now().timestamp())}",
-            "fromCountryCode": "US",
+            "fromCountryCode": "CN",
             "shippingCountry": country_code,
             "shippingCountryCode": country_code,
             "shippingCustomerName": f"{first_name} {last_name}".strip(),
@@ -241,7 +265,7 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
             ]
         }
 
-        print(f"[CJ] Placing order for SKU: {cj_sku}")
+        print(f"[CJ] Placing order: {json.dumps(payload)}")
         response = requests.post(
             f"{CJ_API_BASE}/shopping/order/createOrder",
             headers={
