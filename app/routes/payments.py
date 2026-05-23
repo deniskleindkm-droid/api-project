@@ -139,15 +139,21 @@ def process_order_background(checkout_data: dict):
         except Exception as e:
             print(f"[Payments] CJ forwarding failed: {e}")
 
-        # Send email notification
+        # Build items HTML for emails
+        items_html = "".join([
+            f"<tr><td>{d['name']}</td><td>{d['qty']}</td><td>${d['price']:.2f}</td><td>${d['subtotal']:.2f}</td></tr>"
+            for d in order_details
+        ])
+
+        items_html_customer = "".join([
+            f"<tr><td style='padding:10px 0;font-size:14px;font-weight:300;color:#0e0e0e;border-bottom:1px solid #ece5dd;'>{d['name']}</td><td style='text-align:center;padding:10px 0;font-size:14px;font-weight:300;color:#6b6b6b;border-bottom:1px solid #ece5dd;'>{d['qty']}</td><td style='text-align:right;padding:10px 0;font-family:Georgia,serif;font-size:16px;color:#0e0e0e;border-bottom:1px solid #ece5dd;'>${d['subtotal']:.2f}</td></tr>"
+            for d in order_details
+        ])
+
+        # Send email notification to Dennis
         try:
             from app.agents.email_partner import send_email
             dennis_email = os.getenv("DENNIS_EMAIL")
-
-            items_html = "".join([
-                f"<tr><td>{d['name']}</td><td>{d['qty']}</td><td>${d['price']:.2f}</td><td>${d['subtotal']:.2f}</td></tr>"
-                for d in order_details
-            ])
 
             send_email(
                 to=dennis_email,
@@ -174,9 +180,54 @@ def process_order_background(checkout_data: dict):
 </body></html>""",
                 is_html=True
             )
-            print(f"[Payments] Order notification sent — ${total:.2f}")
+            print(f"[Payments] Order notification sent to Dennis — ${total:.2f}")
         except Exception as e:
-            print(f"[Payments] Email failed: {e}")
+            print(f"[Payments] Dennis email failed: {e}")
+
+        # Send confirmation email to customer
+        try:
+            from app.agents.email_partner import send_email
+            send_email(
+                to=user_email,
+                subject="Your Mikisi Order is Confirmed ✨",
+                body=f"""
+<html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#fdf9f6;">
+<div style="text-align:center;padding:32px 0;">
+    <h1 style="font-family:Georgia,serif;color:#0e0e0e;letter-spacing:4px;text-transform:uppercase;font-size:28px;font-weight:300;">Mik<em style="color:#d4849c;">i</em>si</h1>
+    <p style="font-size:11px;color:#888;letter-spacing:3px;text-transform:uppercase;">Look Elegant and Polished</p>
+</div>
+<div style="background:white;padding:32px;border:1px solid #ece5dd;">
+    <h2 style="font-family:Georgia,serif;font-weight:300;font-size:24px;color:#0e0e0e;margin-bottom:8px;">Your order is confirmed.</h2>
+    <p style="color:#6b6b6b;font-size:14px;font-weight:300;line-height:1.8;">Thank you for your purchase. We're preparing your order and it will be on its way soon.</p>
+    <hr style="border:none;border-top:1px solid #ece5dd;margin:24px 0;">
+    <h3 style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#888;font-weight:400;margin-bottom:16px;">Order Summary</h3>
+    <table style="width:100%;border-collapse:collapse;">
+        <tr style="border-bottom:1px solid #ece5dd;">
+            <th style="text-align:left;padding:10px 0;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#888;font-weight:400;">Product</th>
+            <th style="text-align:center;padding:10px 0;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#888;font-weight:400;">Qty</th>
+            <th style="text-align:right;padding:10px 0;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#888;font-weight:400;">Price</th>
+        </tr>
+        {items_html_customer}
+        <tr>
+            <td colspan="2" style="padding:16px 0 8px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#888;">Total</td>
+            <td style="padding:16px 0 8px;text-align:right;font-family:Georgia,serif;font-size:20px;color:#0e0e0e;">${total:.2f}</td>
+        </tr>
+    </table>
+    <hr style="border:none;border-top:1px solid #ece5dd;margin:24px 0;">
+    <h3 style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#888;font-weight:400;margin-bottom:12px;">Shipping To</h3>
+    <p style="color:#6b6b6b;font-size:14px;font-weight:300;line-height:1.8;">{shipping_address}</p>
+    <p style="color:#6b6b6b;font-size:13px;font-weight:300;margin-top:16px;">Estimated delivery: 15-20 business days</p>
+</div>
+<div style="text-align:center;padding:32px 0;">
+    <p style="font-size:11px;color:#bbb;letter-spacing:1px;">Questions? Contact us at hello@mikisi.co</p>
+    <p style="font-size:10px;color:#ccc;margin-top:8px;letter-spacing:1px;">© 2026 Mikisi · Look Elegant and Polished</p>
+</div>
+</body></html>""",
+                is_html=True
+            )
+            print(f"[Payments] Customer confirmation sent to {user_email}")
+        except Exception as e:
+            print(f"[Payments] Customer email failed: {e}")
 
     except Exception as e:
         print(f"[Payments] Background processing failed: {e}")
