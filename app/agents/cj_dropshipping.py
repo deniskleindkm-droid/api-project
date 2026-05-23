@@ -134,13 +134,16 @@ def get_shipping_methods(cj_vid, country_code="US"):
         print(f"[CJ] Shipping error: {e}")
         return []
 
-
 def import_product_to_store(cj_product, markup=3.0):
     from app.agents.store_manager import add_product_to_store
     try:
         name = cj_product.get("productNameEn", "")
         category = cj_product.get("categoryName", "Beauty")
-        sell_price = float(cj_product.get("sellPrice", 0))
+        raw_price = cj_product.get("sellPrice", "0")
+        if isinstance(raw_price, str) and "-" in raw_price:
+            sell_price = float(raw_price.split("-")[0].strip())
+        else:
+            sell_price = float(raw_price)
 
         marked_up = sell_price * markup
         final_price = int(marked_up) + 0.99
@@ -149,7 +152,6 @@ def import_product_to_store(cj_product, markup=3.0):
 
         image_url = extract_image_url(cj_product)
         print(f"[CJ] Image: {image_url[:80] if image_url else 'NONE'}")
-
         variants = cj_product.get("variants", [])
         cj_vid = variants[0].get("vid", "") if variants else ""
         cj_sku = variants[0].get("variantSku", cj_product.get("productSku", "")) if variants else cj_product.get("productSku", "")
