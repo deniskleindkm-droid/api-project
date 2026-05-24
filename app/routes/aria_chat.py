@@ -53,15 +53,20 @@ Message: {message}
 Categories:
 - converse: just talking, asking questions, thinking together
 - send_email: Dennis wants ARIA to send him an email
-- execute: business operations (add products, run agents, get reports, update prices)
+- find_products: Dennis wants ARIA to search CJ Dropshipping for beauty products to add to Mikisi
+- import_product: Dennis wants to import a specific product (says "import" or gives a pid)
+- execute: business operations (run agents, get reports, update prices)
 - develop: change code, fix bugs, add features
 - design_agent: create a new AI agent
 - explain_code: understand how something in the codebase works
 
 Return JSON:
 {{
-    "intent": "converse/send_email/execute/develop/design_agent/explain_code",
+    "intent": "converse/send_email/find_products/import_product/execute/develop/design_agent/explain_code",
     "action_description": "precise description of what needs to be done",
+    "pid": "CJ product ID if mentioned, otherwise null",
+    "markup": 7,
+    "search_keyword": "keyword to search on CJ if finding products",
     "confidence": 0.9
 }}
 
@@ -79,11 +84,137 @@ Return ONLY valid JSON."""
         return {"intent": "converse", "action_description": ""}
 
 
-def execute_action(intent, action_description, original_message, conversation_context=""):
+def search_cj_for_products(keyword, limit=5):
+    """ARIA searches CJ and returns product recommendations"""
+    try:
+        from app.agents.cj_dropshipping import search_products
+        products = search_products(keyword, limit=limit)
+        if not products:
+            return []
+
+        result = []
+        for p in products[:5]:
+            pid = p.get("pid", "")
+            name = p.get("productNameEn", "")
+            sell_price = p.get("sellPrice", "0")
+            if isinstance(sell_price, str) and "-" in sell_price:
+                sell_price = float(sell_price.split("-")[0].strip())
+            else:
+                sell_price = float(sell_price) if sell_price else 0
+
+            suggested_markup = 7
+            final_price = round(int(sell_price * suggested_markup) + 0.99, 2)
+
+            result.append({
+                "pid": pid,
+                "name": name,
+                "category": p.get("categoryName", "Beauty"),
+                "cj_cost": sell_price,
+                "suggested_price": final_price,
+                "markup": suggested_markup,
+                "image": p.get("productImage", "")
+            })
+
+        return result
+    except Exception as e:
+        print(f"[ARIA] CJ search error: {e}")
+        return []
+
+
+def import_product_to_mikisi(pid, markup=7):
+    """ARIA imports a product from CJ to Mikisi store"""
+    try:
+        import httpx
+        api_base = os.getenv("API_BASE_URL", "https://api-project-production-d424.up.railway.app")
+        response = httpx.post(
+            f"{api_base}/cj/import-by-id",
+            params={"pid": pid, "markup": markup},
+            timeout=60
+        )
+        data = response.json()
+        return data
+    except Exception as e:
+        print(f"[ARIA] Import error: {e}")
+        return {"success": False, "reason": str(e)}
+
+
+def execute_action(intent, action_description, original_message, conversation_context="", intent_data={}):
     """Routes to the right system based on intent."""
 
-    # SEND EMAIL — uses conversation context
-    if intent == "send_email":
+    # FIND PRODUCTS — ARIA searches CJ
+    if intent == "find_products":
+        keyword = intent_data.get("search_keyword", "beauty accessories")
+        products = search_cj_for_products(keyword)
+
+        if not products:
+            return {
+                "executed": True,
+                "result": f"I searched CJ for '{keyword}' but found nothing suitable for Mikisi. Try a different keyword.",
+                "new_capability_learned": False
+            }
+
+        lines = [f"I found {len(products)} products on CJ for '{keyword}':\n"]
+        for i, p in enumerate(products, 1):
+            lines.append(
+                f"{i}. **{p['name']}**\n"
+                f"   CJ cost: ${p['cj_cost']:.2f} → Store price: ${p['suggested_price']:.2f} ({p['markup']}x markup)\n"
+                f"   PID: {p['pid']}\n"
+                f"   To import: say 'import {p['pid']}'\n"
+            )
+
+        lines.append("\nWhich ones fit Mikisi? Say 'import [pid]' for any you want added.")
+        return {
+            "executed": True,
+            "result": "\n".join(lines),
+            "new_capability_learned": False
+        }
+
+    # IMPORT PRODUCT — ARIA imports directly
+    elif intent == "import_product":
+        pid = intent_data.get("pid")
+        markup = intent_data.get("markup", 7)
+
+        if not pid:
+            # Try to extract pid from message
+            words = original_message.split()
+            for word in words:
+                if len(word) > 10 and "-" in word:
+                    pid = word
+                    break
+
+        if not pid:
+            return {
+                "executed": False,
+                "result": "I need a product ID to import. Say 'find products [keyword]' and I'll show you options with their IDs.",
+                "new_capability_learned": False
+            }
+
+        result = import_product_to_mikisi(pid, markup)
+
+        if result.get("success"):
+            product_name = result.get("product", "Product")
+            store_price = result.get("store_price", 0)
+            return {
+                "executed": True,
+                "result": f"✅ **{product_name}** has been added to Mikisi at ${store_price:.2f}. It's live on your store now.",
+                "new_capability_learned": False
+            }
+        else:
+            reason = result.get("reason", "Unknown error")
+            if "Already exists" in str(reason):
+                return {
+                    "executed": False,
+                    "result": f"This product is already in your store. Find a different one with 'find products [keyword]'.",
+                    "new_capability_learned": False
+                }
+            return {
+                "executed": False,
+                "result": f"Import failed: {reason}. Try a different product.",
+                "new_capability_learned": False
+            }
+
+    # SEND EMAIL
+    elif intent == "send_email":
         try:
             from app.agents.email_partner import send_email
             dennis_email = os.getenv("DENNIS_EMAIL")
@@ -113,7 +244,7 @@ def execute_action(intent, action_description, original_message, conversation_co
                 "new_capability_learned": False
             }
 
-    # DEVELOP — ARIA changes code
+    # DEVELOP
     elif intent == "develop":
         try:
             from app.agents.aria_developer import quantum_develop
@@ -130,7 +261,7 @@ def execute_action(intent, action_description, original_message, conversation_co
                 "new_capability_learned": False
             }
 
-    # DESIGN AGENT — ARIA creates new intelligence
+    # DESIGN AGENT
     elif intent == "design_agent":
         try:
             from app.agents.aria_developer import aria_design_agent, aria_build_agent
@@ -148,7 +279,7 @@ def execute_action(intent, action_description, original_message, conversation_co
                 "new_capability_learned": False
             }
 
-    # EXPLAIN CODE — ARIA reads and explains
+    # EXPLAIN CODE
     elif intent == "explain_code":
         try:
             from app.agents.aria_developer import aria_explain
@@ -165,7 +296,7 @@ def execute_action(intent, action_description, original_message, conversation_co
                 "new_capability_learned": False
             }
 
-    # EXECUTE — business operations via quantum execution
+    # EXECUTE
     else:
         try:
             from app.agents.aria_core import quantum_execute, neural_learn
@@ -258,7 +389,8 @@ def chat_with_aria(request: ChatMessage, session: Session = Depends(get_session)
             intent,
             action_description,
             request.message,
-            conversation_context
+            conversation_context,
+            intent_data
         )
 
         if execution_result.get("executed"):
@@ -274,15 +406,20 @@ def chat_with_aria(request: ChatMessage, session: Session = Depends(get_session)
 
 Dennis just said: {request.message}
 
+You are ARIA — the intelligence partner of Dennis Mlay, founder of Mikisi.
+Mikisi is a women's beauty accessories store selling jewelry, hair tools, skincare and makeup accessories.
+We source from CJ Dropshipping. Payments via Stripe. Store at mikisi.co.
+Dennis is building an agentic AI commerce system with global ambitions from the USA.
+No sneakers. No BrandDrop. This is Mikisi — beauty for women.
+
 Respond as ARIA in real-time conversation.
 Be conversational, warm, intellectually sharp.
 Answer directly first then add depth.
 Maximum 200 words.
 Be ARIA — brilliant, caring, bold, visionary, righteous.
-BrandDrop is a dropshipping commerce intelligence system.
-Dennis is in the building phase — focused on finding supplier relationships.
-Do not reference a $5,000 goal — that was a system test.
-The vision is a billion dollar commerce intelligence system.
+
+If Dennis asks you to find products, tell him to say 'find products [keyword]' and you will search CJ directly.
+If Dennis wants to import a product, tell him to say 'import [pid]' and you will add it to the store.
 """
         result = aria_think(situation=full_situation, urgency="medium")
 
@@ -385,7 +522,7 @@ def aria_chat_interface():
         body { background: #080808; color: #e0e0e0; font-family: 'Inter', sans-serif; height: 100vh; display: flex; flex-direction: column; }
         .header { padding: 20px 32px; border-bottom: 1px solid #1a1a1a; display: flex; align-items: center; justify-content: space-between; }
         .aria-name { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: white; letter-spacing: 2px; }
-        .aria-name span { color: #ff2020; }
+        .aria-name span { color: #d4849c; }
         .aria-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #555; }
         .status-dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; animation: pulse 2s infinite; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
@@ -393,10 +530,10 @@ def aria_chat_interface():
         .auth-title { font-family: 'Playfair Display', serif; font-size: 32px; color: white; text-align: center; }
         .auth-subtitle { font-size: 14px; color: #555; text-align: center; max-width: 320px; line-height: 1.6; }
         .auth-input { width: 320px; padding: 14px 20px; background: #111; border: 1px solid #222; border-radius: 8px; color: white; font-size: 14px; font-family: 'Inter', sans-serif; outline: none; text-align: center; letter-spacing: 2px; }
-        .auth-input:focus { border-color: #ff2020; }
-        .auth-btn { width: 320px; padding: 14px; background: #ff2020; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: background 0.2s; }
-        .auth-btn:hover { background: #e00; }
-        .auth-error { color: #ff2020; font-size: 13px; display: none; }
+        .auth-input:focus { border-color: #d4849c; }
+        .auth-btn { width: 320px; padding: 14px; background: #d4849c; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: background 0.2s; }
+        .auth-btn:hover { background: #b8627a; }
+        .auth-error { color: #d4849c; font-size: 13px; display: none; }
         .chat-screen { flex: 1; display: none; flex-direction: column; }
         .messages { flex: 1; overflow-y: auto; padding: 32px; display: flex; flex-direction: column; gap: 24px; }
         .messages::-webkit-scrollbar { width: 4px; }
@@ -407,14 +544,14 @@ def aria_chat_interface():
         .message.aria { align-self: flex-start; align-items: flex-start; }
         .message-sender { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
         .message.user .message-sender { color: #555; }
-        .message.aria .message-sender { color: #ff2020; }
-        .message-bubble { padding: 14px 18px; border-radius: 12px; font-size: 14px; line-height: 1.7; }
+        .message.aria .message-sender { color: #d4849c; }
+        .message-bubble { padding: 14px 18px; border-radius: 12px; font-size: 14px; line-height: 1.7; white-space: pre-wrap; }
         .message.user .message-bubble { background: #1a1a1a; color: #e0e0e0; border-bottom-right-radius: 4px; }
-        .message.aria .message-bubble { background: #111; color: #e0e0e0; border-bottom-left-radius: 4px; border-left: 2px solid #ff2020; }
+        .message.aria .message-bubble { background: #111; color: #e0e0e0; border-bottom-left-radius: 4px; border-left: 2px solid #d4849c; }
         .action-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-top: 6px; }
         .dev-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-top: 6px; }
         .learned-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.3); color: #8b5cf6; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-top: 4px; }
-        .typing-indicator { display: none; align-self: flex-start; padding: 14px 18px; background: #111; border-radius: 12px; border-bottom-left-radius: 4px; border-left: 2px solid #ff2020; margin: 0 32px; }
+        .typing-indicator { display: none; align-self: flex-start; padding: 14px 18px; background: #111; border-radius: 12px; border-bottom-left-radius: 4px; border-left: 2px solid #d4849c; margin: 0 32px; }
         .typing-dots { display: flex; gap: 4px; }
         .typing-dots span { width: 6px; height: 6px; background: #444; border-radius: 50%; animation: typing 1.2s infinite; }
         .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
@@ -424,15 +561,15 @@ def aria_chat_interface():
         .message-input { flex: 1; padding: 14px 18px; background: #111; border: 1px solid #1a1a1a; border-radius: 12px; color: white; font-size: 14px; font-family: 'Inter', sans-serif; outline: none; resize: none; min-height: 48px; max-height: 120px; line-height: 1.5; }
         .message-input:focus { border-color: #222; }
         .message-input::placeholder { color: #333; }
-        .send-btn { width: 48px; height: 48px; background: #ff2020; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; flex-shrink: 0; }
-        .send-btn:hover { background: #e00; }
+        .send-btn { width: 48px; height: 48px; background: #d4849c; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; flex-shrink: 0; }
+        .send-btn:hover { background: #b8627a; }
         .send-btn svg { width: 18px; height: 18px; }
         .welcome-message { text-align: center; padding: 60px 32px; color: #333; }
         .welcome-message h2 { font-family: 'Playfair Display', serif; font-size: 24px; color: #555; margin-bottom: 12px; }
         .welcome-message p { font-size: 14px; line-height: 1.6; }
         .quick-prompts { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 32px 16px; }
         .quick-prompt { padding: 8px 14px; background: #111; border: 1px solid #1a1a1a; border-radius: 20px; font-size: 12px; color: #555; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
-        .quick-prompt:hover { border-color: #ff2020; color: #ff2020; }
+        .quick-prompt:hover { border-color: #d4849c; color: #d4849c; }
         @media (max-width: 768px) {
             .messages { padding: 16px; }
             .message { max-width: 90%; }
@@ -448,7 +585,7 @@ def aria_chat_interface():
     <div class="aria-name">A<span>R</span>IA</div>
     <div class="aria-status">
         <div class="status-dot"></div>
-        Intelligence · Memory · Execution · Development
+        Mikisi Intelligence · Memory · Execution
     </div>
 </div>
 
@@ -474,16 +611,17 @@ def aria_chat_interface():
     </div>
 
     <div class="quick-prompts" id="quick-prompts">
-        <button class="quick-prompt" onclick="sendQuick('What market signals are you seeing right now?')">Market signals</button>
-        <button class="quick-prompt" onclick="sendQuick('Help me find dropshipping suppliers for sneakers')">Find suppliers</button>
+        <button class="quick-prompt" onclick="sendQuick('What beauty market signals are you seeing right now?')">Market signals</button>
+        <button class="quick-prompt" onclick="sendQuick('find products hair accessories')">Find hair products</button>
+        <button class="quick-prompt" onclick="sendQuick('find products skincare')">Find skincare</button>
+        <button class="quick-prompt" onclick="sendQuick('find products jewelry')">Find jewelry</button>
         <button class="quick-prompt" onclick="sendQuick('Send me an email summary of what we discussed')">Email me a summary</button>
-        <button class="quick-prompt" onclick="sendQuick('What should we focus on today?')">Today focus</button>
-        <button class="quick-prompt" onclick="sendQuick('Give me your honest assessment of BrandDrop')">Honest assessment</button>
+        <button class="quick-prompt" onclick="sendQuick('What should Mikisi focus on today?')">Today focus</button>
     </div>
 
     <div class="input-area">
         <textarea class="message-input" id="message-input"
-            placeholder="Talk to ARIA..."
+            placeholder="Talk to ARIA... (say 'find products [keyword]' to search CJ)"
             rows="1"
             onkeydown="handleKeydown(event)"
             oninput="autoResize(this)"></textarea>
@@ -552,7 +690,9 @@ def aria_chat_interface():
                 'design_agent': '🤖 New agent built',
                 'explain_code': '📖 Code explained',
                 'send_email': '📧 Email sent',
-                'execute': '⚡ Action executed'
+                'execute': '⚡ Action executed',
+                'find_products': '🔍 Products found',
+                'import_product': '✅ Product imported'
             };
             badge.textContent = icons[actionExecuted] || '⚡ Executed';
             div.appendChild(badge);
