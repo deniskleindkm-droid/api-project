@@ -76,6 +76,7 @@ def add_product_to_store(product_data):
             shipping_days=int(product_data.get("shipping_days", 7)),
             supplier_name=product_data.get("supplier_name"),
             supplier_url=product_data.get("supplier_url"),
+            collection_id=product_data.get("collection_id"),
             cj_product_id=product_data.get("cj_product_id"),
             cj_sku=product_data.get("cj_sku"),
             is_active=True
@@ -128,3 +129,5 @@ def run_store_manager():
         except Exception as e:
             print(f"[Store Manager] Error on task {task.id}: {e}")
             mark_task_failed(task.id, str(e))
+
+            

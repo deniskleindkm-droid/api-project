@@ -5,6 +5,7 @@ import requests
 import json
 import os
 import time
+import anthropic
 from datetime import datetime
 from sqlmodel import Session, select
 from app.database import engine
@@ -13,6 +14,8 @@ from app.models.agent import AgentMemory
 CJ_API_BASE = "https://developers.cjdropshipping.com/api2.0/v1"
 CJ_EMAIL = os.getenv("CJ_EMAIL")
 CJ_API_KEY = os.getenv("CJ_API_KEY")
+
+client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 # Token cache
 _token_cache = {"token": None, "expires_at": 0}
@@ -101,6 +104,97 @@ def extract_image_url(cj_product):
     return raw
 
 
+def get_or_create_collection(product_name, category_name, description=""):
+    """Use AI to determine the right collection, then find or create it"""
+    from app.models.collection import Collection
+
+    with Session(engine) as session:
+        existing_collections = session.exec(
+            select(Collection).where(Collection.is_active == True)
+        ).all()
+
+    existing_names = [c.name for c in existing_collections]
+
+    try:
+        prompt = f"""You are the collection manager for Mikisi — a women's beauty accessories store.
+
+Product being added:
+- Name: {product_name}
+- Category from supplier: {category_name}
+- Description preview: {description[:200] if description else ''}
+
+Existing collections in Mikisi store: {existing_names if existing_names else 'None yet'}
+
+Determine which collection this product belongs to.
+Rules:
+- If it fits an existing collection, use that exact name
+- If it does not fit any existing collection, create a new meaningful collection name
+- Collection names should be simple, elegant, and relevant to women's beauty
+- Examples of good collection names: Hair Care, Skincare, Jewelry, Makeup Tools, Nail Care, Body Care
+- Never create a collection that is too narrow like Clay Masks — use Skincare instead
+- Never create a collection that is too broad like Products
+
+Return JSON only:
+{{
+    "collection_name": "the collection this product belongs to",
+    "is_new": true,
+    "reason": "brief reason for this choice"
+}}"""
+
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=200,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        text = message.content[0].text.strip()
+        if text.startswith("```"):
+            parts = text.split("```")
+            if len(parts) >= 2:
+                text = parts[1]
+                if text.startswith("json"):
+                    text = text[4:]
+
+        result = json.loads(text.strip())
+        collection_name = result.get("collection_name", "Beauty")
+        print(f"[CJ] AI determined collection: {collection_name} — {result.get('reason', '')}")
+
+    except Exception as e:
+        print(f"[CJ] AI collection detection failed: {e} — using category fallback")
+        if ">" in category_name:
+            collection_name = category_name.split(">")[-1].strip()
+        elif "," in category_name:
+            collection_name = category_name.split(",")[0].strip()
+        else:
+            collection_name = category_name.strip()
+        if len(collection_name) > 30 or not collection_name:
+            collection_name = "Beauty"
+
+    with Session(engine) as session:
+        existing = session.exec(
+            select(Collection).where(
+                Collection.name == collection_name,
+                Collection.is_active == True
+            )
+        ).first()
+
+        if existing:
+            return existing.id
+
+        new_col = Collection(
+            name=collection_name,
+            description=f"Curated {collection_name.lower()} products for the Mikisi woman",
+            is_active=True,
+            sort_order=len(existing_names),
+            created_at=datetime.utcnow()
+        )
+        session.add(new_col)
+        session.commit()
+        session.refresh(new_col)
+        print(f"[CJ] ✅ New collection created: {collection_name}")
+        return new_col.id
+
+
 def get_shipping_methods(cj_vid, country_code="US"):
     token = get_access_token()
     if not token:
@@ -116,12 +210,7 @@ def get_shipping_methods(cj_vid, country_code="US"):
             json={
                 "startCountryCode": "CN",
                 "endCountryCode": country_code,
-                "products": [
-                    {
-                        "vid": cj_vid,
-                        "quantity": 1
-                    }
-                ]
+                "products": [{"vid": cj_vid, "quantity": 1}]
             },
             timeout=30
         )
@@ -133,6 +222,7 @@ def get_shipping_methods(cj_vid, country_code="US"):
     except Exception as e:
         print(f"[CJ] Shipping error: {e}")
         return []
+
 
 def import_product_to_store(cj_product, markup=3.0):
     from app.agents.store_manager import add_product_to_store
@@ -152,9 +242,21 @@ def import_product_to_store(cj_product, markup=3.0):
 
         image_url = extract_image_url(cj_product)
         print(f"[CJ] Image: {image_url[:80] if image_url else 'NONE'}")
+
         variants = cj_product.get("variants", [])
         cj_vid = variants[0].get("vid", "") if variants else ""
         cj_sku = variants[0].get("variantSku", cj_product.get("productSku", "")) if variants else cj_product.get("productSku", "")
+
+        # AI determines collection
+        try:
+            collection_id = get_or_create_collection(
+                product_name=name,
+                category_name=category,
+                description=cj_product.get("description", "")
+            )
+        except Exception as e:
+            print(f"[CJ] Collection lookup failed: {e}")
+            collection_id = None
 
         product_data = {
             "name": name[:100],
@@ -171,6 +273,7 @@ def import_product_to_store(cj_product, markup=3.0):
             "supplier_url": f"https://cjdropshipping.com/product/{cj_product.get('pid', '')}",
             "cj_product_id": cj_product.get("pid", ""),
             "cj_sku": cj_sku,
+            "collection_id": collection_id,
         }
 
         product, status = add_product_to_store(product_data)
@@ -181,7 +284,8 @@ def import_product_to_store(cj_product, markup=3.0):
                 "cj_cost": sell_price,
                 "store_price": final_price,
                 "markup_applied": markup,
-                "cj_vid": cj_vid
+                "cj_vid": cj_vid,
+                "collection_id": collection_id
             }
         return {"success": False, "reason": "Already exists"}
     except Exception as e:
@@ -230,7 +334,6 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
         first_name = name_parts[0]
         last_name = name_parts[-1] if len(name_parts) > 1 else first_name
 
-        # Get shipping method with rate limit delay
         country_code = country.strip()
         print(f"[CJ] Getting shipping methods for {cj_sku}")
         methods = get_shipping_methods(cj_sku, country_code)
@@ -242,7 +345,6 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
             logistic_name = "CJPacket Ordinary"
             print(f"[CJ] Defaulting to: {logistic_name}")
 
-        # Rate limit delay before placing order
         time.sleep(1)
 
         payload = {
@@ -259,12 +361,7 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
             "shippingZip": zipcode,
             "shippingPhone": "0000000000",
             "logisticName": logistic_name,
-            "products": [
-                {
-                    "vid": cj_sku,
-                    "quantity": quantity,
-                }
-            ]
+            "products": [{"vid": cj_sku, "quantity": quantity}]
         }
 
         print(f"[CJ] Placing order: {json.dumps(payload)}")
