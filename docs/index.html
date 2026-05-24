@@ -675,7 +675,7 @@ function renderProducts(prods) {
                     <span class="pc-save">Save $${saving}</span>
                 </div>
                 <div class="pc-stock">${p.stock <= 20 ? `Only ${p.stock} remaining` : ''}</div>
-                <div class="pc-ship">Ships in ${p.shipping_days} days</div>
+                <div class="pc-ship">Delivery estimated after order confirmation</div>
                 <button class="pc-atc" onclick="event.stopPropagation();addToCart(${p.id},'${p.name.replace(/'/g,"\\'")}')">Add to Cart</button>
             </div>
         </div>`;
@@ -709,7 +709,7 @@ function openPM(id) {
     document.getElementById('pm-save').textContent = `Save $${(p.original_price - p.final_price).toFixed(2)}`;
     document.getElementById('pm-desc').textContent = p.description ? p.description.replace(/<[^>]+>/g, '') : '';
     document.getElementById('pm-img').src = img;
-    document.getElementById('pm-ship').textContent = `Ships in ${p.shipping_days} days`;
+    document.getElementById('pm-ship').textContent = `Delivery time confirmed after order`;
     document.getElementById('pm-atc').onclick = () => { addToCart(p.id, p.name); closePM(); };
     document.getElementById('pm-overlay').classList.add('open');
 }

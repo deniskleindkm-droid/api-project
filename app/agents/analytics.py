@@ -117,7 +117,7 @@ def generate_report():
         for i in insights
     ])
 
-    prompt = f"""You are an Analytics Agent for BrandDrop e-commerce store.
+    prompt = f"""You are an Analytics Agent for Mikisi — a women's beauty accessories store selling jewelry, hair tools, skincare and makeup accessories.
 
 {vision_context}
 

@@ -17,7 +17,7 @@ def run_market_check():
         import json
 
         # Step 1 - Collect real market data
-        print("[Scheduler] Fetching real market data...")
+        print("[Scheduler] Fetching real beauty market data...")
         market_data = run_market_data_collection()
 
         # Step 2 - Update goal progress
@@ -31,10 +31,16 @@ def run_market_check():
         if market_data:
             trends = market_data.get("trends", {}).get("trends", {})
             rising = [k for k, v in trends.items() if v.get("trend") == "rising"]
-            market_context = f"Real Google Trends data shows these rising: {rising}"
+            beauty_trending = market_data.get("trending", {}).get("beauty_relevant", [])
+            market_context = f"""
+Mikisi is a women's beauty accessories store selling hair tools, skincare, jewelry and makeup accessories.
+Google Trends beauty signals currently rising: {rising}.
+Beauty trends spotted in general searches: {beauty_trending}.
+Focus analysis on beauty market opportunities, not sneakers or streetwear.
+"""
 
         aria_result = aria_think(
-            situation=f"Weekly market check. {market_context}. Analytics report: {json.dumps(report)[:500] if report else 'No report'}",
+            situation=f"Weekly beauty market check for Mikisi. {market_context}. Analytics report: {json.dumps(report)[:500] if report else 'No report'}",
             urgency="medium"
         )
 
@@ -44,11 +50,11 @@ def run_market_check():
             if urgency in ["high", "medium"]:
                 dennis_email = os.getenv("DENNIS_EMAIL")
                 email_data = aria_result.get("email_to_dennis", {})
-                subject = email_data.get("subject", "ARIA Intelligence Update")
+                subject = email_data.get("subject", "ARIA Beauty Market Update")
                 body = email_data.get("body", "")
                 if body and dennis_email:
                     send_email(dennis_email, subject, body, is_html=True)
-                    print(f"[Scheduler] ✅ ARIA sent intelligence email")
+                    print(f"[Scheduler] ✅ ARIA sent beauty intelligence email")
 
     except Exception as e:
         print(f"[Scheduler] Error: {e}")
@@ -62,10 +68,10 @@ def start_scheduler():
         run_market_check,
         trigger=IntervalTrigger(hours=6),
         id='market_check',
-        name='ARIA Market Intelligence Check',
+        name='ARIA Beauty Market Intelligence Check',
         replace_existing=True
     )
     
     scheduler.start()
-    print("[Scheduler] ✅ ARIA scheduler started — checking every 6 hours with real market data")
+    print("[Scheduler] ✅ ARIA scheduler started — checking every 6 hours with real beauty market data")
     return scheduler

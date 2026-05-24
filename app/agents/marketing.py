@@ -87,7 +87,7 @@ def generate_marketing_content(product_data):
             for i in insights
         ])
 
-    prompt = f"""You are a Marketing Agent for BrandDrop, a premium discount sneaker and sportswear store.
+    prompt = f"""You are a Marketing Agent for Mikisi, a women's beauty accessories brand selling jewelry, hair tools, skincare and makeup accessories. Our customers are women who love elegance and self-care.
 
 {vision_context}
 

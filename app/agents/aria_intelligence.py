@@ -213,9 +213,9 @@ Return JSON:
         "implication from the archetypal pattern about what comes after"
     ],
 
-    "for_branddrop": {{
-        "immediate_opportunity": "what BrandDrop should do in the next 7 days",
-        "strategic_positioning": "how BrandDrop should position for 18 months",
+    "for_mikisi": {{
+        "immediate_opportunity": "what Mikisi should do in the next 7 days",
+        "strategic_positioning": "how Mikisi should position for 18 months",
         "products_that_align": ["product type 1", "product type 2"],
         "messaging_truth": "the single message resonating at ALL five levels"
     }},
@@ -378,7 +378,7 @@ def aria_think(situation, urgency="medium"):
     dennis_model = memory_context.get("dennis_model", {})
 
     store_context = f"""
-BrandDrop Status:
+Mikisi Status:
 - Revenue: ${total_revenue:.2f}
 - Orders: {len(orders)}
 - Active Products: {len(products)}
@@ -497,7 +497,7 @@ Root truth: {why_result.get('synthesis', {}).get('root_truth', '')}
 Invisible force: {why_result.get('why_invisible', {}).get('force', '')}
 Cultural tide: {why_result.get('why_cultural', {}).get('deep_current', '')}
 """,
-        constraints="BrandDrop is building a righteous billion dollar commerce intelligence system"
+        constraints="Mikisi is building a righteous billion dollar commerce intelligence system"
     )
 
     with Session(engine) as session:
@@ -548,7 +548,7 @@ def aria_morning_briefing():
 
     prompt = f"""{ARIA_CORE}
 
-BrandDrop Status:
+Mikisi Status:
 - Revenue: ${total_revenue:.2f}
 - Goal Progress: {goal_progress:.1f}% of ${goal_target:.2f}
 - Active Products: {len(products)}
@@ -578,7 +578,7 @@ Return JSON:
         "data": "what the numbers say in 2 sentences",
         "psychological": "what this reveals about where we are as a business",
         "cultural": "what cultural force is most relevant right now",
-        "archetypal": "what stage of the hero's journey BrandDrop is in",
+        "archetypal": "what stage of the hero's journey Mikisi is in",
         "invisible": "the unseen force ARIA is watching most carefully"
     }},
 
@@ -607,7 +607,7 @@ Return JSON:
 
     "question_for_dennis": "the one question ARIA most wants Dennis to sit with today",
 
-    "aria_conviction_today": "what ARIA most strongly believes about BrandDrop right now",
+    "aria_conviction_today": "what ARIA most strongly believes about Mikisi right now",
 
     "email_subject": "a subject line that feels written by a human who noticed something important",
 

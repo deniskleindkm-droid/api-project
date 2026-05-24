@@ -86,37 +86,48 @@ def scout_products(task_payload):
         vision = session.exec(
             select(MonthlyVision).where(MonthlyVision.is_active == True)
         ).first()
+        
+        existing_products = session.exec(
+            select(Product).where(Product.is_active == True)
+        ).all()
 
     vision_context = f"Monthly vision: {vision.vision}\nTarget products: {vision.target_products}" if vision else ""
+    existing_names = [p.name for p in existing_products]
 
-    prompt = f"""You are a Product Scout Agent for BrandDrop, a premium discount sneaker and sportswear store.
+    prompt = f"""You are a Product Scout Agent for Mikisi — a women's beauty accessories store.
+
+Mikisi sells: jewelry, hair tools, hair accessories, skincare products, makeup accessories.
+We source products from CJ Dropshipping with markup 5-10x.
+Target customer: women who want to look elegant and polished.
 
 {vision_context}
 
-Market Intelligence has found the following opportunity:
-- Keywords: {task_payload.get('product_keywords', '')}
-- Recommended products: {task_payload.get('recommended_products', [])}
-- Target demographic: {task_payload.get('target_demographic', '')}
-- Demand signal: {task_payload.get('demand_signal', '')}
-- Platform: {task_payload.get('platform', '')}
+Current products in store: {existing_names}
 
-Based on this intelligence, generate 2-3 specific products we should add to our store.
-These should be real products from brands like Nike, Adidas, New Balance, Puma, Reebok, Under Armour, etc.
+Market Intelligence opportunity:
+- Keywords: {task_payload.get('keywords', task_payload.get('product_keywords', ''))}
+- Market opportunities: {task_payload.get('market_opportunities', [])}
+- Scout feedback: {task_payload.get('feedback', task_payload.get('feedback_for_scout', ''))}
+
+Based on this intelligence, suggest 2-3 specific beauty products we should add to Mikisi.
+These must be real CJ Dropshipping product categories — beauty accessories only.
+Never suggest sneakers, shoes, or sportswear.
 
 Return a JSON array of products:
 [
   {{
     "name": "exact product name",
-    "brand": "brand name",
-    "category": "Shoes/Clothing/Accessories",
-    "description": "compelling product description",
-    "original_price": 150.00,
-    "discount_percent": 25.0,
-    "final_price": 112.50,
-    "stock": 50,
-    "shipping_days": 5,
-    "supplier_name": "suggested supplier",
-    "why_this_product": "reason based on market intelligence",
+    "brand": "Mikisi",
+    "category": "Beauty/Hair/Jewelry/Skincare",
+    "description": "compelling product description for women",
+    "original_price": 25.00,
+    "discount_percent": 30.0,
+    "final_price": 17.50,
+    "stock": 999,
+    "shipping_days": 15,
+    "supplier_name": "CJDropshipping",
+    "cj_search_keyword": "keyword to search on CJ to find this product",
+    "why_this_product": "reason based on market intelligence and Mikisi brand fit",
     "confidence": 0.85
   }}
 ]
@@ -124,7 +135,7 @@ Return a JSON array of products:
 Return ONLY valid JSON array, no other text."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-sonnet-4-20250514",
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}]
     )
