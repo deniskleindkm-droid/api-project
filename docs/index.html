@@ -668,7 +668,7 @@ function renderProducts(prods) {
             <div class="pc-info">
                 <div class="pc-brand">${p.brand}</div>
                 <div class="pc-name">${p.name}</div>
-                <div class="pc-desc">${p.description || ''}</div>
+                <div class="pc-desc">${p.description ? p.description.replace(/<[^>]+>/g, '') : ''}</div>
                 <div class="pc-pricing">
                     <span class="pc-price">$${p.final_price.toFixed(2)}</span>
                     <span class="pc-orig">$${p.original_price.toFixed(2)}</span>
