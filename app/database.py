@@ -5,6 +5,7 @@ from app.models.order import Order
 from app.models.cart import CartItem
 from app.models.agent import AgentMemory, AgentTask, MarketInsight, MonthlyVision, AgentLearning, AgentGoal
 from app.models.signal import SystemSignal
+from app.models.supplier import Supplier
 from app.models.collection import Collection
 import os
 
