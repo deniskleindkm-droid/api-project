@@ -17,7 +17,6 @@ CJ_API_KEY = os.getenv("CJ_API_KEY")
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-# Token cache
 _token_cache = {"token": None, "expires_at": 0}
 
 
@@ -105,7 +104,6 @@ def extract_image_url(cj_product):
 
 
 def get_or_create_collection(product_name, category_name, description=""):
-    """Use AI to determine the right collection, then find or create it"""
     from app.models.collection import Collection
 
     with Session(engine) as session:
@@ -114,7 +112,9 @@ def get_or_create_collection(product_name, category_name, description=""):
         ).all()
 
     existing_names = [c.name for c in existing_collections]
+    collection_name = None
 
+    # Step 1 — AI determines collection
     try:
         prompt = f"""You are the collection manager for Mikisi — a women's beauty accessories store.
 
@@ -142,7 +142,7 @@ Return JSON only:
 }}"""
 
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-5",
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -156,20 +156,44 @@ Return JSON only:
                     text = text[4:]
 
         result = json.loads(text.strip())
-        collection_name = result.get("collection_name", "Beauty")
+        collection_name = result.get("collection_name")
         print(f"[CJ] AI determined collection: {collection_name} — {result.get('reason', '')}")
 
     except Exception as e:
-        print(f"[CJ] AI collection detection failed: {e} — using category fallback")
-        if ">" in category_name:
-            collection_name = category_name.split(">")[-1].strip()
-        elif "," in category_name:
-            collection_name = category_name.split(",")[0].strip()
-        else:
-            collection_name = category_name.strip()
-        if len(collection_name) > 30 or not collection_name:
-            collection_name = "Beauty"
+        print(f"[CJ] AI collection detection failed: {e} — trying category match")
 
+    # Step 2 — try to match existing collections
+    if not collection_name:
+        try:
+            category_words = category_name.lower().replace(">", " ").replace(",", " ").split()
+            for existing in existing_names:
+                if any(word in existing.lower() for word in category_words):
+                    collection_name = existing
+                    print(f"[CJ] Category match found: {collection_name}")
+                    break
+        except Exception as e2:
+            print(f"[CJ] Category match failed: {e2}")
+
+    # Step 3 — no match found, flag for review
+    if not collection_name:
+        collection_name = "Uncategorized"
+        print(f"[CJ] No match — placing in Uncategorized for ARIA review")
+        try:
+            from app.agents.nervous_system import emit
+            emit(
+                signal_type="PRODUCT_NEEDS_COLLECTION",
+                sender="product_agent",
+                payload={
+                    "product_name": product_name,
+                    "category": category_name,
+                    "reason": "AI collection detection failed, no category match"
+                },
+                priority=3
+            )
+        except Exception as e3:
+            print(f"[CJ] Signal emission failed: {e3}")
+
+    # Find or create the collection
     with Session(engine) as session:
         existing = session.exec(
             select(Collection).where(
@@ -278,6 +302,24 @@ def import_product_to_store(cj_product, markup=3.0):
 
         product, status = add_product_to_store(product_data)
         if status == "added":
+            # Emit signal through nervous system
+            try:
+                from app.agents.nervous_system import emit
+                emit(
+                    signal_type="PRODUCT_IMPORTED",
+                    sender="product_agent",
+                    payload={
+                        "product_id": product.id if product else None,
+                        "name": name,
+                        "collection_id": collection_id,
+                        "store_price": final_price,
+                        "cj_cost": sell_price
+                    },
+                    priority=5
+                )
+            except Exception as e:
+                print(f"[CJ] Signal emission failed: {e}")
+
             return {
                 "success": True,
                 "product": name,
