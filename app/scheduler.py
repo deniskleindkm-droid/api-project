@@ -5,6 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from datetime import datetime
 
+
 def run_market_check():
     print(f"[Scheduler] Running market check at {datetime.utcnow()}")
     try:
@@ -16,17 +17,13 @@ def run_market_check():
         import os
         import json
 
-        # Step 1 - Collect real market data
         print("[Scheduler] Fetching real beauty market data...")
         market_data = run_market_data_collection()
 
-        # Step 2 - Update goal progress
         update_goal_progress()
 
-        # Step 3 - Run analytics
         report = run_analytics()
 
-        # Step 4 - ARIA analyzes everything with real data
         market_context = ""
         if market_data:
             trends = market_data.get("trends", {}).get("trends", {})
@@ -44,7 +41,6 @@ Focus analysis on beauty market opportunities, not sneakers or streetwear.
             urgency="medium"
         )
 
-        # Step 5 - Send email if important
         if aria_result:
             urgency = aria_result.get("urgency_level", "low")
             if urgency in ["high", "medium"]:
@@ -61,9 +57,18 @@ Focus analysis on beauty market opportunities, not sneakers or streetwear.
         import traceback
         traceback.print_exc()
 
+
+def run_signal_processor():
+    try:
+        from app.agents.nervous_system import process_signals
+        process_signals()
+    except Exception as e:
+        print(f"[Scheduler] Signal processor error: {e}")
+
+
 def start_scheduler():
     scheduler = BackgroundScheduler()
-    
+
     scheduler.add_job(
         run_market_check,
         trigger=IntervalTrigger(hours=6),
@@ -71,7 +76,15 @@ def start_scheduler():
         name='ARIA Beauty Market Intelligence Check',
         replace_existing=True
     )
-    
+
+    scheduler.add_job(
+        run_signal_processor,
+        trigger=IntervalTrigger(seconds=30),
+        id='signal_processor',
+        name='Nervous System Signal Processor',
+        replace_existing=True
+    )
+
     scheduler.start()
     print("[Scheduler] ✅ ARIA scheduler started — checking every 6 hours with real beauty market data")
     return scheduler
