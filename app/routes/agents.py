@@ -725,3 +725,17 @@ def cj_debug(pid: str):
     from app.agents.cj_dropshipping import get_product_details
     data = get_product_details(pid)
     return data    
+
+@router.get("/suppliers/test")
+def test_supplier():
+    from app.agents.suppliers.registry import get_supplier
+    supplier = get_supplier("CJDropshipping")
+    if not supplier:
+        return {"error": "Supplier not found"}
+    
+    products = supplier.search("hair clip", limit=3)
+    return {
+        "supplier": "CJDropshipping",
+        "products_found": len(products),
+        "first_product": products[0] if products else None
+    }
