@@ -72,6 +72,7 @@ def add_product_to_store(product_data):
             discount_percent=float(product_data["discount_percent"]),
             final_price=float(product_data["final_price"]),
             image_url=product_data.get("image_url", ""),
+            images=product_data.get("images"),
             stock=int(product_data.get("stock", 50)),
             shipping_days=int(product_data.get("shipping_days", 7)),
             supplier_name=product_data.get("supplier_name"),

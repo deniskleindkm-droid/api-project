@@ -264,8 +264,34 @@ def import_product_to_store(cj_product, markup=3.0):
         original_price = int(final_price * 1.4) + 0.99
         discount = round((1 - final_price / original_price) * 100)
 
+        # Extract primary image
         image_url = extract_image_url(cj_product)
         print(f"[CJ] Image: {image_url[:80] if image_url else 'NONE'}")
+
+        # Extract up to 3 images
+        all_images = []
+        raw = cj_product.get("productImage") or cj_product.get("bigImage") or ""
+        if isinstance(raw, list):
+            all_images = raw[:3]
+        elif isinstance(raw, str) and raw.strip().startswith("["):
+            try:
+                all_images = json.loads(raw)[:3]
+            except:
+                all_images = [raw] if raw else []
+        else:
+            if raw:
+                all_images = [raw]
+
+        image_set = cj_product.get("productImageSet", [])
+        if isinstance(image_set, list):
+            for img in image_set:
+                if img not in all_images and len(all_images) < 3:
+                    all_images.append(img)
+
+        if not all_images and image_url:
+            all_images = [image_url]
+
+        print(f"[CJ] Images found: {len(all_images)}")
 
         variants = cj_product.get("variants", [])
         cj_vid = variants[0].get("vid", "") if variants else ""
@@ -291,6 +317,7 @@ def import_product_to_store(cj_product, markup=3.0):
             "discount_percent": discount,
             "final_price": final_price,
             "image_url": image_url,
+            "images": json.dumps(all_images) if all_images else None,
             "stock": 999,
             "shipping_days": 7,
             "supplier_name": "CJDropshipping",
@@ -302,7 +329,6 @@ def import_product_to_store(cj_product, markup=3.0):
 
         product, status = add_product_to_store(product_data)
         if status == "added":
-            # Emit signal through nervous system
             try:
                 from app.agents.nervous_system import emit
                 emit(
@@ -332,7 +358,6 @@ def import_product_to_store(cj_product, markup=3.0):
         return {"success": False, "reason": "Already exists"}
     except Exception as e:
         return {"success": False, "reason": str(e)}
-
 
 def search_and_import(keyword, limit=5):
     print(f"[CJ] Searching: {keyword}")

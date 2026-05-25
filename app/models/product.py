@@ -2,6 +2,10 @@ from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime
 
+from sqlmodel import SQLModel, Field
+from typing import Optional
+from datetime import datetime
+
 class Product(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
@@ -12,6 +16,7 @@ class Product(SQLModel, table=True):
     discount_percent: float = 0.0
     final_price: float
     image_url: Optional[str] = None
+    images: Optional[str] = None
     stock: int = 0
     supplier_name: Optional[str] = None
     supplier_url: Optional[str] = None
@@ -31,6 +36,7 @@ class ProductCreate(SQLModel):
     discount_percent: float = 0.0
     final_price: float
     image_url: Optional[str] = None
+    images: Optional[str] = None
     stock: int = 0
     supplier_name: Optional[str] = None
     supplier_url: Optional[str] = None

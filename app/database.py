@@ -25,6 +25,7 @@ def create_db():
     with engine.connect() as conn:
         conn.execute(text("ALTER TABLE product ALTER COLUMN cj_sku TYPE varchar(200)"))
         conn.execute(text("ALTER TABLE product ALTER COLUMN cj_product_id TYPE varchar(200)"))
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS images varchar(2000)"))
         conn.commit()
 
     # Register default suppliers
