@@ -739,3 +739,13 @@ def test_supplier():
         "products_found": len(products),
         "first_product": products[0] if products else None
     }
+@router.post("/agents/run-market-check")
+def trigger_market_check():
+    try:
+        from app.scheduler import run_market_check
+        import threading
+        thread = threading.Thread(target=run_market_check)
+        thread.start()
+        return {"message": "Market check triggered — watch Railway logs"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
