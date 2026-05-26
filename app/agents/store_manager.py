@@ -52,6 +52,10 @@ def save_memory(content, memory_type, confidence):
 
 
 def add_product_to_store(product_data):
+    """
+    Save a product to the store from internal product_data dict.
+    Used by CJ and other agents that already have Mikisi-formatted data.
+    """
     with Session(engine) as session:
         existing = session.exec(
             select(Product).where(
@@ -88,6 +92,99 @@ def add_product_to_store(product_data):
         return product, "added"
 
 
+def import_product_from_supplier(standard_product: dict, markup: float = None) -> dict:
+    """
+    Universal importer — accepts standard supplier format and saves to Mikisi.
+    Works for ANY supplier — CJ, Alibaba, anyone.
+    This is the single entry point for all product imports.
+    """
+    if markup is None:
+        from app.agents.store_config import get_config
+        markup = get_config("default_markup", default=7.0)
+    try:
+        name = standard_product.get("name", "")
+        cost_price = float(standard_product.get("cost_price", 0))
+        category = standard_product.get("category", "Beauty")
+        supplier_name = standard_product.get("supplier_name", "")
+        variants = standard_product.get("variants", [])
+
+        marked_up = cost_price * markup
+        final_price = int(marked_up) + 0.99
+        original_price = int(final_price * 1.4) + 0.99
+        discount = round((1 - final_price / original_price) * 100)
+
+        cj_sku = ""
+        if variants:
+            cj_sku = variants[0].get("variantSku", "") or variants[0].get("vid", "")
+
+        collection_id = None
+        try:
+            from app.agents.cj_dropshipping import get_or_create_collection
+            collection_id = get_or_create_collection(
+                product_name=name,
+                category_name=category,
+                description=standard_product.get("description", "")
+            )
+        except Exception as e:
+            print(f"[Store Manager] Collection lookup failed: {e}")
+
+        product_data = {
+            "name": name[:100],
+            "brand": "Mikisi",
+            "category": category,
+            "description": standard_product.get("description", name),
+            "original_price": original_price,
+            "discount_percent": discount,
+            "final_price": final_price,
+            "image_url": standard_product.get("image_url", ""),
+            "images": standard_product.get("images"),
+            "stock": int(standard_product.get("stock", 999)),
+            "shipping_days": int(standard_product.get("shipping_days", 15)),
+            "supplier_name": supplier_name,
+            "supplier_url": standard_product.get("supplier_url", ""),
+            "cj_product_id": standard_product.get("supplier_product_id", ""),
+            "cj_sku": cj_sku,
+            "collection_id": collection_id,
+        }
+
+        product, status = add_product_to_store(product_data)
+
+        if status == "added" and product:
+            try:
+                from app.agents.nervous_system import emit
+                emit(
+                    signal_type="PRODUCT_IMPORTED",
+                    sender="store_manager",
+                    payload={
+                        "product_id": product.id,
+                        "name": name,
+                        "collection_id": collection_id,
+                        "store_price": final_price,
+                        "cost_price": cost_price,
+                        "supplier": supplier_name
+                    },
+                    priority=5
+                )
+            except Exception as e:
+                print(f"[Store Manager] Signal emission failed: {e}")
+
+            print(f"[Store Manager] ✅ Imported: {name} at ${final_price}")
+            return {
+                "success": True,
+                "product": name,
+                "product_id": product.id,
+                "cost_price": cost_price,
+                "store_price": final_price,
+                "markup_applied": markup,
+                "collection_id": collection_id,
+                "supplier": supplier_name
+            }
+
+        return {"success": False, "reason": "Already exists"}
+
+    except Exception as e:
+        print(f"[Store Manager] Universal import error: {e}")
+        return {"success": False, "reason": str(e)}
 def create_task_for_marketing(product_data, product_id):
     with Session(engine) as session:
         task = AgentTask(
@@ -130,5 +227,3 @@ def run_store_manager():
         except Exception as e:
             print(f"[Store Manager] Error on task {task.id}: {e}")
             mark_task_failed(task.id, str(e))
-
-            

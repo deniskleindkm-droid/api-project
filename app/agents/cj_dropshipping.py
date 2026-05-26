@@ -114,7 +114,6 @@ def get_or_create_collection(product_name, category_name, description=""):
     existing_names = [c.name for c in existing_collections]
     collection_name = None
 
-    # Step 1 — AI determines collection
     try:
         prompt = f"""You are the collection manager for Mikisi — a women's beauty accessories store.
 
@@ -162,7 +161,6 @@ Return JSON only:
     except Exception as e:
         print(f"[CJ] AI collection detection failed: {e} — trying category match")
 
-    # Step 2 — try to match existing collections
     if not collection_name:
         try:
             category_words = category_name.lower().replace(">", " ").replace(",", " ").split()
@@ -174,7 +172,6 @@ Return JSON only:
         except Exception as e2:
             print(f"[CJ] Category match failed: {e2}")
 
-    # Step 3 — no match found, flag for review
     if not collection_name:
         collection_name = "Uncategorized"
         print(f"[CJ] No match — placing in Uncategorized for ARIA review")
@@ -193,7 +190,6 @@ Return JSON only:
         except Exception as e3:
             print(f"[CJ] Signal emission failed: {e3}")
 
-    # Find or create the collection
     with Session(engine) as session:
         existing = session.exec(
             select(Collection).where(
@@ -248,116 +244,91 @@ def get_shipping_methods(cj_vid, country_code="US"):
         return []
 
 
-def import_product_to_store(cj_product, markup=3.0):
-    from app.agents.store_manager import add_product_to_store
-    try:
-        name = cj_product.get("productNameEn", "")
-        category = cj_product.get("categoryName", "Beauty")
-        raw_price = cj_product.get("sellPrice", "0")
-        if isinstance(raw_price, str) and "-" in raw_price:
-            sell_price = float(raw_price.split("-")[0].strip())
-        else:
-            sell_price = float(raw_price)
+def cj_product_to_standard(cj_product):
+    """
+    Translate CJ raw product format to Mikisi standard format.
+    This is the ONLY place CJ-specific translation happens.
+    """
+    name = cj_product.get("productNameEn", "")
+    category = cj_product.get("categoryName", "Beauty")
+    raw_price = cj_product.get("sellPrice", "0")
 
-        marked_up = sell_price * markup
-        final_price = int(marked_up) + 0.99
-        original_price = int(final_price * 1.4) + 0.99
-        discount = round((1 - final_price / original_price) * 100)
+    if isinstance(raw_price, str) and "-" in raw_price:
+        cost_price = float(raw_price.split("-")[0].strip())
+    else:
+        cost_price = float(raw_price) if raw_price else 0.0
 
-        # Extract primary image
-        image_url = extract_image_url(cj_product)
-        print(f"[CJ] Image: {image_url[:80] if image_url else 'NONE'}")
+    # Extract primary image
+    image_url = extract_image_url(cj_product)
 
-        # Extract up to 3 images
-        all_images = []
-        raw = cj_product.get("productImage") or cj_product.get("bigImage") or ""
-        if isinstance(raw, list):
-            all_images = raw[:3]
-        elif isinstance(raw, str) and raw.strip().startswith("["):
-            try:
-                all_images = json.loads(raw)[:3]
-            except:
-                all_images = [raw] if raw else []
-        else:
-            if raw:
-                all_images = [raw]
-
-        image_set = cj_product.get("productImageSet", [])
-        if isinstance(image_set, list):
-            for img in image_set:
-                if img not in all_images and len(all_images) < 3:
-                    all_images.append(img)
-
-        if not all_images and image_url:
-            all_images = [image_url]
-
-        print(f"[CJ] Images found: {len(all_images)}")
-
-        variants = cj_product.get("variants", [])
-        cj_vid = variants[0].get("vid", "") if variants else ""
-        cj_sku = variants[0].get("variantSku", cj_product.get("productSku", "")) if variants else cj_product.get("productSku", "")
-
-        # AI determines collection
+    # Extract up to 3 images
+    all_images = []
+    raw = cj_product.get("productImage") or cj_product.get("bigImage") or ""
+    if isinstance(raw, list):
+        all_images = raw[:3]
+    elif isinstance(raw, str) and raw.strip().startswith("["):
         try:
-            collection_id = get_or_create_collection(
-                product_name=name,
-                category_name=category,
-                description=cj_product.get("description", "")
-            )
-        except Exception as e:
-            print(f"[CJ] Collection lookup failed: {e}")
-            collection_id = None
+            all_images = json.loads(raw)[:3]
+        except:
+            all_images = [raw] if raw else []
+    else:
+        if raw:
+            all_images = [raw]
 
-        product_data = {
-            "name": name[:100],
-            "brand": "Mikisi",
-            "category": category,
-            "description": cj_product.get("description", name),
-            "original_price": original_price,
-            "discount_percent": discount,
-            "final_price": final_price,
-            "image_url": image_url,
-            "images": json.dumps(all_images) if all_images else None,
-            "stock": 999,
-            "shipping_days": 7,
-            "supplier_name": "CJDropshipping",
-            "supplier_url": f"https://cjdropshipping.com/product/{cj_product.get('pid', '')}",
-            "cj_product_id": cj_product.get("pid", ""),
-            "cj_sku": cj_sku,
-            "collection_id": collection_id,
-        }
+    image_set = cj_product.get("productImageSet", [])
+    if isinstance(image_set, list):
+        for img in image_set:
+            if img not in all_images and len(all_images) < 3:
+                all_images.append(img)
 
-        product, status = add_product_to_store(product_data)
-        if status == "added":
-            try:
-                from app.agents.nervous_system import emit
-                emit(
-                    signal_type="PRODUCT_IMPORTED",
-                    sender="product_agent",
-                    payload={
-                        "product_id": product.id if product else None,
-                        "name": name,
-                        "collection_id": collection_id,
-                        "store_price": final_price,
-                        "cj_cost": sell_price
-                    },
-                    priority=5
-                )
-            except Exception as e:
-                print(f"[CJ] Signal emission failed: {e}")
+    if not all_images and image_url:
+        all_images = [image_url]
 
+    variants = cj_product.get("variants", [])
+
+    return {
+        "supplier_product_id": cj_product.get("pid", ""),
+        "supplier_variant_id": variants[0].get("vid", "") if variants else "",
+        "name": name,
+        "category": category,
+        "description": cj_product.get("description", name),
+        "cost_price": cost_price,
+        "image_url": image_url,
+        "images": json.dumps(all_images) if all_images else None,
+        "stock": 999,
+        "shipping_days": 15,
+        "supplier_name": "CJDropshipping",
+        "supplier_url": f"https://cjdropshipping.com/product/{cj_product.get('pid', '')}",
+        "variants": variants
+    }
+
+
+def import_product_to_store(cj_product, markup=None):
+    """
+    Import a CJ product to Mikisi store.
+    Translates CJ format to standard format then calls universal importer.
+    """
+    if markup is None:
+        from app.agents.store_config import get_config
+        markup = get_config("default_markup", default=7.0)
+    from app.agents.store_manager import import_product_from_supplier
+    try:
+        standard_product = cj_product_to_standard(cj_product)
+        result = import_product_from_supplier(standard_product, markup=markup)
+        if result.get("success"):
             return {
                 "success": True,
-                "product": name,
-                "cj_cost": sell_price,
-                "store_price": final_price,
+                "product": result.get("product"),
+                "cj_cost": standard_product.get("cost_price"),
+                "store_price": result.get("store_price"),
                 "markup_applied": markup,
-                "cj_vid": cj_vid,
-                "collection_id": collection_id
+                "cj_vid": standard_product.get("supplier_variant_id"),
+                "collection_id": result.get("collection_id")
             }
-        return {"success": False, "reason": "Already exists"}
+        return result
     except Exception as e:
         return {"success": False, "reason": str(e)}
+
 
 def search_and_import(keyword, limit=5):
     print(f"[CJ] Searching: {keyword}")
@@ -373,7 +344,7 @@ def search_and_import(keyword, limit=5):
     return {"imported": len(imported), "products": imported, "keyword": keyword}
 
 
-def import_product_by_id(pid, markup=3.0):
+def import_product_by_id(pid, markup=7.0):
     print(f"[CJ] Fetching product: {pid}")
     product = get_product_details(pid)
     if not product:

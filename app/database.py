@@ -8,6 +8,7 @@ from app.models.signal import SystemSignal
 from app.models.supplier import Supplier
 from app.models.collection import Collection
 from app.models.autonomy import AutonomyRule, ProductScore
+from app.models.store_config import StoreConfig
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users.db")
@@ -34,6 +35,7 @@ def create_db():
 def _setup_defaults():
     _register_default_suppliers()
     _register_default_autonomy_rules()
+    _register_default_configs()
 
 
 def _register_default_suppliers():
@@ -146,6 +148,15 @@ def _register_default_autonomy_rules():
             session.add(rule)
         session.commit()
         print("[DB] ✅ Default autonomy rules registered")
+
+
+def _register_default_configs():
+    from app.agents.store_config import set_config
+    set_config("default_markup", "7.0", "Default price markup multiplier for all products")
+    set_config("min_product_score", "0.65", "Minimum score for auto-import")
+    set_config("max_products_per_trend", "3", "Max products to score per trend signal")
+    set_config("auto_import_enabled", "true", "Whether ARIA auto-imports approved products")
+    print("[DB] ✅ Default store configs registered")
 
 
 def get_session():

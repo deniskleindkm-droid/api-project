@@ -102,7 +102,8 @@ def search_cj_for_products(keyword, limit=5):
             else:
                 sell_price = float(sell_price) if sell_price else 0
 
-            suggested_markup = 7
+            from app.agents.store_config import get_config
+            suggested_markup = get_config("default_markup", default=7.0)
             final_price = round(int(sell_price * suggested_markup) + 0.99, 2)
 
             result.append({
@@ -121,7 +122,10 @@ def search_cj_for_products(keyword, limit=5):
         return []
 
 
-def import_product_to_mikisi(pid, markup=7):
+def import_product_to_mikisi(pid, markup=None):
+    if markup is None:
+        from app.agents.store_config import get_config
+        markup = get_config("default_markup", default=7.0)    
     """ARIA imports a product from CJ to Mikisi store"""
     try:
         import httpx
