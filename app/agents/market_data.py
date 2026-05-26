@@ -193,12 +193,31 @@ def run_market_data_collection():
         if trending_data and trending_data.get("beauty_relevant"):
             print(f"[Market Data] Beauty trending: {trending_data['beauty_relevant']}")
 
+        # Emit trend signals through nervous system
+        if trends_data:
+            from app.agents.nervous_system import emit
+            for keyword, data in trends_data.get("trends", {}).items():
+                if data.get("trend") == "rising":
+                    emit(
+                        signal_type="TREND_DETECTED",
+                        sender="market_agent",
+                        payload={
+                            "keyword": keyword,
+                            "trend": data.get("trend"),
+                            "change_percent": data.get("change_percent", 0),
+                            "current_interest": data.get("current_interest", 0)
+                        },
+                        priority=4
+                    )
+                    print(f"[Market Data] 📡 Trend signal emitted: {keyword} is rising")
+
         return {
             "trends": trends_data,
             "trending": trending_data
         }
 
     return None
+
 
 
 def get_latest_market_data():

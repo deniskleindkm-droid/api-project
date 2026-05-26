@@ -355,11 +355,30 @@ def _handle_product_needs_collection(payload):
 
 
 def _handle_trend_detected(payload):
-    """When a trend is detected — trigger product search"""
+    """When a trend is detected — search and score products"""
     keyword = payload.get("keyword")
     trend = payload.get("trend")
-    print(f"[Nervous System] 📈 Trend detected: {keyword} is {trend}")
-    # Future: trigger product agent to search and score
+    change = payload.get("change_percent", 0)
+    print(f"[Nervous System] 📈 Trend detected: {keyword} is {trend} ({change:+.1f}%)")
+
+    try:
+        from app.agents.suppliers.registry import get_supplier
+        from app.agents.product_scoring import score_and_decide
+
+        supplier = get_supplier("CJDropshipping")
+        if not supplier:
+            print(f"[Nervous System] No supplier available for trend: {keyword}")
+            return
+
+        products = supplier.search(keyword, limit=5)
+        print(f"[Nervous System] Found {len(products)} products for trend: {keyword}")
+
+        for product in products[:3]:
+            result = score_and_decide(product)
+            print(f"[Nervous System] Scored {product.get('name', '')[:40]} → {result['action']}")
+
+    except Exception as e:
+        print(f"[Nervous System] Trend handler error: {e}")
 
 
 def _handle_order_failed(payload):
