@@ -9,6 +9,7 @@ from app.models.supplier import Supplier
 from app.models.collection import Collection
 from app.models.autonomy import AutonomyRule, ProductScore
 from app.models.store_config import StoreConfig
+from app.models.aria_operational import ARIAActionLedger, ARIATool, ARIAConversationState, ARIABusinessState, ARIAPolicy
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users.db")
@@ -36,6 +37,8 @@ def _setup_defaults():
     _register_default_suppliers()
     _register_default_autonomy_rules()
     _register_default_configs()
+    _register_default_tools()
+    _register_default_policies()
 
 
 def _register_default_suppliers():
@@ -157,6 +160,170 @@ def _register_default_configs():
     set_config("max_products_per_trend", "3", "Max products to score per trend signal")
     set_config("auto_import_enabled", "true", "Whether ARIA auto-imports approved products")
     print("[DB] ✅ Default store configs registered")
+
+
+def _register_default_tools():
+    from app.models.aria_operational import ARIATool
+    with Session(engine) as session:
+        existing = session.exec(
+            select(ARIATool).where(ARIATool.is_active == True)
+        ).first()
+        if existing:
+            print("[DB] Tools already registered")
+            return
+
+        tools = [
+            ARIATool(
+                name="search_products",
+                description="Search CJ Dropshipping for beauty products by keyword",
+                agent="product_agent",
+                adapter_key="cj.search_products",
+                risk_level="low",
+                requires_confirmation=False,
+                verification_method="verify_search_returned_results",
+            ),
+            ARIATool(
+                name="import_product",
+                description="Import a product from CJ to Mikisi store by PID",
+                agent="product_agent",
+                adapter_key="cj.import_product_by_pid",
+                risk_level="medium",
+                requires_confirmation=False,
+                verification_method="verify_product_exists_in_store",
+                rollback_method="delete_product_draft",
+            ),
+            ARIATool(
+                name="assign_collection",
+                description="Assign a product to a collection",
+                agent="store_agent",
+                adapter_key="store.assign_collection",
+                risk_level="low",
+                requires_confirmation=False,
+                verification_method="verify_collection_assigned",
+                rollback_method="restore_previous_collection",
+            ),
+            ARIATool(
+                name="update_product_price",
+                description="Update the price of a product",
+                agent="store_agent",
+                adapter_key="store.update_price",
+                risk_level="medium",
+                requires_confirmation=True,
+                verification_method="verify_price_updated",
+                rollback_method="restore_previous_price",
+            ),
+            ARIATool(
+                name="delete_product",
+                description="Remove a product from the store",
+                agent="store_agent",
+                adapter_key="store.delete_product",
+                risk_level="high",
+                requires_confirmation=True,
+                verification_method="verify_product_deleted",
+                rollback_method="restore_deleted_product",
+            ),
+            ARIATool(
+                name="send_email",
+                description="Send an intelligence email to Dennis",
+                agent="aria",
+                adapter_key="email.send_to_dennis",
+                risk_level="low",
+                requires_confirmation=False,
+                verification_method="verify_email_sent",
+            ),
+            ARIATool(
+                name="score_product",
+                description="Score a product for Mikisi fit using autonomy engine",
+                agent="product_agent",
+                adapter_key="scoring.score_product",
+                risk_level="low",
+                requires_confirmation=False,
+                verification_method="verify_score_stored",
+            ),
+        ]
+
+        for tool in tools:
+            session.add(tool)
+        session.commit()
+        print("[DB] ✅ Default tools registered")
+
+
+def _register_default_policies():
+    from app.models.aria_operational import ARIAPolicy
+    with Session(engine) as session:
+        existing = session.exec(
+            select(ARIAPolicy).where(ARIAPolicy.is_active == True)
+        ).first()
+        if existing:
+            print("[DB] Policies already registered")
+            return
+
+        policies = [
+            ARIAPolicy(
+                action_type="search_products",
+                risk_level="low",
+                allowed_agents="product_agent,aria",
+                requires_human_approval=False,
+                requires_aria_approval=False,
+                description="Searching is always safe"
+            ),
+            ARIAPolicy(
+                action_type="import_product",
+                risk_level="medium",
+                allowed_agents="product_agent,aria",
+                requires_human_approval=False,
+                requires_aria_approval=False,
+                description="Auto-import allowed if product score above threshold"
+            ),
+            ARIAPolicy(
+                action_type="delete_product",
+                risk_level="high",
+                allowed_agents="aria",
+                requires_human_approval=True,
+                requires_aria_approval=True,
+                rollback_required=True,
+                description="Deleting products always requires Dennis approval"
+            ),
+            ARIAPolicy(
+                action_type="update_price",
+                risk_level="medium",
+                allowed_agents="store_agent,aria",
+                requires_human_approval=False,
+                requires_aria_approval=True,
+                rollback_required=True,
+                description="Price changes need ARIA approval, rollback available"
+            ),
+            ARIAPolicy(
+                action_type="post_social_media",
+                risk_level="medium",
+                allowed_agents="content_agent,posting_agent",
+                requires_human_approval=False,
+                requires_aria_approval=True,
+                description="Social posts need ARIA approval before publishing"
+            ),
+            ARIAPolicy(
+                action_type="send_mass_email",
+                risk_level="high",
+                allowed_agents="aria",
+                requires_human_approval=True,
+                requires_aria_approval=True,
+                description="Mass emails always require Dennis approval"
+            ),
+            ARIAPolicy(
+                action_type="deploy_code",
+                risk_level="critical",
+                allowed_agents="none",
+                requires_human_approval=True,
+                requires_aria_approval=True,
+                rollback_required=True,
+                description="Code deployment always requires Dennis — never autonomous"
+            ),
+        ]
+
+        for policy in policies:
+            session.add(policy)
+        session.commit()
+        print("[DB] ✅ Default policies registered")
 
 
 def get_session():
