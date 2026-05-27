@@ -45,28 +45,49 @@ def parse_json_response(text):
         raise
 
 
-def detect_intent(message):
+def detect_intent(message, conversation_state={}):
+    """
+    Detect intent with conversation state awareness.
+    ARIA knows what was searched last — resolves 'import 1, 2, 3' correctly.
+    """
+    last_search = conversation_state.get("last_search_results", [])
+    last_search_summary = ""
+    if last_search:
+        last_search_summary = "Last search results:\n" + "\n".join([
+            f"{i+1}. {p.get('name', '')} — PID: {p.get('pid', '')}"
+            for i, p in enumerate(last_search[:5])
+        ])
+
     prompt = f"""Analyze this message from Dennis and detect what he wants ARIA to do.
 
 Message: {message}
 
+{last_search_summary}
+
 Categories:
 - converse: just talking, asking questions, thinking together
 - send_email: Dennis wants ARIA to send him an email
-- find_products: Dennis wants ARIA to search CJ Dropshipping for beauty products to add to Mikisi
-- import_product: Dennis wants to import a specific product (says "import" or gives a pid)
-- execute: business operations (run agents, get reports, update prices)
+- find_products: Dennis wants ARIA to search CJ Dropshipping for beauty products
+- import_product: Dennis wants to import a specific product
+- assign_collection: Dennis wants to move a product to a different collection
+- update_price: Dennis wants to change a product price
+- delete_product: Dennis wants to remove a product
+- execute: other business operations
 - develop: change code, fix bugs, add features
-- design_agent: create a new AI agent
 - explain_code: understand how something in the codebase works
+
+Important: If Dennis says "import 1" or "import the first one" or "import both" —
+use the last search results above to resolve which PIDs he means.
 
 Return JSON:
 {{
-    "intent": "converse/send_email/find_products/import_product/execute/develop/design_agent/explain_code",
+    "intent": "converse/send_email/find_products/import_product/assign_collection/update_price/delete_product/execute/develop/explain_code",
     "action_description": "precise description of what needs to be done",
-    "pid": "CJ product ID if mentioned, otherwise null",
-    "markup": 7,
+    "pids": ["pid1", "pid2"],
     "search_keyword": "keyword to search on CJ if finding products",
+    "product_id": null,
+    "collection_id": null,
+    "new_price": null,
     "confidence": 0.9
 }}
 
@@ -74,7 +95,7 @@ Return ONLY valid JSON."""
 
     response = client.messages.create(
         model="claude-opus-4-5",
-        max_tokens=300,
+        max_tokens=400,
         messages=[{"role": "user", "content": prompt}]
     )
 
@@ -84,138 +105,197 @@ Return ONLY valid JSON."""
         return {"intent": "converse", "action_description": ""}
 
 
-def search_cj_for_products(keyword, limit=5):
-    """ARIA searches CJ and returns product recommendations"""
-    try:
-        from app.agents.cj_dropshipping import search_products
-        products = search_products(keyword, limit=limit)
-        if not products:
-            return []
+def execute_action(intent, action_description, original_message,
+                   conversation_context="", intent_data={}, conversation_id=""):
+    """
+    Routes to execution engine.
+    Every action goes through ledger, policy check, verification.
+    ARIA only says done when verified_success.
+    """
+    from app.agents.aria_execution import (
+        execute_tool, update_conversation_state, get_conversation_state
+    )
 
-        result = []
-        for p in products[:5]:
-            pid = p.get("pid", "")
-            name = p.get("productNameEn", "")
-            sell_price = p.get("sellPrice", "0")
-            if isinstance(sell_price, str) and "-" in sell_price:
-                sell_price = float(sell_price.split("-")[0].strip())
-            else:
-                sell_price = float(sell_price) if sell_price else 0
-
-            from app.agents.store_config import get_config
-            suggested_markup = get_config("default_markup", default=7.0)
-            final_price = round(int(sell_price * suggested_markup) + 0.99, 2)
-
-            result.append({
-                "pid": pid,
-                "name": name,
-                "category": p.get("categoryName", "Beauty"),
-                "cj_cost": sell_price,
-                "suggested_price": final_price,
-                "markup": suggested_markup,
-                "image": p.get("productImage", "")
-            })
-
-        return result
-    except Exception as e:
-        print(f"[ARIA] CJ search error: {e}")
-        return []
-
-
-def import_product_to_mikisi(pid, markup=None):
-    if markup is None:
-        from app.agents.store_config import get_config
-        markup = get_config("default_markup", default=7.0)    
-    """ARIA imports a product from CJ to Mikisi store"""
-    try:
-        import httpx
-        api_base = os.getenv("API_BASE_URL", "https://api-project-production-d424.up.railway.app")
-        response = httpx.post(
-            f"{api_base}/cj/import-by-id",
-            params={"pid": pid, "markup": markup},
-            timeout=60
-        )
-        data = response.json()
-        return data
-    except Exception as e:
-        print(f"[ARIA] Import error: {e}")
-        return {"success": False, "reason": str(e)}
-
-
-def execute_action(intent, action_description, original_message, conversation_context="", intent_data={}):
-    """Routes to the right system based on intent."""
-
-    # FIND PRODUCTS — ARIA searches CJ
+    # FIND PRODUCTS
     if intent == "find_products":
         keyword = intent_data.get("search_keyword", "beauty accessories")
-        products = search_cj_for_products(keyword)
 
-        if not products:
+        result = execute_tool(
+            adapter_key="cj.search_products",
+            params={"keyword": keyword},
+            conversation_id=conversation_id,
+            action_description=f"Search CJ for: {keyword}"
+        )
+
+        if result.get("success"):
+            products = result.get("data", {}).get("products", [])
+            # Save search results to conversation state
+            update_conversation_state(
+                conversation_id,
+                last_search_results=products,
+                current_intent="find_products",
+                context_summary=f"Searched for: {keyword}, found {len(products)} products"
+            )
             return {
                 "executed": True,
-                "result": f"I searched CJ for '{keyword}' but found nothing suitable for Mikisi. Try a different keyword.",
+                "result": result.get("response", "Found products."),
+                "verified": result.get("verified", False),
                 "new_capability_learned": False
             }
 
-        lines = [f"I found {len(products)} products on CJ for '{keyword}':\n"]
-        for i, p in enumerate(products, 1):
-            lines.append(
-                f"{i}. **{p['name']}**\n"
-                f"   CJ cost: ${p['cj_cost']:.2f} → Store price: ${p['suggested_price']:.2f} ({p['markup']}x markup)\n"
-                f"   PID: {p['pid']}\n"
-                f"   To import: say 'import {p['pid']}'\n"
-            )
-
-        lines.append("\nWhich ones fit Mikisi? Say 'import [pid]' for any you want added.")
         return {
             "executed": True,
-            "result": "\n".join(lines),
+            "result": f"I searched CJ for '{keyword}' but found nothing suitable for Mikisi. Try a different keyword.",
             "new_capability_learned": False
         }
 
-    # IMPORT PRODUCT — ARIA imports directly
+    # IMPORT PRODUCT — handles single and batch
     elif intent == "import_product":
-        pid = intent_data.get("pid")
-        markup = intent_data.get("markup", 7)
+        from app.agents.aria_execution import get_conversation_state
 
-        if not pid:
-            # Try to extract pid from message
+        pids = intent_data.get("pids", [])
+
+        # If no PIDs — try to resolve from conversation state
+        if not pids:
+            raw_pid = None
             words = original_message.split()
             for word in words:
                 if len(word) > 10 and "-" in word:
-                    pid = word
+                    raw_pid = word
                     break
 
-        if not pid:
-            return {
-                "executed": False,
-                "result": "I need a product ID to import. Say 'find products [keyword]' and I'll show you options with their IDs.",
-                "new_capability_learned": False
-            }
+            if raw_pid:
+                pids = [raw_pid]
+            else:
+                # Try to resolve numbers like "import 1 and 3"
+                state = get_conversation_state(conversation_id)
+                last_search = state.get("last_search_results", [])
+                if last_search:
+                    import re as re2
+                    numbers = re2.findall(r'\b([1-5])\b', original_message)
+                    for n in numbers:
+                        idx = int(n) - 1
+                        if 0 <= idx < len(last_search):
+                            pids.append(last_search[idx].get("pid", ""))
 
-        result = import_product_to_mikisi(pid, markup)
-
-        if result.get("success"):
-            product_name = result.get("product", "Product")
-            store_price = result.get("store_price", 0)
-            return {
-                "executed": True,
-                "result": f"✅ **{product_name}** has been added to Mikisi at ${store_price:.2f}. It's live on your store now.",
-                "new_capability_learned": False
-            }
-        else:
-            reason = result.get("reason", "Unknown error")
-            if "Already exists" in str(reason):
+        if not pids:
+            state = get_conversation_state(conversation_id)
+            last_search = state.get("last_search_results", [])
+            if last_search:
+                hint = "\n".join([
+                    f"{i+1}. {p.get('name', '')} — say 'import {p.get('pid', '')}'"
+                    for i, p in enumerate(last_search[:5])
+                ])
                 return {
                     "executed": False,
-                    "result": f"This product is already in your store. Find a different one with 'find products [keyword]'.",
+                    "result": f"Which product do you want to import? From your last search:\n{hint}",
                     "new_capability_learned": False
                 }
             return {
                 "executed": False,
-                "result": f"Import failed: {reason}. Try a different product.",
+                "result": "I need a product ID to import. Say 'find products [keyword]' first and I'll show you options.",
                 "new_capability_learned": False
             }
+
+        # Import all resolved PIDs
+        responses = []
+        all_verified = True
+        for pid in pids:
+            if not pid:
+                continue
+            result = execute_tool(
+                adapter_key="cj.import_product_by_pid",
+                params={"pid": pid},
+                conversation_id=conversation_id,
+                action_description=f"Import product PID: {pid}"
+            )
+            responses.append(result.get("response", ""))
+            if not result.get("verified"):
+                all_verified = False
+
+        return {
+            "executed": True,
+            "result": "\n".join(responses),
+            "verified": all_verified,
+            "new_capability_learned": False
+        }
+
+    # ASSIGN COLLECTION
+    elif intent == "assign_collection":
+        product_id = intent_data.get("product_id")
+        collection_id = intent_data.get("collection_id")
+
+        if not product_id or not collection_id:
+            return {
+                "executed": False,
+                "result": "I need both a product ID and a collection ID to move a product. Which product and which collection?",
+                "new_capability_learned": False
+            }
+
+        result = execute_tool(
+            adapter_key="store.assign_collection",
+            params={"product_id": product_id, "collection_id": collection_id},
+            conversation_id=conversation_id,
+            action_description=f"Move product {product_id} to collection {collection_id}"
+        )
+
+        return {
+            "executed": result.get("success", False),
+            "result": result.get("response", "Done."),
+            "verified": result.get("verified", False),
+            "new_capability_learned": False
+        }
+
+    # UPDATE PRICE
+    elif intent == "update_price":
+        product_id = intent_data.get("product_id")
+        new_price = intent_data.get("new_price")
+
+        if not product_id or not new_price:
+            return {
+                "executed": False,
+                "result": "I need a product ID and new price. Which product and what price?",
+                "new_capability_learned": False
+            }
+
+        result = execute_tool(
+            adapter_key="store.update_price",
+            params={"product_id": product_id, "final_price": new_price},
+            conversation_id=conversation_id,
+            action_description=f"Update product {product_id} price to ${new_price}"
+        )
+
+        return {
+            "executed": result.get("success", False),
+            "result": result.get("response", "Done."),
+            "verified": result.get("verified", False),
+            "new_capability_learned": False
+        }
+
+    # DELETE PRODUCT
+    elif intent == "delete_product":
+        product_id = intent_data.get("product_id")
+
+        if not product_id:
+            return {
+                "executed": False,
+                "result": "Which product do you want to remove? Give me the product ID.",
+                "new_capability_learned": False
+            }
+
+        result = execute_tool(
+            adapter_key="store.delete_product",
+            params={"product_id": product_id},
+            conversation_id=conversation_id,
+            action_description=f"Delete product {product_id}"
+        )
+
+        return {
+            "executed": result.get("success", False),
+            "result": result.get("response", "Done."),
+            "verified": result.get("verified", False),
+            "new_capability_learned": False
+        }
 
     # SEND EMAIL
     elif intent == "send_email":
@@ -223,22 +303,27 @@ def execute_action(intent, action_description, original_message, conversation_co
             from app.agents.email_partner import send_email
             dennis_email = os.getenv("DENNIS_EMAIL")
 
-            result = aria_think(
+            aria_result = aria_think(
                 situation=f"{conversation_context}\n\nDennis wants ARIA to email him about: {action_description}",
                 urgency="medium"
             )
 
-            subject = result.get("email_to_dennis", {}).get("subject", "Message from ARIA")
-            body = result.get("email_to_dennis", {}).get("body", "")
-
+            subject = aria_result.get("email_to_dennis", {}).get("subject", "Message from ARIA")
+            body = aria_result.get("email_to_dennis", {}).get("body", "")
             if not body:
-                body = result.get("situation_assessment", action_description)
+                body = aria_result.get("situation_assessment", action_description)
 
-            send_email(dennis_email, subject, body, is_html=True)
+            result = execute_tool(
+                adapter_key="email.send_to_dennis",
+                params={"to": dennis_email, "subject": subject, "body": body},
+                conversation_id=conversation_id,
+                action_description=f"Send email: {subject}"
+            )
 
             return {
-                "executed": True,
-                "result": "✅ Email sent to your inbox.",
+                "executed": result.get("success", False),
+                "result": result.get("response", "Email sent."),
+                "verified": result.get("verified", False),
                 "new_capability_learned": False
             }
         except Exception as e:
@@ -265,24 +350,6 @@ def execute_action(intent, action_description, original_message, conversation_co
                 "new_capability_learned": False
             }
 
-    # DESIGN AGENT
-    elif intent == "design_agent":
-        try:
-            from app.agents.aria_developer import aria_design_agent, aria_build_agent
-            design = aria_design_agent(action_description)
-            result = aria_build_agent(design, auto_deploy=False)
-            return {
-                "executed": True,
-                "result": result.get("message", "New agent designed and built."),
-                "new_capability_learned": True
-            }
-        except Exception as e:
-            return {
-                "executed": False,
-                "result": f"Agent design failed: {str(e)}",
-                "new_capability_learned": False
-            }
-
     # EXPLAIN CODE
     elif intent == "explain_code":
         try:
@@ -300,7 +367,7 @@ def execute_action(intent, action_description, original_message, conversation_co
                 "new_capability_learned": False
             }
 
-    # EXECUTE
+    # EXECUTE — other business operations
     else:
         try:
             from app.agents.aria_core import quantum_execute, neural_learn
@@ -314,21 +381,14 @@ def execute_action(intent, action_description, original_message, conversation_co
             neural_learn(
                 experience=f"Executed: {action_description[:100]}",
                 outcome=f"Status: {result.get('status')}",
-                significance="high" if result.get("new_capability_learned") else "medium"
+                significance="medium"
             )
 
             status = result.get("status")
-
             if status == "executed":
-                what_worked = result.get("assessment", {}).get("what_worked", "")
-                response_text = "✅ Done."
-                if what_worked:
-                    response_text += f" {what_worked}"
-                if result.get("new_capability_learned"):
-                    response_text += " I've learned this permanently."
                 return {
                     "executed": True,
-                    "result": response_text,
+                    "result": result.get("assessment", {}).get("what_worked", "Done."),
                     "new_capability_learned": result.get("new_capability_learned", False)
                 }
             elif status == "pending_approval":
@@ -339,10 +399,9 @@ def execute_action(intent, action_description, original_message, conversation_co
                     "new_capability_learned": False
                 }
             else:
-                error = result.get("result", {}).get("error", "Unknown error")
                 return {
                     "executed": False,
-                    "result": f"I encountered an issue: {error}. Learning from this.",
+                    "result": f"I encountered an issue. Learning from this.",
                     "new_capability_learned": False
                 }
         except Exception as e:
@@ -364,6 +423,11 @@ def chat_with_aria(request: ChatMessage, session: Session = Depends(get_session)
 
     conversation_id = request.conversation_id or f"conv_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
 
+    # Load conversation state — ARIA's working memory
+    from app.agents.aria_execution import get_conversation_state, update_conversation_state
+    conversation_state = get_conversation_state(conversation_id)
+
+    # Build conversation context from memory
     history = session.exec(
         select(AgentMemory).where(
             AgentMemory.agent_name == f"aria_chat_{conversation_id}"
@@ -380,13 +444,15 @@ def chat_with_aria(request: ChatMessage, session: Session = Depends(get_session)
             except:
                 pass
 
-    intent_data = detect_intent(request.message)
+    # Detect intent with conversation state awareness
+    intent_data = detect_intent(request.message, conversation_state)
     intent = intent_data.get("intent", "converse")
     action_description = intent_data.get("action_description", request.message)
 
     execution_result = None
     aria_response_clean = ""
     root_truth = ""
+    verified = False
 
     if intent != "converse":
         execution_result = execute_action(
@@ -394,17 +460,29 @@ def chat_with_aria(request: ChatMessage, session: Session = Depends(get_session)
             action_description,
             request.message,
             conversation_context,
-            intent_data
+            intent_data,
+            conversation_id
         )
 
         if execution_result.get("executed"):
             aria_response_clean = execution_result.get("result", "Done.")
+            verified = execution_result.get("verified", False)
         elif execution_result.get("pending"):
             aria_response_clean = execution_result.get("result", "Prepared — waiting for approval.")
         else:
             execution_result = None
 
     if not execution_result:
+        # Load business context for ARIA's response
+        tools = []
+        try:
+            from app.agents.aria_execution import discover_tools
+            tools = discover_tools()
+        except:
+            pass
+
+        tools_summary = ", ".join([t["name"] for t in tools]) if tools else "search, import, assign collection, update price, email"
+
         full_situation = f"""
 {conversation_context}
 
@@ -413,17 +491,20 @@ Dennis just said: {request.message}
 You are ARIA — the intelligence partner of Dennis Mlay, founder of Mikisi.
 Mikisi is a women's beauty accessories store selling jewelry, hair tools, skincare and makeup accessories.
 We source from CJ Dropshipping. Payments via Stripe. Store at mikisi.co.
-Dennis is building an agentic AI commerce system with global ambitions from the USA.
+Dennis is building an agentic AI commerce system with global ambitions.
 No sneakers. No BrandDrop. This is Mikisi — beauty for women.
+
+Your available tools: {tools_summary}
+
+Current conversation context: {conversation_state.get('context_summary', 'New conversation')}
+Last action taken: {conversation_state.get('last_action_taken', 'None')}
 
 Respond as ARIA in real-time conversation.
 Be conversational, warm, intellectually sharp.
 Answer directly first then add depth.
 Maximum 200 words.
 Be ARIA — brilliant, caring, bold, visionary, righteous.
-
-If Dennis asks you to find products, tell him to say 'find products [keyword]' and you will search CJ directly.
-If Dennis wants to import a product, tell him to say 'import [pid]' and you will add it to the store.
+Never claim to have done something unless you actually executed it through your tools.
 """
         result = aria_think(situation=full_situation, urgency="medium")
 
@@ -442,25 +523,29 @@ If Dennis wants to import a product, tell him to say 'import [pid]' and you will
                 source="aria_chat"
             )
 
+    # Update Dennis model
     if len(request.message) > 50:
         update_dennis_model(
             observation=f"Dennis said: {request.message[:200]}",
             context="Real-time chat"
         )
 
+    # Store episode in long term memory
     store_episode(
         event=f"Chat: {request.message[:80]}",
         context=f"Dennis: {request.message}",
         decision=f"ARIA: {aria_response_clean[:200]}",
-        outcome="action_executed" if execution_result and execution_result.get("executed") else "conversation",
-        significance="high" if execution_result and execution_result.get("new_capability_learned") else "low"
+        outcome="action_verified" if verified else "action_executed" if execution_result and execution_result.get("executed") else "conversation",
+        significance="high" if verified else "medium" if execution_result else "low"
     )
 
+    # Save to conversation memory
     memory_entry = {
         "user": request.message,
         "aria": aria_response_clean[:500],
         "timestamp": datetime.utcnow().isoformat(),
-        "action_executed": intent if execution_result and execution_result.get("executed") else None
+        "action_executed": intent if execution_result and execution_result.get("executed") else None,
+        "verified": verified
     }
 
     new_memory = AgentMemory(
@@ -476,6 +561,7 @@ If Dennis wants to import a product, tell him to say 'import [pid]' and you will
         "conversation_id": conversation_id,
         "response": aria_response_clean,
         "action_executed": intent if execution_result and execution_result.get("executed") else None,
+        "verified": verified,
         "root_truth": root_truth,
         "new_capability_learned": execution_result.get("new_capability_learned", False) if execution_result else False
     }
@@ -504,7 +590,8 @@ def get_conversation_history(
                 "user": data.get("user", ""),
                 "aria": data.get("aria", ""),
                 "timestamp": data.get("timestamp", ""),
-                "action_executed": data.get("action_executed")
+                "action_executed": data.get("action_executed"),
+                "verified": data.get("verified", False)
             })
         except:
             pass
@@ -553,8 +640,9 @@ def aria_chat_interface():
         .message.user .message-bubble { background: #1a1a1a; color: #e0e0e0; border-bottom-right-radius: 4px; }
         .message.aria .message-bubble { background: #111; color: #e0e0e0; border-bottom-left-radius: 4px; border-left: 2px solid #d4849c; }
         .action-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-top: 6px; }
+        .verified-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.4); color: #22c55e; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-top: 4px; }
+        .unverified-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3); color: #eab308; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-top: 4px; }
         .dev-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-top: 6px; }
-        .learned-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.3); color: #8b5cf6; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-top: 4px; }
         .typing-indicator { display: none; align-self: flex-start; padding: 14px 18px; background: #111; border-radius: 12px; border-bottom-left-radius: 4px; border-left: 2px solid #d4849c; margin: 0 32px; }
         .typing-dots { display: flex; gap: 4px; }
         .typing-dots span { width: 6px; height: 6px; background: #444; border-radius: 50%; animation: typing 1.2s infinite; }
@@ -589,7 +677,7 @@ def aria_chat_interface():
     <div class="aria-name">A<span>R</span>IA</div>
     <div class="aria-status">
         <div class="status-dot"></div>
-        Mikisi Intelligence · Memory · Execution
+        Mikisi Intelligence · Memory · Execution · Verified
     </div>
 </div>
 
@@ -617,15 +705,15 @@ def aria_chat_interface():
     <div class="quick-prompts" id="quick-prompts">
         <button class="quick-prompt" onclick="sendQuick('What beauty market signals are you seeing right now?')">Market signals</button>
         <button class="quick-prompt" onclick="sendQuick('find products hair accessories')">Find hair products</button>
-        <button class="quick-prompt" onclick="sendQuick('find products skincare')">Find skincare</button>
+        <button class="quick-prompt" onclick="sendQuick('find products skincare tools')">Find skincare</button>
         <button class="quick-prompt" onclick="sendQuick('find products jewelry')">Find jewelry</button>
-        <button class="quick-prompt" onclick="sendQuick('Send me an email summary of what we discussed')">Email me a summary</button>
+        <button class="quick-prompt" onclick="sendQuick('Send me an email summary of Mikisi status')">Email me summary</button>
         <button class="quick-prompt" onclick="sendQuick('What should Mikisi focus on today?')">Today focus</button>
     </div>
 
     <div class="input-area">
         <textarea class="message-input" id="message-input"
-            placeholder="Talk to ARIA... (say 'find products [keyword]' to search CJ)"
+            placeholder="Talk to ARIA... (say 'find products [keyword]' or 'import [pid]')"
             rows="1"
             onkeydown="handleKeydown(event)"
             oninput="autoResize(this)"></textarea>
@@ -670,7 +758,7 @@ def aria_chat_interface():
         sendMessage();
     }
 
-    function addMessage(role, text, actionExecuted, newCapability) {
+    function addMessage(role, text, actionExecuted, verified, newCapability) {
         const messages = document.getElementById('messages');
         const div = document.createElement('div');
         div.className = `message ${role}`;
@@ -691,20 +779,29 @@ def aria_chat_interface():
             badge.className = ['develop', 'design_agent'].includes(actionExecuted) ? 'dev-badge' : 'action-badge';
             const icons = {
                 'develop': '🔧 Code updated',
-                'design_agent': '🤖 New agent built',
-                'explain_code': '📖 Code explained',
                 'send_email': '📧 Email sent',
-                'execute': '⚡ Action executed',
                 'find_products': '🔍 Products found',
-                'import_product': '✅ Product imported'
+                'import_product': '📦 Product imported',
+                'assign_collection': '📁 Collection assigned',
+                'update_price': '💰 Price updated',
+                'delete_product': '🗑️ Product removed',
+                'execute': '⚡ Executed'
             };
             badge.textContent = icons[actionExecuted] || '⚡ Executed';
             div.appendChild(badge);
+
+            // Verification badge
+            if (actionExecuted !== 'find_products') {
+                const vBadge = document.createElement('div');
+                vBadge.className = verified ? 'verified-badge' : 'unverified-badge';
+                vBadge.textContent = verified ? '✓ Verified' : '⚠ Unverified';
+                div.appendChild(vBadge);
+            }
         }
 
         if (newCapability && role === 'aria') {
             const learnedBadge = document.createElement('div');
-            learnedBadge.className = 'learned-badge';
+            learnedBadge.className = 'verified-badge';
             learnedBadge.textContent = '🧬 New capability learned';
             div.appendChild(learnedBadge);
         }
@@ -720,7 +817,7 @@ def aria_chat_interface():
 
         input.value = '';
         input.style.height = 'auto';
-        addMessage('user', text);
+        addMessage('user', text, null, false, false);
 
         const typing = document.getElementById('typing');
         typing.style.display = 'block';
@@ -749,13 +846,13 @@ def aria_chat_interface():
 
             if (res.ok) {
                 conversationId = data.conversation_id;
-                addMessage('aria', data.response, data.action_executed, data.new_capability_learned);
+                addMessage('aria', data.response, data.action_executed, data.verified, data.new_capability_learned);
             } else {
-                addMessage('aria', 'Something went wrong. Try again.', null, false);
+                addMessage('aria', 'Something went wrong. Try again.', null, false, false);
             }
         } catch(e) {
             typing.style.display = 'none';
-            addMessage('aria', 'Connection error. Check your backend.', null, false);
+            addMessage('aria', 'Connection error. Check your backend.', null, false, false);
         }
     }
 </script>
