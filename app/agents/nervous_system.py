@@ -125,6 +125,12 @@ def process_signals():
             elif signal.signal_type == "ORDER_DELAYED":
                 _handle_order_delayed(payload)
 
+            elif signal.signal_type == "CONTENT_READY":
+                _handle_content_ready(payload)
+
+            elif signal.signal_type == "CONTENT_NEEDS_REVIEW":
+                _handle_content_needs_review(payload)
+
             elif signal.signal_type == "STOCK_LOW":
                 _handle_stock_low(payload)
 
@@ -153,6 +159,13 @@ def _handle_product_imported(payload):
     product_name = payload.get("name")
     collection_id = payload.get("collection_id")
     print(f"[Nervous System] ✅ Product imported: {product_name} (ID: {product_id}) → Collection {collection_id}")
+
+    # Trigger content generation automatically
+    try:
+        from app.agents.content_agent import generate_all_content
+        generate_all_content(product_id)
+    except Exception as e:
+        print(f"[Nervous System] Content generation failed: {e}")
 
 
 def _handle_product_auto_imported(payload):
@@ -273,7 +286,24 @@ def _handle_order_delayed(payload):
     order_id = payload.get("order_id")
     days = payload.get("days_since_order")
     print(f"[Nervous System] ⚠️ Order {order_id} delayed — {days} days since order")
-    # ARIA decides whether to contact Dennis
+
+
+def _handle_content_ready(payload):
+    content_id = payload.get("content_id")
+    platform = payload.get("platform")
+    score = payload.get("score")
+    auto_post = payload.get("auto_post", False)
+    print(f"[Nervous System] 🎨 Content ready: ID {content_id} for {platform} (score: {score})")
+    if auto_post:
+        print(f"[Nervous System] → Signaling posting agent for {platform}")
+        # Phase 7 — posting agent handles this
+
+
+def _handle_content_needs_review(payload):
+    content_id = payload.get("content_id")
+    platform = payload.get("platform")
+    score = payload.get("score")
+    print(f"[Nervous System] 📋 Content needs review: ID {content_id} for {platform} (score: {score})")
 
 
 def _handle_stock_low(payload):

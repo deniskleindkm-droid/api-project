@@ -749,3 +749,12 @@ def trigger_market_check():
         return {"message": "Market check triggered — watch Railway logs"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/agents/generate-content/{product_id}")
+def generate_content(product_id: int):
+    try:
+        from app.agents.content_agent import generate_all_content
+        result = generate_all_content(product_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))    
