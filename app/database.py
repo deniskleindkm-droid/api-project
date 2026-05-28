@@ -11,6 +11,7 @@ from app.models.autonomy import AutonomyRule, ProductScore
 from app.models.store_config import StoreConfig
 from app.models.aria_operational import ARIAActionLedger, ARIATool, ARIAConversationState, ARIABusinessState, ARIAPolicy
 from app.models.order import Order, OrderTracking
+from app.models.content import ProductContent
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users.db")
@@ -161,6 +162,7 @@ def _register_default_configs():
     set_config("max_products_per_trend", "3", "Max products to score per trend signal")
     set_config("auto_import_enabled", "true", "Whether ARIA auto-imports approved products")
     set_config("max_shipping_days", "30", "Maximum days before order is flagged as delayed")
+    set_config("brand_voice", "Mikisi speaks to women who choose themselves. Every piece is an act of self-worth. Tone: elegant, empowering, intimate. Never corporate. Never pushy. Always making her feel seen.", "Mikisi brand voice for content generation")
     print("[DB] ✅ Default store configs registered")
 
 
