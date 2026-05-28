@@ -69,7 +69,7 @@ Categories:
 - send_email: Dennis wants ARIA to send him an email
 - find_products: Dennis wants ARIA to search CJ Dropshipping for beauty products
 - import_product: Dennis wants to import a specific product
-- assign_collection: Dennis wants to move a product to a different collection
+- assign_collection: Dennis wants to move or change a product to a different collection. Triggers on words like "change", "move", "assign", "put product X in collection Y"
 - update_price: Dennis wants to change a product price
 - delete_product: Dennis wants to remove a product
 - execute: other business operations
@@ -87,6 +87,7 @@ Return JSON:
     "search_keyword": "keyword to search on CJ if finding products",
     "product_id": null,
     "collection_id": null,
+    "collection_name": "the collection name mentioned if any",
     "new_price": null,
     "confidence": 0.9
 }}
@@ -129,7 +130,6 @@ def execute_action(intent, action_description, original_message,
 
         if result.get("success"):
             products = result.get("data", {}).get("products", [])
-            # Save search results to conversation state
             update_conversation_state(
                 conversation_id,
                 last_search_results=products,
@@ -155,7 +155,6 @@ def execute_action(intent, action_description, original_message,
 
         pids = intent_data.get("pids", [])
 
-        # If no PIDs — try to resolve from conversation state
         if not pids:
             raw_pid = None
             words = original_message.split()
@@ -167,7 +166,6 @@ def execute_action(intent, action_description, original_message,
             if raw_pid:
                 pids = [raw_pid]
             else:
-                # Try to resolve numbers like "import 1 and 3"
                 state = get_conversation_state(conversation_id)
                 last_search = state.get("last_search_results", [])
                 if last_search:
@@ -197,7 +195,6 @@ def execute_action(intent, action_description, original_message,
                 "new_capability_learned": False
             }
 
-        # Import all resolved PIDs
         responses = []
         all_verified = True
         for pid in pids:
@@ -224,17 +221,37 @@ def execute_action(intent, action_description, original_message,
     elif intent == "assign_collection":
         product_id = intent_data.get("product_id")
         collection_id = intent_data.get("collection_id")
+        collection_name = intent_data.get("collection_name", "")
+
+        # Resolve collection name to ID if needed
+        if not collection_id and collection_name:
+            try:
+                from sqlmodel import Session, select
+                from app.database import engine
+                from app.models.collection import Collection
+                with Session(engine) as session:
+                    col = session.exec(
+                        select(Collection).where(
+                            Collection.name.ilike(f"%{collection_name}%"),
+                            Collection.is_active == True
+                        )
+                    ).first()
+                    if col:
+                        collection_id = col.id
+                        print(f"[ARIA] Resolved collection '{collection_name}' → ID {collection_id}")
+            except Exception as e:
+                print(f"[ARIA] Collection lookup error: {e}")
 
         if not product_id or not collection_id:
             return {
                 "executed": False,
-                "result": "I need both a product ID and a collection ID to move a product. Which product and which collection?",
+                "result": "I need both a product and a collection. Which product ID and which collection?",
                 "new_capability_learned": False
             }
 
         result = execute_tool(
             adapter_key="store.assign_collection",
-            params={"product_id": product_id, "collection_id": collection_id},
+            params={"product_id": int(product_id), "collection_id": int(collection_id)},
             conversation_id=conversation_id,
             action_description=f"Move product {product_id} to collection {collection_id}"
         )
