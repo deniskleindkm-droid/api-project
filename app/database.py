@@ -164,6 +164,15 @@ def _register_default_configs():
     set_config("max_shipping_days", "30", "Maximum days before order is flagged as delayed")
     set_config("brand_voice", "Mikisi speaks to women who choose themselves. Every piece is an act of self-worth. Tone: elegant, empowering, intimate. Never corporate. Never pushy. Always making her feel seen.", "Mikisi brand voice for content generation")
     print("[DB] ✅ Default store configs registered")
+    set_config("posting_schedule_instagram", "wednesday,thursday", "Best days to post on Instagram")
+    set_config("posting_time_instagram", "21:00", "Best time to post on Instagram")
+    set_config("posting_schedule_tiktok", "tuesday,wednesday,thursday,friday", "Best days to post on TikTok")
+    set_config("posting_time_tiktok", "16:00", "Best time to post on TikTok")
+    set_config("posting_schedule_pinterest", "tuesday,wednesday", "Best days to post on Pinterest")
+    set_config("posting_time_pinterest", "11:00", "Best time to post on Pinterest")
+    set_config("posting_schedule_facebook", "wednesday,thursday", "Best days to post on Facebook")
+    set_config("posting_time_facebook", "19:00", "Best time to post on Facebook")
+    set_config("auto_posting_enabled", "false", "Whether ARIA posts automatically — enable when credentials ready")
 
 
 def _register_default_tools():
