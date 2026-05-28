@@ -10,6 +10,7 @@ from app.models.collection import Collection
 from app.models.autonomy import AutonomyRule, ProductScore
 from app.models.store_config import StoreConfig
 from app.models.aria_operational import ARIAActionLedger, ARIATool, ARIAConversationState, ARIABusinessState, ARIAPolicy
+from app.models.order import Order, OrderTracking
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users.db")
