@@ -74,6 +74,14 @@ def run_tracking_check():
         print(f"[Scheduler] Tracking check error: {e}")
 
 
+def run_posting_check():
+    try:
+        from app.agents.posting_agent import run_posting_agent
+        run_posting_agent()
+    except Exception as e:
+        print(f"[Scheduler] Posting agent error: {e}")
+
+
 def start_scheduler():
     scheduler = BackgroundScheduler()
 
@@ -98,6 +106,14 @@ def start_scheduler():
         trigger=IntervalTrigger(hours=6),
         id='tracking_check',
         name='Order Tracking Agent',
+        replace_existing=True
+    )
+
+    scheduler.add_job(
+        run_posting_check,
+        trigger=IntervalTrigger(hours=1),
+        id='posting_check',
+        name='Social Media Posting Agent',
         replace_existing=True
     )
 

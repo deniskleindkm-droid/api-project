@@ -131,6 +131,9 @@ def process_signals():
             elif signal.signal_type == "CONTENT_NEEDS_REVIEW":
                 _handle_content_needs_review(payload)
 
+            elif signal.signal_type == "CONTENT_POSTED":
+                _handle_content_posted(payload)
+
             elif signal.signal_type == "STOCK_LOW":
                 _handle_stock_low(payload)
 
@@ -310,3 +313,10 @@ def _handle_stock_low(payload):
     product_id = payload.get("product_id")
     stock = payload.get("stock")
     print(f"[Nervous System] ⚠️ Stock low: Product {product_id} has {stock} units remaining")
+
+def _handle_content_posted(payload):
+    content_id = payload.get("content_id")
+    platform = payload.get("platform")
+    product_name = payload.get("product_name")
+    print(f"[Nervous System] 🌍 Content posted: {product_name} on {platform} (ID: {content_id})")
+    # Future: analytics agent tracks engagement    
