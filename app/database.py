@@ -160,6 +160,7 @@ def _register_default_configs():
     set_config("min_product_score", "0.65", "Minimum score for auto-import")
     set_config("max_products_per_trend", "3", "Max products to score per trend signal")
     set_config("auto_import_enabled", "true", "Whether ARIA auto-imports approved products")
+    set_config("max_shipping_days", "30", "Maximum days before order is flagged as delayed")
     print("[DB] ✅ Default store configs registered")
 
 

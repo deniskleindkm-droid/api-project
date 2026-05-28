@@ -66,6 +66,14 @@ def run_signal_processor():
         print(f"[Scheduler] Signal processor error: {e}")
 
 
+def run_tracking_check():
+    try:
+        from app.agents.tracking_agent import run_tracking_agent
+        run_tracking_agent()
+    except Exception as e:
+        print(f"[Scheduler] Tracking check error: {e}")
+
+
 def start_scheduler():
     scheduler = BackgroundScheduler()
 
@@ -82,6 +90,14 @@ def start_scheduler():
         trigger=IntervalTrigger(seconds=30),
         id='signal_processor',
         name='Nervous System Signal Processor',
+        replace_existing=True
+    )
+
+    scheduler.add_job(
+        run_tracking_check,
+        trigger=IntervalTrigger(hours=6),
+        id='tracking_check',
+        name='Order Tracking Agent',
         replace_existing=True
     )
 

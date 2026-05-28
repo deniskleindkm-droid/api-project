@@ -123,17 +123,42 @@ def process_order_background(checkout_data: dict):
         # Auto-forward to CJ Dropshipping
         try:
             from app.agents.cj_dropshipping import place_order_on_cj
+            from app.agents.tracking_agent import create_tracking_entry
             print(f"[Payments] Starting CJ forwarding for {len(order_details)} items")
-            for d in order_details:
+
+            # Get customer name from email
+            customer_name = user_email.split("@")[0]
+
+            # Get the saved orders to link tracking
+            with Session(engine) as session:
+                saved_orders = session.exec(
+                    select(Order).where(
+                        Order.user_id == user_email,
+                        Order.status == "paid"
+                    ).order_by(Order.id.desc()).limit(len(order_details))
+                ).all()
+
+            for i, d in enumerate(order_details):
                 print(f"[Payments] Checking SKU for {d['name']}: {d.get('cj_sku')}")
                 if d.get("cj_sku"):
                     cj_result = place_order_on_cj(
                         cj_sku=d["cj_sku"],
-                        customer_name=user_email.split("@")[0],
+                        customer_name=customer_name,
                         shipping_address=shipping_address,
                         quantity=d["qty"]
                     )
                     print(f"[Payments] CJ order result: {cj_result}")
+
+                    # Create tracking entry if order placed successfully
+                    if cj_result.get("success") and saved_orders:
+                        order_id = saved_orders[i].id if i < len(saved_orders) else saved_orders[0].id
+                        create_tracking_entry(
+                            order_id=order_id,
+                            cj_order_id=cj_result.get("cj_order_id", ""),
+                            customer_email=user_email,
+                            customer_name=customer_name,
+                            supplier_name="CJDropshipping"
+                        )
                 else:
                     print(f"[Payments] No CJ SKU for: {d['name']} — manual fulfillment needed")
         except Exception as e:
