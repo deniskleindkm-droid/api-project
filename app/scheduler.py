@@ -82,6 +82,14 @@ def run_posting_check():
         print(f"[Scheduler] Posting agent error: {e}")
 
 
+def run_customer_check():
+    try:
+        from app.agents.customer_agent import run_customer_agent
+        run_customer_agent()
+    except Exception as e:
+        print(f"[Scheduler] Customer agent error: {e}")
+
+
 def start_scheduler():
     scheduler = BackgroundScheduler()
 
@@ -114,6 +122,14 @@ def start_scheduler():
         trigger=IntervalTrigger(hours=1),
         id='posting_check',
         name='Social Media Posting Agent',
+        replace_existing=True
+    )
+
+    scheduler.add_job(
+        run_customer_check,
+        trigger=IntervalTrigger(hours=1),
+        id='customer_check',
+        name='Customer Agent Inbox Monitor',
         replace_existing=True
     )
 

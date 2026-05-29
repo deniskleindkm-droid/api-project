@@ -143,6 +143,12 @@ def process_signals():
             elif signal.signal_type == "ORDER_PLACED":
                 pass
 
+            elif signal.signal_type == "COMPLAINT_RECEIVED":
+                _handle_complaint_received(payload)
+
+            elif signal.signal_type == "CUSTOMER_CONTACTED":
+                _handle_customer_contacted(payload)
+
             else:
                 print(f"[Nervous System] ⚠️ Unknown signal type: {signal.signal_type}")
 
@@ -284,6 +290,17 @@ def _handle_order_delivered(payload):
     customer_email = payload.get("customer_email")
     print(f"[Nervous System] ✅ Order {order_id} delivered to {customer_email}")
 
+    # Trigger follow up email
+    try:
+        from app.agents.customer_agent import handle_post_delivery_followup
+        handle_post_delivery_followup(
+            order_id=order_id,
+            customer_email=customer_email,
+            customer_name=customer_email.split("@")[0] if customer_email else "Customer"
+        )
+    except Exception as e:
+        print(f"[Nervous System] Follow up failed: {e}")
+
 
 def _handle_order_delayed(payload):
     order_id = payload.get("order_id")
@@ -298,8 +315,11 @@ def _handle_content_ready(payload):
     auto_post = payload.get("auto_post", False)
     print(f"[Nervous System] 🎨 Content ready: ID {content_id} for {platform} (score: {score})")
     if auto_post:
-        print(f"[Nervous System] → Signaling posting agent for {platform}")
-        # Phase 7 — posting agent handles this
+        try:
+            from app.agents.posting_agent import post_content
+            post_content(content_id)
+        except Exception as e:
+            print(f"[Nervous System] Posting failed: {e}")
 
 
 def _handle_content_needs_review(payload):
@@ -320,3 +340,17 @@ def _handle_content_posted(payload):
     product_name = payload.get("product_name")
     print(f"[Nervous System] 🌍 Content posted: {product_name} on {platform} (ID: {content_id})")
     # Future: analytics agent tracks engagement    
+
+def _handle_complaint_received(payload):
+    customer_email = payload.get("customer_email")
+    summary = payload.get("summary")
+    urgency = payload.get("urgency")
+    print(f"[Nervous System] 🚨 Complaint received from {customer_email} — {summary} (urgency: {urgency})")
+    # ARIA reviews and decides action
+
+
+def _handle_customer_contacted(payload):
+    customer_email = payload.get("customer_email")
+    category = payload.get("category")
+    auto_responded = payload.get("auto_responded", False)
+    print(f"[Nervous System] 📧 Customer contacted: {customer_email} — {category} (auto: {auto_responded})")    
