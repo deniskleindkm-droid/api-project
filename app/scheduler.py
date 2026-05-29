@@ -22,7 +22,8 @@ def run_market_check():
 
         update_goal_progress()
 
-        report = run_analytics()
+        from app.agents.analytics_agent import run_analytics_agent
+        report = run_analytics_agent()
 
         market_context = ""
         if market_data:
@@ -89,6 +90,13 @@ def run_customer_check():
     except Exception as e:
         print(f"[Scheduler] Customer agent error: {e}")
 
+def run_analytics_check():
+    try:
+        from app.agents.analytics_agent import run_analytics_agent
+        run_analytics_agent()
+    except Exception as e:
+        print(f"[Scheduler] Analytics agent error: {e}")        
+
 
 def start_scheduler():
     scheduler = BackgroundScheduler()
@@ -133,6 +141,14 @@ def start_scheduler():
         replace_existing=True
     )
 
+    scheduler.add_job(
+    run_analytics_check,
+    trigger=IntervalTrigger(hours=6),
+    id='analytics_check',
+    name='Analytics Agent',
+    replace_existing=True
+    )
+
     scheduler.start()
     print("[Scheduler] ✅ ARIA scheduler started with jobs:")
     print("[Scheduler]   → Market check: every 6 hours")
@@ -140,3 +156,4 @@ def start_scheduler():
     print("[Scheduler]   → Tracking agent: every 6 hours")
     print("[Scheduler]   → Posting agent: every 1 hour")
     print("[Scheduler]   → Customer agent: every 1 hour")
+    print("[Scheduler]   → Analytics agent: every 6 hours")

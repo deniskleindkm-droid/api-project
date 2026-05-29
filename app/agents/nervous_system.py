@@ -149,6 +149,9 @@ def process_signals():
             elif signal.signal_type == "CUSTOMER_CONTACTED":
                 _handle_customer_contacted(payload)
 
+            elif signal.signal_type == "PERFORMANCE_REPORT":
+                _handle_performance_report(payload)    
+
             else:
                 print(f"[Nervous System] ⚠️ Unknown signal type: {signal.signal_type}")
 
@@ -353,4 +356,15 @@ def _handle_customer_contacted(payload):
     customer_email = payload.get("customer_email")
     category = payload.get("category")
     auto_responded = payload.get("auto_responded", False)
-    print(f"[Nervous System] 📧 Customer contacted: {customer_email} — {category} (auto: {auto_responded})")    
+    print(f"[Nervous System] 📧 Customer contacted: {customer_email} — {category} (auto: {auto_responded})") 
+
+def _handle_performance_report(payload):
+    report_type = payload.get("type")
+    performance = payload.get("performance")
+    alert_level = payload.get("alert_level")
+    insight = payload.get("top_insight")
+    revenue = payload.get("revenue", 0)
+    print(f"[Nervous System] 📊 Performance report: {performance} | Alert: {alert_level} | Revenue: ${revenue:.2f}")
+    if alert_level == "red":
+        print(f"[Nervous System] 🚨 Red alert — {insight}")
+        # Future: ARIA sends email to Dennis       
