@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mikisi — Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #080808; color: #e0e0e0; min-height: 100vh; }
+
+        /* HEADER */
+        .header { padding: 20px 32px; border-bottom: 1px solid #1a1a1a; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: #080808; z-index: 100; }
+        .logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: white; letter-spacing: 2px; }
+        .logo span { color: #d4849c; }
+        .header-right { display: flex; align-items: center; gap: 16px; }
+        .last-updated { font-size: 11px; color: #444; letter-spacing: 1px; }
+        .refresh-btn { padding: 8px 16px; background: #1a1a1a; border: 1px solid #222; color: #888; font-size: 11px; letter-spacing: 1px; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+        .refresh-btn:hover { border-color: #d4849c; color: #d4849c; }
+
+        /* AUTH */
+        .auth-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; flex-direction: column; gap: 24px; }
+        .auth-title { font-family: 'Playfair Display', serif; font-size: 28px; color: white; }
+        .auth-input { width: 280px; padding: 12px 16px; background: #111; border: 1px solid #222; color: white; font-size: 13px; font-family: 'Inter', sans-serif; outline: none; text-align: center; letter-spacing: 2px; }
+        .auth-input:focus { border-color: #d4849c; }
+        .auth-btn { width: 280px; padding: 12px; background: #d4849c; color: white; border: none; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; letter-spacing: 1px; }
+
+        /* MAIN */
+        .main { display: none; padding: 32px; max-width: 1400px; margin: 0 auto; }
+
+        /* SYSTEM HEALTH — PRIMARY */
+        .section-title { font-size: 10px; font-weight: 400; letter-spacing: 3px; text-transform: uppercase; color: #555; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: #1a1a1a; }
+
+        /* ALERT BANNER */
+        .alert-banner { padding: 16px 24px; margin-bottom: 32px; display: none; border-left: 3px solid #ef4444; background: rgba(239,68,68,0.05); }
+        .alert-banner.show { display: flex; align-items: center; gap: 12px; }
+        .alert-text { font-size: 13px; color: #ef4444; }
+
+        /* AGENT GRID */
+        .agents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 40px; }
+        .agent-card { background: #0f0f0f; border: 1px solid #1a1a1a; padding: 20px; position: relative; transition: border-color 0.2s; }
+        .agent-card.green { border-left: 3px solid #22c55e; }
+        .agent-card.yellow { border-left: 3px solid #eab308; }
+        .agent-card.red { border-left: 3px solid #ef4444; }
+        .agent-card.unknown { border-left: 3px solid #333; }
+        .agent-name { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: #888; margin-bottom: 8px; }
+        .agent-status { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .status-dot.green { background: #22c55e; animation: pulse 2s infinite; }
+        .status-dot.yellow { background: #eab308; }
+        .status-dot.red { background: #ef4444; animation: pulse-red 1s infinite; }
+        .status-dot.unknown { background: #333; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes pulse-red { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        .status-text { font-size: 12px; color: #666; }
+        .agent-detail { font-size: 11px; color: #444; line-height: 1.8; }
+        .agent-detail span { color: #666; }
+
+        /* SIGNAL HEALTH */
+        .signals-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 40px; }
+        .signal-card { background: #0f0f0f; border: 1px solid #1a1a1a; padding: 16px 20px; }
+        .signal-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #555; margin-bottom: 8px; }
+        .signal-value { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 400; color: white; }
+        .signal-value.warning { color: #eab308; }
+        .signal-value.danger { color: #ef4444; }
+        .signal-sub { font-size: 10px; color: #444; margin-top: 4px; letter-spacing: 1px; }
+
+        /* ACTION LEDGER */
+        .ledger-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+        .ledger-table th { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #444; text-align: left; padding: 8px 12px; border-bottom: 1px solid #1a1a1a; }
+        .ledger-table td { font-size: 12px; color: #666; padding: 10px 12px; border-bottom: 1px solid #111; }
+        .ledger-table tr:hover td { background: #0f0f0f; }
+        .status-badge { display: inline-flex; padding: 2px 8px; border-radius: 2px; font-size: 10px; letter-spacing: 1px; }
+        .status-badge.verified_success { background: rgba(34,197,94,0.1); color: #22c55e; }
+        .status-badge.failed { background: rgba(239,68,68,0.1); color: #ef4444; }
+        .status-badge.executing { background: rgba(234,179,8,0.1); color: #eab308; }
+        .status-badge.planned { background: rgba(100,100,100,0.1); color: #666; }
+        .status-badge.needs_approval { background: rgba(212,132,156,0.1); color: #d4849c; }
+
+        /* BUSINESS SNAPSHOT */
+        .snapshot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 40px; }
+        .snapshot-card { background: #0f0f0f; border: 1px solid #1a1a1a; padding: 20px; text-align: center; }
+        .snapshot-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #555; margin-bottom: 8px; }
+        .snapshot-value { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 300; color: white; }
+        .snapshot-sub { font-size: 10px; color: #444; margin-top: 4px; }
+
+        /* FAILED SIGNALS */
+        .failed-list { background: #0f0f0f; border: 1px solid #1a1a1a; border-left: 3px solid #ef4444; padding: 20px; margin-bottom: 40px; }
+        .failed-item { padding: 8px 0; border-bottom: 1px solid #111; font-size: 12px; color: #666; display: flex; justify-content: space-between; }
+        .failed-item:last-child { border-bottom: none; }
+        .failed-type { color: #ef4444; font-size: 11px; letter-spacing: 1px; }
+
+        /* LOADING */
+        .loading { text-align: center; padding: 40px; color: #333; font-size: 13px; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+
+<div class="auth-screen" id="auth-screen">
+    <div class="auth-title">Command Center</div>
+    <input type="password" class="auth-input" id="master-key" placeholder="Master Key" />
+    <button class="auth-btn" onclick="authenticate()">Enter</button>
+</div>
+
+<div id="dashboard" style="display:none;">
+    <div class="header">
+        <div class="logo">Mik<span>i</span>si <span style="font-size:12px;color:#333;letter-spacing:3px;font-family:'Inter',sans-serif;font-weight:300;">COMMAND CENTER</span></div>
+        <div class="header-right">
+            <div class="last-updated" id="last-updated">Loading...</div>
+            <button class="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
+        </div>
+    </div>
+
+    <div class="main" id="main">
+
+        <!-- ALERT BANNER -->
+        <div class="alert-banner" id="alert-banner">
+            <span style="font-size:16px;">🚨</span>
+            <div class="alert-text" id="alert-text"></div>
+        </div>
+
+        <!-- SYSTEM HEALTH -->
+        <div class="section-title">System Health</div>
+        <div class="agents-grid" id="agents-grid">
+            <div class="loading">Loading agents...</div>
+        </div>
+
+        <!-- SIGNAL HEALTH -->
+        <div class="section-title">Nervous System</div>
+        <div class="signals-row" id="signals-row">
+            <div class="loading">Loading signals...</div>
+        </div>
+
+        <!-- FAILED SIGNALS -->
+        <div id="failed-section" style="display:none;">
+            <div class="section-title">Failed Signals — Needs Attention</div>
+            <div class="failed-list" id="failed-list"></div>
+        </div>
+
+        <!-- ACTION LEDGER -->
+        <div class="section-title">Recent Actions</div>
+        <table class="ledger-table">
+            <thead>
+                <tr>
+                    <th>Action</th>
+                    <th>Agent</th>
+                    <th>Status</th>
+                    <th>Time</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+            <tbody id="ledger-body">
+                <tr><td colspan="5" class="loading">Loading actions...</td></tr>
+            </tbody>
+        </table>
+
+        <!-- BUSINESS SNAPSHOT -->
+        <div class="section-title">Business Snapshot</div>
+        <div class="snapshot-grid" id="snapshot-grid">
+            <div class="loading">Loading...</div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const API = "https://api-project-production-d424.up.railway.app";
+let masterKey = '';
+
+function authenticate() {
+    const key = document.getElementById('master-key').value;
+    if (!key) return;
+    masterKey = key;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    document.getElementById('main').style.display = 'block';
+    loadDashboard();
+}
+
+document.getElementById('master-key').addEventListener('keydown', e => {
+    if (e.key === 'Enter') authenticate();
+});
+
+async function loadDashboard() {
+    document.getElementById('last-updated').textContent = 'Updating...';
+    await Promise.all([
+        loadSystemHealth(),
+        loadSignalHealth(),
+        loadActionLedger(),
+        loadBusinessSnapshot()
+    ]);
+    document.getElementById('last-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
+}
+
+// ============================================================
+// SYSTEM HEALTH
+// ============================================================
+async function loadSystemHealth() {
+    const grid = document.getElementById('agents-grid');
+
+    try {
+        // Get memories to determine agent last activity
+        const res = await fetch(`${API}/agents/memories`, {
+            headers: { 'Authorization': `Bearer ${masterKey}` }
+        });
+        const memories = await res.json();
+
+        // Get signals for nervous system health
+        const sigRes = await fetch(`${API}/agents/status`);
+        const status = await sigRes.json();
+
+        const agents = [
+            { name: "Market Agent", key: "market_data", schedule: "Every 6 hours", icon: "📈" },
+            { name: "Product Agent", key: "product_agent", schedule: "On trend signal", icon: "📦" },
+            { name: "Content Agent", key: "content_agent", schedule: "On product import", icon: "🎨" },
+            { name: "Posting Agent", key: "posting_agent", schedule: "Every 1 hour", icon: "🌍" },
+            { name: "Tracking Agent", key: "tracking_agent", schedule: "Every 6 hours", icon: "🚚" },
+            { name: "Customer Agent", key: "customer_agent", schedule: "Every 1 hour", icon: "💌" },
+            { name: "Analytics Agent", key: "analytics_agent", schedule: "Every 6 hours", icon: "📊" },
+            { name: "Nervous System", key: "nervous_system", schedule: "Every 30 seconds", icon: "⚡" },
+        ];
+
+        // Find last activity per agent from memories
+        const agentActivity = {};
+        if (Array.isArray(memories)) {
+            memories.forEach(m => {
+                if (!agentActivity[m.agent_name] || m.created_at > agentActivity[m.agent_name]) {
+                    agentActivity[m.agent_name] = m.created_at;
+                }
+            });
+        }
+
+        grid.innerHTML = agents.map(agent => {
+            const lastSeen = agentActivity[agent.key];
+            let statusClass = "unknown";
+            let statusText = "No activity recorded";
+
+            if (lastSeen) {
+                const minutesAgo = Math.floor((Date.now() - new Date(lastSeen)) / 60000);
+                if (minutesAgo < 60) {
+                    statusClass = "green";
+                    statusText = `Active ${minutesAgo}m ago`;
+                } else if (minutesAgo < 360) {
+                    statusClass = "yellow";
+                    statusText = `${Math.floor(minutesAgo/60)}h ago`;
+                } else {
+                    statusClass = "red";
+                    statusText = `Last seen ${Math.floor(minutesAgo/60)}h ago`;
+                }
+            }
+
+            return `
+                <div class="agent-card ${statusClass}">
+                    <div class="agent-name">${agent.icon} ${agent.name}</div>
+                    <div class="agent-status">
+                        <div class="status-dot ${statusClass}"></div>
+                        <div class="status-text">${statusText}</div>
+                    </div>
+                    <div class="agent-detail">Schedule: <span>${agent.schedule}</span></div>
+                </div>`;
+        }).join('');
+
+        // Check for red agents and show alert
+        const redAgents = agents.filter((a, i) => {
+            const lastSeen = agentActivity[a.key];
+            if (!lastSeen) return false;
+            const minutesAgo = Math.floor((Date.now() - new Date(lastSeen)) / 60000);
+            return minutesAgo > 360;
+        });
+
+        if (redAgents.length > 0) {
+            document.getElementById('alert-banner').classList.add('show');
+            document.getElementById('alert-text').textContent =
+                `${redAgents.map(a => a.name).join(', ')} ${redAgents.length === 1 ? 'has' : 'have'} not reported in over 6 hours — check Railway logs.`;
+        }
+
+    } catch(e) {
+        grid.innerHTML = `<div class="loading">Could not load agent status — ${e.message}</div>`;
+    }
+}
+
+// ============================================================
+// SIGNAL HEALTH
+// ============================================================
+async function loadSignalHealth() {
+    const row = document.getElementById('signals-row');
+
+    try {
+        const res = await fetch(`${API}/agents/memories?limit=100`);
+        const data = await res.json();
+
+        // Get signal stats from API
+        const statsRes = await fetch(`${API}/agents/status`);
+        const stats = await statsRes.json();
+
+        const pending = stats.pending_signals || 0;
+        const failed = stats.failed_signals || 0;
+        const processed = stats.processed_signals || 0;
+
+        row.innerHTML = `
+            <div class="signal-card">
+                <div class="signal-label">Pending Signals</div>
+                <div class="signal-value ${pending > 10 ? 'warning' : ''}">${pending}</div>
+                <div class="signal-sub">Awaiting processing</div>
+            </div>
+            <div class="signal-card">
+                <div class="signal-label">Failed Signals</div>
+                <div class="signal-value ${failed > 0 ? 'danger' : ''}">${failed}</div>
+                <div class="signal-sub">Need attention</div>
+            </div>
+            <div class="signal-card">
+                <div class="signal-label">Processed Today</div>
+                <div class="signal-value">${processed}</div>
+                <div class="signal-sub">Successfully handled</div>
+            </div>
+            <div class="signal-card">
+                <div class="signal-label">System Status</div>
+                <div class="signal-value ${failed > 0 ? 'danger' : ''}" style="font-size:20px;margin-top:4px;">
+                    ${failed > 0 ? '⚠️ Issues' : '✓ Healthy'}
+                </div>
+                <div class="signal-sub">${failed > 0 ? 'Check failed signals' : 'All signals processing'}</div>
+            </div>`;
+
+        // Show failed signals if any
+        if (failed > 0) {
+            document.getElementById('failed-section').style.display = 'block';
+            const failedList = document.getElementById('failed-list');
+            failedList.innerHTML = stats.failed_signal_details ?
+                stats.failed_signal_details.map(s => `
+                    <div class="failed-item">
+                        <div>
+                            <div class="failed-type">${s.signal_type}</div>
+                            <div style="font-size:11px;color:#444;margin-top:2px;">From: ${s.sender} | ${s.error || 'Unknown error'}</div>
+                        </div>
+                        <div style="font-size:10px;color:#333;">${new Date(s.created_at).toLocaleTimeString()}</div>
+                    </div>`).join('') :
+                '<div class="failed-item"><div>Check Railway logs for details</div></div>';
+        }
+
+    } catch(e) {
+        row.innerHTML = `<div class="loading">Could not load signal data</div>`;
+    }
+}
+
+// ============================================================
+// ACTION LEDGER
+// ============================================================
+async function loadActionLedger() {
+    const tbody = document.getElementById('ledger-body');
+
+    try {
+        const res = await fetch(`${API}/agents/ledger`, {
+            headers: { 'Authorization': `Bearer ${masterKey}` }
+        });
+
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="5" class="loading">Ledger endpoint not yet connected</td></tr>';
+            return;
+        }
+
+        const actions = await res.json();
+
+        if (!actions.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="loading">No actions recorded yet</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = actions.slice(0, 20).map(a => `
+            <tr>
+                <td>${a.action_type || '—'}</td>
+                <td style="color:#555;">${a.assigned_agent || '—'}</td>
+                <td><span class="status-badge ${a.status}">${a.status}</span></td>
+                <td style="color:#444;font-size:11px;">${new Date(a.created_at).toLocaleTimeString()}</td>
+                <td style="color:#444;font-size:11px;">${(a.result_summary || '—').substring(0, 50)}</td>
+            </tr>`).join('');
+
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="5" class="loading">Could not load ledger</td></tr>';
+    }
+}
+
+// ============================================================
+// BUSINESS SNAPSHOT
+// ============================================================
+async function loadBusinessSnapshot() {
+    const grid = document.getElementById('snapshot-grid');
+
+    try {
+        const [productsRes, ordersRes, collectionsRes] = await Promise.all([
+            fetch(`${API}/products`),
+            fetch(`${API}/orders`, { headers: { 'Authorization': `Bearer ${masterKey}` } }),
+            fetch(`${API}/collections`)
+        ]);
+
+        const products = await productsRes.json();
+        const collections = await collectionsRes.json();
+
+        let orders = [];
+        let revenue = 0;
+        try {
+            orders = await ordersRes.json();
+            if (Array.isArray(orders)) {
+                revenue = orders.reduce((sum, o) => sum + (o.total_price || 0), 0);
+            }
+        } catch(e) {}
+
+        const contentRes = await fetch(`${API}/agents/content-stats`).catch(() => null);
+        let contentReady = 0;
+        let contentPosted = 0;
+        if (contentRes && contentRes.ok) {
+            const contentData = await contentRes.json();
+            contentReady = contentData.ready || 0;
+            contentPosted = contentData.posted || 0;
+        }
+
+        grid.innerHTML = `
+            <div class="snapshot-card">
+                <div class="snapshot-label">Revenue</div>
+                <div class="snapshot-value">$${revenue.toFixed(0)}</div>
+                <div class="snapshot-sub">Total all time</div>
+            </div>
+            <div class="snapshot-card">
+                <div class="snapshot-label">Orders</div>
+                <div class="snapshot-value">${Array.isArray(orders) ? orders.length : 0}</div>
+                <div class="snapshot-sub">Total processed</div>
+            </div>
+            <div class="snapshot-card">
+                <div class="snapshot-label">Products Live</div>
+                <div class="snapshot-value">${Array.isArray(products) ? products.length : 0}</div>
+                <div class="snapshot-sub">Active in store</div>
+            </div>
+            <div class="snapshot-card">
+                <div class="snapshot-label">Collections</div>
+                <div class="snapshot-value">${Array.isArray(collections) ? collections.length : 0}</div>
+                <div class="snapshot-sub">Categories</div>
+            </div>
+            <div class="snapshot-card">
+                <div class="snapshot-label">Content Ready</div>
+                <div class="snapshot-value">${contentReady}</div>
+                <div class="snapshot-sub">Awaiting posting</div>
+            </div>
+            <div class="snapshot-card">
+                <div class="snapshot-label">Content Posted</div>
+                <div class="snapshot-value">${contentPosted}</div>
+                <div class="snapshot-sub">Published</div>
+            </div>`;
+
+    } catch(e) {
+        grid.innerHTML = `<div class="loading">Could not load snapshot</div>`;
+    }
+}
+
+// Auto refresh every 60 seconds
+setInterval(loadDashboard, 60000);
+</script>
+</body>
+</html>

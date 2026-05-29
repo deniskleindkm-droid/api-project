@@ -758,3 +758,62 @@ def generate_content(product_id: int):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))    
+    
+@router.get("/agents/ledger")
+def get_action_ledger(session: Session = Depends(get_session)):
+    from app.models.aria_operational import ARIAActionLedger
+    ledger = session.exec(
+        select(ARIAActionLedger).order_by(
+            ARIAActionLedger.created_at.desc()
+        ).limit(20)
+    ).all()
+    return ledger
+
+
+@router.get("/agents/content-stats")
+def get_content_stats(session: Session = Depends(get_session)):
+    from app.models.content import ProductContent
+    ready = session.exec(
+        select(ProductContent).where(ProductContent.status == "ready")
+    ).all()
+    posted = session.exec(
+        select(ProductContent).where(ProductContent.status == "posted")
+    ).all()
+    return {"ready": len(ready), "posted": len(posted)}
+
+
+@router.get("/agents/status")
+def get_agent_status(session: Session = Depends(get_session)):
+    from app.models.signal import SystemSignal
+    from sqlmodel import func
+
+    pending = session.exec(
+        select(SystemSignal).where(SystemSignal.status == "pending")
+    ).all()
+
+    failed = session.exec(
+        select(SystemSignal).where(SystemSignal.status == "failed")
+    ).all()
+
+    processed_today = session.exec(
+        select(SystemSignal).where(
+            SystemSignal.status == "processed"
+        )
+    ).all()
+
+    failed_details = [
+        {
+            "signal_type": s.signal_type,
+            "sender": s.sender,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "error": s.payload[:100] if s.payload else None
+        }
+        for s in failed[-10:]
+    ]
+
+    return {
+        "pending_signals": len(pending),
+        "failed_signals": len(failed),
+        "processed_signals": len(processed_today),
+        "failed_signal_details": failed_details
+    }    
