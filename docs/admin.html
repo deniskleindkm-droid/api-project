@@ -284,63 +284,7 @@ async function loadSystemHealth() {
 // SIGNAL HEALTH
 // ============================================================
 async function loadSignalHealth() {
-    const row = document.getElementById('signals-row');
-
-    try {
-        const res = await fetch(`${API}/agents/memories?limit=100`);
-        const data = await res.json();
-
-        // Get signal stats from API
-        const statsRes = await fetch(`${API}/agents/status`);
-        const stats = await statsRes.json();
-
-        const pending = stats.pending_signals || 0;
-        const failed = stats.failed_signals || 0;
-        const processed = stats.processed_signals || 0;
-
-        row.innerHTML = `
-            <div class="signal-card">
-                <div class="signal-label">Pending Signals</div>
-                <div class="signal-value ${pending > 10 ? 'warning' : ''}">${pending}</div>
-                <div class="signal-sub">Awaiting processing</div>
-            </div>
-            <div class="signal-card">
-                <div class="signal-label">Failed Signals</div>
-                <div class="signal-value ${failed > 0 ? 'danger' : ''}">${failed}</div>
-                <div class="signal-sub">Need attention</div>
-            </div>
-            <div class="signal-card">
-                <div class="signal-label">Processed Today</div>
-                <div class="signal-value">${processed}</div>
-                <div class="signal-sub">Successfully handled</div>
-            </div>
-            <div class="signal-card">
-                <div class="signal-label">System Status</div>
-                <div class="signal-value ${failed > 0 ? 'danger' : ''}" style="font-size:20px;margin-top:4px;">
-                    ${failed > 0 ? '⚠️ Issues' : '✓ Healthy'}
-                </div>
-                <div class="signal-sub">${failed > 0 ? 'Check failed signals' : 'All signals processing'}</div>
-            </div>`;
-
-        // Show failed signals if any
-        if (failed > 0) {
-            document.getElementById('failed-section').style.display = 'block';
-            const failedList = document.getElementById('failed-list');
-            failedList.innerHTML = stats.failed_signal_details ?
-                stats.failed_signal_details.map(s => `
-                    <div class="failed-item">
-                        <div>
-                            <div class="failed-type">${s.signal_type}</div>
-                            <div style="font-size:11px;color:#444;margin-top:2px;">From: ${s.sender} | ${s.error || 'Unknown error'}</div>
-                        </div>
-                        <div style="font-size:10px;color:#333;">${new Date(s.created_at).toLocaleTimeString()}</div>
-                    </div>`).join('') :
-                '<div class="failed-item"><div>Check Railway logs for details</div></div>';
-        }
-
-    } catch(e) {
-        row.innerHTML = `<div class="loading">Could not load signal data</div>`;
-    }
+    // Handled by loadBusinessSnapshot via /agents/admin-stats
 }
 
 // ============================================================
@@ -385,26 +329,13 @@ async function loadActionLedger() {
 // ============================================================
 async function loadBusinessSnapshot() {
     const grid = document.getElementById('snapshot-grid');
+    const row = document.getElementById('signals-row');
 
     try {
-        const [productsRes, ordersRes, collectionsRes] = await Promise.all([
-            fetch(`${API}/products`),
-            fetch(`${API}/orders`, { headers: { 'Authorization': `Bearer ${masterKey}` } }),
-            fetch(`${API}/collections`)
-        ]);
+        const res = await fetch(`${API}/agents/admin-stats`);
+        const data = await res.json();
 
-        const products = await productsRes.json();
-        const collections = await collectionsRes.json();
-
-        let orders = [];
-        let revenue = 0;
-        try {
-            orders = await ordersRes.json();
-            if (Array.isArray(orders)) {
-                revenue = orders.reduce((sum, o) => sum + (o.total_price || 0), 0);
-            }
-        } catch(e) {}
-
+        // Business snapshot
         const contentRes = await fetch(`${API}/agents/content-stats`).catch(() => null);
         let contentReady = 0;
         let contentPosted = 0;
@@ -414,20 +345,23 @@ async function loadBusinessSnapshot() {
             contentPosted = contentData.posted || 0;
         }
 
+        const collectionsRes = await fetch(`${API}/collections`);
+        const collections = await collectionsRes.json();
+
         grid.innerHTML = `
             <div class="snapshot-card">
                 <div class="snapshot-label">Revenue</div>
-                <div class="snapshot-value">$${revenue.toFixed(0)}</div>
+                <div class="snapshot-value">$${data.total_revenue.toFixed(0)}</div>
                 <div class="snapshot-sub">Total all time</div>
             </div>
             <div class="snapshot-card">
                 <div class="snapshot-label">Orders</div>
-                <div class="snapshot-value">${Array.isArray(orders) ? orders.length : 0}</div>
+                <div class="snapshot-value">${data.total_orders}</div>
                 <div class="snapshot-sub">Total processed</div>
             </div>
             <div class="snapshot-card">
                 <div class="snapshot-label">Products Live</div>
-                <div class="snapshot-value">${Array.isArray(products) ? products.length : 0}</div>
+                <div class="snapshot-value">${data.total_products}</div>
                 <div class="snapshot-sub">Active in store</div>
             </div>
             <div class="snapshot-card">
@@ -446,8 +380,50 @@ async function loadBusinessSnapshot() {
                 <div class="snapshot-sub">Published</div>
             </div>`;
 
+        // Signal health
+        const pending = data.pending_signals || 0;
+        const failed = data.failed_signals || 0;
+        const processed = data.processed_signals || 0;
+
+        row.innerHTML = `
+            <div class="signal-card">
+                <div class="signal-label">Pending Signals</div>
+                <div class="signal-value ${pending > 10 ? 'warning' : ''}">${pending}</div>
+                <div class="signal-sub">Awaiting processing</div>
+            </div>
+            <div class="signal-card">
+                <div class="signal-label">Failed Signals</div>
+                <div class="signal-value ${failed > 0 ? 'danger' : ''}">${failed}</div>
+                <div class="signal-sub">Need attention</div>
+            </div>
+            <div class="signal-card">
+                <div class="signal-label">Processed Total</div>
+                <div class="signal-value">${processed}</div>
+                <div class="signal-sub">Successfully handled</div>
+            </div>
+            <div class="signal-card">
+                <div class="signal-label">System Status</div>
+                <div class="signal-value ${failed > 0 ? 'danger' : ''}" style="font-size:20px;margin-top:4px;">
+                    ${failed > 0 ? '⚠️ Issues' : '✓ Healthy'}
+                </div>
+                <div class="signal-sub">${failed > 0 ? 'Check failed signals' : 'All signals processing'}</div>
+            </div>`;
+
+        if (failed > 0 && data.failed_signal_details) {
+            document.getElementById('failed-section').style.display = 'block';
+            const failedList = document.getElementById('failed-list');
+            failedList.innerHTML = data.failed_signal_details.map(s => `
+                <div class="failed-item">
+                    <div>
+                        <div class="failed-type">${s.signal_type}</div>
+                        <div style="font-size:11px;color:#444;margin-top:2px;">From: ${s.sender}</div>
+                    </div>
+                    <div style="font-size:10px;color:#333;">${new Date(s.created_at).toLocaleTimeString()}</div>
+                </div>`).join('');
+        }
+
     } catch(e) {
-        grid.innerHTML = `<div class="loading">Could not load snapshot</div>`;
+        grid.innerHTML = `<div class="loading">Could not load snapshot — ${e.message}</div>`;
     }
 }
 

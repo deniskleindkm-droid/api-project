@@ -817,3 +817,45 @@ def get_agent_status(session: Session = Depends(get_session)):
         "processed_signals": len(processed_today),
         "failed_signal_details": failed_details
     }    
+
+@router.get("/agents/admin-stats")
+def get_admin_stats(session: Session = Depends(get_session)):
+    from app.models.order import Order
+    from app.models.product import Product
+    from app.models.signal import SystemSignal
+
+    orders = session.exec(select(Order)).all()
+    products = session.exec(
+        select(Product).where(Product.is_active == True)
+    ).all()
+    pending_signals = session.exec(
+        select(SystemSignal).where(SystemSignal.status == "pending")
+    ).all()
+    failed_signals = session.exec(
+        select(SystemSignal).where(SystemSignal.status == "failed")
+    ).all()
+    processed_signals = session.exec(
+        select(SystemSignal).where(SystemSignal.status == "processed")
+    ).all()
+
+    total_revenue = sum(o.total_price for o in orders)
+
+    failed_details = [
+        {
+            "signal_type": s.signal_type,
+            "sender": s.sender,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "error": s.payload[:100] if s.payload else None
+        }
+        for s in failed_signals[-10:]
+    ]
+
+    return {
+        "total_revenue": total_revenue,
+        "total_orders": len(orders),
+        "total_products": len(products),
+        "pending_signals": len(pending_signals),
+        "failed_signals": len(failed_signals),
+        "processed_signals": len(processed_signals),
+        "failed_signal_details": failed_details
+    }
