@@ -134,5 +134,9 @@ def start_scheduler():
     )
 
     scheduler.start()
-    print("[Scheduler] ✅ ARIA scheduler started — checking every 6 hours with real beauty market data")
-    return scheduler
+    print("[Scheduler] ✅ ARIA scheduler started with jobs:")
+    print("[Scheduler]   → Market check: every 6 hours")
+    print("[Scheduler]   → Signal processor: every 30 seconds")
+    print("[Scheduler]   → Tracking agent: every 6 hours")
+    print("[Scheduler]   → Posting agent: every 1 hour")
+    print("[Scheduler]   → Customer agent: every 1 hour")
