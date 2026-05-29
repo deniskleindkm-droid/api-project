@@ -200,37 +200,43 @@ async function loadSystemHealth() {
     const grid = document.getElementById('agents-grid');
 
     try {
-        // Get memories to determine agent last activity
-        const res = await fetch(`${API}/agents/memories`);
-        const memories = await res.json();
-
-        // Get signals for nervous system health
-        const sigRes = await fetch(`${API}/agents/status`);
-        const status = await sigRes.json();
+        const memoriesRes = await fetch(`${API}/agents/memories`);
+        const memories = await memoriesRes.json();
 
         const agents = [
-            { name: "Market Agent", key: "market_data", schedule: "Every 6 hours", icon: "📈" },
-            { name: "Product Agent", key: "product_agent", schedule: "On trend signal", icon: "📦" },
-            { name: "Content Agent", key: "content_agent", schedule: "On product import", icon: "🎨" },
-            { name: "Posting Agent", key: "posting_agent", schedule: "Every 1 hour", icon: "🌍" },
-            { name: "Tracking Agent", key: "tracking_agent", schedule: "Every 6 hours", icon: "🚚" },
-            { name: "Customer Agent", key: "customer_agent", schedule: "Every 1 hour", icon: "💌" },
-            { name: "Analytics Agent", key: "analytics_agent", schedule: "Every 6 hours", icon: "📊" },
-            { name: "Nervous System", key: "nervous_system", schedule: "Every 30 seconds", icon: "⚡" },
+            { name: "Market Agent", keys: ["market_data"], schedule: "Every 6 hours", icon: "📈" },
+            { name: "Product Agent", keys: ["product_agent", "store_manager"], schedule: "On trend signal", icon: "📦" },
+            { name: "Content Agent", keys: ["content_agent"], schedule: "On product import", icon: "🎨" },
+            { name: "Posting Agent", keys: ["posting_agent"], schedule: "Every 1 hour", icon: "🌍" },
+            { name: "Tracking Agent", keys: ["tracking_agent"], schedule: "Every 6 hours", icon: "🚚" },
+            { name: "Customer Agent", keys: ["customer_agent"], schedule: "Every 1 hour", icon: "💌" },
+            { name: "Analytics Agent", keys: ["analytics_agent", "analytics"], schedule: "Every 6 hours", icon: "📊" },
+            { name: "Nervous System", keys: ["aria", "aria_episodic", "aria_chat"], schedule: "Every 30 seconds", icon: "⚡" },
         ];
 
-        // Find last activity per agent from memories
         const agentActivity = {};
         if (Array.isArray(memories)) {
             memories.forEach(m => {
-                if (!agentActivity[m.agent_name] || m.created_at > agentActivity[m.agent_name]) {
-                    agentActivity[m.agent_name] = m.created_at;
+                const name = m.agent_name || "";
+                if (!agentActivity[name] || m.created_at > agentActivity[name]) {
+                    agentActivity[name] = m.created_at;
                 }
             });
         }
 
+        let redCount = 0;
+
         grid.innerHTML = agents.map(agent => {
-            const lastSeen = agentActivity[agent.key];
+            let lastSeen = null;
+            agent.keys.forEach(key => {
+                Object.keys(agentActivity).forEach(memKey => {
+                    if (memKey.includes(key)) {
+                        const t = agentActivity[memKey];
+                        if (!lastSeen || t > lastSeen) lastSeen = t;
+                    }
+                });
+            });
+
             let statusClass = "unknown";
             let statusText = "No activity recorded";
 
@@ -239,12 +245,13 @@ async function loadSystemHealth() {
                 if (minutesAgo < 60) {
                     statusClass = "green";
                     statusText = `Active ${minutesAgo}m ago`;
-                } else if (minutesAgo < 360) {
+                } else if (minutesAgo < 720) {
                     statusClass = "yellow";
                     statusText = `${Math.floor(minutesAgo/60)}h ago`;
                 } else {
                     statusClass = "red";
                     statusText = `Last seen ${Math.floor(minutesAgo/60)}h ago`;
+                    redCount++;
                 }
             }
 
@@ -259,18 +266,10 @@ async function loadSystemHealth() {
                 </div>`;
         }).join('');
 
-        // Check for red agents and show alert
-        const redAgents = agents.filter((a, i) => {
-            const lastSeen = agentActivity[a.key];
-            if (!lastSeen) return false;
-            const minutesAgo = Math.floor((Date.now() - new Date(lastSeen)) / 60000);
-            return minutesAgo > 360;
-        });
-
-        if (redAgents.length > 0) {
+        if (redCount > 0) {
             document.getElementById('alert-banner').classList.add('show');
             document.getElementById('alert-text').textContent =
-                `${redAgents.map(a => a.name).join(', ')} ${redAgents.length === 1 ? 'has' : 'have'} not reported in over 6 hours — check Railway logs.`;
+                `${redCount} agent${redCount > 1 ? 's have' : ' has'} not reported recently — check Railway logs.`;
         }
 
     } catch(e) {
@@ -284,7 +283,6 @@ async function loadSystemHealth() {
 async function loadSignalHealth() {
     // Handled by loadBusinessSnapshot via /agents/admin-stats
 }
-
 // ============================================================
 // ACTION LEDGER
 // ============================================================
