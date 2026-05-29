@@ -201,9 +201,7 @@ async function loadSystemHealth() {
 
     try {
         // Get memories to determine agent last activity
-        const res = await fetch(`${API}/agents/memories`, {
-            headers: { 'Authorization': `Bearer ${masterKey}` }
-        });
+        const res = await fetch(`${API}/agents/memories`);
         const memories = await res.json();
 
         // Get signals for nervous system health
