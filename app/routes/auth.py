@@ -90,6 +90,16 @@ class ResendRequest(BaseModel):
 def register(user: UserRequest, session: Session = Depends(get_session)):
     existing = session.exec(select(User).where(User.email == user.email)).first()
     if existing:
+        if not existing.is_verified:
+            # Resend verification code — don't block them
+            code = generate_code()
+            _verification_store[user.email] = {
+                "code": code,
+                "expires": datetime.utcnow() + timedelta(minutes=10),
+                "attempts": 0
+            }
+            send_verification_email(user.email, code)
+            return {"message": "Account exists but not verified. We sent a new code to your email."}
         raise HTTPException(status_code=400, detail="Email already registered")
 
     new_user = User(
