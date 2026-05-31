@@ -2,11 +2,14 @@ from sqlmodel import SQLModel, Field
 from typing import Optional
 from pydantic import EmailStr, field_validator
 
+
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str
     password: str
     full_name: Optional[str] = None
+    is_verified: bool = Field(default=False)
+
 
 class UserRequest(SQLModel):
     email: EmailStr

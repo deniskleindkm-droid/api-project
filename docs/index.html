@@ -24,9 +24,13 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; }
         body { font-family: 'Jost', sans-serif; background: var(--cream); color: var(--black); overflow-x: hidden; }
+
+        /* ANNOUNCEMENT BAR */
         #ann-bar { background: var(--black); color: rgba(255,255,255,0.7); text-align: center; padding: 11px 20px; font-size: 11px; font-weight: 300; letter-spacing: 2.5px; text-transform: uppercase; }
+
+        /* NAV — CLEAN: Logo | Search | Collections ▾ | About | Cart | Sign In */
         nav { background: var(--cream); padding: 0 56px; display: flex; justify-content: space-between; align-items: center; height: 80px; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border); }
-        .logo { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 400; letter-spacing: 6px; color: var(--black); text-transform: uppercase; }
+        .logo { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 400; letter-spacing: 6px; color: var(--black); text-transform: uppercase; cursor: pointer; }
         .logo em { color: var(--pink); font-style: italic; }
         .nav-search { flex: 1; max-width: 280px; margin: 0 40px; position: relative; }
         .nav-search input { width: 100%; padding: 9px 14px 9px 36px; border: none; border-bottom: 1px solid var(--light); background: transparent; font-size: 12px; font-family: 'Jost', sans-serif; font-weight: 300; letter-spacing: 1px; color: var(--black); outline: none; transition: border-color 0.3s; }
@@ -43,13 +47,15 @@
         .sri-name { font-size: 13px; }
         .sri-price { font-family: 'Cormorant Garamond', serif; font-size: 15px; color: var(--pink); margin-top: 2px; }
         .search-empty { padding: 24px; text-align: center; color: var(--mid); font-size: 12px; letter-spacing: 1px; }
+
+        /* NAV LINKS — only Collections + About */
         .nav-links { display: flex; gap: 36px; align-items: center; }
         .nav-link { font-size: 11px; font-weight: 400; letter-spacing: 2.5px; text-transform: uppercase; color: var(--mid); cursor: pointer; transition: color 0.3s; background: none; border: none; font-family: 'Jost', sans-serif; padding: 4px 0; position: relative; }
         .nav-link::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 1px; background: var(--pink); transform: scaleX(0); transition: transform 0.3s ease; transform-origin: left; }
         .nav-link:hover { color: var(--black); }
         .nav-link:hover::after { transform: scaleX(1); }
         .nav-has-drop { position: relative; }
-        .drop-menu { display: none; position: absolute; top: calc(100% + 24px); left: -24px; background: white; border: 1px solid var(--border); padding: 24px 28px; min-width: 220px; box-shadow: 0 20px 60px rgba(0,0,0,0.07); z-index: 200; }
+        .drop-menu { display: none; position: absolute; top: calc(100% + 24px); left: -24px; background: white; border: 1px solid var(--border); padding: 24px 28px; min-width: 240px; box-shadow: 0 20px 60px rgba(0,0,0,0.07); z-index: 200; }
         .nav-has-drop:hover .drop-menu { display: block; }
         .drop-title { font-size: 10px; font-weight: 300; letter-spacing: 3px; text-transform: uppercase; color: var(--light); margin-bottom: 16px; }
         .drop-item { padding: 10px 0; cursor: pointer; border-bottom: 1px solid var(--border); transition: padding-left 0.2s; }
@@ -57,6 +63,8 @@
         .drop-item:hover { padding-left: 8px; }
         .drop-item-name { font-size: 13px; font-weight: 300; color: var(--charcoal); }
         .drop-item-count { font-size: 10px; color: var(--mid); margin-top: 2px; }
+
+        /* NAV RIGHT */
         .nav-right { display: flex; align-items: center; gap: 20px; }
         .nav-icon { background: none; border: none; cursor: pointer; font-size: 16px; color: var(--mid); padding: 4px; transition: color 0.2s; position: relative; }
         .nav-icon:hover { color: var(--black); }
@@ -66,9 +74,13 @@
         .nav-sign-btn.out { border-color: var(--light); color: var(--mid); }
         .nav-sign-btn.out:hover { border-color: var(--pink); color: var(--pink); background: none; }
         .nav-user { font-size: 11px; color: var(--mid); letter-spacing: 1px; font-weight: 300; }
+
+        /* ANIMATIONS */
         @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
         .fade-up { animation: fadeUp 0.8s ease forwards; opacity: 0; }
         .fade-up-1 { animation-delay: 0.1s; } .fade-up-2 { animation-delay: 0.25s; } .fade-up-3 { animation-delay: 0.4s; } .fade-up-4 { animation-delay: 0.55s; }
+
+        /* HERO */
         .hero { min-height: 90vh; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; background: var(--cream); padding: 80px 56px 0; }
         .hero-eyebrow { font-size: 10px; font-weight: 400; letter-spacing: 5px; text-transform: uppercase; color: var(--gold); margin-bottom: 28px; display: flex; align-items: center; gap: 16px; }
         .hero-eyebrow::before, .hero-eyebrow::after { content: ''; width: 40px; height: 1px; background: var(--gold-light); }
@@ -80,19 +92,27 @@
         .btn-primary:hover { background: var(--pink); }
         .btn-outline { background: none; color: var(--black); border: 1px solid var(--black); padding: 16px 44px; font-size: 10px; font-weight: 400; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; font-family: 'Jost', sans-serif; transition: all 0.3s; }
         .btn-outline:hover { border-color: var(--pink); color: var(--pink); }
-        .hero-banner { width: 100%; max-width: 1200px; height: 420px; overflow: hidden; background: var(--ivory); display: flex; align-items: center; justify-content: center; }
-        .hero-banner img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .hero-banner { width: 100%; max-width: 1200px; height: 420px; overflow: hidden; background: var(--ivory); display: flex; align-items: center; justify-content: center; position: relative; }
+        .hero-banner img#hero-img { width: 100%; height: 100%; object-fit: cover; display: none; }
         .hero-banner-ph { text-align: center; color: var(--light); }
         .hero-banner-ph p { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-style: italic; }
+
+        /* MARQUEE */
         .marquee-wrap { background: var(--black); overflow: hidden; padding: 14px 0; white-space: nowrap; }
         .marquee-track { display: inline-block; animation: marquee 28s linear infinite; }
         @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
         .marquee-track span { font-size: 10px; font-weight: 300; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin: 0 32px; }
         .marquee-track span.dot { color: var(--gold); margin: 0 8px; }
+
+        /* TRUST BAR */
         .trust-bar { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 20px 56px; display: flex; justify-content: center; gap: 64px; flex-wrap: wrap; background: white; }
         .trust-item { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10px; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; color: var(--mid); }
+
+        /* SUCCESS BANNER */
         .success-banner { background: #f0fdf4; color: #166534; padding: 14px 40px; display: none; align-items: center; justify-content: center; gap: 12px; font-size: 12px; letter-spacing: 1px; font-weight: 300; border-bottom: 1px solid #bbf7d0; }
         .success-banner.show { display: flex; }
+
+        /* COLLECTIONS TILES */
         .tiles-section { padding: 80px 56px; background: var(--cream); }
         .sec-eyebrow { font-size: 10px; font-weight: 300; letter-spacing: 4px; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; display: flex; align-items: center; gap: 14px; }
         .sec-eyebrow::after { content: ''; flex: 0 0 32px; height: 1px; background: var(--gold-light); }
@@ -109,11 +129,15 @@
         .tile:hover .tile-no-img { background: var(--pink-pale); }
         .tile-name-plain { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-style: italic; color: var(--charcoal); }
         .tile-count-plain { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--mid); }
+
+        /* BREADCRUMB */
         .breadcrumb { padding: 16px 56px; display: none; align-items: center; gap: 10px; background: var(--ivory); border-bottom: 1px solid var(--border); }
         .bc-item { font-size: 11px; font-weight: 300; letter-spacing: 1.5px; text-transform: uppercase; color: var(--mid); cursor: pointer; transition: color 0.2s; }
         .bc-item:hover { color: var(--pink); }
         .bc-item.active { color: var(--black); }
         .bc-sep { color: var(--light); font-size: 10px; }
+
+        /* PRODUCTS */
         .products-section { padding: 64px 56px 80px; background: var(--cream); }
         .products-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 12px; }
         .products-title { font-family: 'Cormorant Garamond', serif; font-size: 34px; font-weight: 300; color: var(--black); }
@@ -140,13 +164,19 @@
         .pc-ship { font-size: 10px; color: var(--mid); letter-spacing: 1px; margin-bottom: 16px; font-weight: 300; }
         .pc-atc { width: 100%; padding: 13px; background: none; color: var(--black); border: 1px solid var(--black); cursor: pointer; font-size: 10px; font-weight: 300; letter-spacing: 2.5px; text-transform: uppercase; transition: all 0.3s; font-family: 'Jost', sans-serif; margin-top: auto; }
         .pc-atc:hover { background: var(--black); color: white; }
+
+        /* DIVIDER */
         .divider-section { padding: 60px 56px; background: var(--black); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; text-align: center; }
         .divider-eyebrow { font-size: 10px; font-weight: 300; letter-spacing: 4px; text-transform: uppercase; color: var(--gold); }
         .divider-text { font-family: 'Cormorant Garamond', serif; font-size: clamp(28px, 4vw, 48px); font-weight: 300; font-style: italic; color: white; line-height: 1.2; }
         .divider-sub { font-size: 12px; font-weight: 300; color: rgba(255,255,255,0.4); letter-spacing: 1.5px; margin-top: 4px; }
+
+        /* URGENCY */
         .urgency-bar { background: var(--pink-pale); color: var(--black); padding: 16px 40px; display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; border-top: 1px solid rgba(212,132,156,0.2); border-bottom: 1px solid rgba(212,132,156,0.2); }
         .urgency-text { font-size: 11px; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; color: var(--mid); }
         .urgency-timer { font-family: 'Cormorant Garamond', serif; font-size: 22px; color: var(--pink-deep); font-weight: 400; letter-spacing: 2px; }
+
+        /* ABOUT */
         .about-section { padding: 100px 56px; display: none; gap: 80px; align-items: center; flex-wrap: wrap; background: white; }
         .about-content { flex: 1; min-width: 280px; }
         .about-title { font-family: 'Cormorant Garamond', serif; font-size: 44px; font-weight: 300; line-height: 1.15; margin-bottom: 24px; color: var(--black); }
@@ -154,6 +184,8 @@
         .about-text { font-size: 14px; font-weight: 300; color: var(--mid); line-height: 1.9; margin-bottom: 28px; }
         .about-img { flex: 1; min-width: 280px; height: 400px; overflow: hidden; }
         .about-img img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* CART */
         .cart-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 200; backdrop-filter: blur(2px); }
         .cart-overlay.open { display: block; }
         .cart-sidebar { position: fixed; top: 0; right: -520px; width: 480px; height: 100%; background: white; z-index: 201; transition: right 0.4s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; box-shadow: -4px 0 40px rgba(0,0,0,0.08); border-left: 1px solid var(--border); }
@@ -184,6 +216,7 @@
         .empty-cart { text-align: center; padding: 80px 0; }
         .empty-icon { font-size: 44px; opacity: 0.3; margin-bottom: 16px; }
         .empty-cart p { font-family: 'Cormorant Garamond', serif; font-size: 18px; font-style: italic; color: var(--mid); }
+
         /* PRODUCT MODAL */
         .pm-overlay { display: none; position: fixed; inset: 0; background: rgba(14,14,14,0.65); z-index: 350; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
         .pm-overlay.open { display: flex; }
@@ -216,6 +249,7 @@
         .pm-atc:hover { background: var(--pink); }
         .pm-close { position: absolute; top: 16px; right: 16px; background: white; border: 1px solid var(--border); color: var(--mid); width: 36px; height: 36px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; transition: all 0.2s; }
         .pm-close:hover { background: var(--black); color: white; border-color: var(--black); }
+
         /* AUTH MODAL */
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(14,14,14,0.6); z-index: 300; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(3px); }
         .modal-overlay.open { display: flex; }
@@ -234,16 +268,37 @@
         .m-btn:hover { background: var(--pink); }
         .m-btn.pink { background: var(--pink); }
         .m-btn.pink:hover { background: var(--pink-deep); }
+        .m-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .m-msg { padding: 12px 16px; margin-bottom: 16px; text-align: center; font-size: 12px; font-weight: 300; display: none; }
         .m-msg.success { background: #f0fdf4; color: #166534; }
         .m-msg.error { background: #fff1f2; color: #9f1239; }
         .m-switch { text-align: center; color: var(--mid); font-size: 12px; font-weight: 300; }
         .m-switch a { color: var(--pink); cursor: pointer; text-decoration: underline; }
         .close-modal { position: absolute; top: 14px; right: 14px; background: none; border: none; color: var(--mid); font-size: 18px; cursor: pointer; }
-        .co-modal { background: white; width: 100%; max-width: 480px; position: relative; box-shadow: 0 24px 80px rgba(0,0,0,0.12); max-height: 90vh; overflow-y: auto; }
+
+        /* VERIFICATION CODE INPUT */
+        .verify-inputs { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+        .verify-digit { width: 44px; height: 52px; border: 1px solid var(--border); background: transparent; text-align: center; font-size: 20px; font-family: 'Cormorant Garamond', serif; font-weight: 400; color: var(--black); outline: none; transition: border-color 0.3s; }
+        .verify-digit:focus { border-color: var(--pink); }
+
+        /* CHECKOUT MODAL — CLEAN */
+        .co-modal { background: white; width: 100%; max-width: 520px; position: relative; box-shadow: 0 24px 80px rgba(0,0,0,0.12); max-height: 90vh; overflow-y: auto; }
+        .co-summary { background: var(--ivory); padding: 20px 24px; margin-bottom: 24px; border: 1px solid var(--border); }
+        .co-summary-title { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--mid); margin-bottom: 12px; font-weight: 300; }
+        .co-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+        .co-item:last-of-type { border-bottom: none; }
+        .co-item-name { font-size: 13px; font-weight: 300; color: var(--charcoal); max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .co-item-price { font-family: 'Cormorant Garamond', serif; font-size: 15px; color: var(--black); }
+        .co-total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 12px; margin-top: 4px; border-top: 1px solid var(--border); }
+        .co-total-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--mid); font-weight: 300; }
+        .co-total-amount { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 400; color: var(--black); }
+
+        /* TOAST */
         .toast { position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%); background: var(--black); color: white; padding: 13px 28px; font-size: 11px; font-weight: 300; letter-spacing: 1.5px; z-index: 400; opacity: 0; transition: opacity 0.3s; white-space: nowrap; box-shadow: 0 8px 40px rgba(0,0,0,0.15); }
         .toast.show { opacity: 1; }
         .loading { text-align: center; padding: 80px; color: var(--light); font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 18px; grid-column: 1/-1; }
+
+        /* FOOTER */
         footer { background: var(--black); padding: 56px 56px 40px; }
         .footer-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 40px; padding-bottom: 40px; border-bottom: 1px solid #222; margin-bottom: 28px; }
         .footer-logo { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 300; color: white; letter-spacing: 5px; text-transform: uppercase; }
@@ -254,6 +309,8 @@
         .footer-link:hover { color: var(--pink); }
         .footer-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
         .footer-copy { font-size: 10px; color: #333; letter-spacing: 1.5px; font-weight: 300; }
+
+        /* MOBILE */
         @media(max-width: 768px) {
             nav { padding: 0 20px; height: 64px; }
             .nav-links { display: none; }
@@ -288,25 +345,22 @@
 
 <div id="ann-bar">Free Express Shipping on All Orders · Free 30-Day Returns · Authenticity Guaranteed</div>
 
+<!-- NAV — CLEAN VERSION -->
 <nav>
-    <div class="logo">Mik<em>i</em>si</div>
+    <div class="logo" onclick="goHome()">Mik<em>i</em>si</div>
     <div class="nav-search">
         <span class="search-icon">⌕</span>
-        <input type="text" id="search-input" placeholder="Search the collection..." oninput="doSearch(this.value)" autocomplete="off" name="search-mikisi" readonly onfocus="this.removeAttribute('readonly')" />
+        <input type="text" id="search-input" placeholder="Search the collection..." oninput="doSearch(this.value)" autocomplete="off" />
         <div class="search-results" id="search-results"></div>
     </div>
     <div class="nav-links">
-        <button class="nav-link" onclick="goHome()">New</button>
-        <button class="nav-link" onclick="filterByKeyword('jewelry')">Jewelry</button>
         <div class="nav-has-drop">
             <button class="nav-link">Collections ▾</button>
-            <div class="drop-menu">
+            <div class="drop-menu" id="collections-drop">
                 <div class="drop-title">Browse Collections</div>
                 <div id="nav-drop-list"><div style="color:var(--light);font-size:12px">Loading...</div></div>
             </div>
         </div>
-        <button class="nav-link" onclick="filterByKeyword('hair')">Hair Care</button>
-        <button class="nav-link" onclick="filterByKeyword('makeup')">Makeup</button>
         <button class="nav-link" onclick="scrollToAbout()">About</button>
     </div>
     <div class="nav-right">
@@ -319,6 +373,7 @@
     </div>
 </nav>
 
+<!-- HERO -->
 <div class="hero">
     <div class="hero-eyebrow fade-up fade-up-1">New Collection 2026</div>
     <h1 class="fade-up fade-up-2">Look <em>Elegant</em> and Polished.</h1>
@@ -328,11 +383,12 @@
         <button class="btn-outline" onclick="scrollToAbout()">Our Story</button>
     </div>
     <div class="hero-banner fade-up" style="animation-delay:0.7s">
-        <div class="hero-banner-ph"><p>Your collection banner appears here</p></div>
-        <img id="hero-img" src="" alt="" />
+        <div class="hero-banner-ph" id="hero-ph"><p>Your collection banner appears here</p></div>
+        <img id="hero-img" src="" alt="Mikisi Collection" style="display:none" />
     </div>
 </div>
 
+<!-- MARQUEE -->
 <div class="marquee-wrap">
     <div class="marquee-track">
         <span>Free Express Shipping</span><span class="dot">✦</span>
@@ -350,6 +406,7 @@
     </div>
 </div>
 
+<!-- TRUST BAR -->
 <div class="trust-bar">
     <div class="trust-item"><span>✦</span>Premium Authentic</div>
     <div class="trust-item"><span>⇉</span>Free Express Shipping</div>
@@ -360,21 +417,24 @@
 
 <div class="success-banner" id="success-banner">✓ Payment confirmed. Your order is being prepared.</div>
 
+<!-- COLLECTIONS TILES -->
 <div class="tiles-section" id="tiles-section">
     <div class="sec-eyebrow">Curated for You</div>
     <div class="sec-heading" id="tiles-heading">Our Collections</div>
-    <div class="sec-sub">Discover our carefully curated selections</div>
+    <div class="sec-sub">Six carefully curated worlds of elegance</div>
     <div class="tiles-grid" id="tiles-grid">
         <div style="color:var(--light);font-size:13px;grid-column:1/-1;padding:20px 0;font-family:'Cormorant Garamond',serif;font-style:italic">Loading collections...</div>
     </div>
 </div>
 
+<!-- BREADCRUMB -->
 <div class="breadcrumb" id="breadcrumb">
     <span class="bc-item" onclick="goHome()">Home</span>
     <span class="bc-sep">—</span>
     <span class="bc-item active" id="bc-current"></span>
 </div>
 
+<!-- PRODUCTS -->
 <div class="products-section" id="shop">
     <div class="products-header">
         <div>
@@ -388,18 +448,21 @@
     </div>
 </div>
 
+<!-- DIVIDER -->
 <div class="divider-section">
     <div class="divider-eyebrow">The Mikisi Promise</div>
     <div class="divider-text">"Every piece tells a story.<br>Wear yours."</div>
     <div class="divider-sub">Premium quality · Authentic materials · Timeless design</div>
 </div>
 
+<!-- URGENCY -->
 <div class="urgency-bar">
     <div class="urgency-text">Sale ends in</div>
     <div class="urgency-timer" id="timer">23:59:59</div>
     <div class="urgency-text">— Shop now</div>
 </div>
 
+<!-- ABOUT -->
 <div class="about-section" id="about">
     <div class="about-content">
         <div class="sec-eyebrow">Our Story</div>
@@ -410,6 +473,7 @@
     <div class="about-img"><img src="https://placehold.co/520x400/fdf9f6/d4849c?text=Mikisi" alt="Mikisi" /></div>
 </div>
 
+<!-- CART -->
 <div class="cart-overlay" id="cart-overlay" onclick="toggleCart()"></div>
 <div class="cart-sidebar" id="cart-sidebar">
     <div class="cart-header">
@@ -429,6 +493,7 @@
     </div>
 </div>
 
+<!-- PRODUCT MODAL -->
 <div class="pm-overlay" id="pm-overlay">
     <div class="pm-box">
         <button class="pm-close" onclick="closePM()">×</button>
@@ -457,31 +522,78 @@
     </div>
 </div>
 
+<!-- AUTH MODAL — Sign In / Register / Verify -->
 <div class="modal-overlay" id="auth-modal">
     <div class="modal">
         <button class="close-modal" onclick="closeAuth()">×</button>
-        <div class="modal-top"><h2 id="m-title">Welcome Back</h2><p id="m-sub">Sign in to your Mikisi account</p></div>
-        <div class="modal-body">
-            <div id="m-msg" class="m-msg"></div>
-            <div class="m-group" id="m-name-grp" style="display:none"><label>Full Name</label><input type="text" id="m-name" placeholder="Your name" /></div>
-            <div class="m-group"><label>Email Address</label><input type="email" id="m-email" placeholder="your@email.com" /></div>
-            <div class="m-group"><label>Password</label><input type="password" id="m-pw" placeholder="••••••••" /></div>
-            <button class="m-btn" id="m-submit" onclick="submitAuth()">Sign In</button>
-            <div class="m-switch" id="m-switch">New to Mikisi? <a onclick="switchAuth()">Create account</a></div>
+
+        <!-- SIGN IN / REGISTER VIEW -->
+        <div id="auth-view">
+            <div class="modal-top">
+                <h2 id="m-title">Welcome Back</h2>
+                <p id="m-sub">Sign in to your Mikisi account</p>
+            </div>
+            <div class="modal-body">
+                <div id="m-msg" class="m-msg"></div>
+                <div class="m-group" id="m-name-grp" style="display:none">
+                    <label>Full Name</label>
+                    <input type="text" id="m-name" placeholder="Your name" />
+                </div>
+                <div class="m-group">
+                    <label>Email Address</label>
+                    <input type="email" id="m-email" placeholder="your@email.com" />
+                </div>
+                <div class="m-group">
+                    <label>Password</label>
+                    <input type="password" id="m-pw" placeholder="••••••••" />
+                </div>
+                <button class="m-btn" id="m-submit" onclick="submitAuth()">Sign In</button>
+                <div class="m-switch" id="m-switch">New to Mikisi? <a onclick="switchAuth()">Create account</a></div>
+            </div>
+        </div>
+
+        <!-- VERIFICATION VIEW -->
+        <div id="verify-view" style="display:none">
+            <div class="modal-top">
+                <h2>Verify Your Email</h2>
+                <p id="verify-sub">We sent a 6-digit code to your email</p>
+            </div>
+            <div class="modal-body">
+                <div id="v-msg" class="m-msg"></div>
+                <div class="verify-inputs">
+                    <input class="verify-digit" id="v0" maxlength="1" oninput="digitInput(this,1)" onkeydown="digitBack(this,event,-1)" />
+                    <input class="verify-digit" id="v1" maxlength="1" oninput="digitInput(this,2)" onkeydown="digitBack(this,event,0)" />
+                    <input class="verify-digit" id="v2" maxlength="1" oninput="digitInput(this,3)" onkeydown="digitBack(this,event,1)" />
+                    <input class="verify-digit" id="v3" maxlength="1" oninput="digitInput(this,4)" onkeydown="digitBack(this,event,2)" />
+                    <input class="verify-digit" id="v4" maxlength="1" oninput="digitInput(this,5)" onkeydown="digitBack(this,event,3)" />
+                    <input class="verify-digit" id="v5" maxlength="1" oninput="digitInput(this,-1)" onkeydown="digitBack(this,event,4)" />
+                </div>
+                <button class="m-btn" id="v-submit" onclick="submitVerification()">Verify & Continue</button>
+                <div class="m-switch"><a onclick="resendCode()">Resend code</a></div>
+            </div>
         </div>
     </div>
 </div>
 
+<!-- CHECKOUT MODAL — CLEAN -->
 <div class="modal-overlay" id="checkout-modal">
     <div class="co-modal modal">
         <button class="close-modal" onclick="closeCheckout()">×</button>
-        <div class="modal-top"><h2>Complete Your Order</h2><p>Enter your shipping details below</p></div>
+        <div class="modal-top">
+            <h2>Complete Your Order</h2>
+            <p>Review and enter your shipping details</p>
+        </div>
         <div class="modal-body">
             <div id="co-msg" class="m-msg"></div>
+
+            <!-- ORDER SUMMARY — clean, no raw HTML -->
+            <div class="co-summary" id="co-summary"></div>
+
+            <!-- SHIPPING -->
             <div class="m-group"><label>Street Address</label><input type="text" id="co-street" placeholder="123 Main Street" /></div>
             <div class="m-group"><label>City</label><input type="text" id="co-city" placeholder="City" /></div>
             <div class="m-row">
-                <div class="m-group"><label>State</label><input type="text" id="co-state" placeholder="NY" /></div>
+                <div class="m-group"><label>State / Region</label><input type="text" id="co-state" placeholder="NY" /></div>
                 <div class="m-group"><label>Postal Code</label><input type="text" id="co-zip" placeholder="10001" /></div>
             </div>
             <div class="m-group"><label>Country</label>
@@ -536,9 +648,13 @@ let allProducts = [];
 let allCollections = [];
 let currentImages = [];
 let currentImageIndex = 0;
+let pendingVerifyEmail = '';
+let cartItems = [];
 
 function getPlaceholder() { return 'https://placehold.co/400x400/fdf9f6/d4849c?text=Mikisi'; }
 function pad(n) { return String(n).padStart(2,'0'); }
+function stripHtml(str) { return str ? str.replace(/<[^>]+>/g, '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').trim() : ''; }
+function truncate(str, n) { return str && str.length > n ? str.substring(0, n) + '…' : str || ''; }
 
 window.onload = async () => {
     updateAuthUI();
@@ -557,6 +673,9 @@ function startTimer() {
     setInterval(()=>{s--;if(s<0){s=59;m--;}if(m<0){m=59;h--;}if(h<0)h=23;document.getElementById('timer').textContent=`${pad(h)}:${pad(m)}:${pad(s)}`;},1000);
 }
 
+// ============================================================
+// COLLECTIONS
+// ============================================================
 async function loadCollections() {
     try {
         const res = await fetch(`${API}/collections`);
@@ -569,29 +688,37 @@ async function loadCollections() {
 function renderTiles(cols) {
     const grid = document.getElementById('tiles-grid');
     const section = document.getElementById('tiles-section');
-    if (!cols.length) { section.style.display = 'none'; return; }
+    if (!cols || !cols.length) { section.style.display = 'none'; return; }
     section.style.display = 'block';
     grid.innerHTML = cols.map(col => col.image_url
-        ? `<div class="tile" onclick="handleTile(${col.id},'${col.name}')"><img src="${col.image_url}" onerror="this.style.display='none'" /><div class="tile-overlay"><div class="tile-name">${col.name}</div><div class="tile-count">${col.product_count} pieces</div></div></div>`
-        : `<div class="tile" onclick="handleTile(${col.id},'${col.name}')"><div class="tile-no-img"><div class="tile-name-plain">${col.name}</div><div class="tile-count-plain">${col.product_count} pieces</div></div></div>`
+        ? `<div class="tile" onclick="handleTile(${col.id},'${col.name.replace(/'/g,"\\'")}')">
+               <img src="${col.image_url}" onerror="this.style.display='none'" />
+               <div class="tile-overlay">
+                   <div class="tile-name">${col.name}</div>
+                   <div class="tile-count">${col.product_count || 0} pieces</div>
+               </div>
+           </div>`
+        : `<div class="tile" onclick="handleTile(${col.id},'${col.name.replace(/'/g,"\\'")}')">
+               <div class="tile-no-img">
+                   <div class="tile-name-plain">${col.name}</div>
+                   <div class="tile-count-plain">${col.product_count || 0} pieces</div>
+               </div>
+           </div>`
     ).join('');
 }
 
 function renderNavDrop(cols) {
     const list = document.getElementById('nav-drop-list');
-    if (!cols.length) { list.innerHTML = '<div style="color:var(--light);font-size:12px">No collections yet</div>'; return; }
-    list.innerHTML = cols.map(c => `<div class="drop-item" onclick="handleTile(${c.id},'${c.name}')"><div class="drop-item-name">${c.name}</div><div class="drop-item-count">${c.product_count} pieces</div></div>`).join('');
+    if (!cols || !cols.length) { list.innerHTML = '<div style="color:var(--light);font-size:12px">No collections yet</div>'; return; }
+    list.innerHTML = cols.map(c =>
+        `<div class="drop-item" onclick="handleTile(${c.id},'${c.name.replace(/'/g,"\\'")}')">
+            <div class="drop-item-name">${c.name}</div>
+            <div class="drop-item-count">${c.product_count || 0} pieces</div>
+        </div>`
+    ).join('');
 }
 
 async function handleTile(id, name) {
-    const col = allCollections.find(c => c.id === id);
-    if (col && col.children && col.children.length) {
-        document.getElementById('tiles-heading').textContent = name;
-        renderTiles(col.children);
-        showBreadcrumb(name);
-        scrollToProducts();
-        return;
-    }
     showBreadcrumb(name);
     document.getElementById('prod-title').textContent = name;
     document.getElementById('tiles-section').style.display = 'none';
@@ -608,17 +735,9 @@ function showBreadcrumb(name) {
     document.getElementById('bc-current').textContent = name;
 }
 
-function filterByKeyword(kw) {
-    const col = allCollections.find(c => c.name.toLowerCase().includes(kw));
-    if (col) handleTile(col.id, col.name);
-    else {
-        const filtered = allProducts.filter(p => p.name.toLowerCase().includes(kw) || p.category.toLowerCase().includes(kw));
-        document.getElementById('prod-title').textContent = kw.charAt(0).toUpperCase() + kw.slice(1);
-        renderProducts(filtered);
-        scrollToProducts();
-    }
-}
-
+// ============================================================
+// PRODUCTS
+// ============================================================
 async function loadProducts() {
     const grid = document.getElementById('prod-grid');
     grid.innerHTML = '<div class="loading">Loading the collection…</div>';
@@ -637,16 +756,18 @@ function renderProducts(prods) {
     grid.innerHTML = prods.map(p => {
         const img = p.image_url || getPlaceholder();
         const saving = (p.original_price - p.final_price).toFixed(2);
+        const cleanDesc = stripHtml(p.description || '');
+        const cleanName = truncate(stripHtml(p.name), 60);
         return `<div class="product-card" onclick="openPM(${p.id})">
             <div class="pc-image">
-                <img src="${img}" alt="${p.name}" onerror="this.src='${getPlaceholder()}'" loading="lazy" />
+                <img src="${img}" alt="${cleanName}" onerror="this.src='${getPlaceholder()}'" loading="lazy" />
                 <div class="pc-badge">−${p.discount_percent}%</div>
-                <button class="pc-quick" onclick="event.stopPropagation();addToCart(${p.id},'${p.name.replace(/'/g,"\\'")}')">Add to Cart</button>
+                <button class="pc-quick" onclick="event.stopPropagation();addToCart(${p.id},'${cleanName.replace(/'/g,"\\'")}')">Add to Cart</button>
             </div>
             <div class="pc-info">
-                <div class="pc-brand">${p.brand}</div>
-                <div class="pc-name">${p.name}</div>
-                <div class="pc-desc">${p.description ? p.description.replace(/<[^>]+>/g, '') : ''}</div>
+                <div class="pc-brand">${stripHtml(p.brand || 'Mikisi')}</div>
+                <div class="pc-name">${cleanName}</div>
+                <div class="pc-desc">${truncate(cleanDesc, 120)}</div>
                 <div class="pc-pricing">
                     <span class="pc-price">$${p.final_price.toFixed(2)}</span>
                     <span class="pc-orig">$${p.original_price.toFixed(2)}</span>
@@ -654,27 +775,40 @@ function renderProducts(prods) {
                 </div>
                 <div class="pc-stock">${p.stock <= 20 ? `Only ${p.stock} remaining` : ''}</div>
                 <div class="pc-ship">Delivery estimated after order confirmation</div>
-                <button class="pc-atc" onclick="event.stopPropagation();addToCart(${p.id},'${p.name.replace(/'/g,"\\'")}')">Add to Cart</button>
+                <button class="pc-atc" onclick="event.stopPropagation();addToCart(${p.id},'${cleanName.replace(/'/g,"\\'")}')">Add to Cart</button>
             </div>
         </div>`;
     }).join('');
 }
 
+// ============================================================
+// SEARCH
+// ============================================================
 function doSearch(val) {
     const box = document.getElementById('search-results');
     if (!val.trim()) { box.classList.remove('open'); return; }
     const q = val.toLowerCase();
-    const matches = allProducts.filter(p => p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q)).slice(0, 8);
+    const matches = allProducts.filter(p =>
+        stripHtml(p.name).toLowerCase().includes(q) || (p.brand || '').toLowerCase().includes(q)
+    ).slice(0, 8);
     if (!matches.length) { box.innerHTML = `<div class="search-empty">No results for "${val}"</div>`; box.classList.add('open'); return; }
-    box.innerHTML = matches.map(p => `<div class="sri" onclick="openPM(${p.id});document.getElementById('search-results').classList.remove('open');document.getElementById('search-input').value=''">
-        <div class="sri-img"><img src="${p.image_url || getPlaceholder()}" onerror="this.src='${getPlaceholder()}'" /></div>
-        <div><div class="sri-name">${p.name}</div><div class="sri-price">$${p.final_price.toFixed(2)}</div></div>
-    </div>`).join('');
+    box.innerHTML = matches.map(p => `
+        <div class="sri" onclick="openPM(${p.id});document.getElementById('search-results').classList.remove('open');document.getElementById('search-input').value=''">
+            <div class="sri-img"><img src="${p.image_url || getPlaceholder()}" onerror="this.src='${getPlaceholder()}'" /></div>
+            <div>
+                <div class="sri-name">${truncate(stripHtml(p.name), 50)}</div>
+                <div class="sri-price">$${p.final_price.toFixed(2)}</div>
+            </div>
+        </div>`).join('');
     box.classList.add('open');
 }
-document.addEventListener('click', e => { if (!e.target.closest('.nav-search')) document.getElementById('search-results').classList.remove('open'); });
+document.addEventListener('click', e => {
+    if (!e.target.closest('.nav-search')) document.getElementById('search-results').classList.remove('open');
+});
 
-// PRODUCT MODAL WITH MULTI-IMAGE
+// ============================================================
+// PRODUCT MODAL
+// ============================================================
 function openPM(id) {
     const p = allProducts.find(x => x.id === id);
     if (!p) return;
@@ -684,13 +818,13 @@ function openPM(id) {
     if (!currentImages.length) currentImages = [getPlaceholder()];
     currentImageIndex = 0;
 
-    document.getElementById('pm-brand').textContent = p.brand;
-    document.getElementById('pm-name').textContent = p.name;
+    document.getElementById('pm-brand').textContent = stripHtml(p.brand || 'Mikisi');
+    document.getElementById('pm-name').textContent = truncate(stripHtml(p.name), 80);
     document.getElementById('pm-price').textContent = `$${p.final_price.toFixed(2)}`;
     document.getElementById('pm-orig').textContent = `$${p.original_price.toFixed(2)}`;
     document.getElementById('pm-save').textContent = `Save $${(p.original_price - p.final_price).toFixed(2)}`;
-    document.getElementById('pm-desc').textContent = p.description ? p.description.replace(/<[^>]+>/g, '') : '';
-    document.getElementById('pm-ship').textContent = `Delivery time confirmed after order`;
+    document.getElementById('pm-desc').textContent = stripHtml(p.description || '');
+    document.getElementById('pm-ship').textContent = 'Delivery time confirmed after order';
     document.getElementById('pm-atc').onclick = () => { addToCart(p.id, p.name); closePM(); };
 
     updatePMImages();
@@ -699,7 +833,6 @@ function openPM(id) {
 
 function updatePMImages() {
     document.getElementById('pm-img').src = currentImages[currentImageIndex] || getPlaceholder();
-
     const thumbs = document.getElementById('pm-thumbs');
     if (currentImages.length > 1) {
         thumbs.style.display = 'flex';
@@ -707,20 +840,20 @@ function updatePMImages() {
             <div class="pm-thumb ${i === currentImageIndex ? 'active' : ''}" onclick="setImage(${i})">
                 <img src="${img}" onerror="this.src='${getPlaceholder()}'" />
             </div>`).join('');
-    } else {
-        thumbs.style.display = 'none';
-    }
-
-    const showArrows = currentImages.length > 1;
-    document.getElementById('pm-prev').style.display = showArrows ? 'flex' : 'none';
-    document.getElementById('pm-next').style.display = showArrows ? 'flex' : 'none';
+    } else { thumbs.style.display = 'none'; }
+    const show = currentImages.length > 1;
+    document.getElementById('pm-prev').style.display = show ? 'flex' : 'none';
+    document.getElementById('pm-next').style.display = show ? 'flex' : 'none';
 }
 
-function setImage(index) { currentImageIndex = index; updatePMImages(); }
+function setImage(i) { currentImageIndex = i; updatePMImages(); }
 function prevImage() { currentImageIndex = (currentImageIndex - 1 + currentImages.length) % currentImages.length; updatePMImages(); }
 function nextImage() { currentImageIndex = (currentImageIndex + 1) % currentImages.length; updatePMImages(); }
 function closePM() { document.getElementById('pm-overlay').classList.remove('open'); }
 
+// ============================================================
+// CART
+// ============================================================
 async function addToCart(productId, name) {
     if (!token) { openAuth(); return; }
     try {
@@ -729,7 +862,7 @@ async function addToCart(productId, name) {
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ product_id: productId, quantity: 1 })
         });
-        if (res.ok) { showToast(`${name} added to cart`); loadCart(); }
+        if (res.ok) { showToast(`Added to cart`); loadCart(); }
         else if (res.status === 401) openAuth();
     } catch { showToast('Failed to add to cart'); }
 }
@@ -738,7 +871,7 @@ async function loadCart() {
     if (!token) return;
     try {
         const res = await fetch(`${API}/cart`, { headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) { const data = await res.json(); renderCart(data); }
+        if (res.ok) { const data = await res.json(); cartItems = data.items || []; renderCart(data); }
     } catch {}
 }
 
@@ -752,13 +885,13 @@ function renderCart(data) {
         <div class="cart-item">
             <div class="ci-img"><img src="${item.image_url || getPlaceholder()}" onerror="this.src='${getPlaceholder()}'" /></div>
             <div class="ci-info">
-                <div class="ci-brand">${item.brand}</div>
-                <div class="ci-name">${item.name}</div>
+                <div class="ci-brand">${stripHtml(item.brand || 'Mikisi')}</div>
+                <div class="ci-name">${truncate(stripHtml(item.name), 40)}</div>
                 <div class="ci-price">$${item.subtotal.toFixed(2)}</div>
                 <div class="qty-row">
                     <button class="qty-btn" onclick="removeFromCart(${item.cart_item_id})">−</button>
                     <span class="qty-n">${item.quantity}</span>
-                    <button class="qty-btn" onclick="addToCart(${item.product_id},'${item.name}')">+</button>
+                    <button class="qty-btn" onclick="addToCart(${item.product_id},'${stripHtml(item.name).replace(/'/g,"\\'")}')">+</button>
                 </div>
             </div>
         </div>`).join('');
@@ -774,19 +907,40 @@ function toggleCart() {
     if (token) loadCart();
 }
 
+// ============================================================
+// CHECKOUT — CLEAN, no raw HTML
+// ============================================================
 function openCheckout() {
     if (!token) { openAuth(); return; }
     document.getElementById('cart-sidebar').classList.remove('open');
     document.getElementById('cart-overlay').classList.remove('open');
+
+    // Build clean order summary
+    const summary = document.getElementById('co-summary');
+    if (cartItems.length) {
+        const total = cartItems.reduce((s,i) => s + i.subtotal, 0);
+        summary.innerHTML = `
+            <div class="co-summary-title">Order Summary</div>
+            ${cartItems.map(i => `
+                <div class="co-item">
+                    <div class="co-item-name">${truncate(stripHtml(i.name), 45)} × ${i.quantity}</div>
+                    <div class="co-item-price">$${i.subtotal.toFixed(2)}</div>
+                </div>`).join('')}
+            <div class="co-total">
+                <div class="co-total-label">Total</div>
+                <div class="co-total-amount">$${total.toFixed(2)}</div>
+            </div>`;
+    }
+
     document.getElementById('checkout-modal').classList.add('open');
 }
 function closeCheckout() { document.getElementById('checkout-modal').classList.remove('open'); }
 
 async function placeOrder() {
-    const street = document.getElementById('co-street').value;
-    const city = document.getElementById('co-city').value;
-    const state = document.getElementById('co-state').value;
-    const zip = document.getElementById('co-zip').value;
+    const street = document.getElementById('co-street').value.trim();
+    const city = document.getElementById('co-city').value.trim();
+    const state = document.getElementById('co-state').value.trim();
+    const zip = document.getElementById('co-zip').value.trim();
     const country = document.getElementById('co-country').value;
     if (!street || !city || !state || !zip) { showCoMsg('Please complete all address fields', 'error'); return; }
     const address = `${street}, ${city}, ${state} ${zip}, ${country}`;
@@ -805,18 +959,30 @@ async function placeOrder() {
 }
 function showCoMsg(m, t) { const el = document.getElementById('co-msg'); el.textContent = m; el.className = `m-msg ${t}`; el.style.display = 'block'; }
 
+// ============================================================
+// AUTH — Sign In / Register / Email Verification
+// ============================================================
 function openAuth() { authMode = 'login'; resetAuth(); document.getElementById('auth-modal').classList.add('open'); }
 function closeAuth() { document.getElementById('auth-modal').classList.remove('open'); }
+
 function resetAuth() {
+    document.getElementById('auth-view').style.display = 'block';
+    document.getElementById('verify-view').style.display = 'none';
     document.getElementById('m-title').textContent = 'Welcome Back';
     document.getElementById('m-sub').textContent = 'Sign in to your Mikisi account';
     document.getElementById('m-submit').textContent = 'Sign In';
     document.getElementById('m-switch').innerHTML = "New to Mikisi? <a onclick='switchAuth()'>Create account</a>";
     document.getElementById('m-name-grp').style.display = 'none';
     document.getElementById('m-msg').style.display = 'none';
+    // Clear fields without triggering validation
+    document.getElementById('m-email').value = '';
+    document.getElementById('m-pw').value = '';
+    document.getElementById('m-name').value = '';
 }
+
 function switchAuth() {
     authMode = authMode === 'login' ? 'register' : 'login';
+    document.getElementById('m-msg').style.display = 'none';
     if (authMode === 'register') {
         document.getElementById('m-title').textContent = 'Create Account';
         document.getElementById('m-sub').textContent = 'Join Mikisi';
@@ -825,10 +991,21 @@ function switchAuth() {
         document.getElementById('m-name-grp').style.display = 'block';
     } else resetAuth();
 }
+
 async function submitAuth() {
-    const email = document.getElementById('m-email').value;
+    const email = document.getElementById('m-email').value.trim();
     const pw = document.getElementById('m-pw').value;
-    const name = document.getElementById('m-name').value;
+    const name = document.getElementById('m-name').value.trim();
+
+    // Validate only on submit
+    if (!email || !email.includes('@')) { showMMsg('Please enter a valid email address', 'error'); return; }
+    if (!pw || pw.length < 6) { showMMsg('Password must be at least 6 characters', 'error'); return; }
+    if (authMode === 'register' && !name) { showMMsg('Please enter your name', 'error'); return; }
+
+    const btn = document.getElementById('m-submit');
+    btn.disabled = true;
+    btn.textContent = authMode === 'login' ? 'Signing in…' : 'Creating account…';
+
     const body = authMode === 'register' ? { email, password: pw, full_name: name } : { email, password: pw };
     try {
         const res = await fetch(`${API}/${authMode === 'login' ? 'login' : 'register'}`, {
@@ -844,15 +1021,109 @@ async function submitAuth() {
                 localStorage.setItem('userName', dn);
                 userEmail = email; userName = dn;
                 updateAuthUI(); loadCart(); closeAuth();
-                showToast(`Welcome back, ${dn}`);
-            } else { showMMsg('Account created! Please sign in.', 'success'); switchAuth(); }
+                showToast(`Welcome back, ${dn.split(' ')[0]}`);
+            } else {
+                // Registration — show verification screen
+                pendingVerifyEmail = email;
+                showVerificationScreen(email);
+            }
         } else {
-            const errMsg = typeof data.detail === 'string' ? data.detail : Array.isArray(data.detail) ? data.detail.map(e => e.msg || 'Invalid input').join(', ') : 'Invalid email or password';
+            const errMsg = typeof data.detail === 'string'
+                ? data.detail
+                : Array.isArray(data.detail)
+                    ? data.detail.map(e => e.msg || 'Invalid input').join(', ')
+                    : 'Invalid email or password';
             showMMsg(errMsg, 'error');
         }
     } catch { showMMsg('Connection error. Please try again.', 'error'); }
+    finally { btn.disabled = false; btn.textContent = authMode === 'login' ? 'Sign In' : 'Create Account'; }
 }
+
+function showVerificationScreen(email) {
+    document.getElementById('auth-view').style.display = 'none';
+    document.getElementById('verify-view').style.display = 'block';
+    document.getElementById('verify-sub').textContent = `We sent a 6-digit code to ${email}`;
+    // Clear digits
+    for (let i = 0; i < 6; i++) document.getElementById(`v${i}`).value = '';
+    document.getElementById('v0').focus();
+}
+
+function digitInput(el, nextIdx) {
+    el.value = el.value.replace(/[^0-9]/g, '');
+    if (el.value && nextIdx >= 0) document.getElementById(`v${nextIdx}`).focus();
+    // Auto submit when all 6 filled
+    const code = getVerifyCode();
+    if (code.length === 6) submitVerification();
+}
+
+function digitBack(el, e, prevIdx) {
+    if (e.key === 'Backspace' && !el.value && prevIdx >= 0) {
+        document.getElementById(`v${prevIdx}`).focus();
+    }
+}
+
+function getVerifyCode() {
+    let code = '';
+    for (let i = 0; i < 6; i++) code += document.getElementById(`v${i}`).value;
+    return code;
+}
+
+async function submitVerification() {
+    const code = getVerifyCode();
+    if (code.length !== 6) { showVMsg('Please enter the complete 6-digit code', 'error'); return; }
+
+    const btn = document.getElementById('v-submit');
+    btn.disabled = true; btn.textContent = 'Verifying…';
+
+    try {
+        const res = await fetch(`${API}/verify-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: pendingVerifyEmail, code })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            // Auto sign in after verification
+            showVMsg('Email verified! Signing you in…', 'success');
+            setTimeout(async () => {
+                const loginRes = await fetch(`${API}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: pendingVerifyEmail, password: document.getElementById('m-pw').value })
+                });
+                if (loginRes.ok) {
+                    const loginData = await loginRes.json();
+                    token = loginData.access_token;
+                    const dn = loginData.full_name || pendingVerifyEmail.split('@')[0];
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('userEmail', pendingVerifyEmail);
+                    localStorage.setItem('userName', dn);
+                    userEmail = pendingVerifyEmail; userName = dn;
+                    updateAuthUI(); loadCart(); closeAuth();
+                    showToast(`Welcome to Mikisi, ${dn.split(' ')[0]} ✨`);
+                } else { closeAuth(); showToast('Account created — please sign in'); }
+            }, 1500);
+        } else {
+            showVMsg(data.detail || 'Invalid code. Please try again.', 'error');
+        }
+    } catch { showVMsg('Connection error', 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Verify & Continue'; }
+}
+
+async function resendCode() {
+    try {
+        await fetch(`${API}/resend-verification`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: pendingVerifyEmail })
+        });
+        showVMsg('New code sent to your email', 'success');
+    } catch { showVMsg('Could not resend. Try again.', 'error'); }
+}
+
 function showMMsg(m, t) { const el = document.getElementById('m-msg'); el.textContent = m; el.className = `m-msg ${t}`; el.style.display = 'block'; }
+function showVMsg(m, t) { const el = document.getElementById('v-msg'); el.textContent = m; el.className = `m-msg ${t}`; el.style.display = 'block'; }
+
 function logout() {
     token = null; userEmail = null; userName = null;
     localStorage.removeItem('token'); localStorage.removeItem('userEmail'); localStorage.removeItem('userName');
@@ -862,15 +1133,21 @@ function logout() {
     document.getElementById('cart-total').textContent = '0.00';
     showToast('Signed out');
 }
+
 function updateAuthUI() {
     const g = document.getElementById('user-greeting'), ab = document.getElementById('auth-btn'), lb = document.getElementById('logout-btn');
     if (token && userEmail) {
-        const n = userName || userEmail.split('@')[0];
+        const n = (userName || userEmail.split('@')[0]).split(' ')[0];
         g.textContent = n; g.style.display = 'block'; ab.style.display = 'none'; lb.style.display = 'block';
     } else { g.style.display = 'none'; ab.style.display = 'block'; lb.style.display = 'none'; }
 }
+
+// ============================================================
+// NAVIGATION HELPERS
+// ============================================================
 function scrollToProducts() { document.getElementById('shop').scrollIntoView({ behavior: 'smooth' }); }
 function scrollToAbout() { const a = document.getElementById('about'); a.style.display = 'flex'; setTimeout(() => a.scrollIntoView({ behavior: 'smooth' }), 100); }
+
 function goHome() {
     document.getElementById('breadcrumb').style.display = 'none';
     document.getElementById('prod-title').textContent = 'New Arrivals';
@@ -879,7 +1156,12 @@ function goHome() {
     renderTiles(allCollections);
     renderProducts(allProducts);
 }
-function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
 </script>
 </body>
 </html>

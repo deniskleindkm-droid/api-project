@@ -30,6 +30,7 @@ def create_db():
         conn.execute(text("ALTER TABLE product ALTER COLUMN cj_sku TYPE varchar(200)"))
         conn.execute(text("ALTER TABLE product ALTER COLUMN cj_product_id TYPE varchar(200)"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS images varchar(2000)"))
+        conn.execute(text("ALTER TABLE user ADD COLUMN IF NOT EXISTS is_verified boolean DEFAULT false"))
         conn.commit()
 
     _setup_defaults()
