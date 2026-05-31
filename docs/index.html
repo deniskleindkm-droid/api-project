@@ -56,7 +56,8 @@
         .nav-link:hover::after { transform: scaleX(1); }
         .nav-has-drop { position: relative; }
         .drop-menu { display: none; position: absolute; top: calc(100% + 24px); left: -24px; background: white; border: 1px solid var(--border); padding: 24px 28px; min-width: 240px; box-shadow: 0 20px 60px rgba(0,0,0,0.07); z-index: 200; }
-        .nav-has-drop:hover .drop-menu { display: block; }
+        .nav-has-drop .drop-menu { display: none; }
+        .nav-has-drop.open .drop-menu { display: block; }
         .drop-title { font-size: 10px; font-weight: 300; letter-spacing: 3px; text-transform: uppercase; color: var(--light); margin-bottom: 16px; }
         .drop-item { padding: 10px 0; cursor: pointer; border-bottom: 1px solid var(--border); transition: padding-left 0.2s; }
         .drop-item:last-child { border-bottom: none; }
@@ -355,7 +356,7 @@
     </div>
     <div class="nav-links">
         <div class="nav-has-drop">
-            <button class="nav-link">Collections ▾</button>
+            <button class="nav-link" onclick="toggleDrop(event)">Collections ▾</button>
             <div class="drop-menu" id="collections-drop">
                 <div class="drop-title">Browse Collections</div>
                 <div id="nav-drop-list"><div style="color:var(--light);font-size:12px">Loading...</div></div>
@@ -766,7 +767,7 @@ function renderFeaturedProducts(prods) {
                 </div>
                 <button onclick="scrollToProducts()" style="background:none;border:none;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);cursor:pointer;font-family:'Jost',sans-serif;">View All →</button>
             </div>
-            <div id="featured-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);"></div>`;
+            <div id="featured-grid" class="products-grid"></div>`;
 
         // Insert after tiles section
         const tilesSection = document.getElementById('tiles-section');
@@ -975,7 +976,7 @@ function openCheckout() {
             <div class="co-summary-title">Order Summary</div>
             ${cartItems.map(i => `
                 <div class="co-item">
-                    <div class="co-item-name">${truncate(stripHtml(i.name), 45)} × ${i.quantity}</div>
+                    <div class="co-item-name">${truncate(stripHtml(i.name).replace(/Mikisi\s*-\s*/i, ''), 45)} × ${i.quantity}</div>
                     <div class="co-item-price">$${i.subtotal.toFixed(2)}</div>
                 </div>`).join('')}
             <div class="co-total">
@@ -1204,6 +1205,16 @@ function updateAuthUI() {
 // ============================================================
 // NAVIGATION HELPERS
 // ============================================================
+function toggleDrop(e) {
+    e.stopPropagation();
+    const drop = e.target.closest('.nav-has-drop');
+    drop.classList.toggle('open');
+}
+document.addEventListener('click', () => {
+    document.querySelectorAll('.nav-has-drop.open').forEach(d => d.classList.remove('open'));
+});
+
+function scrollToProducts() { document.getElementById('shop').scrollIntoView({ behavior: 'smooth' }); }
 function scrollToProducts() { document.getElementById('shop').scrollIntoView({ behavior: 'smooth' }); }
 function scrollToAbout() { const a = document.getElementById('about'); a.style.display = 'flex'; setTimeout(() => a.scrollIntoView({ behavior: 'smooth' }), 100); }
 
