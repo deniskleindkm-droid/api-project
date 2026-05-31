@@ -713,7 +713,6 @@ function renderNavDrop(cols) {
     list.innerHTML = cols.map(c =>
         `<div class="drop-item" onclick="handleTile(${c.id},'${c.name.replace(/'/g,"\\'")}')">
             <div class="drop-item-name">${c.name}</div>
-            <div class="drop-item-count">${c.product_count || 0} pieces</div>
         </div>`
     ).join('');
 }
@@ -745,10 +744,63 @@ async function loadProducts() {
         const res = await fetch(`${API}/products`);
         allProducts = await res.json();
         document.getElementById('prod-count').textContent = `${allProducts.length} pieces`;
+        renderFeaturedProducts(allProducts);
         renderProducts(allProducts);
     } catch { grid.innerHTML = '<div class="loading">Could not load products</div>'; }
 }
+function renderFeaturedProducts(prods) {
+    const featured = prods.slice(0, 6);
+    if (!featured.length) return;
 
+    // Check if featured section exists, create if not
+    let section = document.getElementById('featured-section');
+    if (!section) {
+        section = document.createElement('div');
+        section.id = 'featured-section';
+        section.style.cssText = 'padding: 0 56px 60px; background: var(--cream);';
+        section.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;padding-bottom:20px;border-bottom:1px solid var(--border);">
+                <div>
+                    <div class="sec-eyebrow" style="margin-bottom:8px;">Hand Picked</div>
+                    <div style="font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;color:var(--black);">Featured Pieces</div>
+                </div>
+                <button onclick="scrollToProducts()" style="background:none;border:none;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);cursor:pointer;font-family:'Jost',sans-serif;">View All →</button>
+            </div>
+            <div id="featured-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);"></div>`;
+
+        // Insert after tiles section
+        const tilesSection = document.getElementById('tiles-section');
+        tilesSection.parentNode.insertBefore(section, tilesSection.nextSibling);
+    }
+
+    const grid = document.getElementById('featured-grid');
+    grid.innerHTML = featured.map(p => {
+        const img = p.image_url || getPlaceholder();
+        const cleanName = truncate(stripHtml(p.name), 60);
+        const cleanDesc = stripHtml(p.description || '');
+        const saving = (p.original_price - p.final_price).toFixed(2);
+        return `<div class="product-card" onclick="openPM(${p.id})">
+            <div class="pc-image">
+                <img src="${img}" alt="${cleanName}" onerror="this.src='${getPlaceholder()}'" loading="lazy" />
+                <div class="pc-badge">−${p.discount_percent}%</div>
+                <button class="pc-quick" onclick="event.stopPropagation();addToCart(${p.id},'${cleanName.replace(/'/g,"\\'")}')">Add to Cart</button>
+            </div>
+            <div class="pc-info">
+                <div class="pc-brand">${stripHtml(p.brand || 'Mikisi')}</div>
+                <div class="pc-name">${cleanName}</div>
+                <div class="pc-desc">${truncate(cleanDesc, 120)}</div>
+                <div class="pc-pricing">
+                    <span class="pc-price">$${p.final_price.toFixed(2)}</span>
+                    <span class="pc-orig">$${p.original_price.toFixed(2)}</span>
+                    <span class="pc-save">Save $${saving}</span>
+                </div>
+                <div class="pc-stock">${p.stock <= 20 ? `Only ${p.stock} remaining` : ''}</div>
+                <div class="pc-ship">Delivery estimated after order confirmation</div>
+                <button class="pc-atc" onclick="event.stopPropagation();addToCart(${p.id},'${cleanName.replace(/'/g,"\\'")}')">Add to Cart</button>
+            </div>
+        </div>`;
+    }).join('');
+}
 function renderProducts(prods) {
     const grid = document.getElementById('prod-grid');
     document.getElementById('prod-count').textContent = `${prods.length} pieces`;
@@ -1023,7 +1075,7 @@ async function submitAuth() {
                 updateAuthUI(); loadCart(); closeAuth();
                 showToast(`Welcome back, ${dn.split(' ')[0]}`);
             } else {
-                // Registration — show verification screen
+                // Registration or unverified — show verification screen
                 pendingVerifyEmail = email;
                 showVerificationScreen(email);
             }
@@ -1033,7 +1085,14 @@ async function submitAuth() {
                 : Array.isArray(data.detail)
                     ? data.detail.map(e => e.msg || 'Invalid input').join(', ')
                     : 'Invalid email or password';
-            showMMsg(errMsg, 'error');
+
+            // If unverified — redirect to verification screen instead of error
+            if (errMsg.toLowerCase().includes('verify')) {
+                pendingVerifyEmail = email;
+                showVerificationScreen(email);
+            } else {
+                showMMsg(errMsg, 'error');
+            }
         }
     } catch { showMMsg('Connection error. Please try again.', 'error'); }
     finally { btn.disabled = false; btn.textContent = authMode === 'login' ? 'Sign In' : 'Create Account'; }
