@@ -82,7 +82,7 @@ def send_email(to, subject, body, is_html=False):
         print(f"[ARIA] Sending email to {to} via Resend...")
         
         params = {
-            "from": "ARIA <onboarding@resend.dev>",
+            "from": "Mikisi <hello@mikisi.co>",
             "to": [to],
             "subject": subject,
             "html": body if is_html else f"<p>{body}</p>"
