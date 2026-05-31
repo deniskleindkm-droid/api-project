@@ -866,9 +866,14 @@ def reset_store(session: Session = Depends(get_session)):
     from app.models.product import Product
     from app.models.collection import Collection
     from app.models.content import ProductContent
+    from app.models.cart import CartItem
+    from app.models.order import Order, OrderTracking
     from sqlmodel import delete
 
     session.exec(delete(ProductContent))
+    session.exec(delete(CartItem))
+    session.exec(delete(OrderTracking))
+    session.exec(delete(Order))
     session.exec(delete(Product))
     session.exec(delete(Collection))
     session.commit()
