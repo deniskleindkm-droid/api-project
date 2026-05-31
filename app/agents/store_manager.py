@@ -94,45 +94,75 @@ def add_product_to_store(product_data):
 
 def import_product_from_supplier(standard_product: dict, markup: float = None) -> dict:
     """
-    Universal importer — accepts standard supplier format and saves to Mikisi.
-    Works for ANY supplier — CJ, Alibaba, anyone.
-    This is the single entry point for all product imports.
+    Universal importer — accepts standard supplier format.
+    Every product goes through ARIA rewriter before saving.
+    ARIA assigns correct collection, rewrites name and description.
+    Rejects anything that doesn't fit Mikisi's 6 collections.
     """
     if markup is None:
         from app.agents.store_config import get_config
         markup = get_config("default_markup", default=7.0)
+
     try:
         name = standard_product.get("name", "")
         cost_price = float(standard_product.get("cost_price", 0))
         category = standard_product.get("category", "Beauty")
         supplier_name = standard_product.get("supplier_name", "")
         variants = standard_product.get("variants", [])
+        description = standard_product.get("description", name)
 
+        # ============================================================
+        # ARIA REWRITER — every product goes through this
+        # ============================================================
+        try:
+            from app.agents.product_rewriter import rewrite_product
+            rewrite_result = rewrite_product({
+                "name": name,
+                "category": category,
+                "description": description,
+                "final_price": cost_price * markup
+            })
+
+            if not rewrite_result.get("accepted"):
+                reason = rewrite_result.get("rejection_reason", "Does not fit Mikisi collections")
+                print(f"[Store Manager] ❌ Rejected: {name[:50]} — {reason}")
+                return {"success": False, "reason": reason, "rejected": True}
+
+            # Use Mikisi identity
+            mikisi_name = rewrite_result.get("mikisi_name", name)[:100]
+            mikisi_description = rewrite_result.get("mikisi_description", description)
+            collection_id = rewrite_result.get("collection_id")
+            print(f"[Store Manager] ✍️ Rewritten: '{name[:40]}' → '{mikisi_name}'")
+
+        except Exception as e:
+            print(f"[Store Manager] Rewriter failed — using raw data: {e}")
+            mikisi_name = name[:100]
+            mikisi_description = description
+            collection_id = None
+
+        # ============================================================
+        # PRICING
+        # ============================================================
         marked_up = cost_price * markup
         final_price = int(marked_up) + 0.99
         original_price = int(final_price * 1.4) + 0.99
         discount = round((1 - final_price / original_price) * 100)
 
+        # ============================================================
+        # SKU
+        # ============================================================
         cj_sku = ""
         if variants:
             cj_sku = variants[0].get("variantSku", "") or variants[0].get("vid", "")
 
-        collection_id = None
-        try:
-            from app.agents.cj_dropshipping import get_or_create_collection
-            collection_id = get_or_create_collection(
-                product_name=name,
-                category_name=category,
-                description=standard_product.get("description", "")
-            )
-        except Exception as e:
-            print(f"[Store Manager] Collection lookup failed: {e}")
-
+        # ============================================================
+        # SAVE TO DATABASE
+        # ============================================================
         product_data = {
-            "name": name[:100],
+            "name": mikisi_name,
             "brand": "Mikisi",
             "category": category,
-            "description": standard_product.get("description", name),
+            "description": mikisi_description,
             "original_price": original_price,
             "discount_percent": discount,
             "final_price": final_price,
@@ -157,7 +187,7 @@ def import_product_from_supplier(standard_product: dict, markup: float = None) -
                     sender="store_manager",
                     payload={
                         "product_id": product.id,
-                        "name": name,
+                        "name": mikisi_name,
                         "collection_id": collection_id,
                         "store_price": final_price,
                         "cost_price": cost_price,
@@ -168,10 +198,10 @@ def import_product_from_supplier(standard_product: dict, markup: float = None) -
             except Exception as e:
                 print(f"[Store Manager] Signal emission failed: {e}")
 
-            print(f"[Store Manager] ✅ Imported: {name} at ${final_price}")
+            print(f"[Store Manager] ✅ Imported: {mikisi_name} at ${final_price}")
             return {
                 "success": True,
-                "product": name,
+                "product": mikisi_name,
                 "product_id": product.id,
                 "cost_price": cost_price,
                 "store_price": final_price,
@@ -185,6 +215,8 @@ def import_product_from_supplier(standard_product: dict, markup: float = None) -
     except Exception as e:
         print(f"[Store Manager] Universal import error: {e}")
         return {"success": False, "reason": str(e)}
+
+
 def create_task_for_marketing(product_data, product_id):
     with Session(engine) as session:
         task = AgentTask(
