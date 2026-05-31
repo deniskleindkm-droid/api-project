@@ -174,6 +174,13 @@ def _register_default_configs():
     set_config("posting_schedule_facebook", "wednesday,thursday", "Best days to post on Facebook")
     set_config("posting_time_facebook", "19:00", "Best time to post on Facebook")
     set_config("auto_posting_enabled", "false", "Whether ARIA posts automatically — enable when credentials ready")
+    set_config("locked_collection_ids", "13,14,15,16,17,18", "The only 6 allowed collections — agents cannot create or use others")
+    set_config("collection_jewelry", "13", "Jewelry collection ID")
+    set_config("collection_watches", "14", "Women Watches collection ID")
+    set_config("collection_hair_accessories", "15", "Hair Accessories collection ID")
+    set_config("collection_makeup", "16", "Makeup Accessories collection ID")
+    set_config("collection_skincare", "17", "Skincare & Facial Tools collection ID")
+    set_config("collection_nail_care", "18", "Nail Care collection ID")
 
 
 def _register_default_tools():
