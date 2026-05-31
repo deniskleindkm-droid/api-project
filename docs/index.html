@@ -314,8 +314,9 @@
         /* MOBILE */
         @media(max-width: 768px) {
             nav { padding: 0 20px; height: 64px; }
-            .nav-links { display: none; }
-            .nav-search { margin: 0 12px; }
+            .nav-links { display: flex; gap: 16px; }
+            .nav-search { margin: 0 8px; max-width: 120px; }
+            .about-link { display: none; }
             .logo { font-size: 22px; letter-spacing: 4px; }
             .hero { padding: 60px 20px 0; min-height: auto; }
             .hero h1 { font-size: 38px; white-space: normal; text-align: left; }
@@ -362,7 +363,7 @@
                 <div id="nav-drop-list"><div style="color:var(--light);font-size:12px">Loading...</div></div>
             </div>
         </div>
-        <button class="nav-link" onclick="scrollToAbout()">About</button>
+        <button class="nav-link about-link" onclick="scrollToAbout()">About</button>
     </div>
     <div class="nav-right">
         <span id="user-greeting" class="nav-user" style="display:none"></span>
@@ -725,9 +726,10 @@ async function handleTile(id, name) {
     try {
         const res = await fetch(`${API}/collections/${id}/products`);
         const prods = await res.json();
+        document.getElementById('shop').style.display = 'block';
         renderProducts(prods);
     } catch {}
-    scrollToProducts();
+    document.getElementById('shop').scrollIntoView({ behavior: 'smooth' });
 }
 
 function showBreadcrumb(name) {
@@ -747,6 +749,8 @@ async function loadProducts() {
         document.getElementById('prod-count').textContent = `${allProducts.length} pieces`;
         renderFeaturedProducts(allProducts);
         renderProducts(allProducts);
+        // Hide products section on homepage — only show when collection selected or View All clicked
+        document.getElementById('shop').style.display = 'none';
     } catch { grid.innerHTML = '<div class="loading">Could not load products</div>'; }
 }
 function renderFeaturedProducts(prods) {
@@ -1214,8 +1218,12 @@ document.addEventListener('click', () => {
     document.querySelectorAll('.nav-has-drop.open').forEach(d => d.classList.remove('open'));
 });
 
-function scrollToProducts() { document.getElementById('shop').scrollIntoView({ behavior: 'smooth' }); }
-function scrollToProducts() { document.getElementById('shop').scrollIntoView({ behavior: 'smooth' }); }
+function scrollToProducts() {
+    const shop = document.getElementById('shop');
+    shop.style.display = 'block';
+    renderProducts(allProducts);
+    shop.scrollIntoView({ behavior: 'smooth' });
+}
 function scrollToAbout() { const a = document.getElementById('about'); a.style.display = 'flex'; setTimeout(() => a.scrollIntoView({ behavior: 'smooth' }), 100); }
 
 function goHome() {
@@ -1223,8 +1231,9 @@ function goHome() {
     document.getElementById('prod-title').textContent = 'New Arrivals';
     document.getElementById('tiles-heading').textContent = 'Our Collections';
     document.getElementById('tiles-section').style.display = 'block';
+    document.getElementById('shop').style.display = 'none';
     renderTiles(allCollections);
-    renderProducts(allProducts);
+    renderFeaturedProducts(allProducts);
 }
 
 function showToast(msg) {
