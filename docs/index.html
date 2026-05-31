@@ -37,13 +37,14 @@
         .search-icon { position: absolute; left: 0; top: 50%; transform: translateY(-50%); color: var(--mid); font-size: 14px; }
         .search-results { display: none; position: absolute; top: calc(100% + 16px); left: -16px; right: -16px; background: white; border: 1px solid var(--border); box-shadow: 0 16px 48px rgba(0,0,0,0.08); max-height: 380px; overflow-y: auto; z-index: 200; }
         .search-results.open { display: block; }
-        .sri { display: flex; align-items: center; gap: 14px; padding: 14px 18px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.2s; }
+        .sri { display: flex; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.2s; }
         .sri:hover { background: var(--pink-mist); }
         .sri:last-child { border-bottom: none; }
-        .sri-img { width: 44px; height: 44px; overflow: hidden; background: var(--pink-pale); flex-shrink: 0; }
+        .sri-img { width: 40px; height: 40px; overflow: hidden; background: var(--pink-pale); flex-shrink: 0; border-radius: 2px; }
         .sri-img img { width: 100%; height: 100%; object-fit: cover; }
-        .sri-name { font-size: 13px; }
-        .sri-price { font-family: 'Cormorant Garamond', serif; font-size: 15px; color: var(--pink); margin-top: 2px; }
+        .sri-text { flex: 1; min-width: 0; }
+        .sri-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; color: var(--black); }
+        .sri-price { font-family: 'Cormorant Garamond', serif; font-size: 14px; color: var(--pink); margin-top: 2px; display: block; }
         .search-empty { padding: 24px; text-align: center; color: var(--mid); font-size: 12px; letter-spacing: 1px; }
 
         .nav-links { display: flex; gap: 36px; align-items: center; }
@@ -682,7 +683,17 @@ let cartItems = [];
 
 function getPlaceholder() { return 'https://placehold.co/400x400/fdf9f6/d4849c?text=Mikisi'; }
 function pad(n) { return String(n).padStart(2,'0'); }
-function stripHtml(str) { return str ? str.replace(/<[^>]+>/g, '').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').trim() : ''; }
+function stripHtml(str) {
+    if (!str) return '';
+    return str
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&nbsp;/g, ' ').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+        .replace(/\s+/g, ' ').trim();
+}
+function cleanProductName(str) {
+    return stripHtml(str).replace(/^Mikisi\s*[-–—]\s*/i, '').trim();
+}
 function truncate(str, n) { return str && str.length > n ? str.substring(0, n) + '…' : str || ''; }
 
 window.onload = async () => {
@@ -797,8 +808,8 @@ function renderFeaturedProducts(prods) {
     const grid = document.getElementById('featured-grid');
     grid.innerHTML = featured.map(p => {
         const img = p.image_url || getPlaceholder();
-        const cleanName = truncate(stripHtml(p.name), 60);
-        const cleanDesc = stripHtml(p.description || '');
+        const cleanName = truncate(cleanProductName(p.name), 60);
+        const cleanDesc = truncate(stripHtml(p.description || ''), 120);
         const saving = (p.original_price - p.final_price).toFixed(2);
         return `<div class="product-card" onclick="openPM(${p.id})">
             <div class="pc-image">
@@ -809,7 +820,7 @@ function renderFeaturedProducts(prods) {
             <div class="pc-info">
                 <div class="pc-brand">${stripHtml(p.brand || 'Mikisi')}</div>
                 <div class="pc-name">${cleanName}</div>
-                <div class="pc-desc">${truncate(cleanDesc, 120)}</div>
+                <div class="pc-desc">${cleanDesc}</div>
                 <div class="pc-pricing">
                     <span class="pc-price">$${p.final_price.toFixed(2)}</span>
                     <span class="pc-orig">$${p.original_price.toFixed(2)}</span>
@@ -830,8 +841,8 @@ function renderProducts(prods) {
     grid.innerHTML = prods.map(p => {
         const img = p.image_url || getPlaceholder();
         const saving = (p.original_price - p.final_price).toFixed(2);
-        const cleanDesc = stripHtml(p.description || '');
-        const cleanName = truncate(stripHtml(p.name), 60);
+        const cleanDesc = truncate(stripHtml(p.description || ''), 120);
+        const cleanName = truncate(cleanProductName(p.name), 60);
         return `<div class="product-card" onclick="openPM(${p.id})">
             <div class="pc-image">
                 <img src="${img}" alt="${cleanName}" onerror="this.src='${getPlaceholder()}'" loading="lazy" />
@@ -841,7 +852,7 @@ function renderProducts(prods) {
             <div class="pc-info">
                 <div class="pc-brand">${stripHtml(p.brand || 'Mikisi')}</div>
                 <div class="pc-name">${cleanName}</div>
-                <div class="pc-desc">${truncate(cleanDesc, 120)}</div>
+                <div class="pc-desc">${cleanDesc}</div>
                 <div class="pc-pricing">
                     <span class="pc-price">$${p.final_price.toFixed(2)}</span>
                     <span class="pc-orig">$${p.original_price.toFixed(2)}</span>
@@ -866,9 +877,9 @@ function doSearch(val) {
     box.innerHTML = matches.map(p => `
         <div class="sri" onclick="openPM(${p.id});document.getElementById('search-results').classList.remove('open');document.getElementById('search-input').value=''">
             <div class="sri-img"><img src="${p.image_url || getPlaceholder()}" onerror="this.src='${getPlaceholder()}'" /></div>
-            <div>
-                <div class="sri-name">${truncate(stripHtml(p.name), 50)}</div>
-                <div class="sri-price">$${p.final_price.toFixed(2)}</div>
+            <div class="sri-text">
+                <span class="sri-name">${truncate(cleanProductName(p.name), 45)}</span>
+                <span class="sri-price">$${p.final_price.toFixed(2)}</span>
             </div>
         </div>`).join('');
     box.classList.add('open');
@@ -885,7 +896,7 @@ function openPM(id) {
     if (!currentImages.length) currentImages = [getPlaceholder()];
     currentImageIndex = 0;
     document.getElementById('pm-brand').textContent = stripHtml(p.brand || 'Mikisi');
-    document.getElementById('pm-name').textContent = truncate(stripHtml(p.name), 80);
+    document.getElementById('pm-name').textContent = truncate(cleanProductName(p.name), 80);
     document.getElementById('pm-price').textContent = `$${p.final_price.toFixed(2)}`;
     document.getElementById('pm-orig').textContent = `$${p.original_price.toFixed(2)}`;
     document.getElementById('pm-save').textContent = `Save $${(p.original_price - p.final_price).toFixed(2)}`;
@@ -948,7 +959,7 @@ function renderCart(data) {
             <div class="ci-img"><img src="${item.image_url || getPlaceholder()}" onerror="this.src='${getPlaceholder()}'" /></div>
             <div class="ci-info">
                 <div class="ci-brand">${stripHtml(item.brand || 'Mikisi')}</div>
-                <div class="ci-name">${truncate(stripHtml(item.name), 40)}</div>
+                <div class="ci-name">${truncate(cleanProductName(item.name), 40)}</div>
                 <div class="ci-price">$${item.subtotal.toFixed(2)}</div>
                 <div class="qty-row">
                     <button class="qty-btn" onclick="removeFromCart(${item.cart_item_id})">−</button>
@@ -980,7 +991,7 @@ function openCheckout() {
             <div class="co-summary-title">Order Summary</div>
             ${cartItems.map(i => `
                 <div class="co-item">
-                    <div class="co-item-name">${truncate(stripHtml(i.name).replace(/Mikisi\s*-\s*/i, ''), 45)} × ${i.quantity}</div>
+                    <div class="co-item-name">${truncate(cleanProductName(i.name), 45)} × ${i.quantity}</div>
                     <div class="co-item-price">$${i.subtotal.toFixed(2)}</div>
                 </div>`).join('')}
             <div class="co-total">
