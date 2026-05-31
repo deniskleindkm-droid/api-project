@@ -859,3 +859,38 @@ def get_admin_stats(session: Session = Depends(get_session)):
         "processed_signals": len(processed_signals),
         "failed_signal_details": failed_details
     }
+
+@router.delete("/agents/reset-store")
+def reset_store(session: Session = Depends(get_session)):
+    """Delete all products and collections. Fresh start."""
+    from app.models.product import Product
+    from app.models.collection import Collection
+    from app.models.content import ProductContent
+    from sqlmodel import delete
+
+    session.exec(delete(ProductContent))
+    session.exec(delete(Product))
+    session.exec(delete(Collection))
+    session.commit()
+
+    # Create 6 locked collections
+    collections = [
+        Collection(name="Jewelry", description="Sterling silver and gold plated pieces — rings, necklaces, nose rings and all piercings", sort_order=1, is_active=True),
+        Collection(name="Women Watches", description="High quality timepieces with iconic designs and premium materials", sort_order=2, is_active=True),
+        Collection(name="Hair Accessories", description="Elegant hair tools and accessories for every style", sort_order=3, is_active=True),
+        Collection(name="Makeup Accessories", description="Premium tools for a flawless finish", sort_order=4, is_active=True),
+        Collection(name="Skincare & Facial Tools", description="Rituals for glowing radiant skin", sort_order=5, is_active=True),
+        Collection(name="Nail Care", description="Precision tools for beautiful nails", sort_order=6, is_active=True),
+    ]
+
+    for col in collections:
+        session.add(col)
+    session.commit()
+
+    # Get new IDs
+    new_cols = session.exec(select(Collection)).all()
+
+    return {
+        "message": "Store reset complete",
+        "collections": [{"id": c.id, "name": c.name} for c in new_cols]
+    }
