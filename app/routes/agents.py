@@ -899,3 +899,12 @@ def reset_store(session: Session = Depends(get_session)):
         "message": "Store reset complete",
         "collections": [{"id": c.id, "name": c.name} for c in new_cols]
     }
+
+@router.post("/agents/run-bulk-import")
+def trigger_bulk_import():
+    try:
+        from app.agents.bulk_import_agent import run_bulk_import_agent
+        result = run_bulk_import_agent()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

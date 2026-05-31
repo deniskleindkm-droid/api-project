@@ -164,6 +164,11 @@ Return JSON only:
                 result["accepted"] = False
                 result["rejection_reason"] = "Collection not in Mikisi's 6 locked collections"
 
+        # If ARIA is not confident — keep cleaned raw name
+        if result.get("confidence", 0) < 0.7:
+            result["mikisi_name"] = raw_name[:60].strip()
+            print(f"[Rewriter] Low confidence — keeping original name")
+
         print(f"[Rewriter] {'✅' if result.get('accepted') else '❌'} {raw_name[:50]} → {result.get('mikisi_name', 'rejected')}")
         return result
 

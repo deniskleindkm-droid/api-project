@@ -95,7 +95,14 @@ def run_analytics_check():
         from app.agents.analytics_agent import run_analytics_agent
         run_analytics_agent()
     except Exception as e:
-        print(f"[Scheduler] Analytics agent error: {e}")        
+        print(f"[Scheduler] Analytics agent error: {e}")   
+
+def run_bulk_import():
+    try:
+        from app.agents.bulk_import_agent import run_bulk_import_agent
+        run_bulk_import_agent()
+    except Exception as e:
+        print(f"[Scheduler] Bulk import error: {e}")            
 
 
 def start_scheduler():
@@ -149,6 +156,14 @@ def start_scheduler():
     replace_existing=True
     )
 
+    scheduler.add_job(
+    run_bulk_import,
+    trigger=IntervalTrigger(hours=24),
+    id='bulk_import',
+    name='Bulk Product Import Agent',
+    replace_existing=True
+    )
+
     scheduler.start()
     print("[Scheduler] ✅ ARIA scheduler started with jobs:")
     print("[Scheduler]   → Market check: every 6 hours")
@@ -157,3 +172,4 @@ def start_scheduler():
     print("[Scheduler]   → Posting agent: every 1 hour")
     print("[Scheduler]   → Customer agent: every 1 hour")
     print("[Scheduler]   → Analytics agent: every 6 hours")
+    print("[Scheduler]   → Bulk import: every 24 hours")
