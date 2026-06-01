@@ -786,7 +786,17 @@ async function loadProducts() {
 }
 
 function renderFeaturedProducts(prods) {
-    const featured = prods.slice(0, 6);
+    const collectionIds = [13, 14, 15, 16, 17, 18];
+    const featured = [];
+    for (const colId of collectionIds) {
+        const found = prods.find(p => p.collection_id === colId);
+        if (found) featured.push(found);
+    }
+    if (featured.length < 6) {
+        const existing = featured.map(p => p.id);
+        const extras = prods.filter(p => !existing.includes(p.id)).slice(0, 6 - featured.length);
+        featured.push(...extras);
+    }
     if (!featured.length) return;
     let section = document.getElementById('featured-section');
     if (!section) {

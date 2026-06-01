@@ -234,9 +234,10 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
     Search CJ for products in this collection.
     Batch rewrite. Import accepted products.
     """
-    from app.agents.cj_dropshipping import search_products
+    from app.agents.cj_dropshipping import search_products, get_product_details
     from app.agents.store_manager import import_product_from_supplier
     from app.agents.store_config import get_config
+    import json as _json
 
     collection_id = int(get_config(strategy["config_key"], default=str(strategy["default_id"])))
     markup = get_config("default_markup", default=7.0)
@@ -264,18 +265,42 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                         cost = float(sell_price) if sell_price else 0
 
                     if cost > 0:
+                        # Fetch full product details to get all images
+                        pid = p.get("pid", "")
+                        full_product = None
+                        try:
+                            full_product = get_product_details(pid)
+                        except:
+                            pass
+
+                        # Extract multiple images
+                        all_images = []
+                        if full_product:
+                            image_set = full_product.get("productImageSet", [])
+                            if isinstance(image_set, list):
+                                all_images = [img for img in image_set if img][:5]
+                            if not all_images:
+                                main_img = full_product.get("productImage", "")
+                                if main_img:
+                                    all_images = [main_img]
+                        else:
+                            main_img = p.get("productImage", "")
+                            if main_img:
+                                all_images = [main_img]
+
                         all_raw_products.append({
                             "name": p.get("productNameEn", ""),
                             "category": p.get("categoryName", collection_name),
-                            "description": p.get("productNameEn", ""),
-                            "image_url": p.get("productImage", ""),
+                            "description": full_product.get("description", p.get("productNameEn", "")) if full_product else p.get("productNameEn", ""),
+                            "image_url": all_images[0] if all_images else p.get("productImage", ""),
+                            "images": _json.dumps(all_images) if len(all_images) > 1 else None,
                             "cost_price": cost,
                             "final_price": round(cost * markup + 0.99, 2),
-                            "supplier_product_id": p.get("pid", ""),
+                            "supplier_product_id": pid,
                             "supplier_name": "CJDropshipping",
                             "stock": 999,
                             "shipping_days": 15,
-                            "variants": p.get("variants", [])
+                            "variants": full_product.get("variants", p.get("variants", [])) if full_product else p.get("variants", [])
                         })
         except Exception as e:
             print(f"[Bulk Import] Search error for '{keyword}': {e}")
@@ -351,7 +376,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 "discount_percent": discount,
                 "final_price": final_price,
                 "image_url": product["image_url"],
-                "images": None,
+                "images": product.get("images"),
                 "stock": 999,
                 "shipping_days": 15,
                 "supplier_name": "CJDropshipping",

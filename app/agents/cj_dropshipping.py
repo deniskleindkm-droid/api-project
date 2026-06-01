@@ -172,9 +172,20 @@ Return JSON only:
         except Exception as e2:
             print(f"[CJ] Category match failed: {e2}")
 
-    if not collection_name:
-        collection_name = "Uncategorized"
-        print(f"[CJ] No match — placing in Uncategorized for ARIA review")
+    # Check if matched collection is in our locked 6
+    with Session(engine) as session:
+        if collection_name:
+            existing = session.exec(
+                select(Collection).where(
+                    Collection.name == collection_name,
+                    Collection.is_active == True
+                )
+            ).first()
+            if existing:
+                return existing.id
+
+        # LOCKED — no new collections allowed
+        print(f"[CJ] ❌ Collection '{collection_name}' not in locked 6 — product rejected")
         try:
             from app.agents.nervous_system import emit
             emit(
@@ -183,36 +194,14 @@ Return JSON only:
                 payload={
                     "product_name": product_name,
                     "category": category_name,
-                    "reason": "AI collection detection failed, no category match"
+                    "suggested_collection": collection_name,
+                    "reason": "Collection not in Mikisi locked 6"
                 },
                 priority=3
             )
         except Exception as e3:
             print(f"[CJ] Signal emission failed: {e3}")
-
-    with Session(engine) as session:
-        existing = session.exec(
-            select(Collection).where(
-                Collection.name == collection_name,
-                Collection.is_active == True
-            )
-        ).first()
-
-        if existing:
-            return existing.id
-
-        new_col = Collection(
-            name=collection_name,
-            description=f"Curated {collection_name.lower()} products for the Mikisi woman",
-            is_active=True,
-            sort_order=len(existing_names),
-            created_at=datetime.utcnow()
-        )
-        session.add(new_col)
-        session.commit()
-        session.refresh(new_col)
-        print(f"[CJ] ✅ New collection created: {collection_name}")
-        return new_col.id
+        return None
 
 
 def get_shipping_methods(cj_vid, country_code="US"):
@@ -428,3 +417,7 @@ def place_order_on_cj(cj_sku, customer_name, shipping_address, quantity=1):
     except Exception as e:
         print(f"[CJ] Order error: {e}")
         return {"success": False, "reason": str(e)}
+    
+def get_cj_token():
+    """Alias for get_access_token — used by external endpoints."""
+    return get_access_token()    
