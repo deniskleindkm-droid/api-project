@@ -63,7 +63,15 @@ COLLECTION_STRATEGIES = {
         "config_key": "collection_anklets",
         "default_id": 0,
         "cj_category_ids": [
-            "2601070548141611900",  # Anklets
+            "2601070548141611900",                    # Anklets
+            "552F095A-904C-40E4-A43B-0CD1CE15D29F",  # 925 Silver Jewelry
+            "0615F8DB-C10F-4BEF-892B-1C5B04268938",  # Bracelets & Bangles
+        ],
+        "keywords": [
+            "925 silver anklet",
+            "gold plated anklet women",
+            "sterling silver ankle bracelet",
+            "crystal anklet women",
         ],
         "required_variants": [],
         "reject_if_no_variants": False,
@@ -75,6 +83,15 @@ COLLECTION_STRATEGIES = {
         "cj_category_ids": [
             "633E1860-7C63-4006-AB35-3FC16BECFA62",  # Body Jewelry
             "552F095A-904C-40E4-A43B-0CD1CE15D29F",  # 925 Silver Jewelry
+            "56B4F8B6-8600-4A18-913E-53F2F693EC2C",  # Rings (nose rings included)
+            "D28405AE-66C6-42E6-BFF0-D6FDCB5C083C",  # Earrings (ear piercings)
+        ],
+        "keywords": [
+            "925 silver nose ring",
+            "surgical steel piercing",
+            "gold plated nose stud",
+            "sterling silver cartilage earring",
+            "titanium body piercing",
         ],
         "required_variants": [],
         "reject_if_no_variants": False,
@@ -207,15 +224,20 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
     cj_category_ids = strategy.get("cj_category_ids", [])
     reject_if_no_variants = strategy.get("reject_if_no_variants", False)
 
-    print(f"\n[Bulk Import] 🔍 {collection_name} — searching {len(cj_category_ids)} CJ categories")
+    keywords = strategy.get("keywords", [])
+    search_tasks = [("category", cid) for cid in cj_category_ids] + [("keyword", kw) for kw in keywords]
+    print(f"\n[Bulk Import] 🔍 {collection_name} — {len(cj_category_ids)} categories + {len(keywords)} keywords")
 
     # ── PHASE 1: Fetch raw products ────────────────────────────
     all_raw_products = []
-    per_category = max(5, max_products // max(len(cj_category_ids), 1))
+    per_source = max(5, max_products // max(len(search_tasks), 1))
 
-    for cid in cj_category_ids:
+    for task_type, task_value in search_tasks:
         try:
-            results = search_products(category_id=cid, limit=per_category) or []
+            if task_type == "category":
+                results = search_products(category_id=task_value, limit=per_source) or []
+            else:
+                results = search_products(task_value, limit=per_source) or []
             for p in results:
                 sell_price = p.get("sellPrice", "0")
                 cost = float(sell_price.split("-")[0].strip()) if isinstance(sell_price, str) and "-" in sell_price else float(sell_price or 0)
@@ -290,7 +312,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                     "raw_variants": raw_variants,
                 })
         except Exception as e:
-            print(f"[Bulk Import] Search error category={cid}: {e}")
+            print(f"[Bulk Import] Search error {task_type}={task_value}: {e}")
 
     # Deduplicate by pid
     seen_pids = set()
@@ -306,7 +328,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
     # ── PHASE 2: Normalize variants + hard filter ──────────────
     scored_candidates = []
     hard_rejected = 0
-    reject_log_count = 0
+    rejection_details = []
 
     for product in unique:
         raw_variants = product.pop("raw_variants", [])
@@ -314,14 +336,22 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
         product["variants_normalized"] = normalized
         product["raw_variants_list"] = raw_variants
 
+        img_count = max(len(product.get("images", [])), product.get("product_image_set_count", 0))
+
         # Ring size gate
         if reject_if_no_variants and not normalized["ring_size_valid"]:
-            if reject_log_count < 10:
-                reject_log_count += 1
-                print(
-                    f"[Bulk Import] ❌ REJECT #{reject_log_count} ring-size: '{product['name'][:50]}' | "
-                    f"variant_groups={list(normalized['groups'].keys())} count={normalized['variant_count']}"
-                )
+            print(
+                f"[Bulk Import] ❌ ring-size: '{product['name'][:50]}' | "
+                f"groups={list(normalized['groups'].keys())} count={normalized['variant_count']}"
+            )
+            if len(rejection_details) < 5:
+                rejection_details.append({
+                    "name": product["name"][:50],
+                    "reason": f"ring_size_invalid — groups={list(normalized['groups'].keys())}",
+                    "metal": "n/a",
+                    "images": img_count,
+                    "score": None,
+                })
             hard_rejected += 1
             continue
 
@@ -330,14 +360,18 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
         score = score_jewelry_product(score_input)
 
         if score["rejected"]:
-            if reject_log_count < 10:
-                reject_log_count += 1
-                img_count = max(len(product.get("images", [])), product.get("product_image_set_count", 0))
-                print(
-                    f"[Bulk Import] ❌ REJECT #{reject_log_count}: '{product['name'][:50]}'\n"
-                    f"   reason={score['rejection_reason']} score={score['score']}\n"
-                    f"   images={img_count} metal={score.get('detected_metal')} rating={product.get('supplier_rating')}"
-                )
+            print(
+                f"[Bulk Import] ❌ '{product['name'][:50]}' reason={score['rejection_reason']} "
+                f"score={score['score']} images={img_count} metal={score.get('detected_metal')}"
+            )
+            if len(rejection_details) < 5:
+                rejection_details.append({
+                    "name": product["name"][:50],
+                    "reason": score["rejection_reason"],
+                    "metal": score.get("detected_metal"),
+                    "images": img_count,
+                    "score": score["score"],
+                })
             hard_rejected += 1
             continue
 
@@ -350,7 +384,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
     print(f"[Bulk Import] {len(scored_candidates)} passed scoring for {collection_name}")
 
     if not scored_candidates:
-        return {"collection": collection_name, "imported": 0, "rejected": hard_rejected}
+        return {"collection": collection_name, "imported": 0, "rejected": hard_rejected, "rejection_details": rejection_details}
 
     # ── PHASE 4: Batch rewrite names/descriptions ──────────────
     batch_size = 10
@@ -437,7 +471,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
 
     total_rejected = hard_rejected + (len(scored_candidates) - len(rewrite_ready))
     print(f"[Bulk Import] ✅ {collection_name} — {imported} imported, {total_rejected} rejected")
-    return {"collection": collection_name, "imported": imported, "rejected": total_rejected}
+    return {"collection": collection_name, "imported": imported, "rejected": total_rejected, "rejection_details": rejection_details}
 
 
 # ============================================================

@@ -80,6 +80,21 @@ def score_jewelry_product(product: dict) -> dict:
         metal_score, detected_metal = 12, "gold_plated"
     elif "silver plated" in text:
         metal_score, detected_metal = 10, "silver_plated"
+    # Low-grade metals — score 0-8, not hard-rejected; total score decides
+    elif "gold tone" in text or "gold color" in text:
+        metal_score, detected_metal = 8, "gold_tone"
+    elif "silver tone" in text or "silver color" in text:
+        metal_score, detected_metal = 8, "silver_tone"
+    elif "brass" in text:
+        metal_score, detected_metal = 5, "brass"
+    elif "alloy" in text:
+        metal_score, detected_metal = 3, "alloy"
+    elif "copper" in text:
+        metal_score, detected_metal = 0, "copper"
+    elif "zinc" in text:
+        metal_score, detected_metal = 0, "zinc_alloy"
+    elif "iron" in text:
+        metal_score, detected_metal = 0, "iron"
     else:
         return _reject("Metal not specified — cannot verify material quality", metal="unknown")
 
