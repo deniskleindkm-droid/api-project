@@ -20,8 +20,19 @@ COLLECTION_STRATEGIES = {
     "Jewelry": {
         "config_key": "collection_jewelry",
         "default_id": 13,
-        # CJ category IDs — populate from GET /cj/categories. Falls back to keywords if empty.
-        "category_ids": ["2447", "2440", "2441", "2446"],  # Rings, Necklaces, Earrings, Bracelets
+        # CJ category IDs — verified from GET /cj/categories. Falls back to keywords if empty.
+        "category_ids": [
+            "56B4F8B6-8600-4A18-913E-53F2F693EC2C",  # Rings
+            "D28405AE-66C6-42E6-BFF0-D6FDCB5C083C",  # Earrings
+            "95D9F317-1DB3-4E42-A031-02223215B9C5",  # Necklace & Pendants
+            "0615F8DB-C10F-4BEF-892B-1C5B04268938",  # Bracelets & Bangles
+            "633E1860-7C63-4006-AB35-3FC16BECFA62",  # Body Jewelry
+            "2601070548141611900",                    # Anklets
+            "552F095A-904C-40E4-A43B-0CD1CE15D29F",  # 925 Silver Jewelry
+            "D7CE9827-F50A-4B07-84BF-1BFE44188A1C",  # Fine Earrings
+            "84ED4B7F-D7C3-412F-AF18-04F25C91985C",  # Pearls Jewelry
+            "FCE034F6-A2BF-47E3-852F-FA9F67F904B2",  # Engagement Rings
+        ],
         "keywords": [
             "925 sterling silver ring",
             "gold plated necklace women",
@@ -41,7 +52,12 @@ COLLECTION_STRATEGIES = {
     "Women Watches": {
         "config_key": "collection_watches",
         "default_id": 14,
-        "category_ids": ["2476", "2477"],  # Women's Watches, Fashion Watches
+        "category_ids": [
+            "A044AC0D-BA3B-4967-8300-1BD57F00048E",  # Dress Watches
+            "F40CB152-1391-4CA9-9BAE-0316DA2D3D2B",  # Women's Bracelet Watches
+            "DAE17D16-A15F-445D-AE34-B698F3290E56",  # Creative Watches
+            "9D78B3E3-99F4-4EDA-8C70-2F5B95061CAA",  # Women Sports Watches
+        ],
         "keywords": [
             "women quartz watch elegant",
             "ladies stainless steel watch",
@@ -57,7 +73,9 @@ COLLECTION_STRATEGIES = {
     "Hair Accessories": {
         "config_key": "collection_hair_accessories",
         "default_id": 15,
-        "category_ids": ["2387", "2388"],  # Hair Accessories, Hair Clips & Pins
+        "category_ids": [
+            "2502140903111619100",  # Headband & Hair Band & Hairpin
+        ],
         "keywords": [
             "claw clip hair women",
             "hair barrette elegant",
@@ -75,7 +93,11 @@ COLLECTION_STRATEGIES = {
     "Makeup Accessories": {
         "config_key": "collection_makeup",
         "default_id": 16,
-        "category_ids": ["2338", "2339"],  # Makeup Brushes & Tools, Beauty Applicators
+        "category_ids": [
+            "A30E8F55-DC2C-4842-9372-91B96DEFDCC2",  # Makeup Brushes
+            "426792A7-4906-403D-AD17-8293AFF00E66",  # Makeup Set
+            "E31E5996-7B86-4FEC-B929-9AEB11E76853",  # False Eyelashes
+        ],
         "keywords": [
             "makeup brush set professional",
             "beauty blender sponge",
@@ -92,7 +114,13 @@ COLLECTION_STRATEGIES = {
     "Skincare & Facial Tools": {
         "config_key": "collection_skincare",
         "default_id": 17,
-        "category_ids": ["2314", "2315", "2316"],  # Skin Care Tools, Face Massagers, Facial Devices
+        "category_ids": [
+            "EDE3FAD9-0E6C-4F7C-9016-A2299469AA7C",  # Facial Care
+            "88AF62DE-5586-40E4-A287-864523D9AE50",  # Face Masks
+            "AB11F624-D292-4A8E-9284-BD368B893A2C",  # Face Skin Care Tools
+            "6D086E0D-8C3F-4B99-BA44-140F3F7C444E",  # Electric Face Cleanser
+            "D23FFB85-4185-4FA3-BAF0-224A4F516741",  # Facial Steamer
+        ],
         "keywords": [
             "jade roller face massager",
             "gua sha stone facial",
@@ -112,7 +140,13 @@ COLLECTION_STRATEGIES = {
     "Nail Care": {
         "config_key": "collection_nail_care",
         "default_id": 18,
-        "category_ids": ["2351", "2352"],  # Nail Art Tools, Nail Accessories
+        "category_ids": [
+            "EADB666A-12A5-4FA1-AD1F-BC351A7E7AF5",  # Nail Art Kits
+            "9F96CE84-962D-4992-81DC-BF79A4A9002D",  # Nail Gel
+            "E157D35B-156B-49F6-A678-7C55D4E81D6C",  # Nail Dryers
+            "26F7660F-A00A-468A-BA29-E61A465C0D0B",  # Nail Decorations
+            "25A6516D-3AE3-4207-BA00-6FD3CCE20201",  # Stickers & Decals
+        ],
         "keywords": [
             "nail art tools set",
             "cuticle pusher stainless",
