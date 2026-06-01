@@ -27,7 +27,7 @@ COLLECTION_STRATEGIES = {
         ],
         "required_variants": ["Size"],
         "reject_if_no_variants": False,
-        "max_per_run": 100,
+        "max_per_run": 20,
     },
     "Necklaces": {
         "config_key": "collection_necklaces",
@@ -37,7 +37,7 @@ COLLECTION_STRATEGIES = {
         ],
         "required_variants": [],
         "reject_if_no_variants": False,
-        "max_per_run": 100,
+        "max_per_run": 20,
     },
     "Bracelets": {
         "config_key": "collection_bracelets",
@@ -47,7 +47,7 @@ COLLECTION_STRATEGIES = {
         ],
         "required_variants": [],
         "reject_if_no_variants": False,
-        "max_per_run": 100,
+        "max_per_run": 20,
     },
     "Earrings": {
         "config_key": "collection_earrings",
@@ -58,7 +58,7 @@ COLLECTION_STRATEGIES = {
         ],
         "required_variants": [],
         "reject_if_no_variants": False,
-        "max_per_run": 100,
+        "max_per_run": 20,
     },
     "Anklets": {
         "config_key": "collection_anklets",
@@ -76,7 +76,7 @@ COLLECTION_STRATEGIES = {
         ],
         "required_variants": [],
         "reject_if_no_variants": False,
-        "max_per_run": 50,
+        "max_per_run": 20,
     },
     "Piercings": {
         "config_key": "collection_piercings",
@@ -96,7 +96,7 @@ COLLECTION_STRATEGIES = {
         ],
         "required_variants": [],
         "reject_if_no_variants": False,
-        "max_per_run": 50,
+        "max_per_run": 20,
     },
 }
 
