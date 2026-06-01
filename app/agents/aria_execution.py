@@ -426,22 +426,78 @@ def _verify_price_updated(params: dict, result: dict) -> tuple:
 # Real functions behind each adapter key
 # ============================================================
 
+def _classify_keyword_to_collection(keyword: str) -> str | None:
+    """Ask Claude Haiku which Mikisi collection a keyword belongs to. Returns collection name or None."""
+    import anthropic, os
+    from app.agents.bulk_import_agent import COLLECTION_STRATEGIES
+
+    collection_list = ", ".join(COLLECTION_STRATEGIES.keys())
+    try:
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=20,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"Which Mikisi collection does '{keyword}' belong to?\n"
+                    f"Collections: {collection_list}\n"
+                    f"Reply with ONLY the exact collection name, or 'none'."
+                )
+            }]
+        )
+        classified = msg.content[0].text.strip()
+        if classified in COLLECTION_STRATEGIES:
+            return classified
+        return None
+    except Exception as e:
+        print(f"[Execution] Classification error: {e}")
+        return None
+
+
 def _adapter_search_products(params: dict) -> dict:
     from app.agents.cj_dropshipping import search_products
+    from app.agents.bulk_import_agent import COLLECTION_STRATEGIES
+
     keyword = params.get("keyword", "")
-    markup_config = None
+
     try:
         from app.agents.store_config import get_config
         markup_config = get_config("default_markup", default=7.0)
     except:
         markup_config = 7.0
 
-    products = search_products(keyword, limit=5)
-    if not products:
+    # Classify keyword to a Mikisi collection → use CJ category IDs
+    collection_name = _classify_keyword_to_collection(keyword)
+    category_ids = COLLECTION_STRATEGIES[collection_name].get("category_ids", []) if collection_name else []
+
+    raw_products = []
+    if category_ids:
+        print(f"[Execution] 🗂 '{keyword}' → '{collection_name}' — searching {len(category_ids)} CJ categories")
+        per_cat = max(2, 6 // len(category_ids))
+        seen_pids = set()
+        for cid in category_ids:
+            try:
+                results = search_products(category_id=cid, limit=per_cat) or []
+                for p in results:
+                    pid = p.get("pid", "")
+                    if pid and pid not in seen_pids:
+                        seen_pids.add(pid)
+                        raw_products.append(p)
+                if len(raw_products) >= 5:
+                    break
+            except Exception as e:
+                print(f"[Execution] Category search error ({cid}): {e}")
+        raw_products = raw_products[:5]
+    else:
+        print(f"[Execution] 🔍 No collection match for '{keyword}' — keyword search fallback")
+        raw_products = search_products(keyword=keyword, limit=5) or []
+
+    if not raw_products:
         return {"success": False, "reason": "No products found", "products": []}
 
     result = []
-    for p in products[:5]:
+    for p in raw_products[:5]:
         raw_price = p.get("sellPrice", "0")
         if isinstance(raw_price, str) and "-" in raw_price:
             cost = float(raw_price.split("-")[0].strip())
@@ -459,15 +515,17 @@ def _adapter_search_products(params: dict) -> dict:
     return {
         "success": True,
         "products": result,
-        "summary": f"Found {len(result)} products for '{keyword}'",
-        "response": _format_search_response(result, keyword)
+        "collection_matched": collection_name,
+        "summary": f"Found {len(result)} products for '{keyword}'" + (f" via {collection_name} category" if collection_name else ""),
+        "response": _format_search_response(result, keyword, collection_name)
     }
 
 
-def _format_search_response(products: list, keyword: str) -> str:
+def _format_search_response(products: list, keyword: str, collection: str = None) -> str:
     if not products:
         return f"No products found for '{keyword}'"
-    lines = [f"I found {len(products)} products on CJ for '{keyword}':\n"]
+    label = f"'{keyword}'" + (f" (searching {collection} category on CJ)" if collection else "")
+    lines = [f"I found {len(products)} products on CJ for {label}:\n"]
     for i, p in enumerate(products, 1):
         lines.append(
             f"{i}. **{p['name']}**\n"
@@ -481,6 +539,8 @@ def _format_search_response(products: list, keyword: str) -> str:
 
 def _adapter_import_product(params: dict) -> dict:
     from app.agents.cj_dropshipping import import_product_by_id
+    import json as _json
+
     pid = params.get("pid", "")
     markup = params.get("markup")
     if not markup:
@@ -489,7 +549,28 @@ def _adapter_import_product(params: dict) -> dict:
 
     result = import_product_by_id(pid, markup=markup)
     if result.get("success"):
-        result["response"] = f"✅ **{result.get('product')}** has been added to Mikisi at ${result.get('store_price', 0):.2f}."
+        # Verify variants were saved
+        variant_count = 0
+        try:
+            from sqlmodel import select as _select
+            from app.models.product import Product
+            with Session(engine) as session:
+                product = session.exec(
+                    _select(Product).where(Product.cj_product_id == pid)
+                ).first()
+                if product and product.variants:
+                    variant_count = len(_json.loads(product.variants))
+                    print(f"[Execution] 📦 '{product.name[:40]}' — {variant_count} variants saved")
+                else:
+                    print(f"[Execution] ⚠️  pid={pid} — no variants saved")
+        except Exception as e:
+            print(f"[Execution] Variant check error: {e}")
+
+        result["variant_count"] = variant_count
+        result["response"] = (
+            f"✅ **{result.get('product')}** added to Mikisi at ${result.get('store_price', 0):.2f}."
+            + (f" {variant_count} variants available." if variant_count else "")
+        )
     return result
 
 
