@@ -276,31 +276,26 @@ def cj_product_to_standard(cj_product):
     else:
         cost_price = float(raw_price) if raw_price else 0.0
 
-    # Extract primary image
-    image_url = extract_image_url(cj_product)
-
-    # Extract up to 3 images
-    all_images = []
-    raw = cj_product.get("productImage") or cj_product.get("bigImage") or ""
-    if isinstance(raw, list):
-        all_images = raw[:3]
-    elif isinstance(raw, str) and raw.strip().startswith("["):
-        try:
-            all_images = json.loads(raw)[:3]
-        except:
-            all_images = [raw] if raw else []
-    else:
-        if raw:
-            all_images = [raw]
-
+    # Images — priority: 1) productImageSet (real array)
+    #                     2) productImage parsed as JSON list
+    #                     3) productImage as single URL
     image_set = cj_product.get("productImageSet", [])
-    if isinstance(image_set, list):
-        for img in image_set:
-            if img not in all_images and len(all_images) < 3:
-                all_images.append(img)
+    if isinstance(image_set, list) and image_set:
+        all_images = [img for img in image_set if img][:5]
+    else:
+        raw = cj_product.get("productImage") or cj_product.get("bigImage") or ""
+        if isinstance(raw, list):
+            all_images = [img for img in raw if img][:5]
+        elif isinstance(raw, str) and raw.strip().startswith("["):
+            try:
+                all_images = [img for img in json.loads(raw) if img][:5]
+            except Exception:
+                all_images = [raw] if raw else []
+        else:
+            all_images = [raw] if raw else []
 
-    if not all_images and image_url:
-        all_images = [image_url]
+    image_url = all_images[0] if all_images else extract_image_url(cj_product)
+    print(f"[CJ] Images resolved: {len(all_images)} (productImageSet={len(image_set) if isinstance(image_set, list) else 0}) '{name[:40]}'")
 
     variants = cj_product.get("variants", [])
 

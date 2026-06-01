@@ -5,6 +5,8 @@ Hard rejection filters run first; any fail = immediate reject.
 
 
 def score_jewelry_product(product: dict) -> dict:
+    import json as _json
+
     name = product.get("name", "")
     description = product.get("description", "")
     images = product.get("images", [])
@@ -12,6 +14,15 @@ def score_jewelry_product(product: dict) -> dict:
     supplier_rating = float(product.get("supplier_rating", 0.0))
     extra_text = product.get("extra_text", "")
     product_image_set_count = int(product.get("product_image_set_count", 0))
+
+    # Structured material field from CJ — primary metal signal
+    material_name_en_set = product.get("material_name_en_set") or []
+    if isinstance(material_name_en_set, str):
+        try:
+            material_name_en_set = _json.loads(material_name_en_set)
+        except Exception:
+            material_name_en_set = [material_name_en_set] if material_name_en_set else []
+    mat_text = " ".join(str(m) for m in material_name_en_set).lower()
 
     text = f"{name} {description} {extra_text}".lower()
 
@@ -23,12 +34,12 @@ def score_jewelry_product(product: dict) -> dict:
             "dimensions": {}
         }
 
-    # ── Image count — use max across all sources ───────────────
-    import json as _json
-
-    def _count_images(val):
-        """Count images from a list, JSON-encoded list, or single URL string."""
+    # ── Image count ────────────────────────────────────────────
+    # Priority: 1) productImageSet count (authoritative)
+    #           2) parse images field or image_url as JSON list
+    def _count_from(val):
         if isinstance(val, list):
+            # Handle list wrapping a single JSON-encoded URL array (CJ fallback)
             if len(val) == 1 and isinstance(val[0], str) and val[0].strip().startswith("["):
                 try:
                     return len(_json.loads(val[0]))
@@ -44,7 +55,11 @@ def score_jewelry_product(product: dict) -> dict:
             return 1
         return 0
 
-    image_count = max(_count_images(images), _count_images(image_url), product_image_set_count)
+    if product_image_set_count > 0:
+        image_count = product_image_set_count
+    else:
+        image_count = max(_count_from(images), _count_from(image_url))
+    print(f"[Score] images={image_count} (set_count={product_image_set_count}) '{name[:40]}'")
 
     if image_count < 3:
         return _reject(f"Only {image_count} image(s) — minimum 3 required")
@@ -59,43 +74,54 @@ def score_jewelry_product(product: dict) -> dict:
             return _reject(f"Forbidden material detected: '{bad}'")
 
     # ── METAL PURITY (30 pts) ──────────────────────────────────
-    metal_score = 0
-    detected_metal = None
+    def _score_metal(t):
+        """Return (score, label) or (None, None) if no metal keyword found."""
+        if not t:
+            return None, None
+        if "925" in t or "sterling" in t:
+            return 30, "925_silver"
+        if "18k" in t or "18 karat" in t:
+            return 25, "18k_gold"
+        if "14k" in t:
+            return 22, "14k_gold"
+        if "stainless" in t:
+            return 20, "stainless_steel"
+        if "titanium" in t:
+            return 20, "titanium"
+        if "surgical" in t:
+            return 18, "surgical_steel"
+        if "gold filled" in t:
+            return 18, "gold_filled"
+        if "gold plated" in t:
+            return 12, "gold_plated"
+        if "silver plated" in t:
+            return 10, "silver_plated"
+        if "gold tone" in t or "gold color" in t:
+            return 8, "gold_tone"
+        if "silver tone" in t or "silver color" in t:
+            return 8, "silver_tone"
+        if "brass" in t:
+            return 5, "brass"
+        if "alloy" in t:
+            return 3, "alloy"
+        if "copper" in t:
+            return 0, "copper"
+        if "zinc" in t:
+            return 0, "zinc_alloy"
+        if "iron" in t:
+            return 0, "iron"
+        return None, None
 
-    if "925" in text or "sterling silver" in text:
-        metal_score, detected_metal = 30, "925_silver"
-    elif "18k gold" in text or "18 karat" in text:
-        metal_score, detected_metal = 25, "18k_gold"
-    elif "14k gold" in text:
-        metal_score, detected_metal = 22, "14k_gold"
-    elif "stainless steel" in text:
-        metal_score, detected_metal = 20, "stainless_steel"
-    elif "titanium" in text:
-        metal_score, detected_metal = 20, "titanium"
-    elif "surgical steel" in text:
-        metal_score, detected_metal = 18, "surgical_steel"
-    elif "gold filled" in text:
-        metal_score, detected_metal = 18, "gold_filled"
-    elif "gold plated" in text:
-        metal_score, detected_metal = 12, "gold_plated"
-    elif "silver plated" in text:
-        metal_score, detected_metal = 10, "silver_plated"
-    # Low-grade metals — score 0-8, not hard-rejected; total score decides
-    elif "gold tone" in text or "gold color" in text:
-        metal_score, detected_metal = 8, "gold_tone"
-    elif "silver tone" in text or "silver color" in text:
-        metal_score, detected_metal = 8, "silver_tone"
-    elif "brass" in text:
-        metal_score, detected_metal = 5, "brass"
-    elif "alloy" in text:
-        metal_score, detected_metal = 3, "alloy"
-    elif "copper" in text:
-        metal_score, detected_metal = 0, "copper"
-    elif "zinc" in text:
-        metal_score, detected_metal = 0, "zinc_alloy"
-    elif "iron" in text:
-        metal_score, detected_metal = 0, "iron"
-    else:
+    # Primary: materialNameEnSet (structured CJ field)
+    metal_score, detected_metal = _score_metal(mat_text)
+    metal_source = "materialNameEnSet"
+    # Fallback: name + description + extra_text
+    if detected_metal is None:
+        metal_score, detected_metal = _score_metal(text)
+        metal_source = "text_scan"
+    print(f"[Score] metal={detected_metal} ({metal_score}pt via {metal_source}) mat_set={material_name_en_set}")
+
+    if detected_metal is None:
         return _reject("Metal not specified — cannot verify material quality", metal="unknown")
 
     # ── STONE QUALITY (20 pts) ─────────────────────────────────

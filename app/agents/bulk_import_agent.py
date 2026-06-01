@@ -307,6 +307,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                     "images": all_images,
                     "product_image_set_count": product_image_set_count,
                     "extra_text": extra_text,
+                    "material_name_en_set": (full or {}).get("materialNameEnSet") or [],
                     "cost_price": cost,
                     "supplier_product_id": pid,
                     "supplier_name": "CJDropshipping",
