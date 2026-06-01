@@ -275,6 +275,13 @@
         .co-total-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--mid); font-weight: 300; }
         .co-total-amount { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 400; color: var(--black); }
 
+        .pm-variants { display: flex; flex-direction: column; gap: 16px; }
+        .pm-variant-label { font-size: 9px; font-weight: 300; letter-spacing: 2.5px; text-transform: uppercase; color: var(--mid); margin-bottom: 8px; }
+        .pm-variant-options { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pm-variant-btn { padding: 7px 16px; border: 1px solid var(--border); background: white; font-size: 11px; font-weight: 300; letter-spacing: 1px; font-family: 'Jost', sans-serif; color: var(--charcoal); cursor: pointer; transition: all 0.2s; min-width: 40px; text-align: center; }
+        .pm-variant-btn:hover { border-color: var(--pink); color: var(--pink); }
+        .pm-variant-btn.selected { border-color: var(--black); background: var(--black); color: white; }
+
         .toast { position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%); background: var(--black); color: white; padding: 13px 28px; font-size: 11px; font-weight: 300; letter-spacing: 1.5px; z-index: 400; opacity: 0; transition: opacity 0.3s; white-space: nowrap; box-shadow: 0 8px 40px rgba(0,0,0,0.15); }
         .toast.show { opacity: 1; }
         .loading { text-align: center; padding: 80px; color: var(--light); font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 18px; grid-column: 1/-1; }
@@ -556,6 +563,7 @@
             <div class="pm-divider"></div>
             <div class="pm-desc" id="pm-desc"></div>
             <div class="pm-ship" id="pm-ship"></div>
+            <div id="pm-variants"></div>
             <div class="pm-divider"></div>
             <button class="pm-atc" id="pm-atc">Add to Cart</button>
         </div>
@@ -678,6 +686,8 @@ let allProducts = [];
 let allCollections = [];
 let currentImages = [];
 let currentImageIndex = 0;
+let currentVariantVid = null;
+let currentVariantSelections = {};
 let pendingVerifyEmail = '';
 let cartItems = [];
 
@@ -912,10 +922,65 @@ function openPM(id) {
     document.getElementById('pm-save').textContent = `Save $${(p.original_price - p.final_price).toFixed(2)}`;
     document.getElementById('pm-desc').textContent = stripHtml(p.description || '');
     document.getElementById('pm-ship').textContent = 'Delivery time confirmed after order';
-    document.getElementById('pm-atc').onclick = () => { addToCart(p.id, p.name); closePM(); };
+
+    // Parse and render variants — auto-selects first option, resets on each open
+    let variants = [];
+    try { variants = p.variants ? JSON.parse(p.variants) : []; } catch { variants = []; }
+    renderVariantSelectors(variants);
+
+    document.getElementById('pm-atc').onclick = () => { addToCart(p.id, p.name, currentVariantVid); closePM(); };
     updatePMImages();
     document.getElementById('pm-overlay').classList.add('open');
 }
+
+function renderVariantSelectors(variants) {
+    const container = document.getElementById('pm-variants');
+    if (!variants || !variants.length) { container.innerHTML = ''; currentVariantVid = null; return; }
+
+    // Group by property name, deduplicate values within each group
+    const groups = {};
+    for (const v of variants) {
+        const name = v.variantName || v.variantNameEn || 'Option';
+        if (!groups[name]) groups[name] = [];
+        if (!groups[name].some(x => x.variantValue === v.variantValue)) {
+            groups[name].push(v);
+        }
+    }
+
+    // Auto-select first option in each group
+    currentVariantSelections = {};
+    for (const [name, options] of Object.entries(groups)) {
+        currentVariantSelections[name] = options[0].vid;
+    }
+    currentVariantVid = variants[0].vid || null;
+
+    container.innerHTML = `<div class="pm-variants">${
+        Object.entries(groups).map(([name, options]) => `
+            <div>
+                <div class="pm-variant-label">${name}</div>
+                <div class="pm-variant-options">
+                    ${options.map((v, i) => `
+                        <button class="pm-variant-btn${i === 0 ? ' selected' : ''}"
+                                data-vid="${v.vid}"
+                                data-group="${escAttr(name)}"
+                                onclick="selectVariantBtn(this)">
+                            ${v.variantValue || v.vid}
+                        </button>`).join('')}
+                </div>
+            </div>`).join('')
+    }</div>`;
+}
+
+function selectVariantBtn(btn) {
+    const group = btn.dataset.group;
+    btn.closest('.pm-variant-options').querySelectorAll('.pm-variant-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    currentVariantSelections[group] = btn.dataset.vid;
+    // Use the selected vid directly (last user selection wins for multi-group products)
+    currentVariantVid = btn.dataset.vid;
+}
+
+function escAttr(s) { return s.replace(/"/g, '&quot;'); }
 
 function updatePMImages() {
     document.getElementById('pm-img').src = currentImages[currentImageIndex] || getPlaceholder();
@@ -937,13 +1002,15 @@ function prevImage() { currentImageIndex = (currentImageIndex - 1 + currentImage
 function nextImage() { currentImageIndex = (currentImageIndex + 1) % currentImages.length; updatePMImages(); }
 function closePM() { document.getElementById('pm-overlay').classList.remove('open'); }
 
-async function addToCart(productId, name) {
+async function addToCart(productId, name, vid = null) {
     if (!token) { openAuth(); return; }
     try {
+        const body = { product_id: productId, quantity: 1 };
+        if (vid) body.variant_vid = vid;
         const res = await fetch(`${API}/cart`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ product_id: productId, quantity: 1 })
+            body: JSON.stringify(body)
         });
         if (res.ok) { showToast(`Added to cart`); loadCart(); }
         else if (res.status === 401) openAuth();
