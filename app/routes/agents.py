@@ -917,3 +917,77 @@ def trigger_bulk_import():
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agents/backfill-variants")
+def backfill_variants(session: Session = Depends(get_session)):
+    """
+    One-time migration: fetch real variant data from CJ for every product
+    that has a cj_product_id but no variants saved yet.
+    Safe to re-run — skips products that already have variants.
+    """
+    import json as _json
+    import time
+    from app.models.product import Product
+    from app.agents.cj_dropshipping import get_product_details
+
+    # Only touch products missing variant data
+    products = session.exec(
+        select(Product).where(
+            Product.cj_product_id != None,
+            Product.cj_product_id != "",
+            Product.variants == None
+        )
+    ).all()
+
+    total = len(products)
+    updated = 0
+    failed = 0
+    skipped = 0
+    errors = []
+
+    print(f"[Backfill Variants] Starting — {total} products to process")
+
+    for i, product in enumerate(products):
+        pid = product.cj_product_id
+        try:
+            details = get_product_details(pid)
+
+            if not details:
+                print(f"[Backfill Variants] [{i+1}/{total}] No data for pid={pid} — skipping")
+                skipped += 1
+                time.sleep(0.3)
+                continue
+
+            variants = details.get("variants", [])
+
+            if not variants:
+                print(f"[Backfill Variants] [{i+1}/{total}] No variants for '{product.name[:40]}' — skipping")
+                skipped += 1
+                time.sleep(0.3)
+                continue
+
+            product.variants = _json.dumps(variants)
+            session.add(product)
+            session.commit()
+            updated += 1
+            print(f"[Backfill Variants] [{i+1}/{total}] ✅ {product.name[:40]} — {len(variants)} variants saved")
+
+        except Exception as e:
+            failed += 1
+            err = f"pid={pid}: {str(e)[:80]}"
+            errors.append(err)
+            print(f"[Backfill Variants] [{i+1}/{total}] ❌ {err}")
+            session.rollback()
+
+        # Respect CJ rate limits
+        time.sleep(0.4)
+
+    print(f"[Backfill Variants] Done — {updated} updated, {skipped} skipped, {failed} failed")
+    return {
+        "total_products": total,
+        "updated": updated,
+        "skipped_no_variants": skipped,
+        "failed": failed,
+        "errors": errors[:20]
+    }
