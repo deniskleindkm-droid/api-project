@@ -23,19 +23,28 @@ def score_jewelry_product(product: dict) -> dict:
             "dimensions": {}
         }
 
-    # ── Image count ────────────────────────────────────────────
-    image_count = 0
-    if isinstance(images, list):
-        image_count = len(images)
-    elif isinstance(images, str) and images:
-        try:
-            import json
-            image_count = len(json.loads(images))
-        except Exception:
-            image_count = 1 if image_url else 0
-    elif image_url:
-        image_count = 1
-    image_count = max(image_count, product_image_set_count)
+    # ── Image count — use max across all sources ───────────────
+    import json as _json
+
+    def _count_images(val):
+        """Count images from a list, JSON-encoded list, or single URL string."""
+        if isinstance(val, list):
+            if len(val) == 1 and isinstance(val[0], str) and val[0].strip().startswith("["):
+                try:
+                    return len(_json.loads(val[0]))
+                except Exception:
+                    return 1
+            return len(val)
+        if isinstance(val, str) and val:
+            if val.strip().startswith("["):
+                try:
+                    return len(_json.loads(val))
+                except Exception:
+                    pass
+            return 1
+        return 0
+
+    image_count = max(_count_images(images), _count_images(image_url), product_image_set_count)
 
     if image_count < 3:
         return _reject(f"Only {image_count} image(s) — minimum 3 required")

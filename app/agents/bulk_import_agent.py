@@ -238,7 +238,16 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 if not all_images:
                     main = src.get("productImage", "")
                     if main:
-                        all_images = [main]
+                        # productImage from CJ is often a JSON-encoded list of URLs
+                        if isinstance(main, str) and main.strip().startswith("["):
+                            try:
+                                parsed = json.loads(main)
+                                if isinstance(parsed, list):
+                                    all_images = [img for img in parsed if img][:5]
+                            except Exception:
+                                pass
+                        if not all_images:
+                            all_images = [main]
                 product_image_set_count = len(image_set) if isinstance(image_set, list) else 0
 
                 raw_variants = (full or p).get("variants", [])
@@ -247,10 +256,17 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 variant_texts = []
                 for v in raw_variants:
                     for vkey in ("variantName", "variantValue", "propertyName",
-                                 "propertyValue", "variantSku", "variantNameEn", "name"):
+                                 "propertyValue", "variantSku", "variantNameEn", "name",
+                                 "variantKey"):
                         val = v.get(vkey, "")
                         if val:
                             variant_texts.append(str(val))
+
+                # materialNameEnSet has structured values e.g. "925 Silver", "Stainless Steel"
+                material_en_set = (full or {}).get("materialNameEnSet") or []
+                if isinstance(material_en_set, list):
+                    variant_texts.extend(str(m) for m in material_en_set if m)
+
                 extra_text = " ".join(filter(None, [
                     p.get("categoryName", ""),
                     (full or p).get("productNameEn", ""),
