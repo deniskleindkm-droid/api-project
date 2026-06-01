@@ -44,15 +44,44 @@ def get_access_token():
         return None
 
 
-def search_products(keyword, page=1, limit=20):
+def get_categories(parent_id=None):
+    token = get_access_token()
+    if not token:
+        return []
+    try:
+        params = {}
+        if parent_id:
+            params["categoryId"] = parent_id
+        response = requests.get(
+            f"{CJ_API_BASE}/product/getCategory",
+            headers={"CJ-Access-Token": token},
+            params=params,
+            timeout=30
+        )
+        data = response.json()
+        if data.get("result"):
+            return data.get("data", [])
+        print(f"[CJ] Categories fetch failed: {data.get('message')}")
+        return []
+    except Exception as e:
+        print(f"[CJ] Categories error: {e}")
+        return []
+
+
+def search_products(keyword=None, page=1, limit=20, category_id=None):
     token = get_access_token()
     if not token:
         return None
     try:
+        params = {"pageNum": page, "pageSize": limit}
+        if category_id:
+            params["categoryId"] = category_id
+        if keyword:
+            params["productNameEn"] = keyword
         response = requests.get(
             f"{CJ_API_BASE}/product/list",
             headers={"CJ-Access-Token": token},
-            params={"productNameEn": keyword, "pageNum": page, "pageSize": limit},
+            params=params,
             timeout=30
         )
         data = response.json()

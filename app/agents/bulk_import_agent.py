@@ -20,6 +20,8 @@ COLLECTION_STRATEGIES = {
     "Jewelry": {
         "config_key": "collection_jewelry",
         "default_id": 13,
+        # CJ category IDs — populate from GET /cj/categories. Falls back to keywords if empty.
+        "category_ids": ["2447", "2440", "2441", "2446"],  # Rings, Necklaces, Earrings, Bracelets
         "keywords": [
             "925 sterling silver ring",
             "gold plated necklace women",
@@ -39,6 +41,7 @@ COLLECTION_STRATEGIES = {
     "Women Watches": {
         "config_key": "collection_watches",
         "default_id": 14,
+        "category_ids": ["2476", "2477"],  # Women's Watches, Fashion Watches
         "keywords": [
             "women quartz watch elegant",
             "ladies stainless steel watch",
@@ -54,6 +57,7 @@ COLLECTION_STRATEGIES = {
     "Hair Accessories": {
         "config_key": "collection_hair_accessories",
         "default_id": 15,
+        "category_ids": ["2387", "2388"],  # Hair Accessories, Hair Clips & Pins
         "keywords": [
             "claw clip hair women",
             "hair barrette elegant",
@@ -71,6 +75,7 @@ COLLECTION_STRATEGIES = {
     "Makeup Accessories": {
         "config_key": "collection_makeup",
         "default_id": 16,
+        "category_ids": ["2338", "2339"],  # Makeup Brushes & Tools, Beauty Applicators
         "keywords": [
             "makeup brush set professional",
             "beauty blender sponge",
@@ -87,6 +92,7 @@ COLLECTION_STRATEGIES = {
     "Skincare & Facial Tools": {
         "config_key": "collection_skincare",
         "default_id": 17,
+        "category_ids": ["2314", "2315", "2316"],  # Skin Care Tools, Face Massagers, Facial Devices
         "keywords": [
             "jade roller face massager",
             "gua sha stone facial",
@@ -106,6 +112,7 @@ COLLECTION_STRATEGIES = {
     "Nail Care": {
         "config_key": "collection_nail_care",
         "default_id": 18,
+        "category_ids": ["2351", "2352"],  # Nail Art Tools, Nail Accessories
         "keywords": [
             "nail art tools set",
             "cuticle pusher stainless",
@@ -246,13 +253,26 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
     print(f"\n[Bulk Import] 🔍 Searching for {collection_name} products...")
 
     all_raw_products = []
+    category_ids = strategy.get("category_ids", [])
     keywords = strategy["keywords"]
 
-    # Search each keyword — collect raw CJ products
-    per_keyword = max(3, max_products // len(keywords))
-    for keyword in keywords:
+    if category_ids:
+        # Primary: search by CJ category ID — more accurate than keyword matching
+        print(f"[Bulk Import] Using category IDs: {category_ids}")
+        per_category = max(5, max_products // len(category_ids))
+        search_items = [("category", cid) for cid in category_ids]
+    else:
+        # Fallback: keyword search
+        print(f"[Bulk Import] No category IDs — falling back to keyword search")
+        per_category = max(3, max_products // len(keywords))
+        search_items = [("keyword", kw) for kw in keywords]
+
+    for search_type, search_value in search_items:
         try:
-            results = search_products(keyword, limit=per_keyword)
+            if search_type == "category":
+                results = search_products(category_id=search_value, limit=per_category)
+            else:
+                results = search_products(keyword=search_value, limit=per_category)
             for p in results:
                 # Basic quality pre-filter before ARIA
                 name_lower = p.get("productNameEn", "").lower()
@@ -303,7 +323,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                             "variants": full_product.get("variants", p.get("variants", [])) if full_product else p.get("variants", [])
                         })
         except Exception as e:
-            print(f"[Bulk Import] Search error for '{keyword}': {e}")
+            print(f"[Bulk Import] Search error for '{search_value}': {e}")
 
     if not all_raw_products:
         print(f"[Bulk Import] No products found for {collection_name}")

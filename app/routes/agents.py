@@ -695,6 +695,15 @@ def aria_changelog_route(master_key: str):
         raise HTTPException(status_code=403, detail="Unauthorized")
     return {"changelog": get_changelog()}
 
+@router.get("/cj/categories")
+def cj_categories(parent_id: Optional[str] = None):
+    try:
+        from app.agents.cj_dropshipping import get_categories
+        results = get_categories(parent_id=parent_id)
+        return {"categories": results, "count": len(results)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/cj/search")
 def cj_search(keyword: str, limit: int = 5):
     try:
