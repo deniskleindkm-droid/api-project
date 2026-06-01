@@ -3,6 +3,7 @@ load_dotenv()
 
 import os
 import json
+import time
 import anthropic
 from datetime import datetime
 from app.agents.store_config import get_config
@@ -25,7 +26,7 @@ COLLECTION_STRATEGIES = {
             "FCE034F6-A2BF-47E3-852F-FA9F67F904B2",  # Engagement Rings
         ],
         "required_variants": ["Size"],
-        "reject_if_no_variants": True,
+        "reject_if_no_variants": False,
         "max_per_run": 100,
     },
     "Necklaces": {
@@ -230,14 +231,15 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
 
     # ── PHASE 1: Fetch raw products ────────────────────────────
     all_raw_products = []
-    per_source = max(5, max_products // max(len(search_tasks), 1))
+    per_category = max(5, max_products // max(len(cj_category_ids), 1))
+    keyword_limit = 10  # fixed supplementary limit per keyword
 
     for task_type, task_value in search_tasks:
         try:
             if task_type == "category":
-                results = search_products(category_id=task_value, limit=per_source) or []
+                results = search_products(category_id=task_value, limit=per_category) or []
             else:
-                results = search_products(task_value, limit=per_source) or []
+                results = search_products(task_value, limit=keyword_limit) or []
             for p in results:
                 sell_price = p.get("sellPrice", "0")
                 cost = float(sell_price.split("-")[0].strip()) if isinstance(sell_price, str) and "-" in sell_price else float(sell_price or 0)
@@ -250,6 +252,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                     full = get_product_details(pid)
                 except Exception as e:
                     print(f"[Bulk Import] ⚠ Full details failed for pid={pid}: {e}")
+                time.sleep(1)
 
                 # Images — always prefer productImageSet from full details
                 all_images = []
@@ -338,22 +341,28 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
 
         img_count = max(len(product.get("images", [])), product.get("product_image_set_count", 0))
 
-        # Ring size gate
-        if reject_if_no_variants and not normalized["ring_size_valid"]:
-            print(
-                f"[Bulk Import] ❌ ring-size: '{product['name'][:50]}' | "
-                f"groups={list(normalized['groups'].keys())} count={normalized['variant_count']}"
-            )
-            if len(rejection_details) < 5:
-                rejection_details.append({
-                    "name": product["name"][:50],
-                    "reason": f"ring_size_invalid — groups={list(normalized['groups'].keys())}",
-                    "metal": "n/a",
-                    "images": img_count,
-                    "score": None,
-                })
-            hard_rejected += 1
-            continue
+        # Ring size gate — informational log only when reject_if_no_variants=False
+        if not normalized["ring_size_valid"]:
+            if reject_if_no_variants:
+                print(
+                    f"[Bulk Import] ❌ ring-size: '{product['name'][:50]}' | "
+                    f"groups={list(normalized['groups'].keys())} count={normalized['variant_count']}"
+                )
+                if len(rejection_details) < 5:
+                    rejection_details.append({
+                        "name": product["name"][:50],
+                        "reason": f"ring_size_invalid — groups={list(normalized['groups'].keys())}",
+                        "metal": "n/a",
+                        "images": img_count,
+                        "score": None,
+                    })
+                hard_rejected += 1
+                continue
+            else:
+                print(
+                    f"[Bulk Import] ℹ ring-size-info: '{product['name'][:40]}' "
+                    f"groups={list(normalized['groups'].keys())}"
+                )
 
         # ── PHASE 3: Score ─────────────────────────────────────
         score_input = {**product, "images": product["images"]}
