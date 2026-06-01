@@ -10,8 +10,10 @@ def score_jewelry_product(product: dict) -> dict:
     images = product.get("images", [])
     image_url = product.get("image_url", "")
     supplier_rating = float(product.get("supplier_rating", 0.0))
+    extra_text = product.get("extra_text", "")
+    product_image_set_count = int(product.get("product_image_set_count", 0))
 
-    text = f"{name} {description}".lower()
+    text = f"{name} {description} {extra_text}".lower()
 
     def _reject(reason, metal=None, stone=None):
         return {
@@ -33,6 +35,7 @@ def score_jewelry_product(product: dict) -> dict:
             image_count = 1 if image_url else 0
     elif image_url:
         image_count = 1
+    image_count = max(image_count, product_image_set_count)
 
     if image_count < 3:
         return _reject(f"Only {image_count} image(s) — minimum 3 required")

@@ -226,10 +226,10 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 full = None
                 try:
                     full = get_product_details(pid)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"[Bulk Import] ⚠ Full details failed for pid={pid}: {e}")
 
-                # Images
+                # Images — always prefer productImageSet from full details
                 all_images = []
                 src = full or p
                 image_set = src.get("productImageSet", [])
@@ -239,15 +239,33 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                     main = src.get("productImage", "")
                     if main:
                         all_images = [main]
+                product_image_set_count = len(image_set) if isinstance(image_set, list) else 0
 
                 raw_variants = (full or p).get("variants", [])
 
+                # Build extra text for metal/material detection across all fields
+                variant_texts = []
+                for v in raw_variants:
+                    for vkey in ("variantName", "variantValue", "propertyName",
+                                 "propertyValue", "variantSku", "variantNameEn", "name"):
+                        val = v.get(vkey, "")
+                        if val:
+                            variant_texts.append(str(val))
+                extra_text = " ".join(filter(None, [
+                    p.get("categoryName", ""),
+                    (full or p).get("productNameEn", ""),
+                    (full or {}).get("description", ""),
+                    " ".join(variant_texts),
+                ]))
+
                 all_raw_products.append({
-                    "name": p.get("productNameEn", ""),
+                    "name": (full or p).get("productNameEn", p.get("productNameEn", "")),
                     "category": p.get("categoryName", collection_name),
                     "description": (full or {}).get("description", p.get("productNameEn", "")),
                     "image_url": all_images[0] if all_images else "",
                     "images": all_images,
+                    "product_image_set_count": product_image_set_count,
+                    "extra_text": extra_text,
                     "cost_price": cost,
                     "supplier_product_id": pid,
                     "supplier_name": "CJDropshipping",
@@ -272,6 +290,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
     # ── PHASE 2: Normalize variants + hard filter ──────────────
     scored_candidates = []
     hard_rejected = 0
+    reject_log_count = 0
 
     for product in unique:
         raw_variants = product.pop("raw_variants", [])
@@ -281,7 +300,12 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
 
         # Ring size gate
         if reject_if_no_variants and not normalized["ring_size_valid"]:
-            print(f"[Bulk Import] ❌ Ring size invalid: {product['name'][:40]}")
+            if reject_log_count < 10:
+                reject_log_count += 1
+                print(
+                    f"[Bulk Import] ❌ REJECT #{reject_log_count} ring-size: '{product['name'][:50]}' | "
+                    f"variant_groups={list(normalized['groups'].keys())} count={normalized['variant_count']}"
+                )
             hard_rejected += 1
             continue
 
@@ -290,16 +314,21 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
         score = score_jewelry_product(score_input)
 
         if score["rejected"]:
-            print(f"[Bulk Import] ❌ Score rejected ({score['score']}pt): {product['name'][:40]} — {score['rejection_reason']}")
-            hard_rejected += 1
-            continue
-
-        if score["needs_review"]:
-            print(f"[Bulk Import] ⏸ Needs review ({score['score']}pt): {product['name'][:40]}")
+            if reject_log_count < 10:
+                reject_log_count += 1
+                img_count = max(len(product.get("images", [])), product.get("product_image_set_count", 0))
+                print(
+                    f"[Bulk Import] ❌ REJECT #{reject_log_count}: '{product['name'][:50]}'\n"
+                    f"   reason={score['rejection_reason']} score={score['score']}\n"
+                    f"   images={img_count} metal={score.get('detected_metal')} rating={product.get('supplier_rating')}"
+                )
             hard_rejected += 1
             continue
 
         product["_score"] = score
+        product["_needs_review"] = score["needs_review"]
+        if score["needs_review"]:
+            print(f"[Bulk Import] ⏸ Needs review ({score['score']}pt): {product['name'][:40]} — queuing for ARIA review")
         scored_candidates.append(product)
 
     print(f"[Bulk Import] {len(scored_candidates)} passed scoring for {collection_name}")
@@ -367,10 +396,11 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
             p_obj, status = add_product_to_store(product_data)
             if status == "added":
                 imported += 1
+                signal_type = "PRODUCT_NEEDS_REVIEW" if product.get("_needs_review") else "PRODUCT_IMPORTED"
                 try:
                     from app.agents.nervous_system import emit
                     emit(
-                        signal_type="PRODUCT_IMPORTED",
+                        signal_type=signal_type,
                         sender="bulk_import_agent",
                         payload={
                             "product_id": p_obj.id,
@@ -381,7 +411,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                             "quality_tier": score["quality_tier"],
                             "supplier": "CJDropshipping",
                         },
-                        priority=7
+                        priority=5 if product.get("_needs_review") else 7
                     )
                 except Exception as e:
                     print(f"[Bulk Import] Signal error: {e}")
