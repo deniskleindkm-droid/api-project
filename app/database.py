@@ -159,29 +159,59 @@ def _register_default_autonomy_rules():
 
 def _register_default_configs():
     from app.agents.store_config import set_config
-    set_config("default_markup", "7.0", "Default price markup multiplier for all products")
+
+    # ── Brand identity ─────────────────────────────────────────
+    set_config("brand_voice", "Mikisi speaks to women who choose themselves. Every piece is an act of self-worth. Tone: elegant, empowering, intimate. Never corporate. Never pushy. Always making her feel seen.", "Mikisi brand voice")
+    set_config("brand_type", "luxury_jewelry", "Mikisi is a luxury jewelry brand — not a beauty store")
+
+    # ── Base markup per jewelry collection ─────────────────────
+    set_config("markup_rings", "8.0", "Base markup multiplier for Rings")
+    set_config("markup_necklaces", "7.0", "Base markup multiplier for Necklaces")
+    set_config("markup_bracelets", "7.0", "Base markup multiplier for Bracelets")
+    set_config("markup_earrings", "8.0", "Base markup multiplier for Earrings")
+    set_config("markup_anklets", "6.0", "Base markup multiplier for Anklets")
+    set_config("markup_piercings", "7.0", "Base markup multiplier for Piercings & Body Jewelry")
+
+    # ── Quality multipliers (applied on top of base) ───────────
+    set_config("quality_925_silver", "1.4", "Quality multiplier for 925 sterling silver")
+    set_config("quality_moissanite", "2.5", "Quality multiplier for moissanite stones")
+    set_config("quality_natural_gemstone", "2.0", "Quality multiplier for natural gemstones")
+    set_config("quality_pvd_plating", "1.2", "Quality multiplier for PVD plating")
+    set_config("quality_18k_gold_plated", "1.1", "Quality multiplier for 18k gold plated")
+    set_config("quality_unknown_material", "0.8", "Quality multiplier when metal is unknown")
+
+    # ── Supplier multipliers ───────────────────────────────────
+    set_config("supplier_silverbene", "1.3", "Supplier multiplier for Silverbene (premium)")
+    set_config("supplier_nihaojewelry", "1.1", "Supplier multiplier for NihaoJewelry (primary)")
+    set_config("supplier_cj", "1.0", "Supplier multiplier for CJ Dropshipping (supplementary)")
+
+    # ── Pricing constraints ────────────────────────────────────
+    set_config("min_price", "10.99", "Minimum store price — never go below this")
+    set_config("default_markup", "7.0", "Fallback markup where per-collection key not set")
+
+    # ── Autonomy thresholds ────────────────────────────────────
     set_config("min_product_score", "0.65", "Minimum score for auto-import")
     set_config("max_products_per_trend", "3", "Max products to score per trend signal")
     set_config("auto_import_enabled", "true", "Whether ARIA auto-imports approved products")
     set_config("max_shipping_days", "30", "Maximum days before order is flagged as delayed")
-    set_config("brand_voice", "Mikisi speaks to women who choose themselves. Every piece is an act of self-worth. Tone: elegant, empowering, intimate. Never corporate. Never pushy. Always making her feel seen.", "Mikisi brand voice for content generation")
-    print("[DB] ✅ Default store configs registered")
+
+    # ── Collection IDs (updated by /agents/reset-store) ────────
+    set_config("collection_rings", "1", "Rings collection ID")
+    set_config("collection_necklaces", "2", "Necklaces collection ID")
+    set_config("collection_bracelets", "3", "Bracelets collection ID")
+    set_config("collection_earrings", "4", "Earrings collection ID")
+    set_config("collection_anklets", "5", "Anklets collection ID")
+    set_config("collection_piercings", "6", "Piercings & Body Jewelry collection ID")
+    set_config("locked_collection_ids", "1,2,3,4,5,6", "The 6 locked jewelry collection IDs")
+
+    # ── Social posting schedule ────────────────────────────────
     set_config("posting_schedule_instagram", "wednesday,thursday", "Best days to post on Instagram")
     set_config("posting_time_instagram", "21:00", "Best time to post on Instagram")
     set_config("posting_schedule_tiktok", "tuesday,wednesday,thursday,friday", "Best days to post on TikTok")
     set_config("posting_time_tiktok", "16:00", "Best time to post on TikTok")
-    set_config("posting_schedule_pinterest", "tuesday,wednesday", "Best days to post on Pinterest")
-    set_config("posting_time_pinterest", "11:00", "Best time to post on Pinterest")
-    set_config("posting_schedule_facebook", "wednesday,thursday", "Best days to post on Facebook")
-    set_config("posting_time_facebook", "19:00", "Best time to post on Facebook")
     set_config("auto_posting_enabled", "false", "Whether ARIA posts automatically — enable when credentials ready")
-    set_config("locked_collection_ids", "13,14,15,16,17,18", "The only 6 allowed collections — agents cannot create or use others")
-    set_config("collection_jewelry", "13", "Jewelry collection ID")
-    set_config("collection_watches", "14", "Women Watches collection ID")
-    set_config("collection_hair_accessories", "15", "Hair Accessories collection ID")
-    set_config("collection_makeup", "16", "Makeup Accessories collection ID")
-    set_config("collection_skincare", "17", "Skincare & Facial Tools collection ID")
-    set_config("collection_nail_care", "18", "Nail Care collection ID")
+
+    print("[DB] ✅ Default store configs registered")
 
 
 def _register_default_tools():

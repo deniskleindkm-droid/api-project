@@ -17,151 +17,164 @@ client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 # ============================================================
 
 COLLECTION_STRATEGIES = {
-    "Jewelry": {
-        "config_key": "collection_jewelry",
-        "default_id": 13,
-        # CJ category IDs — verified from GET /cj/categories. Falls back to keywords if empty.
+    "Rings": {
+        "config_key": "collection_rings",
+        "default_id": 1,
+        "markup_key": "markup_rings",
+        "default_markup": 8.0,
         "category_ids": [
             "56B4F8B6-8600-4A18-913E-53F2F693EC2C",  # Rings
-            "D28405AE-66C6-42E6-BFF0-D6FDCB5C083C",  # Earrings
-            "95D9F317-1DB3-4E42-A031-02223215B9C5",  # Necklace & Pendants
-            "0615F8DB-C10F-4BEF-892B-1C5B04268938",  # Bracelets & Bangles
-            "633E1860-7C63-4006-AB35-3FC16BECFA62",  # Body Jewelry
-            "2601070548141611900",                    # Anklets
-            "552F095A-904C-40E4-A43B-0CD1CE15D29F",  # 925 Silver Jewelry
-            "D7CE9827-F50A-4B07-84BF-1BFE44188A1C",  # Fine Earrings
-            "84ED4B7F-D7C3-412F-AF18-04F25C91985C",  # Pearls Jewelry
             "FCE034F6-A2BF-47E3-852F-FA9F67F904B2",  # Engagement Rings
+            "552F095A-904C-40E4-A43B-0CD1CE15D29F",  # 925 Silver Jewelry
         ],
         "keywords": [
-            "925 sterling silver ring",
-            "gold plated necklace women",
-            "sterling silver bracelet",
-            "nose ring piercing",
-            "zircon crystal earring",
-            "gold plated pendant necklace",
-            "stainless steel ring women",
-            "silver anklet women",
-            "crystal choker necklace",
-            "gold plated bangle bracelet"
+            "925 sterling silver ring women",
+            "gold plated ring women",
+            "stainless steel ring",
+            "gemstone ring silver",
+            "crystal ring women",
+            "engagement ring silver",
+            "stackable ring set silver",
         ],
-        "quality_keywords": ["925", "sterling", "gold plated", "stainless steel", "zircon", "crystal"],
-        "reject_keywords": ["plastic", "acrylic", "resin", "cheap"],
-        "max_per_run": 200
+        "quality_keywords": ["925", "sterling silver", "gold plated", "stainless steel", "titanium", "gemstone"],
+        "reject_keywords": ["plastic", "acrylic", "resin", "rubber"],
+        "max_per_run": 100,
     },
-    "Women Watches": {
-        "config_key": "collection_watches",
-        "default_id": 14,
+    "Necklaces": {
+        "config_key": "collection_necklaces",
+        "default_id": 2,
+        "markup_key": "markup_necklaces",
+        "default_markup": 7.0,
         "category_ids": [
-            "A044AC0D-BA3B-4967-8300-1BD57F00048E",  # Dress Watches
-            "F40CB152-1391-4CA9-9BAE-0316DA2D3D2B",  # Women's Bracelet Watches
-            "DAE17D16-A15F-445D-AE34-B698F3290E56",  # Creative Watches
-            "9D78B3E3-99F4-4EDA-8C70-2F5B95061CAA",  # Women Sports Watches
+            "95D9F317-1DB3-4E42-A031-02223215B9C5",  # Necklace & Pendants
+            "84ED4B7F-D7C3-412F-AF18-04F25C91985C",  # Pearls Jewelry
         ],
         "keywords": [
-            "women quartz watch elegant",
-            "ladies stainless steel watch",
-            "women leather strap watch",
-            "rose gold women watch",
-            "minimalist women wristwatch",
-            "luxury style women watch"
+            "925 sterling silver necklace",
+            "gold plated pendant necklace women",
+            "stainless steel necklace",
+            "crystal pendant necklace",
+            "choker necklace silver",
+            "chain necklace women gold",
         ],
-        "quality_keywords": ["stainless steel", "quartz", "leather", "mineral glass", "sapphire"],
-        "reject_keywords": ["plastic", "digital only", "rubber strap", "kids"],
-        "max_per_run": 100
+        "quality_keywords": ["925", "sterling silver", "gold plated", "stainless steel", "pendant", "chain"],
+        "reject_keywords": ["plastic", "acrylic", "resin"],
+        "max_per_run": 80,
     },
-    "Hair Accessories": {
-        "config_key": "collection_hair_accessories",
-        "default_id": 15,
+    "Bracelets": {
+        "config_key": "collection_bracelets",
+        "default_id": 3,
+        "markup_key": "markup_bracelets",
+        "default_markup": 7.0,
         "category_ids": [
-            "2502140903111619100",  # Headband & Hair Band & Hairpin
+            "0615F8DB-C10F-4BEF-892B-1C5B04268938",  # Bracelets & Bangles
         ],
         "keywords": [
-            "claw clip hair women",
-            "hair barrette elegant",
-            "scrunchie silk satin",
-            "headband women elegant",
-            "hair pin pearl",
-            "bobby pin set women",
-            "hair comb decorative",
-            "hair clip metal acetate"
+            "925 sterling silver bracelet",
+            "gold plated bangle bracelet",
+            "stainless steel bracelet women",
+            "crystal charm bracelet",
+            "chain bracelet silver women",
+            "cuff bracelet gold",
         ],
-        "quality_keywords": ["metal", "acetate", "silk", "satin", "pearl", "crystal"],
-        "reject_keywords": ["kids", "baby", "cheap plastic"],
-        "max_per_run": 150
+        "quality_keywords": ["925", "sterling silver", "gold plated", "stainless steel", "bangle", "cuff"],
+        "reject_keywords": ["plastic", "rubber", "acrylic"],
+        "max_per_run": 80,
     },
-    "Makeup Accessories": {
-        "config_key": "collection_makeup",
-        "default_id": 16,
+    "Earrings": {
+        "config_key": "collection_earrings",
+        "default_id": 4,
+        "markup_key": "markup_earrings",
+        "default_markup": 8.0,
         "category_ids": [
-            "A30E8F55-DC2C-4842-9372-91B96DEFDCC2",  # Makeup Brushes
-            "426792A7-4906-403D-AD17-8293AFF00E66",  # Makeup Set
-            "E31E5996-7B86-4FEC-B929-9AEB11E76853",  # False Eyelashes
+            "D28405AE-66C6-42E6-BFF0-D6FDCB5C083C",  # Earrings
+            "D7CE9827-F50A-4B07-84BF-1BFE44188A1C",  # Fine Earrings
         ],
         "keywords": [
-            "makeup brush set professional",
-            "beauty blender sponge",
-            "foundation brush kabuki",
-            "eyeshadow brush set",
-            "cosmetic brush premium",
-            "makeup applicator tool",
-            "blush contour brush"
+            "925 sterling silver earrings women",
+            "gold plated hoop earrings",
+            "stainless steel stud earrings",
+            "crystal drop earrings women",
+            "pearl earrings silver",
+            "zircon earrings gold",
         ],
-        "quality_keywords": ["professional", "dense", "soft bristle", "premium", "synthetic"],
-        "reject_keywords": ["single use", "disposable", "kids"],
-        "max_per_run": 100
+        "quality_keywords": ["925", "sterling silver", "gold plated", "stainless steel", "zircon", "pearl", "crystal"],
+        "reject_keywords": ["plastic", "acrylic", "resin", "kids"],
+        "max_per_run": 100,
     },
-    "Skincare & Facial Tools": {
-        "config_key": "collection_skincare",
-        "default_id": 17,
+    "Anklets": {
+        "config_key": "collection_anklets",
+        "default_id": 5,
+        "markup_key": "markup_anklets",
+        "default_markup": 6.0,
         "category_ids": [
-            "EDE3FAD9-0E6C-4F7C-9016-A2299469AA7C",  # Facial Care
-            "88AF62DE-5586-40E4-A287-864523D9AE50",  # Face Masks
-            "AB11F624-D292-4A8E-9284-BD368B893A2C",  # Face Skin Care Tools
-            "6D086E0D-8C3F-4B99-BA44-140F3F7C444E",  # Electric Face Cleanser
-            "D23FFB85-4185-4FA3-BAF0-224A4F516741",  # Facial Steamer
+            "2601070548141611900",  # Anklets
         ],
         "keywords": [
-            "jade roller face massager",
-            "gua sha stone facial",
-            "rose quartz roller",
-            "face mask sheet korean",
-            "vitamin c serum face",
-            "hyaluronic acid serum",
-            "facial cleansing brush",
-            "microneedle derma roller",
-            "led face mask beauty",
-            "face lift tool beauty"
+            "925 sterling silver anklet women",
+            "gold plated anklet bracelet",
+            "stainless steel ankle bracelet",
+            "crystal anklet women",
+            "beach anklet silver",
         ],
-        "quality_keywords": ["jade", "quartz", "natural", "korean", "vitamin", "hyaluronic"],
-        "reject_keywords": ["fake", "plastic stone", "harmful"],
-        "max_per_run": 150
+        "quality_keywords": ["925", "sterling silver", "gold plated", "stainless steel"],
+        "reject_keywords": ["plastic", "rubber", "fabric"],
+        "max_per_run": 50,
     },
-    "Nail Care": {
-        "config_key": "collection_nail_care",
-        "default_id": 18,
+    "Piercings & Body Jewelry": {
+        "config_key": "collection_piercings",
+        "default_id": 6,
+        "markup_key": "markup_piercings",
+        "default_markup": 7.0,
         "category_ids": [
-            "EADB666A-12A5-4FA1-AD1F-BC351A7E7AF5",  # Nail Art Kits
-            "9F96CE84-962D-4992-81DC-BF79A4A9002D",  # Nail Gel
-            "E157D35B-156B-49F6-A678-7C55D4E81D6C",  # Nail Dryers
-            "26F7660F-A00A-468A-BA29-E61A465C0D0B",  # Nail Decorations
-            "25A6516D-3AE3-4207-BA00-6FD3CCE20201",  # Stickers & Decals
+            "633E1860-7C63-4006-AB35-3FC16BECFA62",  # Body Jewelry
         ],
         "keywords": [
-            "nail art tools set",
-            "cuticle pusher stainless",
-            "nail file buffer set",
-            "manicure pedicure kit",
-            "nail gel polish set",
-            "nail art stamping kit",
-            "nail drill electric",
-            "nail sticker decoration"
+            "nose ring stud surgical steel",
+            "cartilage earring stud titanium",
+            "belly button ring surgical steel",
+            "nose hoop piercing silver",
+            "body jewelry surgical steel",
         ],
-        "quality_keywords": ["stainless steel", "professional", "ergonomic", "electric"],
-        "reject_keywords": ["kids", "toy", "fake"],
-        "max_per_run": 100
-    }
+        "quality_keywords": ["surgical steel", "titanium", "925 silver", "implant grade"],
+        "reject_keywords": ["plastic", "acrylic", "cheap"],
+        "max_per_run": 60,
+    },
 }
+
+
+def _calculate_price(cost: float, collection_name: str, product_name: str) -> tuple:
+    """
+    Mikisi intelligent pricing formula.
+    Final price = Cost × Base × Quality × Supplier, minimum $10.99, rounded to .99
+    Returns (final_price, original_price, discount_percent)
+    """
+    strategy = COLLECTION_STRATEGIES.get(collection_name, {})
+    base = float(get_config(strategy.get("markup_key", "markup_rings"),
+                             default=strategy.get("default_markup", 7.0)))
+
+    name_lower = product_name.lower()
+    if "moissanite" in name_lower:
+        quality = float(get_config("quality_moissanite", default=2.5))
+    elif "925" in name_lower or "sterling silver" in name_lower:
+        quality = float(get_config("quality_925_silver", default=1.4))
+    elif "natural" in name_lower and ("stone" in name_lower or "gem" in name_lower):
+        quality = float(get_config("quality_natural_gemstone", default=2.0))
+    elif "pvd" in name_lower:
+        quality = float(get_config("quality_pvd_plating", default=1.2))
+    elif "18k" in name_lower or "gold plated" in name_lower:
+        quality = float(get_config("quality_18k_gold_plated", default=1.1))
+    else:
+        quality = float(get_config("quality_unknown_material", default=0.8))
+
+    supplier = float(get_config("supplier_cj", default=1.0))
+    min_price = float(get_config("min_price", default=10.99))
+
+    computed = cost * base * quality * supplier
+    final_price = max(min_price, round(computed - 0.01, 0) + 0.99)
+    original_price = round(final_price * 1.4 - 0.01, 0) + 0.99
+    discount = round((1 - final_price / original_price) * 100)
+    return final_price, original_price, discount
 
 
 # ============================================================
@@ -185,23 +198,22 @@ def batch_rewrite_products(products: list, collection_name: str, collection_id: 
         for i, p in enumerate(products)
     ])
 
-    prompt = f"""You are ARIA, the intelligence behind Mikisi — a premium women's beauty accessories store.
+    prompt = f"""You are ARIA, the intelligence behind Mikisi — a luxury jewelry brand for women who choose themselves.
 
 BRAND VOICE:
 {brand_voice}
 
 TARGET COLLECTION: {collection_name} (ID: {collection_id})
 
-You are reviewing {len(products)} products for import into Mikisi.
+You are reviewing {len(products)} jewelry products for import into Mikisi.
 For each product decide: accept or reject. If accepted, rewrite for Mikisi.
 
-QUALITY RULES:
-- Jewelry: must be 925 sterling silver, gold plated, or stainless steel. No cheap alloys.
-- Watches: must have stainless steel case, quality movement. No plastic.
-- Hair Accessories: quality materials only. No cheap plastic that breaks.
-- Makeup: professional grade brushes and tools only.
-- Skincare: real materials (jade, quartz, proven ingredients). No fakes.
-- Nail Care: stainless steel tools. Professional grade.
+QUALITY RULES — NON NEGOTIABLE:
+- Metal must be specified: 925 sterling silver, 18k gold plated, stainless steel, titanium, or surgical steel
+- Unknown or unspecified metal = automatic rejection
+- Absolutely no plastic, acrylic, or resin jewelry — ever
+- Must be wearable jewelry only (rings, necklaces, bracelets, earrings, anklets, piercings)
+- Reject anything that is not jewelry
 
 PRODUCTS TO REVIEW:
 {product_list}
@@ -406,15 +418,12 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 "variants": product.get("variants", [])
             }
 
-            # Override rewriter in store manager — use our pre-rewritten data
             from app.agents.store_manager import add_product_to_store
-            from app.agents.store_config import get_config as gc
 
-            markup_val = gc("default_markup", default=7.0)
             cost = product["cost_price"]
-            final_price = round(int(cost * markup_val) + 0.99, 2)
-            original_price = round(int(final_price * 1.4) + 0.99, 2)
-            discount = round((1 - final_price / original_price) * 100)
+            final_price, original_price, discount = _calculate_price(
+                cost, collection_name, product["mikisi_name"]
+            )
 
             cj_sku = ""
             variants = product.get("variants", [])

@@ -1,4 +1,5 @@
 import os
+import json
 import anthropic
 from datetime import datetime
 from sqlmodel import Session, select
@@ -8,118 +9,154 @@ from app.models.autonomy import ProductScore
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
+# ============================================================
+# JEWELRY SCORING — 6 dimensions
+# 1. Metal quality   — paramount for a jewelry brand
+# 2. Image count     — minimum 3 required by quality standard
+# 3. Price / margin  — sustainable business
+# 4. Brand fit       — AI judges jewelry aesthetic
+# 5. Category fit    — is it actually jewelry
+# 6. Trend           — market signal (placeholder for market agent)
+#
+# Field repurposing (ProductScore schema unchanged):
+#   supplier_rating      → metal_quality_score
+#   order_volume_score   → image_count_score
+# ============================================================
+
+def _detect_metal_quality(name: str, category: str) -> tuple:
+    """Returns (score 0-1, metal_type string)."""
+    text = f"{name} {category}".lower()
+
+    if "moissanite" in text:
+        return 1.0, "moissanite"
+    if "925" in text or "sterling silver" in text:
+        return 0.95, "925_silver"
+    if "surgical steel" in text or "implant grade" in text:
+        return 0.90, "surgical_steel"
+    if "titanium" in text:
+        return 0.85, "titanium"
+    if "pvd" in text:
+        return 0.80, "pvd_plated"
+    if "18k" in text or "gold plated" in text or "gold-plated" in text:
+        return 0.75, "gold_plated"
+    if "stainless steel" in text:
+        return 0.70, "stainless_steel"
+    if "alloy" in text or "zinc alloy" in text or "copper alloy" in text:
+        return 0.25, "base_metal"
+    if "plastic" in text or "acrylic" in text or "resin" in text:
+        return 0.0, "plastic"
+
+    return 0.35, "unknown"
+
+
+def _image_count_score(image_url: str, images) -> tuple:
+    """Returns (score 0-1, count int)."""
+    count = 0
+    if isinstance(images, list):
+        count = len(images)
+    elif isinstance(images, str) and images:
+        try:
+            count = len(json.loads(images))
+        except Exception:
+            count = 1 if image_url else 0
+    elif image_url:
+        count = 1
+
+    if count >= 3:
+        return 1.0, count
+    if count == 2:
+        return 0.5, count
+    if count == 1:
+        return 0.2, count
+    return 0.0, 0
+
+
 def score_product(product: dict) -> ProductScore:
     """
-    Score a product before importing.
-    Uses real data where available, AI judgment for visual and fit scoring.
-    
-    product dict must have:
-    - supplier_product_id
-    - supplier_name
-    - name
-    - category
-    - cost_price
-    - image_url (optional)
-    - variants (list)
+    Score a jewelry product across 6 dimensions before importing.
+    Hard rejects: plastic/unknown metal or zero images.
     """
-
     name = product.get("name", "")
     category = product.get("category", "")
     cost_price = float(product.get("cost_price", 0))
     image_url = product.get("image_url", "")
-    variants = product.get("variants", [])
+    images = product.get("images", [])
 
-    # SCORE 1 — Supplier rating (from variant data or default)
-    supplier_rating = 0.5
-    if variants:
-        supplier_rating = 0.8  # Has variants = more established product
+    # D1 — Metal quality
+    metal_score, metal_type = _detect_metal_quality(name, category)
 
-    # SCORE 2 — Order volume score
-    order_volume_score = 0.5  # Default until we have real sales data
+    # D2 — Image count
+    image_score, image_count = _image_count_score(image_url, images)
 
-    # SCORE 3 — Price score (sustainable margin potential)
+    # D3 — Price / margin potential
     price_score = 0.5
     if cost_price > 0:
         if cost_price <= 2.0:
-            price_score = 0.9  # Very low cost = high margin potential
+            price_score = 0.95
         elif cost_price <= 5.0:
-            price_score = 0.8
-        elif cost_price <= 15.0:
-            price_score = 0.6
-        elif cost_price <= 30.0:
-            price_score = 0.4
+            price_score = 0.85
+        elif cost_price <= 10.0:
+            price_score = 0.70
+        elif cost_price <= 20.0:
+            price_score = 0.50
+        elif cost_price <= 40.0:
+            price_score = 0.30
         else:
-            price_score = 0.2
+            price_score = 0.15
 
-    # SCORE 4 — Visual score (AI judges if product fits Mikisi aesthetics)
+    # D4 & D5 — AI brand fit + category fit (one cheap Haiku call)
     visual_score = 0.5
+    category_fit = 0.5
     try:
-        prompt = f"""You are the visual quality assessor for Mikisi — a premium women's beauty accessories store.
-
-Product to assess:
-- Name: {name}
-- Category: {category}
-- Cost price: ${cost_price}
-- Has image: {"yes" if image_url else "no"}
-
-Score this product's fit for Mikisi on these criteria:
-1. Does it fit women's beauty accessories?
-2. Does the category suggest photogenic, elegant products?
-3. Is the price point appropriate for a beauty store?
-
-Return JSON only:
-{{
-    "visual_score": 0.0 to 1.0,
-    "category_fit": 0.0 to 1.0,
-    "reasoning": "one sentence"
-}}"""
-
-        message = client.messages.create(
-            model="claude-sonnet-4-5",
-            max_tokens=150,
+        prompt = (
+            f"You assess products for Mikisi, a luxury jewelry brand.\n"
+            f"Product: {name} | Category: {category} | Metal: {metal_type} | Cost: ${cost_price:.2f} | Images: {image_count}\n"
+            f"Return JSON only: {{\"visual_score\": 0.0, \"category_fit\": 0.0, \"reasoning\": \"one sentence\"}}\n"
+            f"visual_score = quality jewelry aesthetic (0-1). category_fit = is it a ring/necklace/bracelet/earring/anklet/piercing (0-1)."
+        )
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=80,
             messages=[{"role": "user", "content": prompt}]
         )
-
-        import json
-        text = message.content[0].text.strip()
+        text = msg.content[0].text.strip()
         if text.startswith("```"):
             parts = text.split("```")
             text = parts[1][4:] if parts[1].startswith("json") else parts[1]
-
         result = json.loads(text.strip())
-        visual_score = result.get("visual_score", 0.5)
-        category_fit = result.get("category_fit", 0.5)
-        print(f"[Scoring] AI assessment: {result.get('reasoning', '')}")
-
+        visual_score = float(result.get("visual_score", 0.5))
+        category_fit = float(result.get("category_fit", 0.5))
+        print(f"[Scoring] {result.get('reasoning', '')}")
     except Exception as e:
-        print(f"[Scoring] AI scoring failed: {e} — using defaults")
-        category_fit = 0.5
+        print(f"[Scoring] AI assessment failed: {e}")
 
-    # SCORE 5 — Trend score (placeholder — will connect to market agent)
+    # D6 — Trend score (placeholder — market agent populates this later)
     trend_score = 0.5
 
-    # TOTAL SCORE — weighted average
     total_score = round(
-        supplier_rating * 0.20 +
-        order_volume_score * 0.15 +
-        trend_score * 0.20 +
-        visual_score * 0.20 +
-        category_fit * 0.15 +
-        price_score * 0.10,
+        metal_score  * 0.30 +
+        image_score  * 0.20 +
+        price_score  * 0.15 +
+        visual_score * 0.15 +
+        category_fit * 0.10 +
+        trend_score  * 0.10,
         3
     )
 
-    # RECOMMENDATION based on score
-    if total_score >= 0.65:
+    # Hard rejects override score
+    if metal_type == "plastic":
+        recommendation = "reject"
+    elif image_count == 0:
+        recommendation = "reject"
+    elif total_score >= 0.65:
         recommendation = "auto_import"
     elif total_score >= 0.45:
         recommendation = "review"
     else:
         recommendation = "reject"
 
-    print(f"[Scoring] {name[:50]} → score: {total_score} → {recommendation}")
+    print(f"[Scoring] {name[:50]} | metal={metal_type} images={image_count} score={total_score} → {recommendation}")
 
-    # Save to database
     scored = ProductScore(
         supplier_product_id=product.get("supplier_product_id", ""),
         supplier_name=product.get("supplier_name", ""),
@@ -127,8 +164,8 @@ Return JSON only:
         category=category,
         cost_price=cost_price,
         image_url=image_url[:500] if image_url else "",
-        supplier_rating=supplier_rating,
-        order_volume_score=order_volume_score,
+        supplier_rating=metal_score,
+        order_volume_score=image_score,
         trend_score=trend_score,
         visual_score=visual_score,
         price_score=price_score,
@@ -146,15 +183,11 @@ Return JSON only:
 
 
 def score_and_decide(product: dict) -> dict:
-    """
-    Score a product and use autonomy engine to decide what to do.
-    Returns action to take.
-    """
+    """Score a product and use autonomy engine to decide action."""
     from app.agents.autonomy_engine import check_autonomy
     from app.agents.nervous_system import emit
 
     scored = score_product(product)
-
     decision = check_autonomy(
         agent="product_agent",
         action="import_product",
@@ -175,27 +208,19 @@ def score_and_decide(product: dict) -> dict:
             },
             priority=5
         )
-        return {
-            "action": "auto_import",
-            "score": scored.total_score,
-            "product_id": scored.supplier_product_id
-        }
-    else:
-        print(f"[Scoring] 📋 Flagging for review: {product.get('name', '')[:50]}")
-        emit(
-            signal_type="PRODUCT_NEEDS_REVIEW",
-            sender="product_scoring",
-            receiver=decision["signal_to"],
-            payload={
-                "supplier_product_id": scored.supplier_product_id,
-                "name": scored.product_name,
-                "total_score": scored.total_score,
-                "reason": decision["rule"]
-            },
-            priority=decision["priority"]
-        )
-        return {
-            "action": "needs_review",
-            "score": scored.total_score,
-            "signal_to": decision["signal_to"]
-        }
+        return {"action": "auto_import", "score": scored.total_score, "product_id": scored.supplier_product_id}
+
+    print(f"[Scoring] Flagging for review: {product.get('name', '')[:50]}")
+    emit(
+        signal_type="PRODUCT_NEEDS_REVIEW",
+        sender="product_scoring",
+        receiver=decision["signal_to"],
+        payload={
+            "supplier_product_id": scored.supplier_product_id,
+            "name": scored.product_name,
+            "total_score": scored.total_score,
+            "reason": decision["rule"]
+        },
+        priority=decision["priority"]
+    )
+    return {"action": "needs_review", "score": scored.total_score, "signal_to": decision["signal_to"]}

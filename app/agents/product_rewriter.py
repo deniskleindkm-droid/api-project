@@ -7,58 +7,46 @@ client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
 # ============================================================
-# COLLECTION MAPPING
-# ARIA uses this to assign correct collection
-# Keys are keywords ARIA looks for in product name/category
+# COLLECTION MAPPING — 6 Jewelry Collections Only
 # ============================================================
 
 def get_collection_map():
     return {
-        int(get_config("collection_jewelry", default="13")): {
-            "name": "Jewelry",
-            "keywords": ["ring", "necklace", "bracelet", "anklet", "piercing", "nose ring",
-                        "earring", "pendant", "chain", "choker", "bangle", "jewelry", "jewel",
-                        "sterling silver", "gold plated", "crystal", "gemstone", "zircon"]
+        int(get_config("collection_rings", default="1")): {
+            "name": "Rings",
+            "keywords": ["ring", "band", "solitaire", "eternity ring", "engagement ring",
+                        "wedding ring", "signet", "knuckle ring", "midi ring"]
         },
-        int(get_config("collection_watches", default="14")): {
-            "name": "Women Watches",
-            "keywords": ["watch", "timepiece", "wristwatch", "chronograph", "quartz clock"]
+        int(get_config("collection_necklaces", default="2")): {
+            "name": "Necklaces",
+            "keywords": ["necklace", "pendant", "chain", "choker", "lariat", "collar",
+                        "layered necklace", "neck chain", "pearl necklace"]
         },
-        int(get_config("collection_hair_accessories", default="15")): {
-            "name": "Hair Accessories",
-            "keywords": ["hair clip", "claw clip", "hair pin", "barrette", "scrunchie",
-                        "hair tie", "headband", "hair band", "bobby pin", "hair accessory",
-                        "ponytail", "hair grip", "hair comb", "hair slide"]
+        int(get_config("collection_bracelets", default="3")): {
+            "name": "Bracelets",
+            "keywords": ["bracelet", "bangle", "cuff", "charm bracelet", "tennis bracelet",
+                        "chain bracelet", "wristlet", "arm chain"]
         },
-        int(get_config("collection_makeup", default="16")): {
-            "name": "Makeup Accessories",
-            "keywords": ["makeup brush", "beauty blender", "sponge", "foundation brush",
-                        "eyelash", "false lash", "lip brush", "contour", "highlighter brush",
-                        "makeup tool", "cosmetic brush", "blush brush", "powder puff",
-                        "makeup bag", "beauty tool", "makeup applicator"]
+        int(get_config("collection_earrings", default="4")): {
+            "name": "Earrings",
+            "keywords": ["earring", "stud", "hoop", "drop earring", "dangle",
+                        "huggie", "ear cuff", "climber", "ear jacket", "threader"]
         },
-        int(get_config("collection_skincare", default="17")): {
-            "name": "Skincare & Facial Tools",
-            "keywords": ["facial roller", "jade roller", "gua sha", "face mask", "serum",
-                        "moisturizer", "cleanser", "toner", "eye cream", "face wash",
-                        "skincare", "skin care", "facial", "derma", "collagen", "retinol",
-                        "vitamin c", "hyaluronic", "face tool", "microneedle", "face lift",
-                        "led mask", "face massager", "beauty device", "blackhead"]
+        int(get_config("collection_anklets", default="5")): {
+            "name": "Anklets",
+            "keywords": ["anklet", "ankle bracelet", "ankle chain", "ankle jewelry", "foot jewelry"]
         },
-        int(get_config("collection_nail_care", default="18")): {
-            "name": "Nail Care",
-            "keywords": ["nail", "cuticle", "nail file", "nail art", "nail polish",
-                        "nail tool", "manicure", "pedicure", "nail gel", "nail lamp",
-                        "nail brush", "nail sticker", "nail extension", "nail drill"]
-        }
+        int(get_config("collection_piercings", default="6")): {
+            "name": "Piercings & Body Jewelry",
+            "keywords": ["nose ring", "nose stud", "nose hoop", "cartilage", "helix",
+                        "tragus", "belly button ring", "navel ring", "body jewelry",
+                        "piercing", "septum", "conch", "daith", "industrial bar"]
+        },
     }
 
 
 def assign_collection(product_name: str, product_category: str, product_description: str) -> int:
-    """
-    Assign product to correct collection based on keywords.
-    Returns collection ID or None if no match.
-    """
+    """Assign product to correct jewelry collection based on keywords. Returns collection ID or None."""
     text = f"{product_name} {product_category} {product_description}".lower()
     collection_map = get_collection_map()
 
@@ -70,18 +58,13 @@ def assign_collection(product_name: str, product_category: str, product_descript
 
     if not scores:
         return None
-
-    # Return collection with highest keyword match
     return max(scores, key=scores.get)
 
 
 def rewrite_product(cj_product: dict) -> dict:
     """
-    ARIA rewrites CJ product into Mikisi identity.
-    - Clean elegant name
-    - Emotional description in Mikisi voice
-    - Correct collection assignment
-    - Quality check — reject if doesn't fit
+    ARIA rewrites a supplier product into Mikisi identity.
+    Rejects anything that isn't quality jewelry.
     """
     raw_name = cj_product.get("name", "")
     raw_description = cj_product.get("description", "")
@@ -89,14 +72,12 @@ def rewrite_product(cj_product: dict) -> dict:
     price = cj_product.get("final_price", 0)
 
     brand_voice = get_config("brand_voice", default="Mikisi is elegant, empowering, intimate.")
-
-    # First try keyword-based collection assignment
     collection_id = assign_collection(raw_name, raw_category, raw_description)
 
-    prompt = f"""You are ARIA, the intelligence behind Mikisi — a premium women's beauty accessories store.
+    prompt = f"""You are ARIA, the intelligence behind Mikisi — a luxury jewelry brand for women who choose themselves.
 
-A product is being imported from a supplier. Your job is to:
-1. Decide if this product belongs in Mikisi — reject anything that doesn't fit our 6 collections
+A product is being imported. Your job is to:
+1. Decide if this is quality jewelry that belongs in Mikisi — reject anything that isn't
 2. Assign it to the correct collection
 3. Rewrite the name — clean, elegant, maximum 8 words
 4. Write an emotional description in Mikisi voice
@@ -104,13 +85,13 @@ A product is being imported from a supplier. Your job is to:
 BRAND VOICE:
 {brand_voice}
 
-OUR 6 COLLECTIONS ONLY:
-- Jewelry (ID: {get_config("collection_jewelry", "13")}) — rings, necklaces, earrings, piercings, bracelets
-- Women Watches (ID: {get_config("collection_watches", "14")}) — quality timepieces
-- Hair Accessories (ID: {get_config("collection_hair_accessories", "15")}) — clips, pins, scrunchies, headbands
-- Makeup Accessories (ID: {get_config("collection_makeup", "16")}) — brushes, sponges, tools
-- Skincare & Facial Tools (ID: {get_config("collection_skincare", "17")}) — serums, masks, rollers, devices
-- Nail Care (ID: {get_config("collection_nail_care", "18")}) — nail tools, art, manicure
+OUR 6 COLLECTIONS — JEWELRY ONLY:
+- Rings (ID: {get_config("collection_rings", "1")}) — all rings including engagement and stackable
+- Necklaces (ID: {get_config("collection_necklaces", "2")}) — pendants, chains, chokers
+- Bracelets (ID: {get_config("collection_bracelets", "3")}) — bangles, cuffs, charm bracelets
+- Earrings (ID: {get_config("collection_earrings", "4")}) — studs, hoops, drops, ear cuffs
+- Anklets (ID: {get_config("collection_anklets", "5")}) — ankle chains and bracelets
+- Piercings & Body Jewelry (ID: {get_config("collection_piercings", "6")}) — nose rings, cartilage, body jewelry
 
 PRODUCT FROM SUPPLIER:
 Name: {raw_name[:200]}
@@ -118,12 +99,15 @@ Category: {raw_category}
 Description: {raw_description[:300]}
 Price: ${price}
 
-RULES:
-- If product doesn't fit any of our 6 collections → reject it
-- No clothing, no shoes, no food, no electronics unrelated to beauty
-- Jewelry must be sterling silver or gold plated quality — no cheap plastic
-- Name must be clean and elegant — no Chinese supplier language, no SEO stuffing
-- Description must make a woman feel something — not list features
+REJECTION RULES — reject if any apply:
+- Not jewelry (no skincare, makeup, hair, clothing, electronics, watches)
+- Metal not specified or is plastic, acrylic, or resin
+- Cheap alloy with no quality indicator
+
+ACCEPTANCE RULES:
+- Metal must be: 925 sterling silver, 18k gold plated, stainless steel, titanium, or surgical steel
+- Name must be clean and elegant — no supplier language, no SEO stuffing
+- Description makes a woman feel something — not a feature list
 
 Return JSON only:
 {{
@@ -153,18 +137,15 @@ Return JSON only:
 
         result = json.loads(text.strip())
 
-        # Validate collection ID is one of our 6
         collection_map = get_collection_map()
         if result.get("collection_id") not in collection_map:
-            # Fall back to keyword match
             if collection_id:
                 result["collection_id"] = collection_id
                 result["collection_name"] = collection_map[collection_id]["name"]
             else:
                 result["accepted"] = False
-                result["rejection_reason"] = "Collection not in Mikisi's 6 locked collections"
+                result["rejection_reason"] = "Not a jewelry product — does not fit Mikisi's 6 collections"
 
-        # If ARIA is not confident — keep cleaned raw name
         if result.get("confidence", 0) < 0.7:
             result["mikisi_name"] = raw_name[:60].strip()
             print(f"[Rewriter] Low confidence — keeping original name")
@@ -174,7 +155,6 @@ Return JSON only:
 
     except Exception as e:
         print(f"[Rewriter] Error: {e}")
-        # Fall back to keyword match if ARIA fails
         if collection_id:
             return {
                 "accepted": True,
