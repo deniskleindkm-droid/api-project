@@ -19,162 +19,68 @@ client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 COLLECTION_STRATEGIES = {
     "Rings": {
         "config_key": "collection_rings",
-        "default_id": 1,
-        "markup_key": "markup_rings",
-        "default_markup": 8.0,
-        "category_ids": [
+        "default_id": 0,
+        "cj_category_ids": [
             "56B4F8B6-8600-4A18-913E-53F2F693EC2C",  # Rings
             "FCE034F6-A2BF-47E3-852F-FA9F67F904B2",  # Engagement Rings
-            "552F095A-904C-40E4-A43B-0CD1CE15D29F",  # 925 Silver Jewelry
         ],
-        "keywords": [
-            "925 sterling silver ring women",
-            "gold plated ring women",
-            "stainless steel ring",
-            "gemstone ring silver",
-            "crystal ring women",
-            "engagement ring silver",
-            "stackable ring set silver",
-        ],
-        "quality_keywords": ["925", "sterling silver", "gold plated", "stainless steel", "titanium", "gemstone"],
-        "reject_keywords": ["plastic", "acrylic", "resin", "rubber"],
+        "required_variants": ["Size"],
+        "reject_if_no_variants": True,
         "max_per_run": 100,
     },
     "Necklaces": {
         "config_key": "collection_necklaces",
-        "default_id": 2,
-        "markup_key": "markup_necklaces",
-        "default_markup": 7.0,
-        "category_ids": [
+        "default_id": 0,
+        "cj_category_ids": [
             "95D9F317-1DB3-4E42-A031-02223215B9C5",  # Necklace & Pendants
-            "84ED4B7F-D7C3-412F-AF18-04F25C91985C",  # Pearls Jewelry
         ],
-        "keywords": [
-            "925 sterling silver necklace",
-            "gold plated pendant necklace women",
-            "stainless steel necklace",
-            "crystal pendant necklace",
-            "choker necklace silver",
-            "chain necklace women gold",
-        ],
-        "quality_keywords": ["925", "sterling silver", "gold plated", "stainless steel", "pendant", "chain"],
-        "reject_keywords": ["plastic", "acrylic", "resin"],
-        "max_per_run": 80,
+        "required_variants": [],
+        "reject_if_no_variants": False,
+        "max_per_run": 100,
     },
     "Bracelets": {
         "config_key": "collection_bracelets",
-        "default_id": 3,
-        "markup_key": "markup_bracelets",
-        "default_markup": 7.0,
-        "category_ids": [
+        "default_id": 0,
+        "cj_category_ids": [
             "0615F8DB-C10F-4BEF-892B-1C5B04268938",  # Bracelets & Bangles
         ],
-        "keywords": [
-            "925 sterling silver bracelet",
-            "gold plated bangle bracelet",
-            "stainless steel bracelet women",
-            "crystal charm bracelet",
-            "chain bracelet silver women",
-            "cuff bracelet gold",
-        ],
-        "quality_keywords": ["925", "sterling silver", "gold plated", "stainless steel", "bangle", "cuff"],
-        "reject_keywords": ["plastic", "rubber", "acrylic"],
-        "max_per_run": 80,
+        "required_variants": [],
+        "reject_if_no_variants": False,
+        "max_per_run": 100,
     },
     "Earrings": {
         "config_key": "collection_earrings",
-        "default_id": 4,
-        "markup_key": "markup_earrings",
-        "default_markup": 8.0,
-        "category_ids": [
+        "default_id": 0,
+        "cj_category_ids": [
             "D28405AE-66C6-42E6-BFF0-D6FDCB5C083C",  # Earrings
             "D7CE9827-F50A-4B07-84BF-1BFE44188A1C",  # Fine Earrings
         ],
-        "keywords": [
-            "925 sterling silver earrings women",
-            "gold plated hoop earrings",
-            "stainless steel stud earrings",
-            "crystal drop earrings women",
-            "pearl earrings silver",
-            "zircon earrings gold",
-        ],
-        "quality_keywords": ["925", "sterling silver", "gold plated", "stainless steel", "zircon", "pearl", "crystal"],
-        "reject_keywords": ["plastic", "acrylic", "resin", "kids"],
+        "required_variants": [],
+        "reject_if_no_variants": False,
         "max_per_run": 100,
     },
     "Anklets": {
         "config_key": "collection_anklets",
-        "default_id": 5,
-        "markup_key": "markup_anklets",
-        "default_markup": 6.0,
-        "category_ids": [
+        "default_id": 0,
+        "cj_category_ids": [
             "2601070548141611900",  # Anklets
         ],
-        "keywords": [
-            "925 sterling silver anklet women",
-            "gold plated anklet bracelet",
-            "stainless steel ankle bracelet",
-            "crystal anklet women",
-            "beach anklet silver",
-        ],
-        "quality_keywords": ["925", "sterling silver", "gold plated", "stainless steel"],
-        "reject_keywords": ["plastic", "rubber", "fabric"],
+        "required_variants": [],
+        "reject_if_no_variants": False,
         "max_per_run": 50,
     },
-    "Piercings & Body Jewelry": {
+    "Piercings": {
         "config_key": "collection_piercings",
-        "default_id": 6,
-        "markup_key": "markup_piercings",
-        "default_markup": 7.0,
-        "category_ids": [
+        "default_id": 0,
+        "cj_category_ids": [
             "633E1860-7C63-4006-AB35-3FC16BECFA62",  # Body Jewelry
+            "552F095A-904C-40E4-A43B-0CD1CE15D29F",  # 925 Silver Jewelry
         ],
-        "keywords": [
-            "nose ring stud surgical steel",
-            "cartilage earring stud titanium",
-            "belly button ring surgical steel",
-            "nose hoop piercing silver",
-            "body jewelry surgical steel",
-        ],
-        "quality_keywords": ["surgical steel", "titanium", "925 silver", "implant grade"],
-        "reject_keywords": ["plastic", "acrylic", "cheap"],
-        "max_per_run": 60,
+        "required_variants": [],
+        "reject_if_no_variants": False,
+        "max_per_run": 50,
     },
 }
-
-
-def _calculate_price(cost: float, collection_name: str, product_name: str) -> tuple:
-    """
-    Mikisi intelligent pricing formula.
-    Final price = Cost × Base × Quality × Supplier, minimum $10.99, rounded to .99
-    Returns (final_price, original_price, discount_percent)
-    """
-    strategy = COLLECTION_STRATEGIES.get(collection_name, {})
-    base = float(get_config(strategy.get("markup_key", "markup_rings"),
-                             default=strategy.get("default_markup", 7.0)))
-
-    name_lower = product_name.lower()
-    if "moissanite" in name_lower:
-        quality = float(get_config("quality_moissanite", default=2.5))
-    elif "925" in name_lower or "sterling silver" in name_lower:
-        quality = float(get_config("quality_925_silver", default=1.4))
-    elif "natural" in name_lower and ("stone" in name_lower or "gem" in name_lower):
-        quality = float(get_config("quality_natural_gemstone", default=2.0))
-    elif "pvd" in name_lower:
-        quality = float(get_config("quality_pvd_plating", default=1.2))
-    elif "18k" in name_lower or "gold plated" in name_lower:
-        quality = float(get_config("quality_18k_gold_plated", default=1.1))
-    else:
-        quality = float(get_config("quality_unknown_material", default=0.8))
-
-    supplier = float(get_config("supplier_cj", default=1.0))
-    min_price = float(get_config("min_price", default=10.99))
-
-    computed = cost * base * quality * supplier
-    final_price = max(min_price, round(computed - 0.01, 0) + 0.99)
-    original_price = round(final_price * 1.4 - 0.01, 0) + 0.99
-    discount = round((1 - final_price / original_price) * 100)
-    return final_price, original_price, discount
 
 
 # ============================================================
@@ -284,176 +190,183 @@ Return ONLY valid JSON array. No other text."""
 
 def import_for_collection(collection_name: str, strategy: dict) -> dict:
     """
-    Search CJ for products in this collection.
-    Batch rewrite. Import accepted products.
+    Search CJ by category IDs, score with jewelry_scoring, price with jewelry_pricing,
+    rewrite names/descriptions with ARIA Haiku, then save.
     """
     from app.agents.cj_dropshipping import search_products, get_product_details
-    from app.agents.store_manager import import_product_from_supplier
     from app.agents.store_config import get_config
+    from app.agents.jewelry_scoring import score_jewelry_product
+    from app.agents.jewelry_pricing import calculate_jewelry_price
+    from app.agents.shipping_agent import get_best_shipping
+    from app.agents.variant_normalizer import normalize_variants
+    from app.agents.store_manager import add_product_to_store
     import json as _json
 
     collection_id = int(get_config(strategy["config_key"], default=str(strategy["default_id"])))
-    markup = get_config("default_markup", default=7.0)
     max_products = strategy["max_per_run"]
+    cj_category_ids = strategy.get("cj_category_ids", [])
+    reject_if_no_variants = strategy.get("reject_if_no_variants", False)
 
-    print(f"\n[Bulk Import] 🔍 Searching for {collection_name} products...")
+    print(f"\n[Bulk Import] 🔍 {collection_name} — searching {len(cj_category_ids)} CJ categories")
 
+    # ── PHASE 1: Fetch raw products ────────────────────────────
     all_raw_products = []
-    category_ids = strategy.get("category_ids", [])
-    keywords = strategy["keywords"]
+    per_category = max(5, max_products // max(len(cj_category_ids), 1))
 
-    if category_ids:
-        # Primary: search by CJ category ID — more accurate than keyword matching
-        print(f"[Bulk Import] Using category IDs: {category_ids}")
-        per_category = max(5, max_products // len(category_ids))
-        search_items = [("category", cid) for cid in category_ids]
-    else:
-        # Fallback: keyword search
-        print(f"[Bulk Import] No category IDs — falling back to keyword search")
-        per_category = max(3, max_products // len(keywords))
-        search_items = [("keyword", kw) for kw in keywords]
-
-    for search_type, search_value in search_items:
+    for cid in cj_category_ids:
         try:
-            if search_type == "category":
-                results = search_products(category_id=search_value, limit=per_category)
-            else:
-                results = search_products(keyword=search_value, limit=per_category)
+            results = search_products(category_id=cid, limit=per_category) or []
             for p in results:
-                # Basic quality pre-filter before ARIA
-                name_lower = p.get("productNameEn", "").lower()
-                reject = any(rk in name_lower for rk in strategy.get("reject_keywords", []))
-                if not reject:
-                    sell_price = p.get("sellPrice", "0")
-                    if isinstance(sell_price, str) and "-" in sell_price:
-                        cost = float(sell_price.split("-")[0].strip())
-                    else:
-                        cost = float(sell_price) if sell_price else 0
+                sell_price = p.get("sellPrice", "0")
+                cost = float(sell_price.split("-")[0].strip()) if isinstance(sell_price, str) and "-" in sell_price else float(sell_price or 0)
+                if cost <= 0:
+                    continue
 
-                    if cost > 0:
-                        # Fetch full product details to get all images
-                        pid = p.get("pid", "")
-                        full_product = None
-                        try:
-                            full_product = get_product_details(pid)
-                        except:
-                            pass
+                pid = p.get("pid", "")
+                full = None
+                try:
+                    full = get_product_details(pid)
+                except Exception:
+                    pass
 
-                        # Extract multiple images
-                        all_images = []
-                        if full_product:
-                            image_set = full_product.get("productImageSet", [])
-                            if isinstance(image_set, list):
-                                all_images = [img for img in image_set if img][:5]
-                            if not all_images:
-                                main_img = full_product.get("productImage", "")
-                                if main_img:
-                                    all_images = [main_img]
-                        else:
-                            main_img = p.get("productImage", "")
-                            if main_img:
-                                all_images = [main_img]
+                # Images
+                all_images = []
+                src = full or p
+                image_set = src.get("productImageSet", [])
+                if isinstance(image_set, list):
+                    all_images = [img for img in image_set if img][:5]
+                if not all_images:
+                    main = src.get("productImage", "")
+                    if main:
+                        all_images = [main]
 
-                        all_raw_products.append({
-                            "name": p.get("productNameEn", ""),
-                            "category": p.get("categoryName", collection_name),
-                            "description": full_product.get("description", p.get("productNameEn", "")) if full_product else p.get("productNameEn", ""),
-                            "image_url": all_images[0] if all_images else p.get("productImage", ""),
-                            "images": _json.dumps(all_images) if len(all_images) > 1 else None,
-                            "cost_price": cost,
-                            "final_price": round(cost * markup + 0.99, 2),
-                            "supplier_product_id": pid,
-                            "supplier_name": "CJDropshipping",
-                            "stock": 999,
-                            "shipping_days": 15,
-                            "variants": full_product.get("variants", p.get("variants", [])) if full_product else p.get("variants", [])
-                        })
+                raw_variants = (full or p).get("variants", [])
+
+                all_raw_products.append({
+                    "name": p.get("productNameEn", ""),
+                    "category": p.get("categoryName", collection_name),
+                    "description": (full or {}).get("description", p.get("productNameEn", "")),
+                    "image_url": all_images[0] if all_images else "",
+                    "images": all_images,
+                    "cost_price": cost,
+                    "supplier_product_id": pid,
+                    "supplier_name": "CJDropshipping",
+                    "supplier_rating": float(p.get("productEval", 0) or 0),
+                    "stock": 999,
+                    "raw_variants": raw_variants,
+                })
         except Exception as e:
-            print(f"[Bulk Import] Search error for '{search_value}': {e}")
+            print(f"[Bulk Import] Search error category={cid}: {e}")
 
-    if not all_raw_products:
-        print(f"[Bulk Import] No products found for {collection_name}")
-        return {"collection": collection_name, "imported": 0, "rejected": 0}
-
-    # Deduplicate by name
-    seen = set()
-    unique_products = []
+    # Deduplicate by pid
+    seen_pids = set()
+    unique = []
     for p in all_raw_products:
-        key = p["name"][:50].lower()
-        if key not in seen:
-            seen.add(key)
-            unique_products.append(p)
+        pid = p["supplier_product_id"]
+        if pid and pid not in seen_pids:
+            seen_pids.add(pid)
+            unique.append(p)
+    unique = unique[:max_products]
+    print(f"[Bulk Import] {len(unique)} unique products fetched for {collection_name}")
 
-    print(f"[Bulk Import] Found {len(unique_products)} unique products for {collection_name}")
+    # ── PHASE 2: Normalize variants + hard filter ──────────────
+    scored_candidates = []
+    hard_rejected = 0
 
-    # Limit to max
-    unique_products = unique_products[:max_products]
+    for product in unique:
+        raw_variants = product.pop("raw_variants", [])
+        normalized = normalize_variants(raw_variants, collection_name)
+        product["variants_normalized"] = normalized
+        product["raw_variants_list"] = raw_variants
 
-    # Batch rewrite — 10 products per API call
+        # Ring size gate
+        if reject_if_no_variants and not normalized["ring_size_valid"]:
+            print(f"[Bulk Import] ❌ Ring size invalid: {product['name'][:40]}")
+            hard_rejected += 1
+            continue
+
+        # ── PHASE 3: Score ─────────────────────────────────────
+        score_input = {**product, "images": product["images"]}
+        score = score_jewelry_product(score_input)
+
+        if score["rejected"]:
+            print(f"[Bulk Import] ❌ Score rejected ({score['score']}pt): {product['name'][:40]} — {score['rejection_reason']}")
+            hard_rejected += 1
+            continue
+
+        if score["needs_review"]:
+            print(f"[Bulk Import] ⏸ Needs review ({score['score']}pt): {product['name'][:40]}")
+            hard_rejected += 1
+            continue
+
+        product["_score"] = score
+        scored_candidates.append(product)
+
+    print(f"[Bulk Import] {len(scored_candidates)} passed scoring for {collection_name}")
+
+    if not scored_candidates:
+        return {"collection": collection_name, "imported": 0, "rejected": hard_rejected}
+
+    # ── PHASE 4: Batch rewrite names/descriptions ──────────────
     batch_size = 10
-    all_accepted = []
-    for i in range(0, len(unique_products), batch_size):
-        batch = unique_products[i:i+batch_size]
-        accepted = batch_rewrite_products(batch, collection_name, collection_id)
-        all_accepted.extend(accepted)
-        print(f"[Bulk Import] Batch {i//batch_size + 1}: {len(accepted)}/{len(batch)} accepted")
+    rewrite_ready = []
+    for i in range(0, len(scored_candidates), batch_size):
+        batch = scored_candidates[i:i + batch_size]
+        rewritten = batch_rewrite_products(batch, collection_name, collection_id)
+        rewrite_ready.extend(rewritten)
+        print(f"[Bulk Import] Rewrite batch {i // batch_size + 1}: {len(rewritten)}/{len(batch)} accepted")
 
-    print(f"[Bulk Import] {len(all_accepted)} products accepted for {collection_name}")
-
-    # Import accepted products
+    # ── PHASE 5: Price + ship + save ──────────────────────────
     imported = 0
-    for product in all_accepted:
+    for product in rewrite_ready:
         try:
-            # Build standard product format
-            standard = {
-                "name": product["mikisi_name"],
-                "category": product["category"],
-                "description": product["mikisi_description"] or product["name"],
-                "image_url": product["image_url"],
-                "cost_price": product["cost_price"],
-                "supplier_product_id": product["supplier_product_id"],
-                "supplier_name": "CJDropshipping",
-                "stock": 999,
-                "shipping_days": 15,
-                "variants": product.get("variants", [])
-            }
+            score = product["_score"]
+            raw_variants = product.get("raw_variants_list", [])
+            normalized = product.get("variants_normalized", {})
 
-            from app.agents.store_manager import add_product_to_store
+            # Shipping — use first vid available
+            vid = ""
+            if raw_variants:
+                vid = raw_variants[0].get("vid", "")
+            shipping = get_best_shipping("CJDropshipping", vid)
+            shipping_cost = shipping["cost"]
+            shipping_days = shipping["days_max"]
 
-            cost = product["cost_price"]
-            final_price, original_price, discount = _calculate_price(
-                cost, collection_name, product["mikisi_name"]
+            # Pricing
+            pricing = calculate_jewelry_price(
+                {**product, "supplier_name": "CJDropshipping"},
+                score,
+                shipping_cost=shipping_cost
             )
 
+            # SKU
             cj_sku = ""
-            variants = product.get("variants", [])
-            if variants:
-                cj_sku = variants[0].get("variantSku", "") or variants[0].get("vid", "")
+            if raw_variants:
+                cj_sku = raw_variants[0].get("variantSku", "") or raw_variants[0].get("vid", "")
 
             product_data = {
                 "name": product["mikisi_name"],
                 "brand": "Mikisi",
                 "category": product["category"],
                 "description": product["mikisi_description"] or product["name"],
-                "original_price": original_price,
-                "discount_percent": discount,
-                "final_price": final_price,
+                "original_price": pricing["original_price"],
+                "discount_percent": pricing["discount_percent"],
+                "final_price": pricing["final_price"],
                 "image_url": product["image_url"],
-                "images": product.get("images"),
+                "images": _json.dumps(product["images"]) if len(product.get("images", [])) > 1 else None,
                 "stock": 999,
-                "shipping_days": 15,
+                "shipping_days": shipping_days,
                 "supplier_name": "CJDropshipping",
                 "supplier_url": "",
                 "cj_product_id": product["supplier_product_id"],
                 "cj_sku": cj_sku,
                 "collection_id": collection_id,
-                "variants": json.dumps(product.get("variants", [])) if product.get("variants") else None,
+                "variants": _json.dumps(raw_variants) if raw_variants else None,
             }
 
             p_obj, status = add_product_to_store(product_data)
             if status == "added":
                 imported += 1
-                # Emit signal
                 try:
                     from app.agents.nervous_system import emit
                     emit(
@@ -463,9 +376,10 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                             "product_id": p_obj.id,
                             "name": product["mikisi_name"],
                             "collection_id": collection_id,
-                            "store_price": final_price,
-                            "cost_price": cost,
-                            "supplier": "CJDropshipping"
+                            "store_price": pricing["final_price"],
+                            "cost_price": product["cost_price"],
+                            "quality_tier": score["quality_tier"],
+                            "supplier": "CJDropshipping",
                         },
                         priority=7
                     )
@@ -473,11 +387,11 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                     print(f"[Bulk Import] Signal error: {e}")
 
         except Exception as e:
-            print(f"[Bulk Import] Import error for {product.get('mikisi_name', '')}: {e}")
+            print(f"[Bulk Import] Save error for {product.get('mikisi_name', '')}: {e}")
 
-    rejected = len(unique_products) - len(all_accepted)
-    print(f"[Bulk Import] ✅ {collection_name} complete — {imported} imported, {rejected} rejected")
-    return {"collection": collection_name, "imported": imported, "rejected": rejected}
+    total_rejected = hard_rejected + (len(scored_candidates) - len(rewrite_ready))
+    print(f"[Bulk Import] ✅ {collection_name} — {imported} imported, {total_rejected} rejected")
+    return {"collection": collection_name, "imported": imported, "rejected": total_rejected}
 
 
 # ============================================================

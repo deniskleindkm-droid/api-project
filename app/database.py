@@ -164,52 +164,65 @@ def _register_default_configs():
     set_config("brand_voice", "Mikisi speaks to women who choose themselves. Every piece is an act of self-worth. Tone: elegant, empowering, intimate. Never corporate. Never pushy. Always making her feel seen.", "Mikisi brand voice")
     set_config("brand_type", "luxury_jewelry", "Mikisi is a luxury jewelry brand — not a beauty store")
 
-    # ── Base markup per jewelry collection ─────────────────────
-    set_config("markup_rings", "8.0", "Base markup multiplier for Rings")
-    set_config("markup_necklaces", "7.0", "Base markup multiplier for Necklaces")
-    set_config("markup_bracelets", "7.0", "Base markup multiplier for Bracelets")
-    set_config("markup_earrings", "8.0", "Base markup multiplier for Earrings")
-    set_config("markup_anklets", "6.0", "Base markup multiplier for Anklets")
-    set_config("markup_piercings", "7.0", "Base markup multiplier for Piercings & Body Jewelry")
+    # ── Base pricing multipliers per collection ────────────────
+    set_config("pricing_multiplier_rings", "8.0", "Base price multiplier for Rings")
+    set_config("pricing_multiplier_necklaces", "7.0", "Base price multiplier for Necklaces")
+    set_config("pricing_multiplier_bracelets", "7.0", "Base price multiplier for Bracelets")
+    set_config("pricing_multiplier_earrings", "8.0", "Base price multiplier for Earrings")
+    set_config("pricing_multiplier_anklets", "6.0", "Base price multiplier for Anklets")
+    set_config("pricing_multiplier_piercings", "7.0", "Base price multiplier for Piercings & Body Jewelry")
 
-    # ── Quality multipliers (applied on top of base) ───────────
-    set_config("quality_925_silver", "1.4", "Quality multiplier for 925 sterling silver")
-    set_config("quality_moissanite", "2.5", "Quality multiplier for moissanite stones")
-    set_config("quality_natural_gemstone", "2.0", "Quality multiplier for natural gemstones")
-    set_config("quality_pvd_plating", "1.2", "Quality multiplier for PVD plating")
-    set_config("quality_18k_gold_plated", "1.1", "Quality multiplier for 18k gold plated")
-    set_config("quality_unknown_material", "0.8", "Quality multiplier when metal is unknown")
+    # ── Quality adjustments (applied on top of base) ───────────
+    set_config("pricing_adj_moissanite", "2.5", "Quality adj for moissanite")
+    set_config("pricing_adj_925_silver", "1.4", "Quality adj for 925 sterling silver")
+    set_config("pricing_adj_natural_gemstone", "2.0", "Quality adj for natural gemstones")
+    set_config("pricing_adj_pvd_plating", "1.2", "Quality adj for PVD plating")
+    set_config("pricing_adj_18k_gold", "1.1", "Quality adj for 18k gold")
+    set_config("pricing_adj_gold_plated", "1.0", "Quality adj for gold plated unspecified")
+    set_config("pricing_adj_unknown_metal", "0.8", "Quality adj when metal is unknown")
 
-    # ── Supplier multipliers ───────────────────────────────────
-    set_config("supplier_silverbene", "1.3", "Supplier multiplier for Silverbene (premium)")
-    set_config("supplier_nihaojewelry", "1.1", "Supplier multiplier for NihaoJewelry (primary)")
-    set_config("supplier_cj", "1.0", "Supplier multiplier for CJ Dropshipping (supplementary)")
+    # ── Supplier adjustments ───────────────────────────────────
+    set_config("pricing_supplier_silverbene", "1.3", "Supplier adj for Silverbene")
+    set_config("pricing_supplier_nihaojewelry", "1.1", "Supplier adj for NihaoJewelry")
+    set_config("pricing_supplier_cj", "1.0", "Supplier adj for CJ Dropshipping")
 
-    # ── Pricing constraints ────────────────────────────────────
-    set_config("min_price", "10.99", "Minimum store price — never go below this")
-    set_config("default_markup", "7.0", "Fallback markup where per-collection key not set")
+    # ── Price floor and ceilings ───────────────────────────────
+    set_config("pricing_floor", "10.99", "Minimum price — never below this")
+    set_config("pricing_ceiling_fashion", "80.00", "Max price for fashion tier")
+    set_config("pricing_ceiling_premium", "300.00", "Max price for premium tier")
+    set_config("pricing_ceiling_luxury", "800.00", "Max price for luxury tier")
+    set_config("pricing_ceiling_ultra_luxury", "2000.00", "Max price for ultra luxury tier")
+
+    # ── Shipping ───────────────────────────────────────────────
+    set_config("shipping_target_country", "US", "Default shipping destination")
+    set_config("shipping_max_days", "12", "Maximum acceptable shipping days")
+    set_config("shipping_fallback_cost", "4.50", "Fallback shipping cost when API unavailable")
+
+    # ── Packaging ─────────────────────────────────────────────
+    set_config("packaging_cost_standard", "1.50", "Packaging cost for fashion/premium tier")
+    set_config("packaging_cost_premium", "3.00", "Packaging cost for luxury/ultra-luxury tier")
+
+    # ── Collection IDs (synced by /agents/reset-store) ─────────
+    set_config("collection_rings", "0", "Rings collection ID")
+    set_config("collection_necklaces", "0", "Necklaces collection ID")
+    set_config("collection_bracelets", "0", "Bracelets collection ID")
+    set_config("collection_earrings", "0", "Earrings collection ID")
+    set_config("collection_anklets", "0", "Anklets collection ID")
+    set_config("collection_piercings", "0", "Piercings & Body Jewelry collection ID")
+    set_config("locked_collection_ids", "0,0,0,0,0,0", "Synced by reset-store endpoint")
 
     # ── Autonomy thresholds ────────────────────────────────────
     set_config("min_product_score", "0.65", "Minimum score for auto-import")
     set_config("max_products_per_trend", "3", "Max products to score per trend signal")
     set_config("auto_import_enabled", "true", "Whether ARIA auto-imports approved products")
-    set_config("max_shipping_days", "30", "Maximum days before order is flagged as delayed")
-
-    # ── Collection IDs (updated by /agents/reset-store) ────────
-    set_config("collection_rings", "1", "Rings collection ID")
-    set_config("collection_necklaces", "2", "Necklaces collection ID")
-    set_config("collection_bracelets", "3", "Bracelets collection ID")
-    set_config("collection_earrings", "4", "Earrings collection ID")
-    set_config("collection_anklets", "5", "Anklets collection ID")
-    set_config("collection_piercings", "6", "Piercings & Body Jewelry collection ID")
-    set_config("locked_collection_ids", "1,2,3,4,5,6", "The 6 locked jewelry collection IDs")
+    set_config("default_markup", "7.0", "Legacy fallback markup")
 
     # ── Social posting schedule ────────────────────────────────
     set_config("posting_schedule_instagram", "wednesday,thursday", "Best days to post on Instagram")
     set_config("posting_time_instagram", "21:00", "Best time to post on Instagram")
     set_config("posting_schedule_tiktok", "tuesday,wednesday,thursday,friday", "Best days to post on TikTok")
     set_config("posting_time_tiktok", "16:00", "Best time to post on TikTok")
-    set_config("auto_posting_enabled", "false", "Whether ARIA posts automatically — enable when credentials ready")
+    set_config("auto_posting_enabled", "false", "Whether ARIA posts automatically")
 
     print("[DB] ✅ Default store configs registered")
 

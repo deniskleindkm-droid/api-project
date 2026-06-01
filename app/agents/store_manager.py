@@ -150,12 +150,19 @@ def import_product_from_supplier(standard_product: dict, markup: float = None) -
             collection_id = None
 
         # ============================================================
-        # PRICING
+        # PRICING — use pre-computed if provided, else fallback markup
         # ============================================================
-        marked_up = cost_price * markup
-        final_price = int(marked_up) + 0.99
-        original_price = int(final_price * 1.4) + 0.99
-        discount = round((1 - final_price / original_price) * 100)
+        if standard_product.get("final_price"):
+            final_price = float(standard_product["final_price"])
+            original_price = float(standard_product.get(
+                "original_price", round(final_price * 1.35 - 0.01, 0) + 0.99))
+            discount = int(standard_product.get(
+                "discount_percent", round((1 - final_price / original_price) * 100)))
+        else:
+            marked_up = cost_price * markup
+            final_price = int(marked_up) + 0.99
+            original_price = int(final_price * 1.4) + 0.99
+            discount = round((1 - final_price / original_price) * 100)
 
         # ============================================================
         # SKU
