@@ -26,6 +26,7 @@ class Product(SQLModel, table=True):
     collection_id: Optional[int] = Field(default=None, foreign_key="collection.id")
     cj_product_id: Optional[str] = None
     cj_sku: Optional[str] = None
+    variants: Optional[str] = Field(default=None)
 
 class ProductCreate(SQLModel):
     name: str

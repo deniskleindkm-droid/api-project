@@ -57,6 +57,14 @@ def add_product_to_store(product_data):
     Used by CJ and other agents that already have Mikisi-formatted data.
     """
     with Session(engine) as session:
+        cj_pid = product_data.get("cj_product_id")
+        if cj_pid:
+            existing = session.exec(
+                select(Product).where(Product.cj_product_id == cj_pid)
+            ).first()
+            if existing:
+                return None, "already_exists"
+
         existing = session.exec(
             select(Product).where(
                 Product.name == product_data["name"],
@@ -84,6 +92,7 @@ def add_product_to_store(product_data):
             collection_id=product_data.get("collection_id"),
             cj_product_id=product_data.get("cj_product_id"),
             cj_sku=product_data.get("cj_sku"),
+            variants=product_data.get("variants"),
             is_active=True
         )
         session.add(product)

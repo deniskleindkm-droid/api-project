@@ -438,6 +438,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 "cj_product_id": product["supplier_product_id"],
                 "cj_sku": cj_sku,
                 "collection_id": collection_id,
+                "variants": json.dumps(product.get("variants", [])) if product.get("variants") else None,
             }
 
             p_obj, status = add_product_to_store(product_data)
