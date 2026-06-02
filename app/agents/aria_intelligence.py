@@ -638,3 +638,69 @@ Return ONLY valid JSON."""
     print(f"[ARIA] Headline: {result.get('headline', '')}")
 
     return result
+
+
+def refresh_business_state():
+    """Reads live store data, writes to ARIABusinessState, returns snapshot. Called on every chat."""
+    from app.models.aria_operational import ARIABusinessState
+    from app.models.collection import Collection
+
+    with Session(engine) as session:
+        orders = session.exec(select(Order)).all()
+        products = session.exec(select(Product).where(Product.is_active == True)).all()
+        collections = session.exec(select(Collection).where(Collection.is_active == True)).all()
+
+        total_revenue = sum(o.total_price for o in orders)
+        products_missing_images = sum(1 for p in products if not p.image_url)
+        products_missing_collection = sum(1 for p in products if not p.collection_id)
+
+        last_product = max(products, key=lambda p: p.id, default=None) if products else None
+        last_product_name = last_product.name[:80] if last_product else None
+
+        last_order = max(orders, key=lambda o: o.id, default=None) if orders else None
+        last_order_date = last_order.created_at.isoformat() if last_order else None
+
+        health = "yellow" if (products_missing_collection > 3 or products_missing_images > 3) else "green"
+
+        existing = session.exec(select(ARIABusinessState)).first()
+        if existing:
+            existing.total_products_live = len(products)
+            existing.total_products_uncategorized = products_missing_collection
+            existing.total_collections = len(collections)
+            existing.total_orders = len(orders)
+            existing.total_revenue = total_revenue
+            existing.products_missing_images = products_missing_images
+            existing.products_missing_collection = products_missing_collection
+            existing.last_product_imported = last_product_name
+            existing.last_order_placed = last_order_date
+            existing.system_health = health
+            existing.updated_at = datetime.utcnow()
+            session.add(existing)
+        else:
+            session.add(ARIABusinessState(
+                total_products_live=len(products),
+                total_products_uncategorized=products_missing_collection,
+                total_collections=len(collections),
+                total_orders=len(orders),
+                total_revenue=total_revenue,
+                products_missing_images=products_missing_images,
+                products_missing_collection=products_missing_collection,
+                last_product_imported=last_product_name,
+                last_order_placed=last_order_date,
+                system_health=health
+            ))
+        session.commit()
+
+    print(f"[ARIA] 📊 State refreshed — {len(products)} products, ${total_revenue:.2f} revenue, health={health}")
+
+    return {
+        "total_revenue": total_revenue,
+        "total_orders": len(orders),
+        "active_products": len(products),
+        "total_collections": len(collections),
+        "products_missing_images": products_missing_images,
+        "products_missing_collection": products_missing_collection,
+        "last_product_imported": last_product_name,
+        "last_order_placed": last_order_date,
+        "system_health": health
+    }

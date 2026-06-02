@@ -444,6 +444,21 @@ def chat_with_aria(request: ChatMessage, session: Session = Depends(get_session)
     from app.agents.aria_execution import get_conversation_state, update_conversation_state
     conversation_state = get_conversation_state(conversation_id)
 
+    # Read live store state on every chat so ARIA always knows what's happening
+    store_context_str = ""
+    try:
+        from app.agents.aria_intelligence import refresh_business_state
+        snap = refresh_business_state()
+        store_context_str = (
+            f"LIVE MIKISI STATE: Revenue ${snap['total_revenue']:.2f} | "
+            f"Orders {snap['total_orders']} | Active Products {snap['active_products']} | "
+            f"Collections {snap['total_collections']} | Health {snap['system_health']} | "
+            f"Products without collection: {snap['products_missing_collection']} | "
+            f"Products missing images: {snap['products_missing_images']}"
+        )
+    except Exception as e:
+        print(f"[ARIA Chat] Store snapshot error: {e}")
+
     # Build conversation context from memory
     history = session.exec(
         select(AgentMemory).where(
@@ -471,12 +486,14 @@ def chat_with_aria(request: ChatMessage, session: Session = Depends(get_session)
     root_truth = ""
     verified = False
 
+    action_context = (store_context_str + "\n" + conversation_context) if store_context_str else conversation_context
+
     if intent != "converse":
         execution_result = execute_action(
             intent,
             action_description,
             request.message,
-            conversation_context,
+            action_context,
             intent_data,
             conversation_id
         )
@@ -505,11 +522,11 @@ def chat_with_aria(request: ChatMessage, session: Session = Depends(get_session)
 
 Dennis just said: {request.message}
 
+{store_context_str}
+
 You are ARIA — the intelligence partner of Dennis Mlay, founder of Mikisi.
-Mikisi is a women's beauty accessories store selling jewelry, hair tools, skincare and makeup accessories.
-We source from CJ Dropshipping. Payments via Stripe. Store at mikisi.co.
+Mikisi is a women's jewelry & beauty accessories store. We source from CJ Dropshipping. Payments via Stripe.
 Dennis is building an agentic AI commerce system with global ambitions.
-No sneakers. No BrandDrop. This is Mikisi — beauty for women.
 
 Your available tools: {tools_summary}
 

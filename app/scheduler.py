@@ -105,6 +105,40 @@ def run_bulk_import():
         print(f"[Scheduler] Bulk import error: {e}")            
 
 
+def run_aria_self_check():
+    """ARIA proactively reads the store every 30 min and alerts Dennis if anything needs attention."""
+    try:
+        from app.agents.aria_intelligence import refresh_business_state, aria_think
+        from app.agents.email_partner import send_email
+        import os
+
+        snap = refresh_business_state()
+        print(f"[Scheduler] ARIA self-check: {snap['active_products']} products, ${snap['total_revenue']:.2f} revenue, health={snap['system_health']}")
+
+        alerts = []
+        if snap.get("products_missing_collection", 0) > 3:
+            alerts.append(f"{snap['products_missing_collection']} products have no collection assigned")
+        if snap.get("products_missing_images", 0) > 3:
+            alerts.append(f"{snap['products_missing_images']} products are missing images")
+
+        if alerts:
+            situation = (
+                f"ARIA self-check found issues: {'. '.join(alerts)}. "
+                f"Store: {snap['active_products']} products, ${snap['total_revenue']:.2f} revenue, {snap['total_orders']} orders."
+            )
+            result = aria_think(situation=situation, urgency="high")
+            email_data = result.get("email_to_dennis", {})
+            body = email_data.get("body", "")
+            subject = email_data.get("subject", "ARIA Store Alert")
+            dennis_email = os.getenv("DENNIS_EMAIL")
+            if body and dennis_email:
+                send_email(dennis_email, subject, body, is_html=True)
+                print(f"[Scheduler] ✅ ARIA self-check alert sent to Dennis")
+
+    except Exception as e:
+        print(f"[Scheduler] ARIA self-check error: {e}")
+
+
 def start_scheduler():
     scheduler = BackgroundScheduler()
 
@@ -164,6 +198,14 @@ def start_scheduler():
     replace_existing=True
     )
 
+    scheduler.add_job(
+        run_aria_self_check,
+        trigger=IntervalTrigger(minutes=30),
+        id='aria_self_check',
+        name='ARIA Self-Update & Proactive Store Monitor',
+        replace_existing=True
+    )
+
     scheduler.start()
     print("[Scheduler] ✅ ARIA scheduler started with jobs:")
     print("[Scheduler]   → Market check: every 6 hours")
@@ -173,3 +215,4 @@ def start_scheduler():
     print("[Scheduler]   → Customer agent: every 1 hour")
     print("[Scheduler]   → Analytics agent: every 6 hours")
     print("[Scheduler]   → Bulk import: every 24 hours")
+    print("[Scheduler]   → ARIA self-check: every 30 minutes")
