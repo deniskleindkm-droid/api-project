@@ -947,6 +947,137 @@ def get_bulk_import_result(session: Session = Depends(get_session)):
     return {"status": "complete", **_json.loads(memory.content)}
 
 
+@router.post("/agents/reprice-products")
+def reprice_products(session: Session = Depends(get_session)):
+    """
+    Recalculate final_price and original_price for every active product
+    using the current pricing engine and ceiling configs.
+    Explicitly writes the correct ceiling values to StoreConfig first
+    so this is safe to call before the next full app restart.
+    """
+    import json as _json
+    from app.models.product import Product
+    from app.agents.store_config import set_config as _sc
+    from app.agents.jewelry_pricing import calculate_jewelry_price
+
+    # Force ceiling values into DB right now (don't wait for next restart)
+    _sc("pricing_ceiling_fashion",     "60.00",   "Max price for fashion tier")
+    _sc("pricing_ceiling_premium",     "150.00",  "Max price for premium tier")
+    _sc("pricing_ceiling_luxury",      "300.00",  "Max price for luxury tier")
+    _sc("pricing_ceiling_ultra_luxury","2000.00", "Max price for ultra luxury tier")
+
+    products = session.exec(select(Product).where(Product.is_active == True)).all()
+
+    updated = 0
+    skipped = 0
+    repriced = []
+    errors = []
+
+    def _infer_tier_and_score(name: str, description: str):
+        """Detect quality tier and a representative score from product text."""
+        text = f"{name} {description}".lower()
+        stone = None
+        if "moissanite" in text:
+            stone = "moissanite"
+        elif "diamond" in text:
+            stone = "diamond"
+
+        if "925" in text or "sterling" in text or "999" in text:
+            metal = "925_silver"
+        elif "18k" in text:
+            metal = "18k_gold"
+        elif "14k" in text:
+            metal = "14k_gold"
+        elif "stainless" in text:
+            metal = "stainless_steel"
+        elif "titanium" in text:
+            metal = "titanium"
+        elif "surgical" in text:
+            metal = "surgical_steel"
+        elif "gold filled" in text:
+            metal = "gold_filled"
+        elif "gold plated" in text:
+            metal = "gold_plated"
+        else:
+            metal = "unknown"
+
+        if stone in ("moissanite", "diamond"):
+            tier, score = "ultra_luxury", 87
+        elif metal in ("925_silver", "18k_gold", "14k_gold"):
+            tier, score = "luxury", 72
+        elif metal in ("gold_plated", "stainless_steel", "surgical_steel", "titanium", "gold_filled"):
+            tier, score = "premium", 62
+        else:
+            tier, score = "fashion", 55
+
+        return tier, score, metal, stone
+
+    for product in products:
+        try:
+            # Extract cost price from variant data
+            cost_price = None
+            if product.variants:
+                try:
+                    variants = _json.loads(product.variants)
+                    if variants and isinstance(variants, list):
+                        sp = variants[0].get("variantSellPrice")
+                        if sp and float(sp) > 0:
+                            cost_price = float(sp)
+                except Exception:
+                    pass
+
+            if not cost_price:
+                skipped += 1
+                continue
+
+            quality_tier, score_val, detected_metal, detected_stone = _infer_tier_and_score(
+                product.name, product.description or ""
+            )
+
+            score_dict = {
+                "score": score_val,
+                "quality_tier": quality_tier,
+                "detected_metal": detected_metal,
+                "detected_stone": detected_stone,
+                "auto_import": score_val >= 70,
+                "needs_review": 50 <= score_val < 70,
+                "rejected": False,
+            }
+
+            pricing = calculate_jewelry_price(
+                {"name": product.name, "cost_price": cost_price,
+                 "supplier_name": product.supplier_name or "CJDropshipping"},
+                score_dict,
+                shipping_cost=4.50,
+            )
+
+            old_price = product.final_price
+            product.final_price    = pricing["final_price"]
+            product.original_price = pricing["original_price"]
+            product.discount_percent = pricing["discount_percent"]
+            session.add(product)
+            updated += 1
+            repriced.append({
+                "id": product.id,
+                "name": product.name[:45],
+                "tier": quality_tier,
+                "cost": round(cost_price, 2),
+                "old_price": old_price,
+                "new_price": pricing["final_price"],
+            })
+
+        except Exception as e:
+            errors.append({"id": product.id, "name": product.name[:40], "error": str(e)[:80]})
+
+    session.commit()
+    return {
+        "updated": updated,
+        "skipped_no_cost": skipped,
+        "errors": errors,
+        "repriced": repriced,
+    }
+
+
 @router.post("/agents/backfill-variants")
 def backfill_variants(session: Session = Depends(get_session)):
     """
