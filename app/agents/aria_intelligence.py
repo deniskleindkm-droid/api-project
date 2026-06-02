@@ -227,7 +227,7 @@ Return JSON:
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=4000,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -286,7 +286,7 @@ Generate at least 8 possibilities including at least 3 at Level 4 or 5.
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=3000,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -348,7 +348,7 @@ Return JSON:
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -456,7 +456,7 @@ Return JSON:
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=4000,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -617,7 +617,7 @@ Return JSON:
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=4000,
         messages=[{"role": "user", "content": prompt}]
     )

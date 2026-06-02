@@ -143,7 +143,7 @@ Format as JSON:
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=2000,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -182,7 +182,7 @@ Return JSON:
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=1500,
         messages=[{"role": "user", "content": prompt}]
     )

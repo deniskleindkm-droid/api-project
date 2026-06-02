@@ -116,7 +116,7 @@ Return JSON:
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=300,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -197,7 +197,7 @@ Return JSON:
 Return ONLY valid JSON."""
 
         message = client.messages.create(
-            model="claude-opus-4-5",
+            model="claude-opus-4-8",
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -314,7 +314,7 @@ Return JSON:
 Return ONLY valid JSON. The code field must be raw Python, not markdown."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=4000,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -436,7 +436,7 @@ Return JSON:
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=600,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -513,7 +513,7 @@ Keep the same structure but update product names, prices, brands, sizes, etc.
 Return ONLY the adapted Python code, no explanation."""
 
         adapt_response = client.messages.create(
-            model="claude-opus-4-5",
+            model="claude-opus-4-8",
             max_tokens=3000,
             messages=[{"role": "user", "content": adapt_prompt}]
         )
@@ -644,7 +644,7 @@ Return JSON:
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=1000,
         messages=[{"role": "user", "content": prompt}]
     )

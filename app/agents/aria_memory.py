@@ -100,7 +100,7 @@ Maximum 5 episodes.
 Return ONLY a JSON array like: [1, 3, 5]"""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=100,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -280,7 +280,7 @@ Return updated JSON model:
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=1500,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -414,7 +414,7 @@ Extract learning as JSON:
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}]
     )

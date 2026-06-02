@@ -94,7 +94,7 @@ Return a JSON object:
 Return ONLY valid JSON, no other text."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=1000,
         messages=[{"role": "user", "content": prompt}]
     )

@@ -232,7 +232,7 @@ Return JSON:
 Return ONLY valid JSON."""
 
     response = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=3000,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -279,7 +279,7 @@ Return JSON:
 Return ONLY valid JSON. Do NOT include file content here."""
 
     plan_response = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=1000,
         messages=[{"role": "user", "content": plan_prompt}]
     )
@@ -314,7 +314,7 @@ Return ONLY the raw file content — no JSON, no markdown backticks, no explanat
 Start directly with the code."""
 
         content_response = client.messages.create(
-            model="claude-opus-4-5",
+            model="claude-opus-4-8",
             max_tokens=8000,
             messages=[{"role": "user", "content": content_prompt}]
         )
@@ -400,7 +400,7 @@ Return JSON:
 Return ONLY valid JSON."""
 
     plan_response = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=2000,
         messages=[{"role": "user", "content": plan_prompt}]
     )
@@ -473,7 +473,7 @@ Return JSON:
 Return ONLY valid JSON. Do NOT include file content here."""
 
     changes_response = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=2000,
         messages=[{"role": "user", "content": changes_prompt}]
     )
@@ -528,7 +528,7 @@ Make it consistent with the rest of the codebase.
 Raw file content only — no markdown, no explanation."""
 
         content_response = client.messages.create(
-            model="claude-opus-4-5",
+            model="claude-opus-4-8",
             max_tokens=8000,
             messages=[{"role": "user", "content": content_prompt}]
         )
@@ -607,7 +607,7 @@ Structure: {json.dumps(structure.get('structure', {}))[:2000]}
 Return JSON: {{"files": ["file1", "file2"]}}"""
 
     response = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=300,
         messages=[{"role": "user", "content": files_prompt}]
     )
@@ -623,7 +623,7 @@ Return JSON: {{"files": ["file1", "file2"]}}"""
     context = "\n\n".join([f"=== {fp} ===\n{c}" for fp, c in contents.items()])
 
     answer = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=1500,
         messages=[{
             "role": "user",

@@ -62,7 +62,7 @@ Break this goal down into a concrete execution plan. Return JSON:
 Return ONLY valid JSON."""
 
         message = client.messages.create(
-            model="claude-opus-4-5",
+            model="claude-opus-4-8",
             max_tokens=1500,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -202,7 +202,7 @@ Based on progress and learnings, generate an improved action plan:
 Return ONLY valid JSON."""
 
     message = client.messages.create(
-        model="claude-opus-4-5",
+        model="claude-opus-4-8",
         max_tokens=1500,
         messages=[{"role": "user", "content": prompt}]
     )
