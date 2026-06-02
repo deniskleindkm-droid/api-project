@@ -202,14 +202,9 @@ def _register_default_configs():
     set_config("packaging_cost_standard", "1.50", "Packaging cost for fashion/premium tier")
     set_config("packaging_cost_premium", "3.00", "Packaging cost for luxury/ultra-luxury tier")
 
-    # ── Collection IDs (synced by /agents/reset-store) ─────────
-    set_config("collection_rings", "0", "Rings collection ID")
-    set_config("collection_necklaces", "0", "Necklaces collection ID")
-    set_config("collection_bracelets", "0", "Bracelets collection ID")
-    set_config("collection_earrings", "0", "Earrings collection ID")
-    set_config("collection_anklets", "0", "Anklets collection ID")
-    set_config("collection_piercings", "0", "Piercings & Body Jewelry collection ID")
-    set_config("locked_collection_ids", "0,0,0,0,0,0", "Synced by reset-store endpoint")
+    # Collection IDs are intentionally omitted here —
+    # they are set exclusively by DELETE /agents/reset-store and must
+    # not be overwritten on server restart.
 
     # ── Autonomy thresholds ────────────────────────────────────
     set_config("min_product_score", "0.65", "Minimum score for auto-import")
