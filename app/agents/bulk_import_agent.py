@@ -214,11 +214,12 @@ Return ONLY valid JSON array. No other text."""
 
 def import_for_collection(collection_name: str, strategy: dict) -> dict:
     """
-    Search CJ by category IDs, score with jewelry_scoring, price with jewelry_pricing,
-    rewrite names/descriptions with ARIA Haiku, then save.
+    Search Silverbene by collection keywords, score, price, rewrite, then save.
+    CJ Dropshipping is disabled — all imports come from Silverbene.
     """
-    from app.agents.cj_dropshipping import search_products, get_product_details
+    from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
     from app.agents.store_config import get_config
+    silverbene = SilverbeneAdapter()
     from app.agents.jewelry_scoring import score_jewelry_product
     from app.agents.jewelry_pricing import calculate_jewelry_price
     from app.agents.shipping_agent import get_best_shipping
@@ -228,112 +229,64 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
 
     collection_id = int(get_config(strategy["config_key"], default=str(strategy["default_id"])))
     max_products = strategy["max_per_run"]
-    cj_category_ids = strategy.get("cj_category_ids", [])
     reject_if_no_variants = strategy.get("reject_if_no_variants", False)
 
-    keywords = strategy.get("keywords", [])
-    search_tasks = [("category", cid) for cid in cj_category_ids] + [("keyword", kw) for kw in keywords]
-    print(f"\n[Bulk Import] 🔍 {collection_name} — {len(cj_category_ids)} categories + {len(keywords)} keywords")
+    print(f"\n[Bulk Import] 🔍 {collection_name} — searching Silverbene catalog")
 
-    # ── PHASE 1: Fetch raw products ────────────────────────────
+    # ── PHASE 1: Fetch from Silverbene ────────────────────────────
+    raw_results = silverbene.search_by_category(collection_name, limit=max_products)
+    print(f"[Bulk Import] Silverbene returned {len(raw_results)} raw products for {collection_name}")
+
     all_raw_products = []
-    per_category = max(5, max_products // max(len(cj_category_ids), 1))
-    keyword_limit = 10  # fixed supplementary limit per keyword
+    for p in raw_results:
+        if not p.get("cost_price", 0):
+            continue
+        images = p.get("images", [])
+        if isinstance(images, str):
+            try:
+                images = json.loads(images)
+            except Exception:
+                images = [images] if images else []
+        image_url = p.get("image_url", images[0] if images else "")
 
-    for task_type, task_value in search_tasks:
-        try:
-            if task_type == "category":
-                results = search_products(category_id=task_value, limit=per_category) or []
-            else:
-                results = search_products(task_value, limit=keyword_limit) or []
-            for p in results:
-                sell_price = p.get("sellPrice", "0")
-                cost = float(sell_price.split("-")[0].strip()) if isinstance(sell_price, str) and "-" in sell_price else float(sell_price or 0)
-                if cost <= 0:
-                    continue
+        extra_text = " ".join(filter(None, [
+            p.get("name", ""),
+            p.get("description", ""),
+            p.get("material", ""),
+            p.get("material_raw", ""),
+        ]))
 
-                pid = p.get("pid", "")
-                full = None
-                try:
-                    full = get_product_details(pid)
-                except Exception as e:
-                    print(f"[Bulk Import] ⚠ Full details failed for pid={pid}: {e}")
-                time.sleep(1)
+        all_raw_products.append({
+            "name": p.get("name", ""),
+            "category": collection_name,
+            "description": p.get("description", ""),
+            "image_url": image_url,
+            "images": images,
+            "product_image_set_count": len(images),
+            "extra_text": extra_text,
+            "material_name_en_set": [p.get("material", "")] if p.get("material") else [],
+            "cost_price": p.get("cost_price", 0),
+            "supplier_product_id": p.get("supplier_product_id", ""),
+            "supplier_name": "Silverbene",
+            "supplier_rating": p.get("supplier_rating", 5.0),
+            "stock": p.get("stock", 999),
+            "raw_variants": p.get("variants", []),
+            # Silverbene-specific structured fields
+            "material": p.get("material", ""),
+            "sizes": p.get("sizes"),
+            "colors": p.get("colors"),
+        })
 
-                # Images — always prefer productImageSet from full details
-                all_images = []
-                src = full or p
-                image_set = src.get("productImageSet", [])
-                if isinstance(image_set, list):
-                    all_images = [img for img in image_set if img][:5]
-                if not all_images:
-                    main = src.get("productImage", "")
-                    if main:
-                        # productImage from CJ is often a JSON-encoded list of URLs
-                        if isinstance(main, str) and main.strip().startswith("["):
-                            try:
-                                parsed = json.loads(main)
-                                if isinstance(parsed, list):
-                                    all_images = [img for img in parsed if img][:5]
-                            except Exception:
-                                pass
-                        if not all_images:
-                            all_images = [main]
-                product_image_set_count = len(image_set) if isinstance(image_set, list) else 0
-
-                raw_variants = (full or p).get("variants", [])
-
-                # Build extra text for metal/material detection across all fields
-                variant_texts = []
-                for v in raw_variants:
-                    for vkey in ("variantName", "variantValue", "propertyName",
-                                 "propertyValue", "variantSku", "variantNameEn", "name",
-                                 "variantKey"):
-                        val = v.get(vkey, "")
-                        if val:
-                            variant_texts.append(str(val))
-
-                # materialNameEnSet has structured values e.g. "925 Silver", "Stainless Steel"
-                material_en_set = (full or {}).get("materialNameEnSet") or []
-                if isinstance(material_en_set, list):
-                    variant_texts.extend(str(m) for m in material_en_set if m)
-
-                extra_text = " ".join(filter(None, [
-                    p.get("categoryName", ""),
-                    (full or p).get("productNameEn", ""),
-                    (full or {}).get("description", ""),
-                    " ".join(variant_texts),
-                ]))
-
-                all_raw_products.append({
-                    "name": (full or p).get("productNameEn", p.get("productNameEn", "")),
-                    "category": p.get("categoryName", collection_name),
-                    "description": (full or {}).get("description", p.get("productNameEn", "")),
-                    "image_url": all_images[0] if all_images else "",
-                    "images": all_images,
-                    "product_image_set_count": product_image_set_count,
-                    "extra_text": extra_text,
-                    "material_name_en_set": (full or {}).get("materialNameEnSet") or [],
-                    "cost_price": cost,
-                    "supplier_product_id": pid,
-                    "supplier_name": "CJDropshipping",
-                    "supplier_rating": float(p.get("productEval", 0) or 0),
-                    "stock": 999,
-                    "raw_variants": raw_variants,
-                })
-        except Exception as e:
-            print(f"[Bulk Import] Search error {task_type}={task_value}: {e}")
-
-    # Deduplicate by pid
-    seen_pids = set()
+    # Deduplicate by supplier_product_id
+    seen_ids = set()
     unique = []
     for p in all_raw_products:
-        pid = p["supplier_product_id"]
-        if pid and pid not in seen_pids:
-            seen_pids.add(pid)
+        sid = p["supplier_product_id"]
+        if sid and sid not in seen_ids:
+            seen_ids.add(sid)
             unique.append(p)
     unique = unique[:max_products]
-    print(f"[Bulk Import] {len(unique)} unique products fetched for {collection_name}")
+    print(f"[Bulk Import] {len(unique)} unique products fetched from Silverbene for {collection_name}")
 
     # ── PHASE 2: Normalize variants + hard filter ──────────────
     scored_candidates = []
@@ -449,14 +402,18 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 "final_price": pricing["final_price"],
                 "image_url": product["image_url"],
                 "images": _json.dumps(product["images"]) if len(product.get("images", [])) > 1 else None,
-                "stock": 999,
+                "stock": product.get("stock", 999),
                 "shipping_days": shipping_days,
-                "supplier_name": "CJDropshipping",
+                "supplier_name": "Silverbene",
                 "supplier_url": "",
                 "cj_product_id": product["supplier_product_id"],
                 "cj_sku": cj_sku,
                 "collection_id": collection_id,
                 "variants": _json.dumps(raw_variants) if raw_variants else None,
+                # Silverbene-specific fields — read directly by the storefront
+                "material": product.get("material") or "",
+                "sizes": product.get("sizes"),
+                "colors": product.get("colors"),
             }
 
             p_obj, status = add_product_to_store(product_data)
@@ -475,7 +432,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                             "store_price": pricing["final_price"],
                             "cost_price": product["cost_price"],
                             "quality_tier": score["quality_tier"],
-                            "supplier": "CJDropshipping",
+                            "supplier": "Silverbene",
                         },
                         priority=5 if product.get("_needs_review") else 7
                     )

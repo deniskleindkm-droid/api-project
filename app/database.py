@@ -32,6 +32,9 @@ def create_db():
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS images varchar(2000)"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS variants varchar(2000)"))
         conn.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_verified boolean DEFAULT false'))
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS material varchar(500)"))
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS sizes varchar(500)"))
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS colors varchar(500)"))
         conn.commit()
 
     _setup_defaults()
@@ -47,25 +50,43 @@ def _setup_defaults():
 
 def _register_default_suppliers():
     with Session(engine) as session:
-        existing = session.exec(
-            select(Supplier).where(Supplier.name == "CJDropshipping")
-        ).first()
-        if not existing:
-            cj = Supplier(
+        # Silence CJ — disabled as primary supplier, Silverbene takes over
+        cj = session.exec(select(Supplier).where(Supplier.name == "CJDropshipping")).first()
+        if not cj:
+            session.add(Supplier(
                 name="CJDropshipping",
                 adapter_class="app.agents.suppliers.cj_adapter.CJAdapter",
                 base_url="https://developers.cjdropshipping.com/api2.0/v1",
                 api_key_env="CJ_API_KEY",
-                is_active=True,
+                is_active=False,
                 supported_categories="Beauty,Hair,Jewelry,Skincare,Makeup",
                 supported_countries="US,CA,GB,AU,TZ,KE,ZA,NG,GH",
                 reliability_score=1.0
-            )
+            ))
+            print("[DB] CJ Dropshipping registered but DISABLED — Silverbene is primary")
+        elif cj.is_active:
+            cj.is_active = False
             session.add(cj)
-            session.commit()
-            print("[DB] ✅ CJ Dropshipping registered as supplier")
+            print("[DB] ✅ CJ Dropshipping silenced — disabled for imports")
+
+        # Register Silverbene as primary supplier
+        sb = session.exec(select(Supplier).where(Supplier.name == "Silverbene")).first()
+        if not sb:
+            session.add(Supplier(
+                name="Silverbene",
+                adapter_class="app.agents.suppliers.silverbene_adapter.SilverbeneAdapter",
+                base_url="https://s.silverbene.com",
+                api_key_env="SILVERBENE_API_KEY",
+                is_active=True,
+                supported_categories="Rings,Necklaces,Bracelets,Earrings,Anklets,Ear Cuffs,Jewelry Sets",
+                supported_countries="US,CA,GB,AU,TZ,KE,ZA,NG,GH",
+                reliability_score=1.0
+            ))
+            print("[DB] ✅ Silverbene registered as primary supplier")
         else:
-            print("[DB] CJ Dropshipping already registered")
+            print("[DB] Silverbene already registered")
+
+        session.commit()
 
 
 def _register_default_autonomy_rules():

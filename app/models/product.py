@@ -27,6 +27,10 @@ class Product(SQLModel, table=True):
     cj_product_id: Optional[str] = None
     cj_sku: Optional[str] = None
     variants: Optional[str] = Field(default=None)
+    # Silverbene-specific fields — read directly by the storefront
+    material: Optional[str] = None          # e.g. "925 Sterling Silver", "18k Gold Plated"
+    sizes: Optional[str] = None             # JSON array: ["6","6.5","7","7.5","8"] or ["16\"","18\"","20\""]
+    colors: Optional[str] = None            # JSON array: ["gold","rose gold","silver"]
 
 class ProductCreate(SQLModel):
     name: str
@@ -44,3 +48,6 @@ class ProductCreate(SQLModel):
     shipping_days: int = 7
     cj_product_id: Optional[str] = None
     cj_sku: Optional[str] = None
+    material: Optional[str] = None
+    sizes: Optional[str] = None
+    colors: Optional[str] = None
