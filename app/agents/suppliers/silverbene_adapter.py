@@ -120,8 +120,8 @@ class SilverbeneAdapter(SupplierAdapter):
         for offset in range(0, months_back, window_months):
             window_end = end_dt - timedelta(days=offset * 30)
             window_start = window_end - timedelta(days=window_months * 30)
-            start_str = window_start.strftime("%Y-%-m")
-            end_str = window_end.strftime("%Y-%-m")
+            start_str = f"{window_start.year}-{window_start.month}"
+            end_str = f"{window_end.year}-{window_end.month}"
 
             resp = self._get(ENDPOINT_PRODUCT_BY_DATE, {
                 "start_date": start_str,

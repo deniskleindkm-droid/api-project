@@ -737,17 +737,69 @@ def cj_debug(pid: str):
 
 @router.get("/suppliers/test")
 def test_supplier():
-    from app.agents.suppliers.registry import get_supplier
-    supplier = get_supplier("CJDropshipping")
-    if not supplier:
-        return {"error": "Supplier not found"}
-    
-    products = supplier.search("hair clip", limit=3)
+    from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+    sb = SilverbeneAdapter()
+    products = sb.search("ring", limit=3)
     return {
-        "supplier": "CJDropshipping",
+        "supplier": "Silverbene",
         "products_found": len(products),
         "first_product": products[0] if products else None
     }
+
+@router.post("/silverbene/test-import")
+def silverbene_test_import(collection: str = "Rings", max_products: int = 5):
+    """
+    Run a small test import from Silverbene for one collection.
+    Use this to verify products look correct before running the full bulk import.
+    """
+    try:
+        from app.agents.bulk_import_agent import import_for_collection, COLLECTION_STRATEGIES
+        import threading
+
+        collection = collection.strip().title()
+        if collection not in COLLECTION_STRATEGIES:
+            available = list(COLLECTION_STRATEGIES.keys())
+            raise HTTPException(status_code=400, detail=f"Unknown collection. Choose from: {available}")
+
+        strategy = {**COLLECTION_STRATEGIES[collection], "max_per_run": max_products}
+
+        def run():
+            import_for_collection(collection, strategy)
+
+        thread = threading.Thread(target=run)
+        thread.start()
+
+        return {
+            "message": f"Test import started — importing up to {max_products} products into '{collection}'",
+            "collection": collection,
+            "max_products": max_products,
+            "watch": "Check Railway logs for progress. Visit your store to see results."
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/silverbene/bulk-import")
+def silverbene_bulk_import(max_per_collection: int = 20):
+    """Run full bulk import across all 7 collections from Silverbene."""
+    try:
+        import threading
+        from app.agents.bulk_import_agent import run_bulk_import_agent
+
+        def run():
+            run_bulk_import_agent(max_per_collection=max_per_collection)
+
+        thread = threading.Thread(target=run)
+        thread.start()
+
+        return {
+            "message": f"Full Silverbene bulk import started — up to {max_per_collection} products per collection",
+            "collections": 7,
+            "watch": "Monitor Railway logs for real-time progress"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 @router.post("/agents/run-market-check")
 def trigger_market_check():
     try:
