@@ -921,12 +921,30 @@ def reset_store(session: Session = Depends(get_session)):
 
 @router.post("/agents/run-bulk-import")
 def trigger_bulk_import():
+    """Start bulk import in background — returns immediately. Poll /agents/bulk-import-result."""
     try:
+        import threading
         from app.agents.bulk_import_agent import run_bulk_import_agent
-        result = run_bulk_import_agent()
-        return result
+        thread = threading.Thread(target=run_bulk_import_agent, daemon=True)
+        thread.start()
+        return {"message": "Bulk import started in background", "poll": "/agents/bulk-import-result"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/agents/bulk-import-result")
+def get_bulk_import_result(session: Session = Depends(get_session)):
+    """Return the most recent bulk import run result from agent memory."""
+    memory = session.exec(
+        select(AgentMemory).where(
+            AgentMemory.agent_name == "bulk_import_agent",
+            AgentMemory.memory_type == "import_run"
+        ).order_by(AgentMemory.created_at.desc())
+    ).first()
+    if not memory:
+        return {"status": "no_result", "message": "Import not complete yet or never run"}
+    import json as _json
+    return {"status": "complete", **_json.loads(memory.content)}
 
 
 @router.post("/agents/backfill-variants")
