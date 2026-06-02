@@ -325,6 +325,8 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 )
 
         # ── PHASE 3: Score ─────────────────────────────────────
+        # Silverbene supplier_rating is always 5.0 — they're a vetted specialist
+        product["supplier_rating"] = 5.0
         score_input = {**product, "images": product["images"]}
         score = score_jewelry_product(score_input)
 
@@ -370,27 +372,24 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
         try:
             score = product["_score"]
             raw_variants = product.get("raw_variants_list", [])
-            normalized = product.get("variants_normalized", {})
 
-            # Shipping — use first vid available
-            vid = ""
-            if raw_variants:
-                vid = raw_variants[0].get("vid", "")
-            shipping = get_best_shipping("CJDropshipping", vid)
+            # Shipping — Silverbene uses fallback (no per-variant API call needed)
+            shipping = get_best_shipping("Silverbene", "", destination="US")
             shipping_cost = shipping["cost"]
             shipping_days = shipping["days_max"]
 
             # Pricing
             pricing = calculate_jewelry_price(
-                {**product, "supplier_name": "CJDropshipping"},
+                {**product, "supplier_name": "Silverbene"},
                 score,
                 shipping_cost=shipping_cost
             )
 
-            # SKU
+            # SKU — Silverbene options have option_id, not variantSku
             cj_sku = ""
-            if raw_variants:
-                cj_sku = raw_variants[0].get("variantSku", "") or raw_variants[0].get("vid", "")
+            if raw_variants and isinstance(raw_variants, list):
+                first = raw_variants[0]
+                cj_sku = str(first.get("option_id", "")) or str(first.get("sku", ""))
 
             product_data = {
                 "name": product["mikisi_name"],
