@@ -961,9 +961,9 @@ def reprice_products(session: Session = Depends(get_session)):
     from app.agents.jewelry_pricing import calculate_jewelry_price
 
     # Force ceiling values into DB right now (don't wait for next restart)
-    _sc("pricing_ceiling_fashion",     "60.00",   "Max price for fashion tier")
+    _sc("pricing_ceiling_fashion",     "80.00",   "Max price for fashion tier")
     _sc("pricing_ceiling_premium",     "150.00",  "Max price for premium tier")
-    _sc("pricing_ceiling_luxury",      "300.00",  "Max price for luxury tier")
+    _sc("pricing_ceiling_luxury",      "500.00",  "Max price for luxury tier")
     _sc("pricing_ceiling_ultra_luxury","2000.00", "Max price for ultra luxury tier")
 
     products = session.exec(select(Product).where(Product.is_active == True)).all()

@@ -188,9 +188,9 @@ def _register_default_configs():
 
     # ── Price floor and ceilings ───────────────────────────────
     set_config("pricing_floor", "10.99", "Minimum price — never below this")
-    set_config("pricing_ceiling_fashion", "60.00", "Max price for fashion tier")
+    set_config("pricing_ceiling_fashion", "80.00", "Max price for fashion tier")
     set_config("pricing_ceiling_premium", "150.00", "Max price for premium tier")
-    set_config("pricing_ceiling_luxury", "300.00", "Max price for luxury tier")
+    set_config("pricing_ceiling_luxury", "500.00", "Max price for luxury tier")
     set_config("pricing_ceiling_ultra_luxury", "2000.00", "Max price for ultra luxury tier")
 
     # ── Shipping ───────────────────────────────────────────────
