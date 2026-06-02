@@ -3,47 +3,61 @@ from typing import Optional
 import requests
 import json
 import os
+from datetime import datetime, timedelta
 
 SILVERBENE_BASE = "https://s.silverbene.com"
 
-# ── ENDPOINT PATHS ────────────────────────────────────────────────────────────
-# These will be confirmed and filled in once the API portal docs are shared.
-# The adapter is fully wired — only these paths need updating.
-ENDPOINT_PRODUCT_LIST  = "/api/product/list"     # GET/POST — returns paginated catalog
-ENDPOINT_PRODUCT_STOCK = "/api/product/stock"    # GET/POST — returns stock for option_id
-ENDPOINT_SHIPPING      = "/api/order/shipping"   # GET/POST — returns shipping methods
-ENDPOINT_ORDER_CREATE  = "/api/order/create"     # POST — places a dropship order
-ENDPOINT_ORDER_STATUS  = "/api/order/status"     # GET/POST — gets order status/tracking
+# ── CONFIRMED ENDPOINTS ───────────────────────────────────────────────────────
+# All verified against live API on 2026-06-02
+ENDPOINT_PRODUCT_LIST      = "/api/dropshipping/product_list"           # GET — by SKU
+ENDPOINT_PRODUCT_BY_DATE   = "/api/dropshipping/product_list_by_date"  # GET — browse + keyword search
+ENDPOINT_OPTION_QTY        = "/api/dropshipping/option_qty"             # GET — stock by option_id
+ENDPOINT_SHIPPING          = "/api/dropshipping/get_shipping_method"    # GET — shipping methods
+ENDPOINT_CREATE_ORDER      = "/api/dropshipping/create_order"           # POST — place order
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Category keyword mapping for Mikisi's 7 collections
+# Search keywords per Mikisi collection
 CATEGORY_KEYWORDS = {
-    "Rings":        ["sterling silver ring", "925 silver ring", "gold ring women"],
-    "Necklaces":    ["925 silver necklace", "gold necklace women", "sterling pendant necklace"],
-    "Bracelets":    ["925 silver bracelet", "gold bracelet women", "sterling charm bracelet"],
-    "Earrings":     ["925 silver earrings", "gold stud earrings", "drop earrings women"],
-    "Anklets":      ["925 silver anklet", "gold anklet women", "sterling ankle bracelet"],
-    "Ear Cuffs":    ["ear cuff no piercing", "925 silver ear cuff", "gold ear cuff women"],
-    "Jewelry Sets": ["925 silver jewelry set", "necklace earring set", "matching jewelry set women"],
+    "Rings":        ["ring", "silver ring women", "925 ring"],
+    "Necklaces":    ["necklace", "pendant necklace", "silver chain necklace"],
+    "Bracelets":    ["bracelet", "silver bracelet", "charm bracelet"],
+    "Earrings":     ["earring", "stud earring", "drop earring"],
+    "Anklets":      ["anklet", "ankle bracelet", "foot chain"],
+    "Ear Cuffs":    ["ear cuff", "cartilage earring", "no piercing ear"],
+    "Jewelry Sets": ["jewelry set", "necklace earring set", "matching jewelry set"],
 }
 
-# Size label per category — mirrors the frontend CATEGORY_SIZE_LABEL
-SIZE_LABEL = {
-    "Rings":        "Ring Size",
-    "Necklaces":    "Chain Length",
-    "Bracelets":    "Bracelet Length",
-    "Anklets":      "Anklet Length",
-    "Earrings":     "Size",
-    "Ear Cuffs":    "Size",
-    "Jewelry Sets": "Size",
-}
+# Attribute names Silverbene uses per category type
+SIZE_ATTRIBUTE_NAMES = {"size", "ring size", "length", "bracelet size", "anklet size", "chain length"}
+COLOR_ATTRIBUTE_NAMES = {"color", "colour", "metal color", "metal finish", "finish"}
 
 
 class SilverbeneAdapter(SupplierAdapter):
     """
-    Silverbene adapter — primary supplier for Mikisi's jewelry store.
-    Translates Silverbene's API into Mikisi's standard supplier interface.
-    CJ Dropshipping is disabled; all imports run through this adapter.
+    Silverbene primary supplier adapter for Mikisi.
+    CJ Dropshipping is disabled — all imports run through here.
+
+    Live response structure confirmed 2026-06-02:
+    {
+      "code": 0,
+      "data": {
+        "data": [
+          {
+            "title": "...",
+            "sku": "HFH_827881713467",
+            "desc": "<ul><li>Metal Color Available:Yellow Gold,Rhodium</li>...</ul>",
+            "gallery": ["https://silverbene.com/media/...jpg", ...],
+            "weight": 3,
+            "created_time": "2025-01-02 15:28:59",
+            "option": [
+              {"attribute": [{"name": "Color", "value": "Rhodium"}], "qty": 48, "price": 18.5, "option_id": 51583},
+              {"attribute": [{"name": "Color", "value": "Yellow Gold"}], "qty": 20, "price": 18.5, "option_id": 51584}
+            ]
+          }
+        ]
+      },
+      "message": "success"
+    }
     """
 
     def __init__(self):
@@ -51,20 +65,8 @@ class SilverbeneAdapter(SupplierAdapter):
         self.base = SILVERBENE_BASE
         self.session = requests.Session()
         self.session.headers.update({
-            "X-Requested-With": "XMLHttpRequest",
             "Accept": "application/json",
-            "Content-Type": "application/json",
         })
-
-    def _post(self, endpoint: str, payload: dict) -> dict:
-        payload["token"] = self.token
-        try:
-            r = self.session.post(f"{self.base}{endpoint}", json=payload, timeout=30)
-            r.raise_for_status()
-            return r.json()
-        except Exception as e:
-            print(f"[Silverbene] POST {endpoint} error: {e}")
-            return {}
 
     def _get(self, endpoint: str, params: dict = None) -> dict:
         p = params or {}
@@ -77,92 +79,161 @@ class SilverbeneAdapter(SupplierAdapter):
             print(f"[Silverbene] GET {endpoint} error: {e}")
             return {}
 
+    def _post(self, endpoint: str, payload: dict) -> dict:
+        payload["token"] = self.token
+        try:
+            r = self.session.post(
+                f"{self.base}{endpoint}",
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            print(f"[Silverbene] POST {endpoint} error: {e}")
+            return {}
+
+    def _date_range(self, months_back: int = 2) -> tuple:
+        """Return (start_date, end_date) strings covering the last N months."""
+        end = datetime.utcnow()
+        start = end - timedelta(days=months_back * 30)
+        return start.strftime("%Y-%m"), end.strftime("%Y-%m")
+
     # ── CATALOG SEARCH ────────────────────────────────────────────────────────
 
-    def search(self, keyword: str, limit: int = 20, page: int = 1) -> list:
+    def search(self, keyword: str, limit: int = 20, page: int = 1,
+               months_back: int = 14) -> list:
         """
-        Search Silverbene catalog by keyword.
+        Search Silverbene catalog by keyword using product_list_by_date.
+        Uses a wide date range (default 14 months) to get full catalog coverage.
         Returns list of products in Mikisi standard format.
         """
-        data = self._post(ENDPOINT_PRODUCT_LIST, {
-            "sku": keyword,
-            "page": page,
-            "page_size": limit,
-        })
+        # API limits date range to 2 months per call — batch if needed
+        # For simplicity we use 2-month windows and merge results
+        all_items = []
+        seen_skus = set()
 
-        items = data.get("data", data.get("items", data.get("products", [])))
-        if not isinstance(items, list):
-            print(f"[Silverbene] search: unexpected response shape — {list(data.keys())}")
-            return []
+        end_dt = datetime.utcnow()
+        window_months = 2
 
-        return [self._to_standard(p) for p in items]
+        for offset in range(0, months_back, window_months):
+            window_end = end_dt - timedelta(days=offset * 30)
+            window_start = window_end - timedelta(days=window_months * 30)
+            start_str = window_start.strftime("%Y-%-m")
+            end_str = window_end.strftime("%Y-%-m")
 
-    def search_by_category(self, category_name: str, limit: int = 50, page: int = 1) -> list:
+            resp = self._get(ENDPOINT_PRODUCT_BY_DATE, {
+                "start_date": start_str,
+                "end_date": end_str,
+                "keywords": keyword,
+                "is_really_stock": 1,
+            })
+
+            if resp.get("code") != 0:
+                print(f"[Silverbene] search error: {resp.get('message')} for keyword={keyword}")
+                break
+
+            items = resp.get("data", {}).get("data", [])
+            for item in items:
+                sku = item.get("sku", "")
+                if sku and sku not in seen_skus:
+                    seen_skus.add(sku)
+                    all_items.append(self._to_standard(item))
+                if len(all_items) >= limit:
+                    break
+
+            if len(all_items) >= limit:
+                break
+
+        return all_items[:limit]
+
+    def search_by_category(self, category_name: str, limit: int = 50) -> list:
         """
-        Search all keywords for a given Mikisi collection category.
-        Returns deduplicated list of products.
+        Search all keywords for a Mikisi collection, deduplicate, return up to limit.
         """
         keywords = CATEGORY_KEYWORDS.get(category_name, [category_name.lower()])
         seen_skus = set()
         results = []
+        per_keyword = max(10, limit // len(keywords) + 5)
 
         for kw in keywords:
-            products = self.search(keyword=kw, limit=limit // len(keywords) + 5, page=page)
+            products = self.search(keyword=kw, limit=per_keyword)
             for p in products:
                 sku = p.get("supplier_product_id", "")
                 if sku and sku not in seen_skus:
                     seen_skus.add(sku)
                     results.append(p)
+            if len(results) >= limit:
+                break
 
+        print(f"[Silverbene] {collection_name_log(category_name)}: {len(results)} products found")
         return results[:limit]
 
-    # ── PRODUCT DETAIL ────────────────────────────────────────────────────────
-
-    def get_product(self, product_id: str) -> Optional[dict]:
-        """
-        Get full product details by SKU/product_id.
-        Returns product in Mikisi standard format.
-        """
-        data = self._post(ENDPOINT_PRODUCT_LIST, {"sku": product_id, "page": 1, "page_size": 1})
-        items = data.get("data", data.get("items", data.get("products", [])))
-        if items:
-            return self._to_standard(items[0])
+    def get_by_sku(self, sku: str) -> Optional[dict]:
+        """Fetch a specific product by its SKU."""
+        resp = self._get(ENDPOINT_PRODUCT_LIST, {"sku": sku})
+        if resp.get("code") == 0:
+            items = resp.get("data", {}).get("data", [])
+            if items:
+                return self._to_standard(items[0])
         return None
 
+    def get_product(self, product_id: str) -> Optional[dict]:
+        return self.get_by_sku(product_id)
+
     def get_stock(self, option_id: str) -> int:
-        """Get current stock for a specific product option/variant."""
-        data = self._post(ENDPOINT_PRODUCT_STOCK, {"option_id": option_id})
-        return int(data.get("qty", data.get("stock", data.get("quantity", 999))))
+        """Get current stock for one or more option_ids (comma-separated)."""
+        resp = self._get(ENDPOINT_OPTION_QTY, {"option_id": option_id})
+        if resp.get("code") == 0:
+            items = resp.get("data", [])
+            if items and isinstance(items, list):
+                return int(items[0].get("qty", 999))
+        return 999
 
     # ── ORDERS ────────────────────────────────────────────────────────────────
 
-    def place_order(self, product_id: str, customer: dict, address: dict, quantity: int = 1) -> dict:
-        """Place a dropship order with Silverbene."""
-        shipping_methods = self._post(ENDPOINT_SHIPPING, {
-            "country_id": address.get("country_code", "US")
-        })
-        methods = shipping_methods.get("data", shipping_methods.get("methods", []))
+    def get_shipping_methods(self, country_code: str = "US") -> list:
+        """Get available shipping methods for a country."""
+        resp = self._get(ENDPOINT_SHIPPING, {"country_id": country_code})
+        if resp.get("code") == 0:
+            return resp.get("data", [])
+        return []
+
+    def place_order(self, product_id: str, customer: dict, address: dict,
+                    quantity: int = 1, option_id: str = None) -> dict:
+        """
+        Place a dropship order with Silverbene.
+        product_id = Silverbene option_id (NOT sku — orders use option_id).
+        """
+        methods = self.get_shipping_methods(address.get("country_code", "US"))
         carrier_code = methods[0].get("carrier_code", "") if methods else ""
         method_code = methods[0].get("method_code", "") if methods else ""
 
-        result = self._post(ENDPOINT_ORDER_CREATE, {
-            "options": [{"sku": product_id, "qty": quantity}],
+        order_option_id = option_id or product_id
+
+        payload = {
+            "options": [{"option_id": str(order_option_id), "qty": quantity}],
             "shipping_address": {
-                "firstname":  customer.get("first_name", ""),
-                "lastname":   customer.get("last_name", ""),
-                "email":      customer.get("email", ""),
-                "telephone":  customer.get("phone", ""),
-                "street":     [address.get("line1", ""), address.get("line2", "")],
-                "city":       address.get("city", ""),
-                "region":     address.get("state", ""),
-                "postcode":   address.get("postal_code", ""),
-                "country_id": address.get("country_code", "US"),
+                "firstname":   customer.get("first_name", ""),
+                "lastname":    customer.get("last_name", ""),
+                "email":       customer.get("email", ""),
+                "telephone":   customer.get("phone", ""),
+                "street":      address.get("line1", ""),
+                "city":        address.get("city", ""),
+                "region":      address.get("state", ""),
+                "region_code": address.get("state_code", None),
+                "region_id":   address.get("region_id", None),
+                "postcode":    address.get("postal_code", ""),
+                "country_id":  address.get("country_code", "US"),
             },
             "shipping_carrier_code": carrier_code,
             "shipping_method_code":  method_code,
-        })
+        }
 
-        order_id = result.get("order_id", result.get("increment_id", ""))
+        result = self._post(ENDPOINT_CREATE_ORDER, payload)
+        order_id = result.get("data", {}).get("order_id", "") if result.get("code") == 0 else ""
+
         return self.standard_order(
             success=bool(order_id),
             supplier_order_id=str(order_id),
@@ -170,129 +241,113 @@ class SilverbeneAdapter(SupplierAdapter):
         )
 
     def get_tracking(self, order_id: str) -> dict:
-        """Get tracking status for a placed order."""
-        data = self._post(ENDPOINT_ORDER_STATUS, {"order_id": order_id})
-        return self.standard_tracking(
-            order_id=order_id,
-            status=data.get("status", "unknown"),
-            tracking_number=data.get("tracking_number", data.get("track_number", "")),
-            carrier=data.get("carrier", data.get("shipping_carrier", "")),
-            estimated_delivery=data.get("estimated_delivery", ""),
-            last_update=data.get("updated_at", ""),
-        )
+        """Tracking — endpoint to be added when Silverbene shares it."""
+        return self.standard_tracking(order_id=order_id, status="unknown")
 
     # ── DATA NORMALISATION ────────────────────────────────────────────────────
 
     def _to_standard(self, raw: dict) -> dict:
         """
-        Convert a raw Silverbene product dict into Mikisi's standard format.
-        Field names will be confirmed once API docs are shared.
+        Convert a live Silverbene product into Mikisi's standard format.
+        Field names confirmed from live API response.
         """
-        # Primary image — Silverbene typically sends a list or a single URL
-        images_raw = raw.get("images", raw.get("media_gallery_entries", []))
-        if isinstance(images_raw, list):
-            image_list = [
-                img.get("url", img.get("file", img)) if isinstance(img, dict) else img
-                for img in images_raw
-            ]
-        elif isinstance(images_raw, str) and images_raw.startswith("["):
-            try:
-                image_list = json.loads(images_raw)
-            except Exception:
-                image_list = [images_raw] if images_raw else []
-        else:
-            image_list = [images_raw] if images_raw else []
+        gallery = raw.get("gallery", [])
+        image_url = gallery[0] if gallery else ""
 
-        image_url = (
-            raw.get("image_url", raw.get("image", raw.get("thumbnail", "")))
-            or (image_list[0] if image_list else "")
-        )
+        # Options contain price, stock, and attributes (Color / Size)
+        options = raw.get("option", [])
+        cost_price = float(options[0].get("price", 0)) if options else 0.0
+        stock = sum(int(o.get("qty", 0)) for o in options) if options else 999
 
-        # Variants — sizes and colors extracted separately for the storefront
-        options = raw.get("options", raw.get("configurable_options", raw.get("variants", [])))
         sizes, colors = self._extract_variants(options)
-
-        # Material — Silverbene specifies 925, 18k gold plated, etc.
-        material = (
-            raw.get("material", "")
-            or raw.get("metal_type", "")
-            or raw.get("custom_attributes_material", "")
-            or self._infer_material(raw.get("name", "") + " " + raw.get("description", ""))
-        )
-
-        cost_price = float(
-            raw.get("price", raw.get("cost", raw.get("wholesale_price", 0))) or 0
-        )
+        material = self._infer_material_from_desc(raw.get("desc", ""), colors)
 
         return {
             **self.standard_product(
-                supplier_product_id=str(raw.get("sku", raw.get("id", raw.get("product_id", "")))),
-                name=raw.get("name", raw.get("product_name", "")),
-                category=raw.get("category", ""),
-                description=raw.get("description", raw.get("short_description", "")),
+                supplier_product_id=raw.get("sku", ""),
+                name=raw.get("title", ""),
+                category="",
+                description=raw.get("desc", ""),
                 cost_price=cost_price,
                 image_url=image_url,
-                stock=int(raw.get("qty", raw.get("stock", raw.get("quantity", 999))) or 999),
-                shipping_days=int(raw.get("shipping_days", 12)),
+                stock=min(stock, 999),
+                shipping_days=12,
                 supplier_name="Silverbene",
                 supplier_url=f"https://silverbene.com/product/{raw.get('sku', '')}",
                 variants=options,
             ),
-            "images": image_list,
+            "images": gallery,
             "material": material,
-            "sizes": sizes,
-            "colors": colors,
-            "supplier_rating": float(raw.get("rating", raw.get("review_count", 0)) or 0),
-            "material_raw": raw.get("material", ""),
+            "sizes": json.dumps(sizes) if sizes else None,
+            "colors": json.dumps(colors) if colors else None,
+            # Scoring helpers
+            "supplier_rating": 5.0,
+            "material_name_en_set": [material] if material else [],
+            "extra_text": f"{raw.get('title', '')} {raw.get('desc', '')} {material}",
+            "product_image_set_count": len(gallery),
+            # Keep raw options so bulk import can extract option_ids
+            "_options": options,
         }
 
-    def _extract_variants(self, options) -> tuple:
+    def _extract_variants(self, options: list) -> tuple:
         """
-        Extract sizes and colors from Silverbene's variant/option structure.
-        Returns (sizes_json_str, colors_json_str).
+        Extract sizes and colors from Silverbene option attributes.
+        Returns (sizes_list, colors_list).
+
+        Live option structure:
+        [{"attribute": [{"name": "Color", "value": "Rhodium"}], "qty": 48, "price": 18.5, "option_id": 51583}]
         """
         sizes = []
         colors = []
-
-        if not options:
-            return None, None
-
-        if not isinstance(options, list):
-            return None, None
-
-        color_keywords = {"gold", "rose gold", "silver", "white gold", "yellow gold",
-                          "rhodium", "platinum", "tanzanite", "black gold"}
+        seen_sizes = set()
+        seen_colors = set()
 
         for opt in options:
-            label = (opt.get("label", "") or opt.get("name", "") or "").lower()
-            values = opt.get("values", opt.get("options", opt.get("choices", [])))
-            if not isinstance(values, list):
-                continue
+            attrs = opt.get("attribute", [])
+            for attr in attrs:
+                name = attr.get("name", "").lower().strip()
+                value = attr.get("value", "").strip()
+                if not value:
+                    continue
 
-            val_labels = [
-                str(v.get("label", v.get("value", v)) if isinstance(v, dict) else v)
-                for v in values
-            ]
+                if name in SIZE_ATTRIBUTE_NAMES:
+                    if value not in seen_sizes:
+                        seen_sizes.add(value)
+                        sizes.append(value)
+                elif name in COLOR_ATTRIBUTE_NAMES:
+                    if value not in seen_colors:
+                        seen_colors.add(value)
+                        colors.append(value)
 
-            if any(kw in label for kw in ("size", "ring", "length", "bracelet", "anklet", "chain")):
-                sizes = val_labels
-            elif any(kw in label for kw in ("color", "colour", "metal", "finish", "tone")):
-                colors = [v for v in val_labels if v.lower() in color_keywords] or val_labels
+        return sizes or None, colors or None
 
-        return (json.dumps(sizes) if sizes else None,
-                json.dumps(colors) if colors else None)
+    def _infer_material_from_desc(self, desc: str, colors: list = None) -> str:
+        """
+        Silverbene's desc HTML contains material info.
+        e.g. '<li>Metal Color Available:Yellow Gold,Rhodium</li>'
+             '<li>Total Weight: 3g</li>'
+        925/S925 is always the base metal — Silverbene is a 925 specialist.
+        """
+        # Silverbene is 100% 925 sterling silver — this is their brand promise
+        if "925" in desc or "s925" in desc.lower() or "sterling" in desc.lower():
+            base = "S925 Sterling Silver"
+        else:
+            base = "925 Sterling Silver"
 
-    def _infer_material(self, text: str) -> str:
-        """Fallback material detection from product name/description text."""
-        t = text.lower()
-        if "925" in t or "sterling" in t:
-            return "925 Sterling Silver"
-        if "18k" in t:
-            return "18k Gold Plated"
-        if "14k" in t:
-            return "14k Gold Plated"
-        if "stainless" in t:
-            return "Stainless Steel"
-        if "titanium" in t:
-            return "Titanium"
-        return "Fine Sterling Silver"
+        # Detect plating from colors or desc
+        desc_lower = desc.lower()
+        if colors:
+            color_str = " ".join(colors).lower()
+            if "gold" in color_str or "yellow gold" in color_str:
+                return f"{base} (Gold Plated available)"
+            if "rose gold" in color_str:
+                return f"{base} (Rose Gold Plated available)"
+
+        if "gold" in desc_lower:
+            return f"{base} (Gold Plated available)"
+
+        return base
+
+
+def collection_name_log(name: str) -> str:
+    return f"[{name}]"
