@@ -489,7 +489,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
 # Runs every 24 hours from scheduler
 # ============================================================
 
-def run_bulk_import_agent():
+def run_bulk_import_agent(max_per_collection: int = None):
     """
     Main bulk import loop.
     Searches CJ for each of our 6 collections.
@@ -504,7 +504,10 @@ def run_bulk_import_agent():
 
     for collection_name, strategy in COLLECTION_STRATEGIES.items():
         try:
-            result = import_for_collection(collection_name, strategy)
+            strat = {**strategy}
+            if max_per_collection is not None:
+                strat["max_per_run"] = max_per_collection
+            result = import_for_collection(collection_name, strat)
             results.append(result)
             total_imported += result.get("imported", 0)
             total_rejected += result.get("rejected", 0)

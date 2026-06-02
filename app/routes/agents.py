@@ -920,14 +920,18 @@ def reset_store(session: Session = Depends(get_session)):
     }
 
 @router.post("/agents/run-bulk-import")
-def trigger_bulk_import():
+def trigger_bulk_import(max_per_collection: int = 100):
     """Start bulk import in background — returns immediately. Poll /agents/bulk-import-result."""
     try:
         import threading
         from app.agents.bulk_import_agent import run_bulk_import_agent
-        thread = threading.Thread(target=run_bulk_import_agent, daemon=True)
+        thread = threading.Thread(
+            target=run_bulk_import_agent,
+            kwargs={"max_per_collection": max_per_collection},
+            daemon=True
+        )
         thread.start()
-        return {"message": "Bulk import started in background", "poll": "/agents/bulk-import-result"}
+        return {"message": "Bulk import started in background", "poll": "/agents/bulk-import-result", "max_per_collection": max_per_collection}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

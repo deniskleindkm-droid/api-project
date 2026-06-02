@@ -933,38 +933,78 @@ function openPM(id) {
     document.getElementById('pm-overlay').classList.add('open');
 }
 
+function parseVariantKey(variantKey) {
+    if (!variantKey) return {};
+    const COLOR_WORDS = ['gold', 'silver', 'rose', 'bronze', 'brass', 'copper',
+        'black', 'white', 'red', 'blue', 'green', 'purple', 'pink', 'rainbow',
+        'platinum', 'titanium', 'gunmetal', 'crystal', 'multicolor',
+        'yellow', 'orange', 'brown', 'grey', 'gray'];
+    const result = {};
+    for (const part of variantKey.split('-')) {
+        const trimmed = part.trim();
+        // Size: "US 6", "US6", "US 7.5", etc.
+        if (/^US\s*\d+(\.\d+)?$/i.test(trimmed)) {
+            result['Size'] = trimmed.replace(/^US\s*/i, '').trim();
+        } else if (COLOR_WORDS.some(c => trimmed.toLowerCase().includes(c))) {
+            result['Color'] = trimmed;
+        }
+        // else: product code part like "G128216G2" — skip
+    }
+    return result;
+}
+
 function renderVariantSelectors(variants) {
     const container = document.getElementById('pm-variants');
-    if (!variants || !variants.length) { container.innerHTML = ''; currentVariantVid = null; return; }
+    currentVariantVid = null;
+    if (!variants || !variants.length) { container.innerHTML = ''; return; }
 
-    // Group by property name, deduplicate values within each group
-    const groups = {};
+    // BUG B fix: dedup by variantKey (CJ uses variantKey, not variantValue)
+    const seenKeys = new Set();
+    const unique = [];
     for (const v of variants) {
-        const name = v.variantName || v.variantNameEn || 'Option';
-        if (!groups[name]) groups[name] = [];
-        if (!groups[name].some(x => x.variantValue === v.variantValue)) {
-            groups[name].push(v);
+        const k = v.variantKey || '';
+        if (!seenKeys.has(k)) { seenKeys.add(k); unique.push(v); }
+    }
+
+    // BUG A fix: group by Size/Color parsed from variantKey
+    const groups = {};
+    for (const v of unique) {
+        const parsed = parseVariantKey(v.variantKey || '');
+        for (const [groupName, label] of Object.entries(parsed)) {
+            if (!groups[groupName]) groups[groupName] = [];
+            // Dedup within group by display label
+            if (!groups[groupName].some(x => x._label === label)) {
+                groups[groupName].push({ ...v, _label: label });
+            }
         }
+    }
+
+    // ADDITIONAL RULE: hide if no meaningful groups or only 1 total option
+    const totalOptions = Object.values(groups).reduce((s, arr) => s + arr.length, 0);
+    if (totalOptions <= 1) {
+        container.innerHTML = '';
+        currentVariantVid = variants[0]?.vid || null;
+        return;
     }
 
     // Auto-select first option in each group
     currentVariantSelections = {};
-    for (const [name, options] of Object.entries(groups)) {
-        currentVariantSelections[name] = options[0].vid;
+    for (const [name, opts] of Object.entries(groups)) {
+        currentVariantSelections[name] = opts[0].vid;
     }
     currentVariantVid = variants[0].vid || null;
 
     container.innerHTML = `<div class="pm-variants">${
-        Object.entries(groups).map(([name, options]) => `
+        Object.entries(groups).map(([name, opts]) => `
             <div>
                 <div class="pm-variant-label">${name}</div>
                 <div class="pm-variant-options">
-                    ${options.map((v, i) => `
+                    ${opts.map((v, i) => `
                         <button class="pm-variant-btn${i === 0 ? ' selected' : ''}"
                                 data-vid="${v.vid}"
                                 data-group="${escAttr(name)}"
                                 onclick="selectVariantBtn(this)">
-                            ${v.variantValue || v.vid}
+                            ${v._label}
                         </button>`).join('')}
                 </div>
             </div>`).join('')
