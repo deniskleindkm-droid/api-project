@@ -157,6 +157,17 @@ def _register_default_autonomy_rules():
         print("[DB] ✅ Default autonomy rules registered")
 
 
+def _init_collection_id_slots(keys: list):
+    """Insert collection ID config entries with value 0 only if they don't already exist."""
+    from app.models.store_config import StoreConfig
+    with Session(engine) as session:
+        for key in keys:
+            existing = session.exec(select(StoreConfig).where(StoreConfig.key == key)).first()
+            if not existing:
+                session.add(StoreConfig(key=key, value="0", description=f"{key} collection ID"))
+        session.commit()
+
+
 def _register_default_configs():
     from app.agents.store_config import set_config
 
@@ -170,7 +181,8 @@ def _register_default_configs():
     set_config("pricing_multiplier_bracelets", "7.0", "Base price multiplier for Bracelets")
     set_config("pricing_multiplier_earrings", "8.0", "Base price multiplier for Earrings")
     set_config("pricing_multiplier_anklets", "6.0", "Base price multiplier for Anklets")
-    set_config("pricing_multiplier_piercings", "7.0", "Base price multiplier for Piercings & Body Jewelry")
+    set_config("pricing_multiplier_ear_cuffs", "7.0", "Base price multiplier for Ear Cuffs")
+    set_config("pricing_multiplier_jewelry_sets", "7.0", "Base price multiplier for Jewelry Sets")
 
     # ── Quality adjustments (applied on top of base) ───────────
     set_config("pricing_adj_moissanite", "2.5", "Quality adj for moissanite")
@@ -205,6 +217,8 @@ def _register_default_configs():
     # Collection IDs are intentionally omitted here —
     # they are set exclusively by DELETE /agents/reset-store and must
     # not be overwritten on server restart.
+    # Initialize new collection ID slots to 0 only if they don't exist yet.
+    _init_collection_id_slots(["collection_ear_cuffs", "collection_jewelry_sets"])
 
     # ── Autonomy thresholds ────────────────────────────────────
     set_config("min_product_score", "0.65", "Minimum score for auto-import")

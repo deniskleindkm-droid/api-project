@@ -22,81 +22,87 @@ COLLECTION_STRATEGIES = {
         "config_key": "collection_rings",
         "default_id": 0,
         "cj_category_ids": [
-            "56B4F8B6-8600-4A18-913E-53F2F693EC2C",  # Rings
-            "FCE034F6-A2BF-47E3-852F-FA9F67F904B2",  # Engagement Rings
+            "56B4F8B6-8600-4A18-913E-53F2F693EC2C",
+            "FCE034F6-A2BF-47E3-852F-FA9F67F904B2"
         ],
         "required_variants": ["Size"],
         "reject_if_no_variants": False,
-        "max_per_run": 100,
+        "max_per_run": 100
     },
     "Necklaces": {
         "config_key": "collection_necklaces",
         "default_id": 0,
         "cj_category_ids": [
-            "95D9F317-1DB3-4E42-A031-02223215B9C5",  # Necklace & Pendants
+            "95D9F317-1DB3-4E42-A031-02223215B9C5"
         ],
         "required_variants": [],
         "reject_if_no_variants": False,
-        "max_per_run": 100,
+        "max_per_run": 100
     },
     "Bracelets": {
         "config_key": "collection_bracelets",
         "default_id": 0,
         "cj_category_ids": [
-            "0615F8DB-C10F-4BEF-892B-1C5B04268938",  # Bracelets & Bangles
+            "0615F8DB-C10F-4BEF-892B-1C5B04268938"
         ],
         "required_variants": [],
         "reject_if_no_variants": False,
-        "max_per_run": 100,
+        "max_per_run": 100
     },
     "Earrings": {
         "config_key": "collection_earrings",
         "default_id": 0,
         "cj_category_ids": [
-            "D28405AE-66C6-42E6-BFF0-D6FDCB5C083C",  # Earrings
-            "D7CE9827-F50A-4B07-84BF-1BFE44188A1C",  # Fine Earrings
+            "D28405AE-66C6-42E6-BFF0-D6FDCB5C083C",
+            "D7CE9827-F50A-4B07-84BF-1BFE44188A1C"
         ],
         "required_variants": [],
         "reject_if_no_variants": False,
-        "max_per_run": 100,
+        "max_per_run": 100
     },
     "Anklets": {
         "config_key": "collection_anklets",
         "default_id": 0,
         "cj_category_ids": [
-            "2601070548141611900",                    # Anklets
-            "552F095A-904C-40E4-A43B-0CD1CE15D29F",  # 925 Silver Jewelry
-            "0615F8DB-C10F-4BEF-892B-1C5B04268938",  # Bracelets & Bangles
-        ],
-        "keywords": [
-            "925 silver anklet",
-            "gold plated anklet women",
-            "sterling silver ankle bracelet",
-            "crystal anklet women",
+            "2601070548141611900",
+            "552F095A-904C-40E4-A43B-0CD1CE15D29F"
         ],
         "required_variants": [],
         "reject_if_no_variants": False,
-        "max_per_run": 50,
+        "max_per_run": 50
     },
-    "Piercings": {
-        "config_key": "collection_piercings",
+    "Ear Cuffs": {
+        "config_key": "collection_ear_cuffs",
         "default_id": 0,
         "cj_category_ids": [
-            "633E1860-7C63-4006-AB35-3FC16BECFA62",  # Body Jewelry
-            "552F095A-904C-40E4-A43B-0CD1CE15D29F",  # 925 Silver Jewelry
-            "56B4F8B6-8600-4A18-913E-53F2F693EC2C",  # Rings (nose rings included)
-            "D28405AE-66C6-42E6-BFF0-D6FDCB5C083C",  # Earrings (ear piercings)
+            "D28405AE-66C6-42E6-BFF0-D6FDCB5C083C",
+            "633E1860-7C63-4006-AB35-3FC16BECFA62"
         ],
         "keywords": [
-            "925 silver nose ring",
-            "surgical steel piercing",
-            "gold plated nose stud",
-            "sterling silver cartilage earring",
-            "titanium body piercing",
+            "ear cuff no piercing",
+            "925 silver ear cuff",
+            "gold ear cuff women",
+            "cartilage ear cuff"
         ],
         "required_variants": [],
         "reject_if_no_variants": False,
-        "max_per_run": 50,
+        "max_per_run": 50
+    },
+    "Jewelry Sets": {
+        "config_key": "collection_jewelry_sets",
+        "default_id": 0,
+        "cj_category_ids": [
+            "552F095A-904C-40E4-A43B-0CD1CE15D29F"
+        ],
+        "keywords": [
+            "925 silver jewelry set necklace earring",
+            "gold plated jewelry set women",
+            "matching necklace bracelet set",
+            "jewelry gift set women sterling"
+        ],
+        "required_variants": [],
+        "reject_if_no_variants": False,
+        "max_per_run": 50
     },
 }
 

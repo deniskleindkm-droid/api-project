@@ -887,14 +887,15 @@ def reset_store(session: Session = Depends(get_session)):
     session.exec(delete(Collection))
     session.commit()
 
-    # Create 6 locked jewelry collections
+    # Create 7 locked jewelry collections
     collections = [
-        Collection(name="Rings", description="Sterling silver, gold plated, and gemstone rings for every occasion", sort_order=1, is_active=True),
-        Collection(name="Necklaces", description="Delicate chains, pendants, and statement necklaces in precious metals", sort_order=2, is_active=True),
-        Collection(name="Bracelets", description="Bangles, chains, and charm bracelets crafted in quality metals", sort_order=3, is_active=True),
-        Collection(name="Earrings", description="Studs, hoops, and drops — everyday elegance and statement pieces", sort_order=4, is_active=True),
-        Collection(name="Anklets", description="Delicate anklets in sterling silver and gold plated finishes", sort_order=5, is_active=True),
-        Collection(name="Piercings & Body Jewelry", description="Nose rings, cartilage studs, and body jewelry in surgical steel and titanium", sort_order=6, is_active=True),
+        Collection(name="Rings", description="Sterling silver and gold rings for every occasion", sort_order=1, is_active=True),
+        Collection(name="Necklaces", description="Pendants, chains and layering pieces", sort_order=2, is_active=True),
+        Collection(name="Bracelets", description="Bangles, cuffs and charm bracelets", sort_order=3, is_active=True),
+        Collection(name="Earrings", description="Studs, hoops and statement drops", sort_order=4, is_active=True),
+        Collection(name="Anklets", description="Delicate chains for graceful steps", sort_order=5, is_active=True),
+        Collection(name="Ear Cuffs", description="No piercing required — bold and elegant", sort_order=6, is_active=True),
+        Collection(name="Jewelry Sets", description="Matching pieces curated as one", sort_order=7, is_active=True),
     ]
 
     for col in collections:
@@ -903,19 +904,26 @@ def reset_store(session: Session = Depends(get_session)):
 
     # Sync collection IDs into store config so agents use the real DB IDs
     new_cols = session.exec(select(Collection).order_by(Collection.sort_order)).all()
-    config_keys = [
-        "collection_rings", "collection_necklaces", "collection_bracelets",
-        "collection_earrings", "collection_anklets", "collection_piercings"
-    ]
+    collection_map = {
+        "Rings": "collection_rings",
+        "Necklaces": "collection_necklaces",
+        "Bracelets": "collection_bracelets",
+        "Earrings": "collection_earrings",
+        "Anklets": "collection_anklets",
+        "Ear Cuffs": "collection_ear_cuffs",
+        "Jewelry Sets": "collection_jewelry_sets"
+    }
     from app.agents.store_config import set_config as _sc
     locked_ids = []
-    for col, key in zip(new_cols, config_keys):
-        _sc(key, str(col.id), f"{col.name} collection ID")
-        locked_ids.append(str(col.id))
-    _sc("locked_collection_ids", ",".join(locked_ids), "The 6 locked jewelry collection IDs")
+    for col in new_cols:
+        key = collection_map.get(col.name)
+        if key:
+            _sc(key, str(col.id), f"{col.name} collection ID")
+            locked_ids.append(str(col.id))
+    _sc("locked_collection_ids", ",".join(locked_ids), "The 7 locked jewelry collection IDs")
 
     return {
-        "message": "Store reset complete — 6 jewelry collections created",
+        "message": "Store reset complete — 7 jewelry collections created",
         "collections": [{"id": c.id, "name": c.name} for c in new_cols]
     }
 
