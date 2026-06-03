@@ -746,23 +746,160 @@ def test_supplier():
         "first_product": products[0] if products else None
     }
 
-@router.post("/silverbene/debug-import")
-def silverbene_debug_import(collection: str = "Rings", max_products: int = 3):
-    """
-    Synchronous debug import — runs in the request, returns full result with errors.
-    Use this to diagnose what's happening step by step.
-    """
+@router.get("/silverbene/ping")
+def silverbene_ping():
+    """Step 1: Can we reach Silverbene API and get raw products?"""
     import traceback
     try:
-        from app.agents.bulk_import_agent import import_for_collection, COLLECTION_STRATEGIES
-        collection = collection.strip().title()
-        if collection not in COLLECTION_STRATEGIES:
-            return {"error": f"Unknown collection. Available: {list(COLLECTION_STRATEGIES.keys())}"}
-        strategy = {**COLLECTION_STRATEGIES[collection], "max_per_run": max_products}
-        result = import_for_collection(collection, strategy)
-        return {"status": "done", "result": result}
+        from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+        sb = SilverbeneAdapter()
+        # Single keyword, single 2-month window, limit 3
+        from datetime import datetime, timedelta
+        end = datetime.utcnow()
+        start = end - timedelta(days=60)
+        start_str = f"{start.year}-{start.month}"
+        end_str = f"{end.year}-{end.month}"
+        resp = sb._get("/api/dropshipping/product_list_by_date", {
+            "start_date": start_str,
+            "end_date": end_str,
+            "keywords": "ring",
+            "is_really_stock": 1,
+        })
+        items = resp.get("data", {}).get("data", [])
+        return {
+            "api_code": resp.get("code"),
+            "api_message": resp.get("message"),
+            "products_returned": len(items),
+            "first_product_keys": list(items[0].keys()) if items else [],
+            "first_product_sample": {
+                "title": items[0].get("title", "")[:60] if items else None,
+                "sku": items[0].get("sku") if items else None,
+                "gallery_count": len(items[0].get("gallery", [])) if items else None,
+                "options": items[0].get("option", [])[:2] if items else None,
+            }
+        }
     except Exception as e:
-        return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+        return {"error": str(e), "traceback": traceback.format_exc()}
+
+@router.get("/silverbene/score-test")
+def silverbene_score_test():
+    """Step 2: Does scoring pass for a real Silverbene product?"""
+    import traceback
+    try:
+        from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+        from app.agents.jewelry_scoring import score_jewelry_product
+        from datetime import datetime, timedelta
+        sb = SilverbeneAdapter()
+        end = datetime.utcnow()
+        start = end - timedelta(days=60)
+        resp = sb._get("/api/dropshipping/product_list_by_date", {
+            "start_date": f"{start.year}-{start.month}",
+            "end_date": f"{end.year}-{end.month}",
+            "keywords": "ring",
+            "is_really_stock": 1,
+        })
+        items = resp.get("data", {}).get("data", [])
+        if not items:
+            return {"error": "No products returned from Silverbene"}
+        raw = items[0]
+        std = sb._to_standard(raw)
+        score = score_jewelry_product(std)
+        return {
+            "product_name": std.get("name", "")[:60],
+            "cost_price": std.get("cost_price"),
+            "images_count": len(std.get("images", [])),
+            "material": std.get("material"),
+            "sizes": std.get("sizes"),
+            "colors": std.get("colors"),
+            "score_result": score,
+        }
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
+
+@router.post("/silverbene/save-one")
+def silverbene_save_one(collection: str = "Rings"):
+    """Step 3: Score, rewrite, and save exactly ONE product. Fast enough to not timeout."""
+    import traceback, json as _json
+    try:
+        from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+        from app.agents.jewelry_scoring import score_jewelry_product
+        from app.agents.jewelry_pricing import calculate_jewelry_price
+        from app.agents.shipping_agent import get_best_shipping
+        from app.agents.bulk_import_agent import batch_rewrite_products, COLLECTION_STRATEGIES
+        from app.agents.store_manager import add_product_to_store
+        from app.agents.store_config import get_config
+        from datetime import datetime, timedelta
+
+        sb = SilverbeneAdapter()
+        end = datetime.utcnow()
+        start = end - timedelta(days=60)
+        strategy = COLLECTION_STRATEGIES.get(collection, {})
+        keyword = strategy.get("keywords", ["ring"])[0] if strategy.get("keywords") else "ring"
+
+        resp = sb._get("/api/dropshipping/product_list_by_date", {
+            "start_date": f"{start.year}-{start.month}",
+            "end_date": f"{end.year}-{end.month}",
+            "keywords": keyword,
+            "is_really_stock": 1,
+        })
+        items = resp.get("data", {}).get("data", [])
+        if not items:
+            return {"error": f"No products from Silverbene for keyword={keyword}"}
+
+        std = sb._to_standard(items[0])
+        score = score_jewelry_product(std)
+        if score["rejected"]:
+            return {"error": "Product rejected by scorer", "reason": score["rejection_reason"],
+                    "product": std.get("name", "")[:60], "score": score}
+
+        collection_id = int(get_config(strategy.get("config_key", "collection_rings"), default="0"))
+        rewritten = batch_rewrite_products([std], collection, collection_id)
+        if not rewritten:
+            return {"error": "ARIA rejected the product in rewrite step"}
+
+        product = rewritten[0]
+        shipping = get_best_shipping("Silverbene", "")
+        pricing = calculate_jewelry_price({**std, "supplier_name": "Silverbene"}, score, shipping_cost=shipping["cost"])
+
+        options = std.get("_options", [])
+        option_id = str(options[0].get("option_id", "")) if options else ""
+
+        product_data = {
+            "name": product["mikisi_name"],
+            "brand": "Mikisi",
+            "category": collection,
+            "description": product.get("mikisi_description", "") or std.get("name", ""),
+            "original_price": pricing["original_price"],
+            "discount_percent": pricing["discount_percent"],
+            "final_price": pricing["final_price"],
+            "image_url": std.get("image_url", ""),
+            "images": _json.dumps(std.get("images", [])) if std.get("images") else None,
+            "stock": std.get("stock", 999),
+            "shipping_days": shipping["days_max"],
+            "supplier_name": "Silverbene",
+            "supplier_url": "",
+            "cj_product_id": std.get("supplier_product_id", ""),
+            "cj_sku": option_id,
+            "collection_id": collection_id,
+            "variants": _json.dumps(options) if options else None,
+            "material": std.get("material", ""),
+            "sizes": std.get("sizes"),
+            "colors": std.get("colors"),
+        }
+
+        p_obj, status = add_product_to_store(product_data)
+        return {
+            "status": status,
+            "product_id": p_obj.id if p_obj else None,
+            "name": product_data["name"],
+            "price": product_data["final_price"],
+            "collection_id": collection_id,
+            "images": len(std.get("images", [])),
+            "material": product_data["material"],
+            "score": score["score"],
+        }
+    except Exception as e:
+        return {"error": str(e), "traceback": traceback.format_exc()}
 
 @router.post("/silverbene/test-import")
 def silverbene_test_import(collection: str = "Rings", max_products: int = 5):
