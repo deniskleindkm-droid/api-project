@@ -748,13 +748,17 @@ def test_supplier():
 
 @router.post("/silverbene/sync-stock")
 def silverbene_sync_stock_now():
-    """Trigger an immediate Silverbene stock sync — updates all product stock levels right now."""
+    """Trigger an immediate run of the Silverbene Stock Agent outside the 6-hour schedule."""
     import threading
     try:
-        from app.scheduler import run_silverbene_stock_sync
-        thread = threading.Thread(target=run_silverbene_stock_sync)
+        from app.agents.silverbene_stock_agent import run_silverbene_stock_agent
+        thread = threading.Thread(target=run_silverbene_stock_agent)
         thread.start()
-        return {"message": "Stock sync started — all Silverbene products being checked against live inventory"}
+        return {
+            "message": "Silverbene Stock Agent triggered — checking live inventory for all products",
+            "auto_schedule": "Also runs automatically every 6 hours",
+            "what_happens": "Stock updated, out-of-stock products hidden, restocked products made visible, ARIA emails Dennis if changes found"
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
