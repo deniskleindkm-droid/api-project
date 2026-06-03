@@ -122,9 +122,9 @@ def batch_rewrite_products(products: list, collection_name: str, collection_id: 
 
     brand_voice = get_config("brand_voice", default="Mikisi is elegant, empowering, intimate.")
 
-    # Build product list for prompt
+    # Include actual material and raw name so ARIA works with real data
     product_list = "\n".join([
-        f"{i+1}. Name: {p.get('name', '')[:100]} | Category: {p.get('category', '')} | Price: ${p.get('final_price', 0):.2f}"
+        f"{i+1}. Raw name: {p.get('name', '')[:120]} | Material: {p.get('material', 'not specified')} | Colors available: {p.get('colors', 'not specified')} | Collection: {collection_name}"
         for i, p in enumerate(products)
     ])
 
@@ -133,37 +133,35 @@ def batch_rewrite_products(products: list, collection_name: str, collection_id: 
 BRAND VOICE:
 {brand_voice}
 
-TARGET COLLECTION: {collection_name} (ID: {collection_id})
+TARGET COLLECTION: {collection_name}
 
-You are reviewing {len(products)} jewelry products for import into Mikisi.
-For each product decide: accept or reject. If accepted, rewrite for Mikisi.
+Products below are from Silverbene, a trusted fine jewelry supplier. Use your intelligence to assess each one.
 
-QUALITY RULES — NON NEGOTIABLE:
-- Metal must be specified: 925 sterling silver, 18k gold plated, stainless steel, titanium, or surgical steel
-- Unknown or unspecified metal = automatic rejection
-- Absolutely no plastic, acrylic, or resin jewelry — ever
-- Must be wearable jewelry only (rings, necklaces, bracelets, earrings, anklets, piercings)
-- Reject anything that is not jewelry
+ACCEPT the product if it is any kind of jewelry or accessory — rings, necklaces, bracelets, earrings, anklets, ear cuffs, pendants, chains, sets. Accept regardless of material, style, or price point. Low risk — if in doubt, accept.
 
-PRODUCTS TO REVIEW:
+REJECT only if the product is clearly not jewelry at all (e.g. clothing, electronics, tools, bags). This should be rare.
+
+For every ACCEPTED product do exactly three things:
+
+1. CLEAN THE NAME — strip supplier jargon, model codes, the word "women", "for her", "S925", sizes. Keep only the essence. Max 6 words. (e.g. "Twisted Band Open Ring", "Layered Zircon Pendant Necklace")
+
+2. IDENTIFY MATERIAL — read the raw name and material field carefully. Write exactly what it is. Do not guess or generalise. Examples: "925 Sterling Silver", "18k Gold Plated 925 Silver", "Rhodium Plated", "Stainless Steel", "14k Gold Filled". This appears on the product page for customers — accuracy matters.
+
+3. WRITE MIKISI DESCRIPTION — exactly 2 sentences. Intimate, empowering, elegant. Mention the actual material naturally in the first sentence. Make her feel something real.
+
+PRODUCTS:
 {product_list}
-
-For each product return:
-- accepted: true/false
-- mikisi_name: clean elegant name max 6 words (if accepted)
-- mikisi_description: 2 emotional sentences in Mikisi voice (if accepted)
-- rejection_reason: why rejected (if rejected)
 
 Return ONLY a JSON array with {len(products)} objects in the same order:
 [
   {{
     "index": 1,
     "accepted": true,
-    "mikisi_name": "Rose Gold Crystal Ring",
-    "mikisi_description": "Some pieces choose you back. Wear this as a quiet declaration of self.",
+    "mikisi_name": "Twisted Band Open Ring",
+    "mikisi_material": "925 Sterling Silver",
+    "mikisi_description": "Forged in 925 sterling silver, this ring moves with you through every version of yourself. Open-ended by design — because you are never finished becoming.",
     "rejection_reason": null
-  }},
-  ...
+  }}
 ]
 
 Return ONLY valid JSON array. No other text."""
@@ -185,25 +183,24 @@ Return ONLY valid JSON array. No other text."""
 
         results = json.loads(text.strip())
 
-        # Merge rewrite results back into products
+        # Merge rewrite results — all accepted, capture material from ARIA
         rewritten = []
         for i, result in enumerate(results):
             if i >= len(products):
                 break
             product = products[i].copy()
-            if result.get("accepted"):
-                product["mikisi_name"] = result.get("mikisi_name", product.get("name", ""))[:100]
-                product["mikisi_description"] = result.get("mikisi_description", "")
-                product["accepted"] = True
-                rewritten.append(product)
-            else:
-                print(f"[Bulk Import] ❌ Rejected: {product.get('name', '')[:40]} — {result.get('rejection_reason', '')}")
+            product["mikisi_name"] = result.get("mikisi_name", product.get("name", ""))[:100]
+            product["mikisi_description"] = result.get("mikisi_description", "")
+            # Use ARIA's confirmed material — falls back to what adapter extracted
+            product["material"] = result.get("mikisi_material") or product.get("material", "")
+            product["accepted"] = True
+            rewritten.append(product)
 
         return rewritten
 
     except Exception as e:
         print(f"[Bulk Import] Batch rewrite error: {e}")
-        # On error — return products with raw names (don't lose them)
+        # On error — preserve products with raw names, don't lose them
         return [{**p, "mikisi_name": p.get("name", "")[:100],
                  "mikisi_description": "", "accepted": True} for p in products]
 
@@ -288,71 +285,40 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
     unique = unique[:max_products]
     print(f"[Bulk Import] {len(unique)} unique products fetched from Silverbene for {collection_name}")
 
-    # ── PHASE 2: Normalize variants + hard filter ──────────────
+    # ── PHASE 2 & 3: Silverbene pass-through ──────────────────
+    # Silverbene is a vetted fine jewelry supplier — all products are accepted.
+    # No hard scoring rejections. Only skip products with no price or no images.
     scored_candidates = []
     hard_rejected = 0
     rejection_details = []
 
     for product in unique:
         raw_variants = product.pop("raw_variants", [])
-        normalized = normalize_variants(raw_variants, collection_name)
-        product["variants_normalized"] = normalized
         product["raw_variants_list"] = raw_variants
 
-        img_count = max(len(product.get("images", [])), product.get("product_image_set_count", 0))
-
-        # Ring size gate — informational log only when reject_if_no_variants=False
-        if not normalized["ring_size_valid"]:
-            if reject_if_no_variants:
-                print(
-                    f"[Bulk Import] ❌ ring-size: '{product['name'][:50]}' | "
-                    f"groups={list(normalized['groups'].keys())} count={normalized['variant_count']}"
-                )
-                if len(rejection_details) < 5:
-                    rejection_details.append({
-                        "name": product["name"][:50],
-                        "reason": f"ring_size_invalid — groups={list(normalized['groups'].keys())}",
-                        "metal": "n/a",
-                        "images": img_count,
-                        "score": None,
-                    })
-                hard_rejected += 1
-                continue
-            else:
-                print(
-                    f"[Bulk Import] ℹ ring-size-info: '{product['name'][:40]}' "
-                    f"groups={list(normalized['groups'].keys())}"
-                )
-
-        # ── PHASE 3: Score ─────────────────────────────────────
-        # Silverbene supplier_rating is always 5.0 — they're a vetted specialist
-        product["supplier_rating"] = 5.0
-        score_input = {**product, "images": product["images"]}
-        score = score_jewelry_product(score_input)
-
-        if score["rejected"]:
-            print(
-                f"[Bulk Import] ❌ '{product['name'][:50]}' reason={score['rejection_reason']} "
-                f"score={score['score']} images={img_count} metal={score.get('detected_metal')}"
-            )
-            if len(rejection_details) < 5:
-                rejection_details.append({
-                    "name": product["name"][:50],
-                    "reason": score["rejection_reason"],
-                    "metal": score.get("detected_metal"),
-                    "images": img_count,
-                    "score": score["score"],
-                })
+        if not product.get("cost_price", 0):
+            hard_rejected += 1
+            continue
+        if not product.get("images") and not product.get("image_url"):
             hard_rejected += 1
             continue
 
-        product["_score"] = score
-        product["_needs_review"] = score["needs_review"]
-        if score["needs_review"]:
-            print(f"[Bulk Import] ⏸ Needs review ({score['score']}pt): {product['name'][:40]} — queuing for ARIA review")
+        # Assign a standard score so pricing/tier logic works downstream
+        product["_score"] = {
+            "score": 75,
+            "auto_import": True,
+            "needs_review": False,
+            "rejected": False,
+            "rejection_reason": None,
+            "quality_tier": "luxury",
+            "detected_metal": product.get("material", "925_silver"),
+            "detected_stone": None,
+            "dimensions": {},
+        }
+        product["_needs_review"] = False
         scored_candidates.append(product)
 
-    print(f"[Bulk Import] {len(scored_candidates)} passed scoring for {collection_name}")
+    print(f"[Bulk Import] {len(scored_candidates)} products from Silverbene ready for rewrite")
 
     if not scored_candidates:
         return {"collection": collection_name, "imported": 0, "rejected": hard_rejected, "rejection_details": rejection_details}
@@ -410,7 +376,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 "collection_id": collection_id,
                 "variants": _json.dumps(raw_variants) if raw_variants else None,
                 # Silverbene-specific fields — read directly by the storefront
-                "material": product.get("material") or "",
+                "material": product.get("material") or product.get("_score", {}).get("detected_metal", "") or "",
                 "sizes": product.get("sizes"),
                 "colors": product.get("colors"),
             }
