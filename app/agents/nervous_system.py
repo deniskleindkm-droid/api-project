@@ -137,6 +137,19 @@ def process_signals():
             elif signal.signal_type == "STOCK_LOW":
                 _handle_stock_low(payload)
 
+            elif signal.signal_type == "STOCK_OUT":
+                _handle_stock_out(payload)
+
+            elif signal.signal_type == "STOCK_RESTORED":
+                _handle_stock_restored(payload)
+
+            elif signal.signal_type == "STOCK_SYNC_COMPLETE":
+                _handle_stock_sync_complete(payload)
+
+            elif signal.signal_type == "BULK_IMPORT_COMPLETE":
+                payload_data = payload
+                print(f"[Nervous System] 📥 Bulk import done: {payload_data.get('total_imported',0)} products across {payload_data.get('collections',0)} collections")
+
             elif signal.signal_type == "COLLECTION_ASSIGNED":
                 pass
 
@@ -336,6 +349,24 @@ def _handle_stock_low(payload):
     product_id = payload.get("product_id")
     stock = payload.get("stock")
     print(f"[Nervous System] ⚠️ Stock low: Product {product_id} has {stock} units remaining")
+
+
+def _handle_stock_out(payload):
+    name = payload.get("product_name", "Unknown product")
+    print(f"[Nervous System] 🔴 Out of stock — hidden from store: {name}")
+
+
+def _handle_stock_restored(payload):
+    name = payload.get("product_name", "Unknown product")
+    print(f"[Nervous System] 🟢 Back in stock — visible again: {name}")
+
+
+def _handle_stock_sync_complete(payload):
+    checked = payload.get("checked", 0)
+    updated = payload.get("updated", 0)
+    deactivated = payload.get("deactivated", 0)
+    reactivated = payload.get("reactivated", 0)
+    print(f"[Nervous System] 📦 Silverbene stock sync: {checked} checked | {updated} updated | {deactivated} out | {reactivated} restocked")
 
 def _handle_content_posted(payload):
     content_id = payload.get("content_id")

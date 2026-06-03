@@ -125,7 +125,64 @@ def run_silverbene_stock_agent():
         print(f"  • Deactivated (out of stock): {deactivated}")
         print(f"  • Reactivated (back in stock): {reactivated}")
 
-        # ── Step 4: ARIA reviews changes and alerts Dennis if needed ─────────
+        result = {
+            "checked": total_checked,
+            "updated": updated,
+            "deactivated": deactivated,
+            "reactivated": reactivated,
+            "newly_outofstock": newly_outofstock,
+            "newly_reactivated": newly_reactivated,
+        }
+
+        # ── Step 4: Write to AgentMemory — command center reads this ─────────
+        try:
+            from app.models.agent import AgentMemory
+            with Session(engine) as session:
+                session.add(AgentMemory(
+                    agent_name="silverbene_stock_agent",
+                    memory_type="sync_run",
+                    content=json.dumps({
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "checked": total_checked,
+                        "updated": updated,
+                        "deactivated": deactivated,
+                        "reactivated": reactivated,
+                        "out_of_stock": newly_outofstock[:5],
+                        "restocked": newly_reactivated[:5],
+                    }),
+                    confidence=0.9
+                ))
+                session.commit()
+        except Exception as e:
+            print(f"[Silverbene Stock Agent] Memory write error: {e}")
+
+        # ── Step 5: Emit signals to nervous system ───────────────────────────
+        try:
+            from app.agents.nervous_system import emit
+            emit(
+                signal_type="STOCK_SYNC_COMPLETE",
+                sender="silverbene_stock_agent",
+                payload=result,
+                priority=8
+            )
+            for name in newly_outofstock:
+                emit(
+                    signal_type="STOCK_OUT",
+                    sender="silverbene_stock_agent",
+                    payload={"product_name": name},
+                    priority=3
+                )
+            for name in newly_reactivated:
+                emit(
+                    signal_type="STOCK_RESTORED",
+                    sender="silverbene_stock_agent",
+                    payload={"product_name": name},
+                    priority=6
+                )
+        except Exception as e:
+            print(f"[Silverbene Stock Agent] Signal emit error: {e}")
+
+        # ── Step 6: ARIA reviews changes and alerts Dennis if needed ─────────
         if deactivated > 0 or reactivated > 0:
             _aria_stock_report(
                 total_checked=total_checked,
@@ -136,14 +193,7 @@ def run_silverbene_stock_agent():
                 newly_reactivated=newly_reactivated
             )
 
-        return {
-            "checked": total_checked,
-            "updated": updated,
-            "deactivated": deactivated,
-            "reactivated": reactivated,
-            "newly_outofstock": newly_outofstock,
-            "newly_reactivated": newly_reactivated,
-        }
+        return result
 
     except Exception as e:
         import traceback

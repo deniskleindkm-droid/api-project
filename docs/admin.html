@@ -204,14 +204,25 @@ async function loadSystemHealth() {
         const memories = await memoriesRes.json();
 
         const agents = [
-            { name: "Market Agent", keys: ["market_data"], schedule: "Every 6 hours", icon: "📈" },
+            // ── ARIA Core Intelligence ──
+            { name: "ARIA Intelligence", keys: ["aria"], schedule: "On demand + market cycle", icon: "🧠" },
+            { name: "ARIA Memory", keys: ["aria_episodic", "aria_neural", "aria_self_assessment"], schedule: "Continuous", icon: "💾" },
+            { name: "ARIA Security", keys: ["aria_security"], schedule: "Every request", icon: "🔐" },
+            { name: "ARIA Developer", keys: ["aria_developer"], schedule: "On demand", icon: "⚙️" },
+            // ── Store Agents ──
+            { name: "Silverbene Stock Agent", keys: ["silverbene_stock_agent"], schedule: "Every 6 hours", icon: "🏪" },
+            { name: "Bulk Import Agent", keys: ["bulk_import_agent"], schedule: "Every 24 hours", icon: "📥" },
+            { name: "Market Agent", keys: ["market_data", "market_intelligence"], schedule: "Every 6 hours", icon: "📈" },
             { name: "Product Agent", keys: ["product_agent", "store_manager"], schedule: "On trend signal", icon: "📦" },
+            { name: "Analytics Agent", keys: ["analytics_agent", "analytics"], schedule: "Every 6 hours", icon: "📊" },
+            // ── Customer & Content ──
+            { name: "Customer Agent", keys: ["customer_agent", "customer_service"], schedule: "Every 1 hour", icon: "💌" },
             { name: "Content Agent", keys: ["content_agent"], schedule: "On product import", icon: "🎨" },
             { name: "Posting Agent", keys: ["posting_agent"], schedule: "Every 1 hour", icon: "🌍" },
+            // ── Operations ──
             { name: "Tracking Agent", keys: ["tracking_agent"], schedule: "Every 6 hours", icon: "🚚" },
-            { name: "Customer Agent", keys: ["customer_agent"], schedule: "Every 1 hour", icon: "💌" },
-            { name: "Analytics Agent", keys: ["analytics_agent", "analytics"], schedule: "Every 6 hours", icon: "📊" },
-            { name: "Nervous System", keys: ["aria", "aria_episodic", "aria_chat"], schedule: "Every 30 seconds", icon: "⚡" },
+            { name: "Goal Engine", keys: ["goal_engine"], schedule: "On market check", icon: "🎯" },
+            { name: "Nervous System", keys: ["aria_chat"], schedule: "Every 30 seconds", icon: "⚡" },
         ];
 
         const agentActivity = {};

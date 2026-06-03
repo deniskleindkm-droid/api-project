@@ -441,6 +441,22 @@ def run_bulk_import_agent(max_per_collection: int = None):
     """
     print(f"\n[Bulk Import] 🚀 Starting bulk import — {datetime.utcnow()}")
 
+    # Write start event — command center tracks this
+    try:
+        from sqlmodel import Session
+        from app.database import engine
+        from app.models.agent import AgentMemory
+        with Session(engine) as session:
+            session.add(AgentMemory(
+                agent_name="bulk_import_agent",
+                memory_type="run_started",
+                content=json.dumps({"timestamp": datetime.utcnow().isoformat(), "status": "running"}),
+                confidence=0.9
+            ))
+            session.commit()
+    except Exception:
+        pass
+
     results = []
     total_imported = 0
     total_rejected = 0
@@ -483,6 +499,18 @@ def run_bulk_import_agent(max_per_collection: int = None):
             session.commit()
     except Exception as e:
         print(f"[Bulk Import] Memory save error: {e}")
+
+    # Emit import complete signal to nervous system
+    try:
+        from app.agents.nervous_system import emit
+        emit(
+            signal_type="BULK_IMPORT_COMPLETE",
+            sender="bulk_import_agent",
+            payload={"total_imported": total_imported, "total_rejected": total_rejected, "collections": len(results)},
+            priority=6
+        )
+    except Exception as e:
+        print(f"[Bulk Import] Signal error: {e}")
 
     # ARIA reports to Dennis after every import run
     try:
