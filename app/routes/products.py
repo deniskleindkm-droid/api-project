@@ -59,6 +59,20 @@ def update_product(
     session.refresh(product)
     return product
 
+@router.get("/shipping-options")
+def get_shipping_options():
+    """Public endpoint — returns all shipping tiers for display on product panels."""
+    from app.agents.store_config import get_config
+    tiers = []
+    for key in ["express", "standard", "economy"]:
+        label = get_config(f"shipping_{key}_label", default=key.title())
+        days  = get_config(f"shipping_{key}_days",  default="")
+        carrier = get_config(f"shipping_{key}_carrier", default="")
+        if days:
+            tiers.append({"key": key, "label": label, "days": days, "carrier": carrier})
+    return {"tiers": tiers}
+
+
 @router.delete("/products/{product_id}")
 def delete_product(product_id: int, session: Session = Depends(get_session)):
     product = session.get(Product, product_id)

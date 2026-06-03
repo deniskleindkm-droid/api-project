@@ -977,6 +977,7 @@ let cartItems = [];
 let ppSelectedSize = null;
 let ppSelectedColor = null;
 let ppOpening = false; // guard — prevents double-click opening two panels
+let shippingTiers = []; // loaded once on init, shown on every product
 let wishlist = JSON.parse(localStorage.getItem('mk_wishlist')||'[]');
 
 // ── HELPERS ──
@@ -996,7 +997,7 @@ window.onload = async()=>{
   updateAuthUI();
   startTimer();
   loadHero();
-  await Promise.all([loadCollections(),loadProducts()]);
+  await Promise.all([loadCollections(),loadProducts(),loadShippingOptions()]);
   if(token)loadCart();
   const p = new URLSearchParams(window.location.search);
   if(p.get('payment')==='success'){
@@ -1118,6 +1119,13 @@ function renderCollectionProducts(prods){
 }
 
 // ── PRODUCTS ──
+async function loadShippingOptions(){
+  try{
+    const res=await fetch(`${API}/shipping-options`);
+    if(res.ok){const d=await res.json();shippingTiers=d.tiers||[];}
+  }catch{}
+}
+
 async function loadProducts(){
   try{
     const res = await fetch(`${API}/products`);
@@ -1309,17 +1317,21 @@ async function openPP(id){
     atcBtn.style.cursor='';
   }
 
-  // ── Meta — stock status + real delivery time ──
+  // ── Meta — stock status + all shipping tiers ──
   const stockLabel = (!p.stock||p.stock===0)
     ? '✕ Out of Stock'
     : p.stock<=10
       ? `❋ Only ${p.stock} left`
       : '✓ In Stock';
   const stockColor = (!p.stock||p.stock===0)?'var(--mid)':p.stock<=10?'var(--pink)':'#22c55e';
-  const days = p.shipping_days||12;
-  const deliveryLabel = days<=7 ? `⇉ Delivers in ${days} days` : `⇉ Estimated delivery ${days}–${days+3} days`;
+
+  // Shipping tiers — all options from store config
+  const shippingMeta = shippingTiers.length
+    ? shippingTiers.map(t=>`<div class="pp-meta-item">⇉ ${t.label}: ${t.days} days <span style="color:#444;font-size:9px">${t.carrier}</span></div>`).join('')
+    : `<div class="pp-meta-item">⇉ Standard delivery: ${(p.shipping_days||12)}–${(p.shipping_days||12)+5} days</div>`;
+
   document.getElementById('pp-meta').innerHTML=`
-    <div class="pp-meta-item">${deliveryLabel}</div>
+    ${shippingMeta}
     <div class="pp-meta-item">◇ ${matLabel||'Fine Sterling Silver'}</div>
     <div class="pp-meta-item" style="color:${stockColor};border-color:${stockColor}20">${stockLabel}</div>`;
 
