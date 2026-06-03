@@ -102,10 +102,7 @@ class SilverbeneAdapter(SupplierAdapter):
     # ── CATALOG SEARCH ────────────────────────────────────────────────────────
 
     def search(self, keyword: str, limit: int = 20) -> list:
-        """
-        Search Silverbene catalog by keyword.
-        Uses a fixed wide date range covering their full catalog.
-        """
+        """Search Silverbene catalog by keyword across full catalog."""
         resp = self._get(ENDPOINT_PRODUCT_BY_DATE, {
             "start_date": "2020-1",
             "end_date": "2030-1",
@@ -113,14 +110,30 @@ class SilverbeneAdapter(SupplierAdapter):
             "is_really_stock": 1,
         })
 
+        if not isinstance(resp, dict):
+            print(f"[Silverbene] search: unexpected response type {type(resp)} for keyword={keyword}")
+            return []
+
         if resp.get("code") != 0:
             print(f"[Silverbene] search error: {resp.get('message')} keyword={keyword}")
             return []
 
-        items = resp.get("data", {}).get("data", [])
+        data = resp.get("data", {})
+        if isinstance(data, dict):
+            items = data.get("data", [])
+        elif isinstance(data, list):
+            items = data
+        else:
+            items = []
+
+        if not isinstance(items, list):
+            items = []
+
         result = []
         seen = set()
         for item in items:
+            if not isinstance(item, dict):
+                continue
             sku = item.get("sku", "")
             if sku and sku not in seen:
                 seen.add(sku)
@@ -128,6 +141,7 @@ class SilverbeneAdapter(SupplierAdapter):
             if len(result) >= limit:
                 break
 
+        print(f"[Silverbene] search '{keyword}': {len(result)} products")
         return result
 
     def search_by_category(self, category_name: str, limit: int = 50) -> list:
