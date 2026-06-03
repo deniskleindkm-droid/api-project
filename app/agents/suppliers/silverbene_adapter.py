@@ -17,7 +17,9 @@ ENDPOINT_CREATE_ORDER      = "/api/dropshipping/create_order"           # POST �
 
 # Search keywords per Mikisi collection
 CATEGORY_KEYWORDS = {
-    "Rings":        ["ring", "silver ring women", "925 ring"],
+    "Rings":        ["ring", "silver ring women", "925 ring",
+                     "sterling silver band ring", "925 silver gemstone ring",
+                     "women ring size", "adjustable ring", "silver statement ring"],
     "Necklaces":    ["necklace", "pendant necklace", "silver chain necklace"],
     "Bracelets":    ["bracelet", "silver bracelet", "charm bracelet"],
     "Earrings":     ["earring", "stud earring", "drop earring"],
@@ -25,6 +27,10 @@ CATEGORY_KEYWORDS = {
     "Ear Cuffs":    ["ear cuff", "cartilage earring", "no piercing ear"],
     "Jewelry Sets": ["jewelry set", "necklace earring set", "matching jewelry set"],
 }
+
+# Values Silverbene puts in the Color attribute that are actually product-type descriptors.
+# Strip these prefixes before storing as a display color.
+_CATEGORY_PREFIXES = {"anklet", "bracelet", "necklace", "ring", "earring", "pendant", "chain"}
 
 # Attribute names Silverbene uses per category type
 SIZE_ATTRIBUTE_NAMES = {"size", "ring size", "length", "bracelet size", "anklet size", "chain length"}
@@ -206,11 +212,29 @@ class SilverbeneAdapter(SupplierAdapter):
 
     # ── ORDERS ────────────────────────────────────────────────────────────────
 
-    def get_shipping_methods(self, country_code: str = "US") -> list:
-        """Get available shipping methods for a country."""
-        resp = self._get(ENDPOINT_SHIPPING, {"country_id": country_code})
+    def get_shipping_methods(self, country_code: str = "US",
+                             option_id: str = None, qty: int = 1) -> list:
+        """
+        Get available shipping methods for a country + product.
+        Silverbene requires POST JSON with products array to return methods.
+        Returns list of dicts with: way, title, price, carrier_code, method_code.
+        """
+        payload = {
+            "country_id": country_code,
+            "products":   [{"option_id": str(option_id), "qty": qty}] if option_id else [],
+        }
+        resp = self._post(ENDPOINT_SHIPPING, payload)
         if resp.get("code") == 0:
-            return resp.get("data", [])
+            raw = resp.get("data", [])
+            # Normalise field names — Silverbene uses 'way' for the method code
+            return [
+                {
+                    **m,
+                    "carrier_code": m.get("way", ""),
+                    "method_code":  m.get("way", ""),
+                }
+                for m in raw
+            ]
         return []
 
     def place_order(self, product_id: str, customer: dict, address: dict,
@@ -219,7 +243,12 @@ class SilverbeneAdapter(SupplierAdapter):
         Place a dropship order with Silverbene.
         product_id = Silverbene option_id (NOT sku — orders use option_id).
         """
-        methods = self.get_shipping_methods(address.get("country_code", "US"))
+        use_option = option_id or product_id
+        methods = self.get_shipping_methods(
+            address.get("country_code", "US"),
+            option_id=use_option,
+            qty=quantity
+        )
         carrier_code = methods[0].get("carrier_code", "") if methods else ""
         method_code = methods[0].get("method_code", "") if methods else ""
 
@@ -302,7 +331,7 @@ class SilverbeneAdapter(SupplierAdapter):
             "_options": options,
         }
 
-    def _extract_variants(self, options: list) -> tuple:
+    def _extract_variants(self, options: list) -> tuple:  # noqa: C901
         """
         Extract sizes and colors from Silverbene option attributes.
         Returns (sizes_list, colors_list).
@@ -324,13 +353,15 @@ class SilverbeneAdapter(SupplierAdapter):
                     continue
 
                 if name in SIZE_ATTRIBUTE_NAMES:
+                    value = " ".join(value.split())  # normalize whitespace
                     if value not in seen_sizes:
                         seen_sizes.add(value)
                         sizes.append(value)
                 elif name in COLOR_ATTRIBUTE_NAMES:
-                    if value not in seen_colors:
-                        seen_colors.add(value)
-                        colors.append(value)
+                    display = _clean_color_value(value)
+                    if display and display not in seen_colors:
+                        seen_colors.add(display)
+                        colors.append(display)
 
         return sizes or None, colors or None
 
@@ -360,6 +391,20 @@ class SilverbeneAdapter(SupplierAdapter):
             return f"{base} (Gold Plated available)"
 
         return base
+
+
+def _clean_color_value(value: str) -> str:
+    """
+    Strip category-word prefixes Silverbene puts in Color attribute values.
+    e.g. "Anklet Silver" → "Silver", "Anklet" → "" (discard), "Gold" → "Gold"
+    """
+    lower = value.lower()
+    for prefix in _CATEGORY_PREFIXES:
+        if lower == prefix:
+            return ""
+        if lower.startswith(prefix + " "):
+            return value[len(prefix):].strip()
+    return value
 
 
 def collection_name_log(name: str) -> str:

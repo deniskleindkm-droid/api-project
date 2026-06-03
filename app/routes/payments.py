@@ -124,16 +124,41 @@ def process_order_background(checkout_data: dict):
 
         print(f"[Payments] Order details collected: {len(order_details)} items, total ${total:.2f}")
 
-        # Auto-forward to CJ Dropshipping
+        # Auto-forward to Silverbene
         try:
-            from app.agents.cj_dropshipping import place_order_on_cj
+            from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
             from app.agents.tracking_agent import create_tracking_entry
-            print(f"[Payments] Starting CJ forwarding for {len(order_details)} items")
+            silverbene = SilverbeneAdapter()
 
-            # Get customer name from email
-            customer_name = user_email.split("@")[0]
+            print(f"[Payments] Starting Silverbene forwarding for {len(order_details)} items")
 
-            # Get the saved orders to link tracking
+            customer_name_parts = user_email.split("@")[0].split(".")
+            customer_first = customer_name_parts[0].capitalize()
+            customer_last  = customer_name_parts[1].capitalize() if len(customer_name_parts) > 1 else "Customer"
+
+            # Parse shipping_address string into structured fields
+            # Expected format: "123 Street, City, State, ZIP, Country"
+            def _parse_address(addr_str: str) -> dict:
+                parts = [p.strip() for p in addr_str.split(",")]
+                return {
+                    "line1":        parts[0] if len(parts) > 0 else "",
+                    "city":         parts[1] if len(parts) > 1 else "",
+                    "state":        parts[2] if len(parts) > 2 else "",
+                    "state_code":   parts[2][:2].upper() if len(parts) > 2 else "",
+                    "postal_code":  parts[3].strip() if len(parts) > 3 else "",
+                    "country_code": parts[4].strip().upper() if len(parts) > 4 else "US",
+                }
+
+            address = _parse_address(shipping_address)
+
+            customer = {
+                "first_name": customer_first,
+                "last_name":  customer_last,
+                "email":      user_email,
+                "phone":      "",
+            }
+
+            # Get saved orders for tracking linkage
             with Session(engine) as session:
                 saved_orders = session.exec(
                     select(Order).where(
@@ -143,30 +168,40 @@ def process_order_background(checkout_data: dict):
                 ).all()
 
             for i, d in enumerate(order_details):
-                print(f"[Payments] Checking SKU for {d['name']}: {d.get('cj_sku')}")
-                if d.get("cj_sku"):
-                    cj_result = place_order_on_cj(
-                        cj_sku=d["cj_sku"],
-                        customer_name=customer_name,
-                        shipping_address=shipping_address,
-                        quantity=d["qty"]
-                    )
-                    print(f"[Payments] CJ order result: {cj_result}")
+                option_id = d.get("cj_sku")   # cj_sku stores Silverbene option_id
+                sku       = d.get("cj_product_id")
+                print(f"[Payments] Forwarding to Silverbene: {d['name']} | option_id={option_id}")
 
-                    # Create tracking entry if order placed successfully
-                    if cj_result.get("success") and saved_orders:
+                if option_id:
+                    result = silverbene.place_order(
+                        product_id=str(option_id),
+                        customer=customer,
+                        address=address,
+                        quantity=d["qty"],
+                        option_id=str(option_id),
+                    )
+                    print(f"[Payments] Silverbene order result: {result}")
+
+                    if result.get("success") and saved_orders:
                         order_id = saved_orders[i].id if i < len(saved_orders) else saved_orders[0].id
                         create_tracking_entry(
                             order_id=order_id,
-                            cj_order_id=cj_result.get("cj_order_id", ""),
+                            cj_order_id=result.get("supplier_order_id", ""),
                             customer_email=user_email,
-                            customer_name=customer_name,
-                            supplier_name="CJDropshipping"
+                            customer_name=f"{customer_first} {customer_last}",
+                            supplier_name="Silverbene"
                         )
+                        # Update order status in DB
+                        with Session(engine) as session:
+                            order_rec = session.get(Order, order_id)
+                            if order_rec:
+                                order_rec.status = "processing"
+                                session.add(order_rec)
+                                session.commit()
                 else:
-                    print(f"[Payments] No CJ SKU for: {d['name']} — manual fulfillment needed")
+                    print(f"[Payments] No option_id for {d['name']} — manual fulfillment needed")
         except Exception as e:
-            print(f"[Payments] CJ forwarding failed: {e}")
+            print(f"[Payments] Silverbene forwarding failed: {e}")
 
         # Build items HTML for emails
         items_html = "".join([
@@ -245,7 +280,7 @@ def process_order_background(checkout_data: dict):
     <hr style="border:none;border-top:1px solid #ece5dd;margin:24px 0;">
     <h3 style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#888;font-weight:400;margin-bottom:12px;">Shipping To</h3>
     <p style="color:#6b6b6b;font-size:14px;font-weight:300;line-height:1.8;">{shipping_address}</p>
-    <p style="color:#6b6b6b;font-size:13px;font-weight:300;margin-top:16px;">Estimated delivery: 15-20 business days</p>
+    <p style="color:#6b6b6b;font-size:13px;font-weight:300;margin-top:16px;">Estimated delivery: 8–10 business days via USPS</p>
 </div>
 <div style="text-align:center;padding:32px 0;">
     <p style="font-size:11px;color:#bbb;letter-spacing:1px;">Questions? Contact us at hello@mikisi.co</p>

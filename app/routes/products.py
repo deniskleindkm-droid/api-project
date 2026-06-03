@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlmodel import Session, select
-from app.models.product import Product, ProductCreate
+from app.models.product import Product, ProductCreate, ProductPublic
 from app.database import get_session
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -47,7 +47,7 @@ def update_hero(data: HeroUpdate):
 
     return {"status": "updated", "message": "Banner updated — refresh the storefront to see it live"}
 
-@router.get("/products")
+@router.get("/products", response_model=List[ProductPublic])
 def get_products(
     brand: Optional[str] = None,
     category: Optional[str] = None,
@@ -56,7 +56,7 @@ def get_products(
     session: Session = Depends(get_session)
 ):
     query = select(Product).where(Product.is_active == True)
-    
+
     if brand:
         query = query.where(Product.brand == brand)
     if category:
@@ -69,7 +69,7 @@ def get_products(
     products = session.exec(query).all()
     return products
 
-@router.get("/products/{product_id}")
+@router.get("/products/{product_id}", response_model=ProductPublic)
 def get_product(product_id: int, session: Session = Depends(get_session)):
     product = session.get(Product, product_id)
     if not product:

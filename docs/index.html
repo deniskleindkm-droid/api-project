@@ -743,13 +743,13 @@ footer{background:var(--black);padding:52px 48px 36px;}
     <span>925 Sterling Silver</span><span class="dot">✦</span>
     <span>Timeless Elegance</span><span class="dot">✦</span>
     <span>Curated for Her</span><span class="dot">✦</span>
-    <span>Free Express Shipping</span><span class="dot">✦</span>
+    <span>Est. Delivery 8–10 Days</span><span class="dot">✦</span>
     <span>Tanzanite · Rose Gold · Silver</span><span class="dot">✦</span>
     <span>New Arrivals</span><span class="dot">✦</span>
     <span>925 Sterling Silver</span><span class="dot">✦</span>
     <span>Timeless Elegance</span><span class="dot">✦</span>
     <span>Curated for Her</span><span class="dot">✦</span>
-    <span>Free Express Shipping</span><span class="dot">✦</span>
+    <span>Est. Delivery 8–10 Days</span><span class="dot">✦</span>
     <span>Tanzanite · Rose Gold · Silver</span><span class="dot">✦</span>
     <span>New Arrivals</span><span class="dot">✦</span>
   </div>
@@ -758,7 +758,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
 <!-- TRUST -->
 <div class="trust-bar">
   <div class="trust-item"><span>✦</span>925 Sterling Silver</div>
-  <div class="trust-item"><span>⇉</span>Free Express Shipping</div>
+  <div class="trust-item"><span>⇉</span>Est. Delivery 8–10 Days</div>
   <div class="trust-item"><span>↺</span>30-Day Returns</div>
   <div class="trust-item"><span>◇</span>Authenticity Guaranteed</div>
   <div class="trust-item"><span>❋</span>Lifetime Care</div>
@@ -951,12 +951,12 @@ footer{background:var(--black);padding:52px 48px 36px;}
         </select>
       </div>
 
-      <!-- Shipping — always Fast Track, no choice needed -->
+      <!-- Shipping — included in price, USPS 8-10 days -->
       <div style="margin-bottom:16px;padding:13px 14px;background:var(--ivory);border:1px solid var(--border);display:flex;align-items:center;gap:10px;">
-        <span style="color:var(--gold);font-size:14px;">⚡</span>
+        <span style="color:var(--gold);font-size:14px;">⇉</span>
         <div>
-          <div style="font-size:12px;font-weight:500;color:var(--black);">Free Express Shipping &nbsp;·&nbsp; <span style="color:var(--gold)">5–8 days</span></div>
-          <div style="font-size:10px;color:var(--mid);margin-top:2px;">Fast Track · priority dispatch · fully tracked</div>
+          <div style="font-size:12px;font-weight:500;color:var(--black);">Shipping included &nbsp;·&nbsp; <span style="color:var(--gold)">8–10 business days</span></div>
+          <div style="font-size:10px;color:var(--mid);margin-top:2px;">USPS · fully tracked · customs duty included</div>
         </div>
       </div>
 
@@ -1003,7 +1003,6 @@ let cartItems = [];
 let ppSelectedSize = null;
 let ppSelectedColor = null;
 let ppOpening = false; // guard — prevents double-click opening two panels
-let shippingTiers = []; // loaded once on init, shown on every product
 let wishlist = JSON.parse(localStorage.getItem('mk_wishlist')||'[]');
 
 // ── HELPERS ──
@@ -1023,7 +1022,7 @@ window.onload = async()=>{
   updateAuthUI();
   startTimer();
   loadHero();
-  await Promise.all([loadCollections(),loadProducts(),loadShippingOptions()]);
+  await Promise.all([loadCollections(),loadProducts()]);
   if(token)loadCart();
   const p = new URLSearchParams(window.location.search);
   if(p.get('payment')==='success'){
@@ -1152,12 +1151,6 @@ function renderCollectionProducts(prods){
 }
 
 // ── PRODUCTS ──
-async function loadShippingOptions(){
-  try{
-    const res=await fetch(`${API}/shipping-options`);
-    if(res.ok){const d=await res.json();shippingTiers=d.tiers||[];}
-  }catch{}
-}
 
 async function loadProducts(){
   try{
@@ -1358,13 +1351,8 @@ async function openPP(id){
       : '✓ In Stock';
   const stockColor = (!p.stock||p.stock===0)?'var(--mid)':p.stock<=10?'var(--pink)':'#22c55e';
 
-  // Shipping tiers — "Delivery 5-8 days · Fast Track" format
-  const shippingMeta = shippingTiers.length
-    ? shippingTiers.map(t=>`<div class="pp-meta-item">⇉ Delivery ${t.days} days &nbsp;·&nbsp; ${t.label}</div>`).join('')
-    : `<div class="pp-meta-item">⇉ Delivery ${(p.shipping_days||12)}–${(p.shipping_days||12)+5} days</div>`;
-
   document.getElementById('pp-meta').innerHTML=`
-    ${shippingMeta}
+    <div class="pp-meta-item">⇉ Ships via USPS &nbsp;·&nbsp; 8–10 business days</div>
     <div class="pp-meta-item">◇ ${matLabel||'Fine Sterling Silver'}</div>
     <div class="pp-meta-item" style="color:${stockColor};border-color:${stockColor}20">${stockLabel}</div>`;
 
@@ -1513,7 +1501,7 @@ function openCheckout(){
 function closeCheckout(){document.getElementById('checkout-modal').classList.remove('open');}
 
 function selectShipping(method, el){
-  // Reset both options
+  // No-op — shipping is fixed (USPS, built into product price)
   ['fast','usps'].forEach(k=>{
     const opt = document.getElementById(`ship-opt-${k}`);
     const dot = document.getElementById(`ship-dot-${k}`);

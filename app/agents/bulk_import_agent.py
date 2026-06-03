@@ -10,6 +10,22 @@ from app.agents.store_config import get_config
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
+# Categories where a ring with no size variants should show "One Size / Adjustable"
+_RING_LIKE_CATEGORIES = {"Rings", "Bracelets", "Anklets"}
+
+
+def _resolve_sizes(sizes_json: str, category: str) -> str:
+    """
+    Return sizes as-is if present.
+    For ring-like categories with no size data, default to One Size / Adjustable
+    so customers always see a size indicator on the product page.
+    """
+    if sizes_json:
+        return sizes_json
+    if category in _RING_LIKE_CATEGORIES:
+        return json.dumps(["One Size / Adjustable"])
+    return None
+
 
 # ============================================================
 # COLLECTION SEARCH STRATEGIES
@@ -123,8 +139,9 @@ def batch_rewrite_products(products: list, collection_name: str, collection_id: 
     brand_voice = get_config("brand_voice", default="Mikisi is elegant, empowering, intimate.")
 
     # Include actual material and raw name so ARIA works with real data
+    # Truncate names to 80 chars to keep prompt within token budget
     product_list = "\n".join([
-        f"{i+1}. Raw name: {p.get('name', '')[:120]} | Material: {p.get('material', 'not specified')} | Colors available: {p.get('colors', 'not specified')} | Collection: {collection_name}"
+        f"{i+1}. Raw name: {p.get('name', '')[:80]} | Material: {p.get('material', 'not specified')} | Colors available: {p.get('colors', 'not specified')} | Collection: {collection_name}"
         for i, p in enumerate(products)
     ])
 
@@ -166,19 +183,36 @@ Return ONLY valid JSON array. No other text."""
     try:
         message = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=2000,
+            max_tokens=4096,
             messages=[{"role": "user", "content": prompt}]
         )
 
-        text = message.content[0].text.strip()
+        if not message.content or message.content[0] is None:
+            raise ValueError("Empty API response")
+
+        text = message.content[0].text
+        if not text:
+            raise ValueError("No text in API response")
+        text = text.strip()
+
+        # Strip markdown code fences if present
         if text.startswith("```"):
             parts = text.split("```")
             if len(parts) >= 2:
                 text = parts[1]
-                if text.startswith("json"):
+                if text.lower().startswith("json"):
                     text = text[4:]
+        text = text.strip()
 
-        results = json.loads(text.strip())
+        # Find JSON array boundaries in case there's stray text
+        start = text.find("[")
+        end = text.rfind("]")
+        if start != -1 and end != -1:
+            text = text[start:end + 1]
+
+        results = json.loads(text)
+        if not isinstance(results, list):
+            raise ValueError(f"Expected JSON array, got {type(results)}")
 
         # Collection name → ID lookup for ARIA's corrections
         _collection_map = {
@@ -196,19 +230,28 @@ Return ONLY valid JSON array. No other text."""
         for i, result in enumerate(results):
             if i >= len(products):
                 break
+            if not isinstance(result, dict):
+                # null or unexpected — fall back to raw for this item
+                product = products[i].copy()
+                product["mikisi_name"] = product.get("name", "")[:100]
+                product["mikisi_description"] = ""
+                product["accepted"] = True
+                rewritten.append(product)
+                continue
+
             product = products[i].copy()
-            product["mikisi_name"] = result.get("mikisi_name", product.get("name", ""))[:100]
+            product["mikisi_name"] = (result.get("mikisi_name") or product.get("name", ""))[:100]
             product["mikisi_description"] = result.get("mikisi_description", "")
             product["material"] = result.get("mikisi_material") or product.get("material", "")
 
             # If ARIA identified a different collection, look up its ID
-            aria_collection = result.get("correct_collection", "").strip()
+            aria_collection = (result.get("correct_collection") or "").strip()
             if aria_collection and aria_collection != collection_name and aria_collection in _collection_map:
                 from app.agents.store_config import get_config as _gc
-                corrected_id = int(_gc(_collection_map[aria_collection], default="0"))
+                corrected_id = int(_gc(_collection_map[aria_collection], default="0") or 0)
                 if corrected_id:
                     product["_corrected_collection_id"] = corrected_id
-                    print(f"[Bulk Import] 🔀 ARIA corrected '{product['mikisi_name'][:40]}' → {aria_collection} (ID {corrected_id})")
+                    print(f"[Bulk Import] ARIA corrected '{product['mikisi_name'][:40]}' -> {aria_collection} (ID {corrected_id})")
 
             product["accepted"] = True
             rewritten.append(product)
@@ -216,7 +259,9 @@ Return ONLY valid JSON array. No other text."""
         return rewritten
 
     except Exception as e:
+        import traceback
         print(f"[Bulk Import] Batch rewrite error: {e}")
+        traceback.print_exc()
         # On error — preserve products with raw names, don't lose them
         return [{**p, "mikisi_name": p.get("name", "")[:100],
                  "mikisi_description": "", "accepted": True} for p in products]
@@ -234,9 +279,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
     from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
     from app.agents.store_config import get_config
     silverbene = SilverbeneAdapter()
-    from app.agents.jewelry_scoring import score_jewelry_product
-    from app.agents.jewelry_pricing import calculate_jewelry_price
-    from app.agents.shipping_agent import get_best_shipping
+    from app.agents.jewelry_pricing import calculate_mikisi_price, detect_material
     from app.agents.variant_normalizer import normalize_variants
     from app.agents.store_manager import add_product_to_store
     import json as _json
@@ -353,20 +396,21 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
     imported = 0
     for product in rewrite_ready:
         try:
-            score = product["_score"]
             raw_variants = product.get("raw_variants_list", [])
+            cost_price = float(product["cost_price"])
 
-            # Shipping — Silverbene uses fallback (no per-variant API call needed)
-            shipping = get_best_shipping("Silverbene", "", destination="US")
-            shipping_cost = shipping["cost"]
-            shipping_days = shipping["days_max"]
+            # Detect material from raw options + name for accurate pricing
+            material_key = detect_material(
+                product.get("name", ""),
+                product.get("_options", raw_variants)
+            )
 
             # Pricing
-            pricing = calculate_jewelry_price(
-                {**product, "supplier_name": "Silverbene"},
-                score,
-                shipping_cost=shipping_cost
-            )
+            pricing = calculate_mikisi_price(cost_price, material_key)
+
+            # Flags
+            is_premium    = material_key == "moissanite"
+            needs_review  = cost_price > 40
 
             # SKU — Silverbene options have option_id, not variantSku
             cj_sku = ""
@@ -385,23 +429,30 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 "image_url": product["image_url"],
                 "images": _json.dumps(product["images"]) if len(product.get("images", [])) > 1 else None,
                 "stock": product.get("stock", 999),
-                "shipping_days": shipping_days,
+                "shipping_days": 14,
                 "supplier_name": "Silverbene",
                 "supplier_url": "",
                 "cj_product_id": product["supplier_product_id"],
                 "cj_sku": cj_sku,
                 "collection_id": product.get("_corrected_collection_id", collection_id),
                 "variants": _json.dumps(raw_variants) if raw_variants else None,
-                # Silverbene-specific fields — read directly by the storefront
-                "material": product.get("material") or product.get("_score", {}).get("detected_metal", "") or "",
-                "sizes": product.get("sizes"),
+                # Silverbene display fields
+                "material": product.get("material") or "",
+                "sizes": _resolve_sizes(product.get("sizes"), product.get("category", "")),
                 "colors": product.get("colors"),
+                # Pricing internals
+                "silverbene_cost": cost_price,
+                "markup_used":     pricing["markup_used"],
+                "shipping_cost":   pricing["shipping_cost"],
+                # Flags
+                "is_premium":   is_premium,
+                "needs_review": needs_review,
             }
 
             p_obj, status = add_product_to_store(product_data)
-            if status == "added":
+            if status in ("added", "price_updated"):
                 imported += 1
-                signal_type = "PRODUCT_NEEDS_REVIEW" if product.get("_needs_review") else "PRODUCT_IMPORTED"
+                signal_type = "PRODUCT_NEEDS_REVIEW" if needs_review else "PRODUCT_IMPORTED"
                 try:
                     from app.agents.nervous_system import emit
                     emit(
@@ -412,11 +463,11 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                             "name": product["mikisi_name"],
                             "collection_id": collection_id,
                             "store_price": pricing["final_price"],
-                            "cost_price": product["cost_price"],
-                            "quality_tier": score["quality_tier"],
+                            "cost_price": cost_price,
+                            "material": material_key,
                             "supplier": "Silverbene",
                         },
-                        priority=5 if product.get("_needs_review") else 7
+                        priority=5 if needs_review else 7
                     )
                 except Exception as e:
                     print(f"[Bulk Import] Signal error: {e}")

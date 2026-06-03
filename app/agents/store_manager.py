@@ -54,7 +54,10 @@ def save_memory(content, memory_type, confidence):
 def add_product_to_store(product_data):
     """
     Save a product to the store from internal product_data dict.
-    Used by CJ and other agents that already have Mikisi-formatted data.
+    Used by bulk import and other agents that already have Mikisi-formatted data.
+
+    If the product already exists by supplier SKU and cost changed >5%,
+    pricing is recalculated and the record is updated instead.
     """
     with Session(engine) as session:
         cj_pid = product_data.get("cj_product_id")
@@ -63,6 +66,26 @@ def add_product_to_store(product_data):
                 select(Product).where(Product.cj_product_id == cj_pid)
             ).first()
             if existing:
+                # Cost-change resync
+                new_cost = product_data.get("silverbene_cost")
+                old_cost = existing.silverbene_cost
+                if new_cost and old_cost and abs(new_cost - old_cost) / old_cost > 0.05:
+                    from app.agents.jewelry_pricing import calculate_mikisi_price, detect_material
+                    material_key = detect_material(existing.name, [])
+                    pricing = calculate_mikisi_price(new_cost, material_key)
+                    existing.silverbene_cost  = new_cost
+                    existing.final_price      = pricing["final_price"]
+                    existing.original_price   = pricing["original_price"]
+                    existing.shipping_cost    = pricing["shipping_cost"]
+                    existing.markup_used      = pricing["markup_used"]
+                    existing.last_price_sync  = datetime.utcnow()
+                    session.add(existing)
+                    session.commit()
+                    session.refresh(existing)
+                    print(f"[Store Manager] 💰 Price resynced for {existing.name}: "
+                          f"${old_cost:.2f} → ${new_cost:.2f} cost, "
+                          f"new price ${pricing['final_price']}")
+                    return existing, "price_updated"
                 return None, "already_exists"
 
         existing = session.exec(
@@ -96,7 +119,13 @@ def add_product_to_store(product_data):
             material=product_data.get("material") or None,
             sizes=product_data.get("sizes") or None,
             colors=product_data.get("colors") or None,
-            is_active=True
+            silverbene_cost=product_data.get("silverbene_cost"),
+            markup_used=product_data.get("markup_used"),
+            shipping_cost=product_data.get("shipping_cost"),
+            last_price_sync=datetime.utcnow(),
+            is_premium=product_data.get("is_premium", False),
+            needs_review=product_data.get("needs_review", False),
+            is_active=not product_data.get("needs_review", False),
         )
         session.add(product)
         session.commit()

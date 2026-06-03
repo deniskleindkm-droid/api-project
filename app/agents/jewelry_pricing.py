@@ -1,141 +1,112 @@
 """
-Jewelry pricing engine.
-All multipliers read from StoreConfig — nothing hardcoded.
-Formula: raw = cost × base × quality_adj × supplier_adj × score_bonus
-final = raw + shipping + packaging, floored, ceilinged, rounded to .99
+Mikisi pricing engine for Silverbene products.
+Formula: (cost × markup + SHIPPING_USA + stripe_absorb) → rounded elegantly
 """
+import math
 
-from app.agents.store_config import get_config
+SHIPPING_USA = 18.00
+STRIPE_RATE  = 0.029
+STRIPE_FIXED = 0.30
 
-
-def _detect_category(name: str) -> tuple:
-    """Returns (config_key, category_label)."""
-    n = name.lower()
-    if any(w in n for w in ["ring", "band", "solitaire", "knuckle"]):
-        return "pricing_multiplier_rings", "rings"
-    if any(w in n for w in ["necklace", "pendant", "chain", "choker", "lariat"]):
-        return "pricing_multiplier_necklaces", "necklaces"
-    if any(w in n for w in ["bracelet", "bangle", "cuff"]):
-        return "pricing_multiplier_bracelets", "bracelets"
-    if any(w in n for w in ["earring", "stud", "hoop", "drop", "ear cuff", "huggie", "threader"]):
-        return "pricing_multiplier_earrings", "earrings"
-    if any(w in n for w in ["anklet", "ankle"]):
-        return "pricing_multiplier_anklets", "anklets"
-    if any(w in n for w in ["piercing", "nose", "cartilage", "belly button", "navel", "septum", "body jewelry"]):
-        return "pricing_multiplier_piercings", "piercings"
-    return "pricing_multiplier_necklaces", "unknown"
-
-
-_METAL_ADJ_MAP = {
-    "moissanite":      "pricing_adj_moissanite",
-    "diamond":         "pricing_adj_moissanite",
-    "natural_gemstone":"pricing_adj_natural_gemstone",
-    "aaa_zircon":      "pricing_adj_925_silver",
-    "925_silver":      "pricing_adj_925_silver",
-    "18k_gold":        "pricing_adj_18k_gold",
-    "14k_gold":        "pricing_adj_18k_gold",
-    "gold_filled":     "pricing_adj_18k_gold",
-    "pvd_plated":      "pricing_adj_pvd_plating",
-    "gold_plated":     "pricing_adj_gold_plated",
-    "silver_plated":   "pricing_adj_gold_plated",
-    "stainless_steel": "pricing_adj_gold_plated",
-    "surgical_steel":  "pricing_adj_gold_plated",
-    "titanium":        "pricing_adj_gold_plated",
-    "unknown":         "pricing_adj_unknown_metal",
+MATERIAL_MARKUP = {
+    "silver":         4.5,
+    "rhodium":        4.5,
+    "gold":           4.5,
+    "rose_gold":      4.5,
+    "white_gold":     4.5,
+    "cubic_zirconia": 4.5,
+    "pearl":          4.8,
+    "semi_precious":  5.0,
+    "moissanite":     5.5,
 }
 
-_STONE_BOOST = {
-    "moissanite":      "pricing_adj_moissanite",
-    "diamond":         "pricing_adj_moissanite",
-    "natural_gemstone":"pricing_adj_natural_gemstone",
-}
-
-_SUPPLIER_MAP = {
-    "silverbene":     "pricing_supplier_silverbene",
-    "nihaojewelry":   "pricing_supplier_nihaojewelry",
-    "nihao":          "pricing_supplier_nihaojewelry",
-    "cjdropshipping": "pricing_supplier_cj",
-    "cj":             "pricing_supplier_cj",
+# Checked in priority order — moissanite first so it wins over silver keywords
+MATERIAL_KEYWORDS = {
+    "moissanite":     ["moissanite", "d color", "vvs"],
+    "pearl":          ["pearl", "freshwater", "cultured"],
+    "semi_precious":  ["turquoise", "sapphire", "ruby", "emerald",
+                       "amethyst", "topaz", "opal", "garnet"],
+    "cubic_zirconia": ["cz", "cubic zirconia", "zircon", "crystal"],
+    "rose_gold":      ["rose gold"],
+    "white_gold":     ["white gold"],
+    "gold":           ["gold plat", "18k gold", "14k gold", "yellow gold"],
+    "rhodium":        ["rhodium"],
+    "silver":         ["silver", "sterling", "925"],
 }
 
 
-def calculate_jewelry_price(product: dict, score: dict, shipping_cost: float = 0.0) -> dict:
+def detect_material(name: str, options: list = None) -> str:
     """
-    Calculate final store price from cost price + score + shipping.
-    Returns full pricing breakdown dict.
+    Detect material key from product name and Silverbene option attributes.
+    Options checked first, then name. Returns a key from MATERIAL_MARKUP.
     """
-    name = product.get("name", "")
-    cost_price = float(product.get("cost_price", 0))
-    supplier = product.get("supplier_name", "cj").lower()
-    quality_tier = score.get("quality_tier", "fashion")
-    detected_metal = score.get("detected_metal") or "unknown"
-    detected_stone = score.get("detected_stone")
-    score_val = int(score.get("score", 0))
+    option_texts = []
+    if options:
+        for opt in options:
+            if isinstance(opt, dict):
+                for attr in opt.get("attribute", []):
+                    v = attr.get("value", "")
+                    if v:
+                        option_texts.append(v.lower())
+            elif isinstance(opt, str):
+                option_texts.append(opt.lower())
 
-    # Base multiplier
-    mkey, category_label = _detect_category(name)
-    base = float(get_config(mkey, default=7.0))
+    option_str = " ".join(option_texts)
+    name_lower = (name or "").lower()
 
-    # Quality adjustment from metal
-    adj_key = _METAL_ADJ_MAP.get(detected_metal, "pricing_adj_unknown_metal")
-    quality_adj = float(get_config(adj_key, default=1.0))
+    for mat, keywords in MATERIAL_KEYWORDS.items():
+        for kw in keywords:
+            if option_str and kw in option_str:
+                return mat
 
-    # Stone boost (take max of metal adj and stone adj)
-    if detected_stone and detected_stone in _STONE_BOOST:
-        stone_adj = float(get_config(_STONE_BOOST[detected_stone], default=1.0))
-        quality_adj = max(quality_adj, stone_adj)
+    for mat, keywords in MATERIAL_KEYWORDS.items():
+        for kw in keywords:
+            if kw in name_lower:
+                return mat
 
-    # Supplier adjustment
-    supplier_key = next(
-        (v for k, v in _SUPPLIER_MAP.items() if k in supplier),
-        "pricing_supplier_cj"
-    )
-    supplier_adj = float(get_config(supplier_key, default=1.0))
+    return "silver"
 
-    # Score bonus
-    if score_val >= 90:
-        score_bonus = 1.15
-    elif score_val >= 70:
-        score_bonus = 1.05
+
+def round_to_elegant(price: float) -> float:
+    """
+    under $25  → nearest dollar - $0.01  (e.g. $19.99)
+    $25–$99    → round up to nearest $5, then -1  (e.g. $49, $79)
+    $100+      → round up to nearest $10, then -1  (e.g. $109, $199)
+    """
+    if price < 25:
+        return float(round(price)) - 0.01
+    elif price < 100:
+        return float(math.ceil(price / 5) * 5 - 1)
     else:
-        score_bonus = 1.0
+        return float(math.ceil(price / 10) * 10 - 1)
 
-    # Packaging from tier
-    if quality_tier in ("luxury", "ultra_luxury"):
-        packaging = float(get_config("packaging_cost_premium", default=3.0))
+
+def calculate_mikisi_price(silverbene_cost: float, material: str,
+                           discount_percent: float = 0.0) -> dict:
+    """
+    Calculate final Mikisi price from Silverbene wholesale cost and material key.
+    Absorbs Stripe fees so margin stays clean.
+
+    discount_percent: optional sale discount — when > 0, original_price is set
+    higher so the displayed price becomes the discounted one.
+    Returns a full pricing breakdown dict.
+    """
+    markup = MATERIAL_MARKUP.get(material, 4.5)
+    base = silverbene_cost * markup
+    with_shipping = base + SHIPPING_USA
+    with_stripe = (with_shipping + STRIPE_FIXED) / (1 - STRIPE_RATE)
+    final_price = round_to_elegant(with_stripe)
+
+    if discount_percent > 0:
+        original_price = round_to_elegant(final_price / (1 - discount_percent / 100))
     else:
-        packaging = float(get_config("packaging_cost_standard", default=1.5))
-
-    # Raw calculation
-    raw_price = cost_price * base * quality_adj * supplier_adj * score_bonus
-    pre_final = raw_price + shipping_cost + packaging
-
-    # Floor
-    floor = float(get_config("pricing_floor", default=10.99))
-    pre_final = max(floor, pre_final)
-
-    # Ceiling by tier
-    ceiling_key = f"pricing_ceiling_{quality_tier}"
-    ceiling = float(get_config(ceiling_key, default=80.0))
-    pre_final = min(pre_final, ceiling)
-
-    # Round to .99
-    final_price = round(pre_final - 0.01, 0) + 0.99
-    original_price = round(final_price * 1.35 - 0.01, 0) + 0.99
-    discount_percent = round((1 - final_price / original_price) * 100)
+        original_price = final_price
 
     return {
-        "final_price": final_price,
-        "original_price": original_price,
+        "final_price":      final_price,
+        "original_price":   original_price,
         "discount_percent": discount_percent,
-        "cost_price": cost_price,
-        "shipping_cost": shipping_cost,
-        "packaging_cost": packaging,
-        "raw_price": round(raw_price, 2),
-        "category_detected": category_label,
-        "base_multiplier": base,
-        "quality_adj": quality_adj,
-        "supplier_adj": supplier_adj,
-        "score_bonus": score_bonus,
-        "quality_tier": quality_tier,
+        "shipping_cost":    SHIPPING_USA,
+        "markup_used":      markup,
+        "material":         material,
     }
