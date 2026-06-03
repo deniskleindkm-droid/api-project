@@ -762,33 +762,12 @@ def silverbene_ping():
             "is_really_stock": 1,
         }
         r = requests.get(url, params=params, timeout=30)
-        raw_text = r.text[:2000]
-        try:
-            resp = r.json()
-        except Exception as je:
-            return {
-                "token_set": bool(token),
-                "http_status": r.status_code,
-                "json_error": str(je),
-                "raw_response": raw_text,
-            }
-        data = resp.get("data", {})
-        items = data.get("data", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+        raw_text = r.text[:1000]
         return {
             "token_set": bool(token),
             "token_preview": token[:8] + "..." if token else "EMPTY",
             "http_status": r.status_code,
-            "api_code": resp.get("code"),
-            "api_message": resp.get("message"),
-            "data_type": type(data).__name__,
-            "products_returned": len(items),
-            "raw_response_preview": raw_text[:500],
-            "first_product": {
-                "title": items[0].get("title", "")[:60],
-                "sku": items[0].get("sku"),
-                "gallery_count": len(items[0].get("gallery", [])),
-                "options_count": len(items[0].get("option", [])),
-            } if items else None
+            "raw_response": raw_text,
         }
     except Exception as e:
         return {
