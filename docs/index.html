@@ -1215,13 +1215,11 @@ async function openPP(id){
   }else document.getElementById('pp-stock-wrap').style.display='none';
 
   // ── Color / Metal Finish chips ──
-  // Pull from product data — whatever Silverbene sends
-  const colorsRaw = p.colors||p.color_options||p.variants||[];
+  // Use p.colors (Silverbene structured field) — never fall back to variants (different format)
   let colors=[];
-  try{colors=typeof colorsRaw==='string'?JSON.parse(colorsRaw):Array.isArray(colorsRaw)?colorsRaw:[];}catch{colors=[];}
-  // Filter to only color/metal variants
+  try{colors=p.colors?JSON.parse(p.colors):[];}catch{colors=[];}
   const colorKeys = Object.keys(COLOR_LABEL);
-  const colorChips = colors.filter(c=>colorKeys.includes(c.toLowerCase().trim()));
+  const colorChips = colors.filter(c=>typeof c==='string'&&colorKeys.includes(c.toLowerCase().trim()));
   if(colorChips.length){
     document.getElementById('pp-colors-wrap').style.display='block';
     document.getElementById('pp-color-chips').innerHTML=colorChips.map((c,i)=>`<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${COLOR_LABEL[c.toLowerCase().trim()]||c}</button>`).join('');
