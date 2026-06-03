@@ -10,6 +10,7 @@ class Order(SQLModel, table=True):
     total_price: float
     status: str = "pending"
     shipping_address: str = ""
+    shipping_method: Optional[str] = None   # "fast_track" or "usps"
     tracking_number: Optional[str] = None
     supplier_notified: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)

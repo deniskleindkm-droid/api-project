@@ -37,6 +37,7 @@ def create_db():
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS colors varchar(500)"))
         conn.execute(text("ALTER TABLE cartitem ADD COLUMN IF NOT EXISTS selected_size varchar(100)"))
         conn.execute(text("ALTER TABLE cartitem ADD COLUMN IF NOT EXISTS selected_color varchar(100)"))
+        conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS shipping_method varchar(50)'))
         conn.commit()
 
     _setup_defaults()
@@ -232,17 +233,13 @@ def _register_default_configs():
     set_config("shipping_target_country", "US", "Default shipping destination")
     set_config("shipping_max_days", "12", "Maximum acceptable shipping days")
     set_config("shipping_fallback_cost", "4.50", "Fallback shipping cost when API unavailable")
-    # Shipping tiers — shown on every product panel
-    set_config("shipping_express_label", "Express", "Express shipping display name")
-    set_config("shipping_express_days", "5-8", "Express shipping days range eg. 5-8")
-    set_config("shipping_express_carrier", "DHL Express", "Express carrier name")
-    set_config("shipping_standard_label", "Standard", "Standard shipping display name")
-    set_config("shipping_standard_days", "12-18", "Standard shipping days range eg. 12-18")
-    set_config("shipping_standard_carrier", "ePacket / USPS", "Standard carrier name")
-    set_config("shipping_economy_label", "Economy", "Economy shipping display name")
-    set_config("shipping_economy_days", "20-35", "Economy shipping days range eg. 20-35")
-    set_config("shipping_economy_carrier", "China Post", "Economy carrier name")
-    set_config("shipping_free_threshold", "0", "Order value above which shipping is free (0=never)")
+    # Shipping tiers — two options shown on product panel and chosen at checkout
+    set_config("shipping_express_label", "Fast Track", "Fast shipping display name")
+    set_config("shipping_express_days", "5-8", "Fast Track shipping days range")
+    set_config("shipping_express_carrier", "Fast Track", "Fast carrier name")
+    set_config("shipping_standard_label", "USPS", "Standard shipping display name")
+    set_config("shipping_standard_days", "12-18", "USPS shipping days range")
+    set_config("shipping_standard_carrier", "USPS", "Standard carrier name")
 
     # ── Packaging ─────────────────────────────────────────────
     set_config("packaging_cost_standard", "1.50", "Packaging cost for fashion/premium tier")

@@ -17,6 +17,7 @@ router = APIRouter()
 
 class CheckoutRequest(BaseModel):
     shipping_address: str
+    shipping_method: str = "usps"  # "fast_track" or "usps"
 
 @router.post("/payments/create-checkout")
 def create_checkout_session(
@@ -64,7 +65,8 @@ def create_checkout_session(
         customer_email=user_email,
         metadata={
             "user_email": user_email,
-            "shipping_address": request.shipping_address
+            "shipping_address": request.shipping_address,
+            "shipping_method": request.shipping_method,
         }
     )
 
@@ -75,6 +77,7 @@ def process_order_background(checkout_data: dict):
     try:
         user_email = checkout_data["metadata"]["user_email"]
         shipping_address = checkout_data["metadata"]["shipping_address"]
+        shipping_method = checkout_data["metadata"].get("shipping_method", "usps")
 
         order_details = []
         total = 0
@@ -109,7 +112,8 @@ def process_order_background(checkout_data: dict):
                         quantity=item.quantity,
                         total_price=subtotal,
                         status="paid",
-                        shipping_address=shipping_address
+                        shipping_address=shipping_address,
+                        shipping_method=shipping_method,
                     )
                     product.stock -= item.quantity
                     session.add(order)

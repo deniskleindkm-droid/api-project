@@ -934,6 +934,28 @@ footer{background:var(--black);padding:52px 48px 36px;}
           <option value="GH">Ghana</option><option value="other">Other</option>
         </select>
       </div>
+
+      <!-- Shipping method selection -->
+      <div class="m-group">
+        <label>Shipping Method</label>
+        <div id="co-shipping-opts" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+          <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);cursor:pointer;transition:border-color 0.2s;" id="ship-opt-fast">
+            <input type="radio" name="shipping_method" value="fast_track" style="accent-color:var(--pink)"/>
+            <div>
+              <div style="font-size:12px;font-weight:500;color:var(--black)">Fast Track <span style="font-size:10px;color:var(--gold);margin-left:6px">5–8 days</span></div>
+              <div style="font-size:10px;color:var(--mid);margin-top:2px">Priority dispatch · tracked</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);cursor:pointer;transition:border-color 0.2s;" id="ship-opt-usps">
+            <input type="radio" name="shipping_method" value="usps" checked style="accent-color:var(--pink)"/>
+            <div>
+              <div style="font-size:12px;font-weight:500;color:var(--black)">USPS <span style="font-size:10px;color:var(--mid);margin-left:6px">12–18 days</span></div>
+              <div style="font-size:10px;color:var(--mid);margin-top:2px">Standard delivery · tracked</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
       <button class="m-btn pink" onclick="placeOrder()" id="pay-btn">Pay Securely</button>
       <div class="cart-trust" style="margin-top:8px">✦ 256-bit SSL · Powered by Stripe</div>
     </div>
@@ -1487,9 +1509,10 @@ async function placeOrder(){
   const country=document.getElementById('co-country').value;
   if(!street||!city||!state||!zip){showCoMsg('Please complete all address fields','error');return;}
   const address=`${street}, ${city}, ${state} ${zip}, ${country}`;
+  const shippingMethod=document.querySelector('input[name="shipping_method"]:checked')?.value||'usps';
   const btn=document.getElementById('pay-btn');btn.textContent='Redirecting…';btn.disabled=true;
   try{
-    const res=await fetch(`${API}/payments/create-checkout`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({shipping_address:address})});
+    const res=await fetch(`${API}/payments/create-checkout`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({shipping_address:address,shipping_method:shippingMethod})});
     const data=await res.json();
     if(res.ok)window.location.href=data.checkout_url;
     else{showCoMsg(data.detail||'Something went wrong','error');btn.textContent='Pay Securely';btn.disabled=false;}
