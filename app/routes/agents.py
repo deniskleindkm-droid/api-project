@@ -748,38 +748,45 @@ def test_supplier():
 
 @router.get("/silverbene/ping")
 def silverbene_ping():
-    """Step 1: Can we reach Silverbene API and get raw products?"""
-    import traceback
+    """Diagnose Silverbene API connection — shows token status and raw response."""
+    import traceback, os, requests
+    token = os.getenv("SILVERBENE_API_KEY", "")
     try:
-        from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
-        sb = SilverbeneAdapter()
-        # Single keyword, single 2-month window, limit 3
         from datetime import datetime, timedelta
         end = datetime.utcnow()
         start = end - timedelta(days=60)
-        start_str = f"{start.year}-{start.month}"
-        end_str = f"{end.year}-{end.month}"
-        resp = sb._get("/api/dropshipping/product_list_by_date", {
-            "start_date": start_str,
-            "end_date": end_str,
+        url = "https://s.silverbene.com/api/dropshipping/product_list_by_date"
+        params = {
+            "token": token,
+            "start_date": f"{start.year}-{start.month}",
+            "end_date": f"{end.year}-{end.month}",
             "keywords": "ring",
             "is_really_stock": 1,
-        })
-        items = resp.get("data", {}).get("data", [])
+        }
+        r = requests.get(url, params=params, timeout=30)
+        resp = r.json()
+        items = resp.get("data", {}).get("data", []) if isinstance(resp.get("data"), dict) else []
         return {
+            "token_set": bool(token),
+            "token_preview": token[:8] + "..." if token else "EMPTY",
+            "http_status": r.status_code,
             "api_code": resp.get("code"),
             "api_message": resp.get("message"),
             "products_returned": len(items),
-            "first_product_keys": list(items[0].keys()) if items else [],
-            "first_product_sample": {
-                "title": items[0].get("title", "")[:60] if items else None,
-                "sku": items[0].get("sku") if items else None,
-                "gallery_count": len(items[0].get("gallery", [])) if items else None,
-                "options": items[0].get("option", [])[:2] if items else None,
-            }
+            "first_product": {
+                "title": items[0].get("title", "")[:60],
+                "sku": items[0].get("sku"),
+                "gallery_count": len(items[0].get("gallery", [])),
+                "options_count": len(items[0].get("option", [])),
+            } if items else None
         }
     except Exception as e:
-        return {"error": str(e), "traceback": traceback.format_exc()}
+        return {
+            "token_set": bool(token),
+            "token_preview": token[:8] + "..." if token else "EMPTY",
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
 
 @router.get("/silverbene/score-test")
 def silverbene_score_test():
