@@ -12,6 +12,10 @@ router = APIRouter()
 class CartRequest(BaseModel):
     product_id: int
     quantity: int = 1
+    selected_size: Optional[str] = None
+    selected_color: Optional[str] = None
+
+from typing import Optional
 
 @router.post("/cart")
 def add_to_cart(
@@ -22,31 +26,33 @@ def add_to_cart(
     payload = verify_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
-    
+
     product = session.get(Product, item.product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    if product.stock < item.quantity:
-        raise HTTPException(status_code=400, detail="Not enough stock")
-    
-    existing = session.exec(
-        select(CartItem).where(
-            CartItem.user_id == payload.get("sub"),
-            CartItem.product_id == item.product_id
-        )
-    ).first()
-    
+
+    # Same product + same size + same color = increment quantity
+    # Same product + different variant = separate line item
+    query = select(CartItem).where(
+        CartItem.user_id == payload.get("sub"),
+        CartItem.product_id == item.product_id,
+        CartItem.selected_size == item.selected_size,
+        CartItem.selected_color == item.selected_color,
+    )
+    existing = session.exec(query).first()
+
     if existing:
         existing.quantity += item.quantity
         session.add(existing)
     else:
-        cart_item = CartItem(
+        session.add(CartItem(
             user_id=payload.get("sub"),
             product_id=item.product_id,
-            quantity=item.quantity
-        )
-        session.add(cart_item)
-    
+            quantity=item.quantity,
+            selected_size=item.selected_size,
+            selected_color=item.selected_color,
+        ))
+
     session.commit()
     return {"message": "Added to cart"}
 
@@ -78,7 +84,9 @@ def get_cart(
                 "price": product.final_price,
                 "quantity": item.quantity,
                 "subtotal": subtotal,
-                "image_url": product.image_url
+                "image_url": product.image_url,
+                "selected_size": item.selected_size,
+                "selected_color": item.selected_color,
             })
     
     return {"items": result, "total": total}

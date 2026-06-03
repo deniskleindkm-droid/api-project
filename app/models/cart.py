@@ -7,4 +7,6 @@ class CartItem(SQLModel, table=True):
     user_id: str
     product_id: int = Field(foreign_key="product.id")
     quantity: int = 1
+    selected_size: Optional[str] = None
+    selected_color: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

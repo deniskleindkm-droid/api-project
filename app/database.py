@@ -35,6 +35,8 @@ def create_db():
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS material varchar(500)"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS sizes varchar(500)"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS colors varchar(500)"))
+        conn.execute(text("ALTER TABLE cartitem ADD COLUMN IF NOT EXISTS selected_size varchar(100)"))
+        conn.execute(text("ALTER TABLE cartitem ADD COLUMN IF NOT EXISTS selected_color varchar(100)"))
         conn.commit()
 
     _setup_defaults()

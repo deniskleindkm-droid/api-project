@@ -4,6 +4,12 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Mikisi — Look Elegant and Polished</title>
+<!-- Performance: preconnect to external origins so DNS+TLS is done before first request -->
+<link rel="preconnect" href="https://api-project-production-d424.up.railway.app" crossorigin/>
+<link rel="preconnect" href="https://silverbene.com"/>
+<link rel="dns-prefetch" href="https://silverbene.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 :root{
@@ -968,6 +974,8 @@ let ppImages = [];
 let ppIdx = 0;
 let pendingVerifyEmail = '';
 let cartItems = [];
+let ppSelectedSize = null;
+let ppSelectedColor = null;
 let wishlist = JSON.parse(localStorage.getItem('mk_wishlist')||'[]');
 
 // ── HELPERS ──
@@ -1293,8 +1301,16 @@ async function openPP(id){
   // ── Meta ──
   document.getElementById('pp-meta').innerHTML=`<div class="pp-meta-item">⇉ Delivery confirmed after order</div><div class="pp-meta-item">◇ ${matLabel||'Fine Sterling Silver'}</div>`;
 
-  // ── Add to Cart ──
-  atcBtn.onclick=()=>{if(!atcBtn.disabled){addToCart(p.id,cleanName(p.name));closePP();}};
+  // ── Add to Cart — passes selected size & color ──
+  atcBtn.onclick=()=>{
+    if(atcBtn.disabled)return;
+    addToCart(p.id, cleanName(p.name), ppSelectedSize, ppSelectedColor);
+    closePP();
+  };
+
+  // Reset variant selection for this product
+  ppSelectedSize = sizes.length ? sizes[0] : null;
+  ppSelectedColor = colorChips.length ? colorChips[0] : null;
 
   updatePPGallery();
   document.getElementById('pp-overlay').classList.add('open');
@@ -1321,7 +1337,12 @@ function ppSetImg(i){ppIdx=i;updatePPGallery();}
 function ppPrev(){ppIdx=(ppIdx-1+ppImages.length)%ppImages.length;updatePPGallery();}
 function ppNext(){ppIdx=(ppIdx+1)%ppImages.length;updatePPGallery();}
 function closePP(){document.getElementById('pp-overlay').classList.remove('open');document.body.style.overflow='';}
-function selectChip(btn,type){btn.closest('.pp-chips').querySelectorAll('.pp-chip').forEach(b=>b.classList.remove('active','tanzanite-active'));btn.classList.add('active');}
+function selectChip(btn,type){
+  btn.closest('.pp-chips').querySelectorAll('.pp-chip').forEach(b=>b.classList.remove('active','tanzanite-active'));
+  btn.classList.add('active');
+  if(type==='size') ppSelectedSize=btn.textContent.trim();
+  if(type==='color') ppSelectedColor=btn.textContent.trim();
+}
 
 // ── WISHLIST ──
 function toggleWish(id){
@@ -1334,13 +1355,38 @@ function toggleWish(id){
 }
 
 // ── CART ──
-async function addToCart(productId,name){
+async function addToCart(productId, name, size=null, color=null){
   if(!token){openAuth();return;}
+
+  // Instant feedback — don't wait for server
+  const badge=document.getElementById('cart-count');
+  badge.textContent=parseInt(badge.textContent||'0')+1;
+  const variantNote=size||color?` · ${[color,size].filter(Boolean).join(', ')}`:'';
+  showToast(`Added${variantNote}`);
+
   try{
-    const res=await fetch(`${API}/cart`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({product_id:productId,quantity:1})});
-    if(res.ok){showToast(`Added to your selection`);loadCart();}
-    else if(res.status===401)openAuth();
-  }catch{showToast('Failed to add');}
+    const body={product_id:productId,quantity:1};
+    if(size)body.selected_size=size;
+    if(color)body.selected_color=color;
+    const res=await fetch(`${API}/cart`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+      body:JSON.stringify(body)
+    });
+    if(res.ok){
+      // Sync cart in background — no spinner, no wait
+      loadCart();
+    }else if(res.status===401){
+      badge.textContent=Math.max(0,parseInt(badge.textContent)-1);
+      openAuth();
+    }else{
+      badge.textContent=Math.max(0,parseInt(badge.textContent)-1);
+      showToast('Could not add — try again');
+    }
+  }catch{
+    badge.textContent=Math.max(0,parseInt(badge.textContent)-1);
+    showToast('Connection error');
+  }
 }
 
 async function loadCart(){
@@ -1354,24 +1400,35 @@ function renderCart(data){
   document.getElementById('cart-total').textContent=(data.total||0).toFixed(2);
   const body=document.getElementById('cart-body');
   if(!items.length){body.innerHTML='<div class="empty-cart"><div class="empty-icon">◇</div><p>Your cart is empty</p></div>';return;}
-  body.innerHTML=items.map(item=>`
+  body.innerHTML=items.map(item=>{
+    const variant=[item.selected_color,item.selected_size].filter(Boolean).join(' · ');
+    return `
     <div class="cart-item">
-      <div class="ci-img"><img src="${item.image_url||getPlaceholder()}" onerror="this.src='${getPlaceholder()}'"/></div>
+      <div class="ci-img" onclick="openPP(${item.product_id})" style="cursor:pointer" title="View product">
+        <img src="${item.image_url||getPlaceholder()}" onerror="this.src='${getPlaceholder()}'"/>
+      </div>
       <div class="ci-info">
-        <div class="ci-brand">Mikisi</div>
-        <div class="ci-name">${trunc(cleanName(item.name),40)}</div>
+        <div class="ci-brand" onclick="openPP(${item.product_id})" style="cursor:pointer">Mikisi</div>
+        <div class="ci-name" onclick="openPP(${item.product_id})" style="cursor:pointer">${trunc(cleanName(item.name),38)}</div>
+        ${variant?`<div style="font-size:9px;color:var(--gold);letter-spacing:1px;margin-bottom:2px">${variant}</div>`:''}
         <div class="ci-price">$${item.subtotal.toFixed(2)}</div>
         <div class="qty-row">
           <button class="qty-btn" onclick="removeFromCart(${item.cart_item_id})">−</button>
           <span class="qty-n">${item.quantity}</span>
-          <button class="qty-btn" onclick="addToCart(${item.product_id},'${cleanName(item.name).replace(/'/g,"\\'")}')">+</button>
+          <button class="qty-btn" onclick="addToCart(${item.product_id},'',${item.selected_size?`'${item.selected_size}'`:'null'},${item.selected_color?`'${item.selected_color}'`:'null'})">+</button>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 async function removeFromCart(id){try{await fetch(`${API}/cart/${id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${token}`}});loadCart();}catch{}}
-function toggleCart(){document.getElementById('cart-overlay').classList.toggle('open');document.getElementById('cart-sidebar').classList.toggle('open');if(token)loadCart();}
+function toggleCart(){
+  const open=document.getElementById('cart-sidebar').classList.toggle('open');
+  document.getElementById('cart-overlay').classList.toggle('open');
+  // Only refresh if opening and cart might be stale
+  if(open&&token)loadCart();
+}
 
 // ── CHECKOUT ──
 function openCheckout(){
