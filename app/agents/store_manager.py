@@ -93,6 +93,9 @@ def add_product_to_store(product_data):
             cj_product_id=product_data.get("cj_product_id"),
             cj_sku=product_data.get("cj_sku"),
             variants=product_data.get("variants"),
+            material=product_data.get("material") or None,
+            sizes=product_data.get("sizes") or None,
+            colors=product_data.get("colors") or None,
             is_active=True
         )
         session.add(product)
