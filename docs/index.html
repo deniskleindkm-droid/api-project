@@ -936,24 +936,31 @@ footer{background:var(--black);padding:52px 48px 36px;}
       </div>
 
       <!-- Shipping method selection -->
-      <div class="m-group">
-        <label>Shipping Method</label>
-        <div id="co-shipping-opts" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-          <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);cursor:pointer;transition:border-color 0.2s;" id="ship-opt-fast">
-            <input type="radio" name="shipping_method" value="fast_track" style="accent-color:var(--pink)"/>
-            <div>
-              <div style="font-size:12px;font-weight:500;color:var(--black)">Fast Track <span style="font-size:10px;color:var(--gold);margin-left:6px">5–8 days</span></div>
-              <div style="font-size:10px;color:var(--mid);margin-top:2px">Priority dispatch · tracked</div>
+      <div style="margin-bottom:16px;">
+        <div style="font-size:9px;font-weight:300;letter-spacing:2.5px;text-transform:uppercase;color:var(--mid);margin-bottom:10px;">Shipping Method</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div onclick="selectShipping('fast_track',this)" id="ship-opt-fast"
+            style="display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--border);cursor:pointer;transition:border-color 0.2s;user-select:none;">
+            <div style="width:16px;height:16px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;" id="ship-dot-fast">
+              <div style="width:8px;height:8px;border-radius:50%;background:transparent;" id="ship-fill-fast"></div>
             </div>
-          </label>
-          <label style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);cursor:pointer;transition:border-color 0.2s;" id="ship-opt-usps">
-            <input type="radio" name="shipping_method" value="usps" checked style="accent-color:var(--pink)"/>
             <div>
-              <div style="font-size:12px;font-weight:500;color:var(--black)">USPS <span style="font-size:10px;color:var(--mid);margin-left:6px">12–18 days</span></div>
-              <div style="font-size:10px;color:var(--mid);margin-top:2px">Standard delivery · tracked</div>
+              <div style="font-size:12px;font-weight:500;color:var(--black);">Delivery 5–8 days &nbsp;·&nbsp; <span style="color:var(--gold)">Fast Track</span></div>
+              <div style="font-size:10px;color:var(--mid);margin-top:2px;">Priority dispatch · tracked</div>
             </div>
-          </label>
+          </div>
+          <div onclick="selectShipping('usps',this)" id="ship-opt-usps"
+            style="display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--pink);cursor:pointer;transition:border-color 0.2s;user-select:none;">
+            <div style="width:16px;height:16px;border-radius:50%;border:2px solid var(--pink);flex-shrink:0;display:flex;align-items:center;justify-content:center;" id="ship-dot-usps">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--pink);" id="ship-fill-usps"></div>
+            </div>
+            <div>
+              <div style="font-size:12px;font-weight:500;color:var(--black);">Delivery 12–18 days &nbsp;·&nbsp; <span style="color:var(--mid)">USPS</span></div>
+              <div style="font-size:10px;color:var(--mid);margin-top:2px;">Standard delivery · tracked</div>
+            </div>
+          </div>
         </div>
+        <input type="hidden" id="selected-shipping" value="usps"/>
       </div>
 
       <button class="m-btn pink" onclick="placeOrder()" id="pay-btn">Pay Securely</button>
@@ -1347,10 +1354,10 @@ async function openPP(id){
       : '✓ In Stock';
   const stockColor = (!p.stock||p.stock===0)?'var(--mid)':p.stock<=10?'var(--pink)':'#22c55e';
 
-  // Shipping tiers — all options from store config
+  // Shipping tiers — "Delivery 5-8 days · Fast Track" format
   const shippingMeta = shippingTiers.length
-    ? shippingTiers.map(t=>`<div class="pp-meta-item">⇉ ${t.label}: ${t.days} days <span style="color:#444;font-size:9px">${t.carrier}</span></div>`).join('')
-    : `<div class="pp-meta-item">⇉ Standard delivery: ${(p.shipping_days||12)}–${(p.shipping_days||12)+5} days</div>`;
+    ? shippingTiers.map(t=>`<div class="pp-meta-item">⇉ Delivery ${t.days} days &nbsp;·&nbsp; ${t.label}</div>`).join('')
+    : `<div class="pp-meta-item">⇉ Delivery ${(p.shipping_days||12)}–${(p.shipping_days||12)+5} days</div>`;
 
   document.getElementById('pp-meta').innerHTML=`
     ${shippingMeta}
@@ -1501,6 +1508,27 @@ function openCheckout(){
 }
 function closeCheckout(){document.getElementById('checkout-modal').classList.remove('open');}
 
+function selectShipping(method, el){
+  // Reset both options
+  ['fast','usps'].forEach(k=>{
+    const opt = document.getElementById(`ship-opt-${k}`);
+    const dot = document.getElementById(`ship-dot-${k}`);
+    const fill = document.getElementById(`ship-fill-${k}`);
+    if(opt) opt.style.borderColor='var(--border)';
+    if(dot) dot.style.borderColor='var(--border)';
+    if(fill) fill.style.background='transparent';
+  });
+  // Highlight selected
+  const sel = method==='fast_track'?'fast':'usps';
+  const opt = document.getElementById(`ship-opt-${sel}`);
+  const dot = document.getElementById(`ship-dot-${sel}`);
+  const fill = document.getElementById(`ship-fill-${sel}`);
+  if(opt) opt.style.borderColor='var(--pink)';
+  if(dot) dot.style.borderColor='var(--pink)';
+  if(fill) fill.style.background='var(--pink)';
+  document.getElementById('selected-shipping').value=method;
+}
+
 async function placeOrder(){
   const street=document.getElementById('co-street').value.trim();
   const city=document.getElementById('co-city').value.trim();
@@ -1509,8 +1537,10 @@ async function placeOrder(){
   const country=document.getElementById('co-country').value;
   if(!street||!city||!state||!zip){showCoMsg('Please complete all address fields','error');return;}
   const address=`${street}, ${city}, ${state} ${zip}, ${country}`;
-  const shippingMethod=document.querySelector('input[name="shipping_method"]:checked')?.value||'usps';
-  const btn=document.getElementById('pay-btn');btn.textContent='Redirecting…';btn.disabled=true;
+  const shippingMethod=document.getElementById('selected-shipping')?.value||'usps';
+  const btn=document.getElementById('pay-btn');
+  // Instant feedback — don't wait for Stripe to respond before showing activity
+  btn.textContent='Preparing payment…';btn.disabled=true;
   try{
     const res=await fetch(`${API}/payments/create-checkout`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({shipping_address:address,shipping_method:shippingMethod})});
     const data=await res.json();

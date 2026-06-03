@@ -61,12 +61,12 @@ def update_product(
 
 @router.get("/shipping-options")
 def get_shipping_options():
-    """Public endpoint — returns all shipping tiers for display on product panels."""
+    """Public endpoint — returns the two shipping tiers (Fast Track + USPS) for product panels and checkout."""
     from app.agents.store_config import get_config
     tiers = []
-    for key in ["express", "standard", "economy"]:
-        label = get_config(f"shipping_{key}_label", default=key.title())
-        days  = get_config(f"shipping_{key}_days",  default="")
+    for key in ["express", "standard"]:  # only these two — no economy
+        label   = get_config(f"shipping_{key}_label",   default=key.title())
+        days    = get_config(f"shipping_{key}_days",    default="")
         carrier = get_config(f"shipping_{key}_carrier", default="")
         if days:
             tiers.append({"key": key, "label": label, "days": days, "carrier": carrier})
