@@ -129,7 +129,7 @@ class SilverbeneAdapter(SupplierAdapter):
                 "start_date": start_str,
                 "end_date": end_str,
                 "keywords": keyword,
-                "is_really_stock": 1,
+                "is_really_stock": 0,  # 0 = include all; stock checked live via option_qty
             })
 
             if not isinstance(resp, dict):
