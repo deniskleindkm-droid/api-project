@@ -840,6 +840,7 @@ def silverbene_save_one(collection: str = "Rings"):
     try:
         from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
         from app.agents.jewelry_pricing import calculate_jewelry_price
+        from app.agents.jewelry_scoring import score_jewelry_product
         from app.agents.shipping_agent import get_best_shipping
         from app.agents.bulk_import_agent import batch_rewrite_products, COLLECTION_STRATEGIES
         from app.agents.store_manager import add_product_to_store

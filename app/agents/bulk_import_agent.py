@@ -408,7 +408,22 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
             print(f"[Bulk Import] Save error for {product.get('mikisi_name', '')}: {e}")
 
     total_rejected = hard_rejected + (len(scored_candidates) - len(rewrite_ready))
-    print(f"[Bulk Import] ✅ {collection_name} — {imported} imported, {total_rejected} rejected")
+    print(f"[Bulk Import] ✅ {collection_name} — {imported} imported, {total_rejected} skipped")
+
+    # ARIA notes what was added to each collection
+    try:
+        from app.agents.aria_memory import store_episode
+        store_episode(
+            event=f"Silverbene import: {collection_name}",
+            context=f"{imported} products added to {collection_name} collection",
+            decision=f"Imported {imported} Silverbene products with material and Mikisi descriptions",
+            outcome="collection_updated" if imported > 0 else "no_new_products",
+            significance="medium"
+        )
+        print(f"[ARIA] 📦 {collection_name}: {imported} new products stored in memory")
+    except Exception as e:
+        print(f"[Bulk Import] ARIA memory note error: {e}")
+
     return {"collection": collection_name, "imported": imported, "rejected": total_rejected, "rejection_details": rejection_details}
 
 
@@ -447,6 +462,7 @@ def run_bulk_import_agent(max_per_collection: int = None):
     print(f"[Bulk Import] Summary: {results}")
 
     # Save to memory
+    # Save run to memory
     try:
         from sqlmodel import Session
         from app.database import engine
@@ -467,6 +483,46 @@ def run_bulk_import_agent(max_per_collection: int = None):
             session.commit()
     except Exception as e:
         print(f"[Bulk Import] Memory save error: {e}")
+
+    # ARIA reports to Dennis after every import run
+    try:
+        from app.agents.aria_intelligence import aria_think
+        from app.agents.email_partner import send_email
+        from app.agents.aria_memory import store_episode
+        import os
+
+        collection_summary = " | ".join([
+            f"{r['collection']}: {r.get('imported', 0)} imported"
+            for r in results
+        ])
+
+        situation = (
+            f"Silverbene bulk import just completed. "
+            f"Total imported: {total_imported} products across {len(results)} collections. "
+            f"Breakdown: {collection_summary}. "
+            f"Dennis needs a brief report on what was added to Mikisi's store."
+        )
+
+        aria_result = aria_think(situation=situation, urgency="medium")
+        store_episode(
+            event=f"Silverbene import: {total_imported} products imported",
+            context=collection_summary,
+            decision="ARIA reported import results to Dennis",
+            outcome="import_complete",
+            significance="high"
+        )
+
+        dennis_email = os.getenv("DENNIS_EMAIL")
+        if dennis_email and aria_result:
+            email_data = aria_result.get("email_to_dennis", {})
+            subject = email_data.get("subject", f"Mikisi Import Complete — {total_imported} New Products Added")
+            body = email_data.get("body", "")
+            if body:
+                send_email(dennis_email, subject, body, is_html=True)
+                print(f"[Bulk Import] ✅ ARIA import report sent to Dennis")
+
+    except Exception as e:
+        print(f"[Bulk Import] ARIA reporting error: {e}")
 
     return {
         "total_imported": total_imported,
