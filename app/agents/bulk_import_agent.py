@@ -104,22 +104,6 @@ COLLECTION_STRATEGIES = {
         "reject_if_no_variants": False,
         "max_per_run": 50
     },
-    "Jewelry Sets": {
-        "config_key": "collection_jewelry_sets",
-        "default_id": 0,
-        "cj_category_ids": [
-            "552F095A-904C-40E4-A43B-0CD1CE15D29F"
-        ],
-        "keywords": [
-            "925 silver jewelry set necklace earring",
-            "gold plated jewelry set women",
-            "matching necklace bracelet set",
-            "jewelry gift set women sterling"
-        ],
-        "required_variants": [],
-        "reject_if_no_variants": False,
-        "max_per_run": 50
-    },
 }
 
 

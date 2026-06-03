@@ -17,15 +17,13 @@ ENDPOINT_CREATE_ORDER      = "/api/dropshipping/create_order"           # POST â
 
 # Search keywords per Mikisi collection
 CATEGORY_KEYWORDS = {
-    "Rings":        ["ring", "silver ring women", "925 ring",
-                     "sterling silver band ring", "925 silver gemstone ring",
-                     "women ring size", "adjustable ring", "silver statement ring"],
-    "Necklaces":    ["necklace", "pendant necklace", "silver chain necklace"],
-    "Bracelets":    ["bracelet", "silver bracelet", "charm bracelet"],
-    "Earrings":     ["earring", "stud earring", "drop earring"],
-    "Anklets":      ["anklet", "ankle bracelet", "foot chain"],
-    "Ear Cuffs":    ["ear cuff", "cartilage earring", "no piercing ear"],
-    "Jewelry Sets": ["jewelry set", "necklace earring set", "matching jewelry set"],
+    "Rings":     ["ring", "925 ring", "adjustable ring", "silver statement ring",
+                  "sterling silver band ring", "925 silver gemstone ring", "women ring size"],
+    "Necklaces": ["necklace", "pendant", "chain", "lariat", "choker", "collar"],
+    "Bracelets": ["bracelet", "chain bracelet", "link bracelet", "tennis bracelet"],
+    "Earrings":  ["earring", "stud earring", "drop earring"],
+    "Anklets":   ["anklet"],
+    "Ear Cuffs": ["ear cuff", "cartilage earring", "no piercing ear"],
 }
 
 # Values Silverbene puts in the Color attribute that are actually product-type descriptors.
@@ -118,13 +116,16 @@ class SilverbeneAdapter(SupplierAdapter):
         seen = set()
 
         # Walk 2-month windows from 3 years back to now
+        # Zero-pad months â€” API rejects "2026-1", needs "2026-01"
         now = datetime.utcnow()
         windows = []
         year, month = now.year - 3, 1
         while (year, month) <= (now.year, now.month):
-            end_month = month + 2 if month + 2 <= 12 else (month + 2) % 12
-            end_year = year if month + 2 <= 12 else year + 1
-            windows.append((f"{year}-{month}", f"{end_year}-{end_month}"))
+            if month + 2 <= 12:
+                end_month, end_year = month + 2, year
+            else:
+                end_month, end_year = (month + 2) % 12 or 12, year + 1
+            windows.append((f"{year}-{month:02d}", f"{end_year}-{end_month:02d}"))
             month += 2
             if month > 12:
                 month -= 12
