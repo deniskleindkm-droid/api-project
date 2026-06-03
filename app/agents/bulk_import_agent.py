@@ -133,21 +133,17 @@ def batch_rewrite_products(products: list, collection_name: str, collection_id: 
 BRAND VOICE:
 {brand_voice}
 
-TARGET COLLECTION: {collection_name}
+INTENDED COLLECTION: {collection_name}
 
-Products below are from Silverbene, a trusted fine jewelry supplier. Use your intelligence to assess each one.
+Products below are from Silverbene. Accept all jewelry. For each product do exactly four things:
 
-ACCEPT the product if it is any kind of jewelry or accessory — rings, necklaces, bracelets, earrings, anklets, ear cuffs, pendants, chains, sets. Accept regardless of material, style, or price point. Low risk — if in doubt, accept.
+1. VERIFY COLLECTION — look at the actual product name and decide which Mikisi collection it truly belongs to: Rings, Necklaces, Bracelets, Earrings, Anklets, Ear Cuffs, or Jewelry Sets. Do not blindly use the intended collection — correct it if wrong. An earring found in a Rings search should be corrected to Earrings.
 
-REJECT only if the product is clearly not jewelry at all (e.g. clothing, electronics, tools, bags). This should be rare.
+2. CLEAN THE NAME — strip supplier jargon, model codes, "women", "for her", "S925", sizes. Max 6 words. Keep the essence.
 
-For every ACCEPTED product do exactly three things:
+3. IDENTIFY MATERIAL — read raw name and material field. Write exactly what it is: "925 Sterling Silver", "18k Gold Plated 925 Silver", "Rhodium Plated", etc. This shows on the product page — be accurate.
 
-1. CLEAN THE NAME — strip supplier jargon, model codes, the word "women", "for her", "S925", sizes. Keep only the essence. Max 6 words. (e.g. "Twisted Band Open Ring", "Layered Zircon Pendant Necklace")
-
-2. IDENTIFY MATERIAL — read the raw name and material field carefully. Write exactly what it is. Do not guess or generalise. Examples: "925 Sterling Silver", "18k Gold Plated 925 Silver", "Rhodium Plated", "Stainless Steel", "14k Gold Filled". This appears on the product page for customers — accuracy matters.
-
-3. WRITE MIKISI DESCRIPTION — exactly 2 sentences. Intimate, empowering, elegant. Mention the actual material naturally in the first sentence. Make her feel something real.
+4. WRITE MIKISI DESCRIPTION — exactly 2 sentences. Intimate, empowering, elegant. Mention the actual material in the first sentence.
 
 PRODUCTS:
 {product_list}
@@ -157,6 +153,7 @@ Return ONLY a JSON array with {len(products)} objects in the same order:
   {{
     "index": 1,
     "accepted": true,
+    "correct_collection": "Rings",
     "mikisi_name": "Twisted Band Open Ring",
     "mikisi_material": "925 Sterling Silver",
     "mikisi_description": "Forged in 925 sterling silver, this ring moves with you through every version of yourself. Open-ended by design — because you are never finished becoming.",
@@ -183,7 +180,18 @@ Return ONLY valid JSON array. No other text."""
 
         results = json.loads(text.strip())
 
-        # Merge rewrite results — all accepted, capture material from ARIA
+        # Collection name → ID lookup for ARIA's corrections
+        _collection_map = {
+            "Rings": "collection_rings",
+            "Necklaces": "collection_necklaces",
+            "Bracelets": "collection_bracelets",
+            "Earrings": "collection_earrings",
+            "Anklets": "collection_anklets",
+            "Ear Cuffs": "collection_ear_cuffs",
+            "Jewelry Sets": "collection_jewelry_sets",
+        }
+
+        # Merge rewrite results — all accepted, capture material + corrected collection
         rewritten = []
         for i, result in enumerate(results):
             if i >= len(products):
@@ -191,8 +199,17 @@ Return ONLY valid JSON array. No other text."""
             product = products[i].copy()
             product["mikisi_name"] = result.get("mikisi_name", product.get("name", ""))[:100]
             product["mikisi_description"] = result.get("mikisi_description", "")
-            # Use ARIA's confirmed material — falls back to what adapter extracted
             product["material"] = result.get("mikisi_material") or product.get("material", "")
+
+            # If ARIA identified a different collection, look up its ID
+            aria_collection = result.get("correct_collection", "").strip()
+            if aria_collection and aria_collection != collection_name and aria_collection in _collection_map:
+                from app.agents.store_config import get_config as _gc
+                corrected_id = int(_gc(_collection_map[aria_collection], default="0"))
+                if corrected_id:
+                    product["_corrected_collection_id"] = corrected_id
+                    print(f"[Bulk Import] 🔀 ARIA corrected '{product['mikisi_name'][:40]}' → {aria_collection} (ID {corrected_id})")
+
             product["accepted"] = True
             rewritten.append(product)
 
@@ -373,7 +390,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 "supplier_url": "",
                 "cj_product_id": product["supplier_product_id"],
                 "cj_sku": cj_sku,
-                "collection_id": collection_id,
+                "collection_id": product.get("_corrected_collection_id", collection_id),
                 "variants": _json.dumps(raw_variants) if raw_variants else None,
                 # Silverbene-specific fields — read directly by the storefront
                 "material": product.get("material") or product.get("_score", {}).get("detected_metal", "") or "",

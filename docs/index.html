@@ -939,32 +939,13 @@ footer{background:var(--black);padding:52px 48px 36px;}
         </select>
       </div>
 
-      <!-- Shipping method selection -->
-      <div style="margin-bottom:16px;">
-        <div style="font-size:9px;font-weight:300;letter-spacing:2.5px;text-transform:uppercase;color:var(--mid);margin-bottom:10px;">Shipping Method</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div onclick="selectShipping('fast_track',this)" id="ship-opt-fast"
-            style="display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--border);cursor:pointer;transition:border-color 0.2s;user-select:none;">
-            <div style="width:16px;height:16px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;" id="ship-dot-fast">
-              <div style="width:8px;height:8px;border-radius:50%;background:transparent;" id="ship-fill-fast"></div>
-            </div>
-            <div style="min-width:0;">
-              <div style="font-size:12px;font-weight:500;color:var(--black);">Delivery 5–8 days &nbsp;·&nbsp; <span style="color:var(--gold)">Fast Track</span></div>
-              <div style="font-size:10px;color:var(--mid);margin-top:2px;">Priority dispatch · tracked</div>
-            </div>
-          </div>
-          <div onclick="selectShipping('usps',this)" id="ship-opt-usps"
-            style="display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--pink);cursor:pointer;transition:border-color 0.2s;user-select:none;">
-            <div style="width:16px;height:16px;border-radius:50%;border:2px solid var(--pink);flex-shrink:0;display:flex;align-items:center;justify-content:center;" id="ship-dot-usps">
-              <div style="width:8px;height:8px;border-radius:50%;background:var(--pink);" id="ship-fill-usps"></div>
-            </div>
-            <div style="min-width:0;">
-              <div style="font-size:12px;font-weight:500;color:var(--black);">Delivery 12–18 days &nbsp;·&nbsp; <span style="color:var(--mid)">USPS</span></div>
-              <div style="font-size:10px;color:var(--mid);margin-top:2px;">Standard delivery · tracked</div>
-            </div>
-          </div>
+      <!-- Shipping — always Fast Track, no choice needed -->
+      <div style="margin-bottom:16px;padding:13px 14px;background:var(--ivory);border:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+        <span style="color:var(--gold);font-size:14px;">⚡</span>
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--black);">Free Express Shipping &nbsp;·&nbsp; <span style="color:var(--gold)">5–8 days</span></div>
+          <div style="font-size:10px;color:var(--mid);margin-top:2px;">Fast Track · priority dispatch · fully tracked</div>
         </div>
-        <input type="hidden" id="selected-shipping" value="usps"/>
       </div>
 
       <button class="m-btn pink" onclick="placeOrder()" id="pay-btn">Pay Securely</button>
@@ -1541,7 +1522,7 @@ async function placeOrder(){
   const country=document.getElementById('co-country').value;
   if(!street||!city||!state||!zip){showCoMsg('Please complete all address fields','error');return;}
   const address=`${street}, ${city}, ${state} ${zip}, ${country}`;
-  const shippingMethod=document.getElementById('selected-shipping')?.value||'usps';
+  const shippingMethod='fast_track'; // always Fast Track — built into product price
   const btn=document.getElementById('pay-btn');
   // Instant feedback — don't wait for Stripe to respond before showing activity
   btn.textContent='Preparing payment…';btn.disabled=true;
