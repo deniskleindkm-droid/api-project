@@ -754,23 +754,35 @@ def silverbene_ping():
     try:
         url = "https://s.silverbene.com/api/dropshipping/product_list_by_date"
         # Show raw response for diagnosis
+        # Test with multiple known-good date ranges to find what works
         from datetime import datetime, timedelta
         now = datetime.utcnow()
-        two_months_ago = now - timedelta(days=60)
+        test_ranges = [
+            ("2026-3", "2026-5"),
+            ("2026-1", "2026-3"),
+            ("2025-11", "2026-1"),
+            ("2025-9", "2025-11"),
+        ]
+        results = {}
+        import requests as req2
+        for start, end in test_ranges:
+            r2 = req2.get(url, params={"token": token, "start_date": start, "end_date": end, "keywords": "ring", "is_really_stock": 1}, timeout=15)
+            body = r2.text[:200]
+            results[f"{start}_to_{end}"] = body
         params = {
             "token": token,
-            "start_date": f"{two_months_ago.year}-{two_months_ago.month}",
-            "end_date": f"{now.year}-{now.month}",
+            "start_date": "2025-9",
+            "end_date": "2025-11",
             "keywords": "ring",
             "is_really_stock": 1,
         }
         r = requests.get(url, params=params, timeout=30)
-        raw_text = r.text[:1000]
+        raw_text = r.text[:500]
         return {
             "token_set": bool(token),
-            "token_preview": token[:8] + "..." if token else "EMPTY",
             "http_status": r.status_code,
-            "raw_response": raw_text,
+            "range_tests": results,
+            "last_raw": raw_text,
         }
     except Exception as e:
         return {
