@@ -976,6 +976,7 @@ let pendingVerifyEmail = '';
 let cartItems = [];
 let ppSelectedSize = null;
 let ppSelectedColor = null;
+let ppOpening = false; // guard — prevents double-click opening two panels
 let wishlist = JSON.parse(localStorage.getItem('mk_wishlist')||'[]');
 
 // ── HELPERS ──
@@ -1078,6 +1079,10 @@ async function openCollection(id, name){
   try{
     const res = await fetch(`${API}/collections/${id}/products`);
     const prods = await res.json();
+    // Merge into allProducts cache — so card clicks are instant, no extra fetch
+    if(Array.isArray(prods)){
+      prods.forEach(p=>{if(!allProducts.find(x=>x.id===p.id))allProducts.push(p);});
+    }
     renderCollectionProducts(prods);
   }catch{document.getElementById('cv-grid').innerHTML='<div class="loading">Could not load pieces</div>';}
 }
@@ -1187,17 +1192,23 @@ function getMaterialLabel(p){
 }
 
 async function openPP(id){
+  if(ppOpening)return;  // already opening — ignore extra clicks
+  ppOpening=true;
+
   let p = allProducts.find(x=>x.id===id);
   if(!p){
-    // Product not in local cache — fetch directly then cache it
+    // Not cached yet — show panel outline immediately so user knows click registered
+    document.getElementById('pp-name').textContent='Loading…';
+    document.getElementById('pp-overlay').classList.add('open');
+    document.body.style.overflow='hidden';
     try{
       const res = await fetch(`${API}/products/${id}`);
-      if(!res.ok)return;
+      if(!res.ok){ppOpening=false;closePP();return;}
       p = await res.json();
       allProducts.push(p);
-    }catch{return;}
+    }catch{ppOpening=false;closePP();return;}
   }
-  if(!p)return;
+  if(!p){ppOpening=false;return;}
 
   // ── Images ──
   try{ppImages=p.images?JSON.parse(p.images):[];}catch{ppImages=[];}
@@ -1298,8 +1309,17 @@ async function openPP(id){
     atcBtn.style.cursor='';
   }
 
-  // ── Meta ──
-  document.getElementById('pp-meta').innerHTML=`<div class="pp-meta-item">⇉ Delivery confirmed after order</div><div class="pp-meta-item">◇ ${matLabel||'Fine Sterling Silver'}</div>`;
+  // ── Meta — always show stock status clearly ──
+  const stockLabel = (!p.stock||p.stock===0)
+    ? '✕ Out of Stock'
+    : p.stock<=10
+      ? `❋ Only ${p.stock} left`
+      : '✓ In Stock';
+  const stockColor = (!p.stock||p.stock===0)?'var(--mid)':p.stock<=10?'var(--pink)':'#22c55e';
+  document.getElementById('pp-meta').innerHTML=`
+    <div class="pp-meta-item">⇉ Ships after order confirmed</div>
+    <div class="pp-meta-item">◇ ${matLabel||'Fine Sterling Silver'}</div>
+    <div class="pp-meta-item" style="color:${stockColor};border-color:${stockColor}20">${stockLabel}</div>`;
 
   // ── Add to Cart — passes selected size & color ──
   atcBtn.onclick=()=>{
@@ -1315,6 +1335,7 @@ async function openPP(id){
   updatePPGallery();
   document.getElementById('pp-overlay').classList.add('open');
   document.body.style.overflow='hidden';
+  ppOpening=false; // ready for next open
 }
 
 function updatePPGallery(){
@@ -1336,7 +1357,7 @@ function updatePPGallery(){
 function ppSetImg(i){ppIdx=i;updatePPGallery();}
 function ppPrev(){ppIdx=(ppIdx-1+ppImages.length)%ppImages.length;updatePPGallery();}
 function ppNext(){ppIdx=(ppIdx+1)%ppImages.length;updatePPGallery();}
-function closePP(){document.getElementById('pp-overlay').classList.remove('open');document.body.style.overflow='';}
+function closePP(){document.getElementById('pp-overlay').classList.remove('open');document.body.style.overflow='';ppOpening=false;}
 function selectChip(btn,type){
   btn.closest('.pp-chips').querySelectorAll('.pp-chip').forEach(b=>b.classList.remove('active','tanzanite-active'));
   btn.classList.add('active');
