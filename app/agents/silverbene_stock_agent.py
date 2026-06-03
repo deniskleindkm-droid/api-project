@@ -94,13 +94,13 @@ def run_silverbene_stock_agent():
                         continue
 
                     if qty == 0:
-                        if product.is_active:
-                            product.is_active = False
+                        if product.stock != 0:
                             product.stock = 0
+                            product.is_active = True  # keep visible — UI shows 'Out of Stock'
                             session.add(product)
                             deactivated += 1
                             newly_outofstock.append(product.name[:60])
-                            print(f"[Silverbene Stock Agent] ⚠ Out of stock → hidden: {product.name[:50]}")
+                            print(f"[Silverbene Stock Agent] ⚠ Out of stock → showing 'Out of Stock': {product.name[:50]}")
                     else:
                         stock_changed = product.stock != qty
                         was_inactive = not product.is_active

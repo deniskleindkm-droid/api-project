@@ -1309,15 +1309,17 @@ async function openPP(id){
     atcBtn.style.cursor='';
   }
 
-  // ── Meta — always show stock status clearly ──
+  // ── Meta — stock status + real delivery time ──
   const stockLabel = (!p.stock||p.stock===0)
     ? '✕ Out of Stock'
     : p.stock<=10
       ? `❋ Only ${p.stock} left`
       : '✓ In Stock';
   const stockColor = (!p.stock||p.stock===0)?'var(--mid)':p.stock<=10?'var(--pink)':'#22c55e';
+  const days = p.shipping_days||12;
+  const deliveryLabel = days<=7 ? `⇉ Delivers in ${days} days` : `⇉ Estimated delivery ${days}–${days+3} days`;
   document.getElementById('pp-meta').innerHTML=`
-    <div class="pp-meta-item">⇉ Ships after order confirmed</div>
+    <div class="pp-meta-item">${deliveryLabel}</div>
     <div class="pp-meta-item">◇ ${matLabel||'Fine Sterling Silver'}</div>
     <div class="pp-meta-item" style="color:${stockColor};border-color:${stockColor}20">${stockLabel}</div>`;
 
