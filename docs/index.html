@@ -566,6 +566,18 @@ nav{
 .toast.show{opacity:1;}
 .loading{text-align:center;padding:72px;color:var(--light);font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17px;grid-column:1/-1;}
 
+/* Collection mode — hide all homepage sections, show only the collection */
+body.collection-mode .hero,
+body.collection-mode .marquee-wrap,
+body.collection-mode .trust-bar,
+body.collection-mode .success-banner,
+body.collection-mode .divider-band,
+body.collection-mode .urgency-bar,
+body.collection-mode .about-section,
+body.collection-mode .collections-home{display:none!important;}
+body.collection-mode #breadcrumb{display:flex!important;}
+body.collection-mode .collection-view{display:block!important;padding-top:20px;}
+
 /* ── FOOTER ── */
 footer{background:var(--black);padding:52px 48px 36px;}
 .footer-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:36px;padding-bottom:36px;border-bottom:1px solid #222;margin-bottom:24px;}
@@ -1092,9 +1104,8 @@ function renderCollectionTiles(cols){
 }
 
 async function openCollection(id, name){
-  // Hide home, show collection view
-  document.getElementById('collections-home').style.display='none';
-  document.getElementById('collection-view').style.display='block';
+  // Enter collection mode — hides hero, marquee, trust bar, etc.
+  document.body.classList.add('collection-mode');
   document.getElementById('cv-title').textContent = name;
   document.getElementById('cv-grid').innerHTML = '<div class="loading">Discovering pieces…</div>';
   showBreadcrumb(name);
@@ -1666,8 +1677,9 @@ function updateAuthUI(){
 }
 
 function goHome(){
+  // Exit collection mode — restores all homepage sections
+  document.body.classList.remove('collection-mode');
   document.getElementById('breadcrumb').style.display='none';
-  document.getElementById('collections-home').style.display='block';
   document.getElementById('collection-view').style.display='none';
   document.getElementById('collections-title').textContent='Our Collections';
   window.scrollTo({top:0,behavior:'smooth'});
