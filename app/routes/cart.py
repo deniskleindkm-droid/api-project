@@ -6,6 +6,7 @@ from app.database import get_session
 from app.auth_utils import verify_token
 from app.routes.auth import oauth2_scheme
 from pydantic import BaseModel
+from typing import Optional
 
 router = APIRouter()
 
@@ -14,8 +15,6 @@ class CartRequest(BaseModel):
     quantity: int = 1
     selected_size: Optional[str] = None
     selected_color: Optional[str] = None
-
-from typing import Optional
 
 @router.post("/cart")
 def add_to_cart(
