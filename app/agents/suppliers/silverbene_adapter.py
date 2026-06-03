@@ -102,46 +102,63 @@ class SilverbeneAdapter(SupplierAdapter):
     # ── CATALOG SEARCH ────────────────────────────────────────────────────────
 
     def search(self, keyword: str, limit: int = 20) -> list:
-        """Search Silverbene catalog by keyword across full catalog."""
-        resp = self._get(ENDPOINT_PRODUCT_BY_DATE, {
-            "start_date": "2020-1",
-            "end_date": "2030-1",
-            "keywords": keyword,
-            "is_really_stock": 1,
-        })
-
-        if not isinstance(resp, dict):
-            print(f"[Silverbene] search: unexpected response type {type(resp)} for keyword={keyword}")
-            return []
-
-        if resp.get("code") != 0:
-            print(f"[Silverbene] search error: {resp.get('message')} keyword={keyword}")
-            return []
-
-        data = resp.get("data", {})
-        if isinstance(data, dict):
-            items = data.get("data", [])
-        elif isinstance(data, list):
-            items = data
-        else:
-            items = []
-
-        if not isinstance(items, list):
-            items = []
-
+        """
+        Search Silverbene catalog by keyword.
+        Silverbene enforces a 2-month window per request, so we batch automatically
+        across windows from oldest to newest until we have enough products.
+        """
+        from datetime import datetime
         result = []
         seen = set()
-        for item in items:
-            if not isinstance(item, dict):
+
+        # Walk 2-month windows from 3 years back to now
+        now = datetime.utcnow()
+        windows = []
+        year, month = now.year - 3, 1
+        while (year, month) <= (now.year, now.month):
+            end_month = month + 2 if month + 2 <= 12 else (month + 2) % 12
+            end_year = year if month + 2 <= 12 else year + 1
+            windows.append((f"{year}-{month}", f"{end_year}-{end_month}"))
+            month += 2
+            if month > 12:
+                month -= 12
+                year += 1
+
+        for start_str, end_str in reversed(windows):  # newest first
+            resp = self._get(ENDPOINT_PRODUCT_BY_DATE, {
+                "start_date": start_str,
+                "end_date": end_str,
+                "keywords": keyword,
+                "is_really_stock": 1,
+            })
+
+            if not isinstance(resp, dict):
                 continue
-            sku = item.get("sku", "")
-            if sku and sku not in seen:
-                seen.add(sku)
-                result.append(self._to_standard(item))
+            if resp.get("code") != 0:
+                continue
+
+            data = resp.get("data", {})
+            if isinstance(data, dict):
+                items = data.get("data", [])
+            elif isinstance(data, list):
+                items = data
+            else:
+                continue
+
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                sku = item.get("sku", "")
+                if sku and sku not in seen:
+                    seen.add(sku)
+                    result.append(self._to_standard(item))
+                if len(result) >= limit:
+                    break
+
             if len(result) >= limit:
                 break
 
-        print(f"[Silverbene] search '{keyword}': {len(result)} products")
+        print(f"[Silverbene] search '{keyword}': {len(result)} products across date windows")
         return result
 
     def search_by_category(self, category_name: str, limit: int = 50) -> list:

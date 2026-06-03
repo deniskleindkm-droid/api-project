@@ -754,10 +754,13 @@ def silverbene_ping():
     try:
         url = "https://s.silverbene.com/api/dropshipping/product_list_by_date"
         # Show raw response for diagnosis
+        from datetime import datetime, timedelta
+        now = datetime.utcnow()
+        two_months_ago = now - timedelta(days=60)
         params = {
             "token": token,
-            "start_date": "2020-1",
-            "end_date": "2030-1",
+            "start_date": f"{two_months_ago.year}-{two_months_ago.month}",
+            "end_date": f"{now.year}-{now.month}",
             "keywords": "ring",
             "is_really_stock": 1,
         }
