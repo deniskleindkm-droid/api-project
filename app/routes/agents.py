@@ -746,6 +746,19 @@ def test_supplier():
         "first_product": products[0] if products else None
     }
 
+@router.post("/silverbene/sync-stock")
+def silverbene_sync_stock_now():
+    """Trigger an immediate Silverbene stock sync — updates all product stock levels right now."""
+    import threading
+    try:
+        from app.scheduler import run_silverbene_stock_sync
+        thread = threading.Thread(target=run_silverbene_stock_sync)
+        thread.start()
+        return {"message": "Stock sync started — all Silverbene products being checked against live inventory"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/silverbene/ping")
 def silverbene_ping():
     """Diagnose Silverbene API connection — shows token status and raw response."""

@@ -1081,12 +1081,14 @@ function renderCollectionProducts(prods){
   grid.innerHTML = prods.map((p,i)=>{
     const img = p.image_url || getPlaceholder();
     const name = trunc(cleanName(p.name),55);
+    const outOfStock = !p.stock || p.stock === 0;
     let badge='';
-    if(p.is_featured||i===0) badge=`<div class="pcard-badge badge-signature">✦ Signature</div>`;
-    else if(p.stock<=10) badge=`<div class="pcard-badge badge-limited">❋ Limited</div>`;
+    if(outOfStock) badge=`<div class="pcard-badge" style="background:var(--mid);letter-spacing:1px">Out of Stock</div>`;
+    else if(p.is_featured||i===0) badge=`<div class="pcard-badge badge-signature">✦ Signature</div>`;
+    else if(p.stock<=10) badge=`<div class="pcard-badge badge-limited">❋ Limited · ${p.stock} left</div>`;
     else if(p.is_new||i<3) badge=`<div class="pcard-badge badge-new">New</div>`;
     const liked = wishlist.includes(p.id);
-    return `<div class="pcard" onclick="openPP(${p.id})">
+    return `<div class="pcard" onclick="openPP(${p.id})" style="${outOfStock?'opacity:0.6':''}">
       <div class="pcard-img">
         <img src="${img}" alt="${name}" onerror="this.src='${getPlaceholder()}'" loading="lazy"/>
         ${badge}
@@ -1095,7 +1097,7 @@ function renderCollectionProducts(prods){
       <div class="pcard-info">
         <div class="pcard-brand">Mikisi</div>
         <div class="pcard-name">${name}</div>
-        <div class="pcard-price">$${p.final_price.toFixed(2)}</div>
+        <div class="pcard-price" style="${outOfStock?'color:var(--light)':''}">$${p.final_price.toFixed(2)}</div>
         ${p.original_price>p.final_price?`<div class="pcard-orig">$${p.original_price.toFixed(2)}</div>`:''}
       </div>
     </div>`;
@@ -1215,35 +1217,84 @@ async function openPP(id){
   }else document.getElementById('pp-stock-wrap').style.display='none';
 
   // ── Color / Metal Finish chips ──
-  // Use p.colors (Silverbene structured field) — never fall back to variants (different format)
+  // Use p.colors if set; otherwise extract live from p.variants (Silverbene option format)
   let colors=[];
   try{colors=p.colors?JSON.parse(p.colors):[];}catch{colors=[];}
-  const colorKeys = Object.keys(COLOR_LABEL);
-  const colorChips = colors.filter(c=>typeof c==='string'&&colorKeys.includes(c.toLowerCase().trim()));
+  if(!colors.length&&p.variants){
+    try{
+      JSON.parse(p.variants).forEach(opt=>{
+        (opt.attribute||[]).forEach(attr=>{
+          if((attr.name||'').toLowerCase()==='color'&&attr.value&&!colors.includes(attr.value))
+            colors.push(attr.value);
+        });
+      });
+    }catch{}
+  }
+  const colorKeys=Object.keys(COLOR_LABEL);
+  const colorChips=colors.filter(c=>typeof c==='string');
   if(colorChips.length){
     document.getElementById('pp-colors-wrap').style.display='block';
-    document.getElementById('pp-color-chips').innerHTML=colorChips.map((c,i)=>`<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${COLOR_LABEL[c.toLowerCase().trim()]||c}</button>`).join('');
+    document.getElementById('pp-color-chips').innerHTML=colorChips.map((c,i)=>{
+      const label=COLOR_LABEL[c.toLowerCase().trim()]||c;
+      return `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${label}</button>`;
+    }).join('');
   }else document.getElementById('pp-colors-wrap').style.display='none';
 
-  // ── Size chips — from Silverbene data only, never hardcoded ──
-  const sizesRaw = p.sizes||p.size_options||[];
+  // ── Size chips — from p.sizes or extracted from variants ──
   let sizes=[];
-  try{sizes=typeof sizesRaw==='string'?JSON.parse(sizesRaw):Array.isArray(sizesRaw)?sizesRaw:[];}catch{sizes=[];}
-
+  try{sizes=p.sizes?JSON.parse(p.sizes):[];}catch{sizes=[];}
+  if(!sizes.length&&p.variants){
+    try{
+      JSON.parse(p.variants).forEach(opt=>{
+        (opt.attribute||[]).forEach(attr=>{
+          const n=(attr.name||'').toLowerCase();
+          if((n==='size'||n==='ring size'||n==='chain length'||n==='length')&&attr.value&&!sizes.includes(attr.value))
+            sizes.push(attr.value);
+        });
+      });
+    }catch{}
+  }
   if(sizes.length){
-    const colName = getCollectionName(p);
-    const sizeLabel = CATEGORY_SIZE_LABEL[colName]||'Size';
+    const colName=getCollectionName(p);
+    const sizeLabel=CATEGORY_SIZE_LABEL[colName]||'Size';
     document.getElementById('pp-sizes-wrap').style.display='block';
-    // Update the section title dynamically per category
     document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
     document.getElementById('pp-size-chips').innerHTML=sizes.map((s,i)=>`<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'size')">${s}</button>`).join('');
   }else document.getElementById('pp-sizes-wrap').style.display='none';
+
+  // ── Stock status — reflects live Silverbene sync (auto-updates every 6h) ──
+  const atcBtn=document.getElementById('pp-atc');
+  const stockWrap=document.getElementById('pp-stock-wrap');
+  const stockSpan=document.getElementById('pp-stock').querySelector('span');
+  if(!p.stock||p.stock===0){
+    stockSpan.textContent='Currently out of stock — check back soon';
+    stockSpan.style.color='var(--mid)';
+    stockWrap.style.display='block';
+    atcBtn.disabled=true;
+    atcBtn.textContent='Out of Stock';
+    atcBtn.style.background='var(--light)';
+    atcBtn.style.cursor='default';
+  }else if(p.stock<=10){
+    stockSpan.textContent=`Only ${p.stock} left`;
+    stockSpan.style.color='var(--pink)';
+    stockWrap.style.display='block';
+    atcBtn.disabled=false;
+    atcBtn.textContent='Add to Cart';
+    atcBtn.style.background='';
+    atcBtn.style.cursor='';
+  }else{
+    stockWrap.style.display='none';
+    atcBtn.disabled=false;
+    atcBtn.textContent='Add to Cart';
+    atcBtn.style.background='';
+    atcBtn.style.cursor='';
+  }
 
   // ── Meta ──
   document.getElementById('pp-meta').innerHTML=`<div class="pp-meta-item">⇉ Delivery confirmed after order</div><div class="pp-meta-item">◇ ${matLabel||'Fine Sterling Silver'}</div>`;
 
   // ── Add to Cart ──
-  document.getElementById('pp-atc').onclick=()=>{addToCart(p.id,cleanName(p.name));closePP();};
+  atcBtn.onclick=()=>{if(!atcBtn.disabled){addToCart(p.id,cleanName(p.name));closePP();}};
 
   updatePPGallery();
   document.getElementById('pp-overlay').classList.add('open');
