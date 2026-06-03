@@ -53,10 +53,33 @@ Focus analysis on beauty market opportunities, not sneakers or streetwear.
                     send_email(dennis_email, subject, body, is_html=True)
                     print(f"[Scheduler] ✅ ARIA sent beauty intelligence email")
 
+        _heartbeat("market_data", "market intelligence cycle complete")
+        _heartbeat("goal_engine", "goal progress updated")
+
     except Exception as e:
         print(f"[Scheduler] Error: {e}")
         import traceback
         traceback.print_exc()
+
+
+def _heartbeat(agent_name: str, note: str = ""):
+    """Write a heartbeat to AgentMemory so the command center shows the agent as active."""
+    try:
+        from sqlmodel import Session
+        from app.database import engine
+        from app.models.agent import AgentMemory
+        import json
+        from datetime import datetime
+        with Session(engine) as session:
+            session.add(AgentMemory(
+                agent_name=agent_name,
+                memory_type="heartbeat",
+                content=json.dumps({"timestamp": datetime.utcnow().isoformat(), "note": note}),
+                confidence=0.9
+            ))
+            session.commit()
+    except Exception as e:
+        print(f"[Scheduler] Heartbeat error for {agent_name}: {e}")
 
 
 def run_silverbene_stock_sync():
@@ -72,6 +95,7 @@ def run_signal_processor():
     try:
         from app.agents.nervous_system import process_signals
         process_signals()
+        _heartbeat("nervous_system_processor", "signal processing cycle")
     except Exception as e:
         print(f"[Scheduler] Signal processor error: {e}")
 
@@ -80,7 +104,9 @@ def run_tracking_check():
     try:
         from app.agents.tracking_agent import run_tracking_agent
         run_tracking_agent()
+        _heartbeat("tracking_agent", "order tracking cycle")
     except Exception as e:
+        _heartbeat("tracking_agent", f"error: {str(e)[:80]}")
         print(f"[Scheduler] Tracking check error: {e}")
 
 
@@ -88,7 +114,9 @@ def run_posting_check():
     try:
         from app.agents.posting_agent import run_posting_agent
         run_posting_agent()
+        _heartbeat("posting_agent", "social posting cycle")
     except Exception as e:
+        _heartbeat("posting_agent", f"error: {str(e)[:80]}")
         print(f"[Scheduler] Posting agent error: {e}")
 
 
@@ -96,15 +124,21 @@ def run_customer_check():
     try:
         from app.agents.customer_agent import run_customer_agent
         run_customer_agent()
+        _heartbeat("customer_agent", "customer inbox cycle")
     except Exception as e:
+        _heartbeat("customer_agent", f"error: {str(e)[:80]}")
         print(f"[Scheduler] Customer agent error: {e}")
+
 
 def run_analytics_check():
     try:
         from app.agents.analytics_agent import run_analytics_agent
         run_analytics_agent()
+        _heartbeat("analytics_agent", "analytics cycle")
     except Exception as e:
-        print(f"[Scheduler] Analytics agent error: {e}")   
+        _heartbeat("analytics_agent", f"error: {str(e)[:80]}")
+        print(f"[Scheduler] Analytics agent error: {e}")
+
 
 def run_bulk_import():
     try:
