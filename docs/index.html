@@ -655,11 +655,15 @@ footer{background:var(--black);padding:52px 48px 36px;}
   .cart-body{padding:14px 18px;}
   .cart-footer{padding:14px 18px;}
 
-  /* Auth */
+  /* Auth + Checkout modals — bottom sheet on mobile */
   .modal-overlay{align-items:flex-end;padding:0;}
   .modal{max-width:100%;border-radius:16px 16px 0 0;}
+  .co-modal{max-width:100%;border-radius:16px 16px 0 0;max-height:92vh;}
   .modal-top{padding:24px 22px 18px;}
-  .modal-body{padding:18px 22px 28px;}
+  .modal-body{padding:18px 16px 32px;}
+  /* Shipping option boxes — touch friendly on mobile */
+  #ship-opt-fast,#ship-opt-usps{padding:14px 12px;gap:10px;}
+  #ship-opt-fast div:first-child,#ship-opt-usps div:first-child{flex-shrink:0;}
 
   /* Footer */
   footer{padding:36px 16px 24px;}
@@ -944,7 +948,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
             <div style="width:16px;height:16px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;" id="ship-dot-fast">
               <div style="width:8px;height:8px;border-radius:50%;background:transparent;" id="ship-fill-fast"></div>
             </div>
-            <div>
+            <div style="min-width:0;">
               <div style="font-size:12px;font-weight:500;color:var(--black);">Delivery 5–8 days &nbsp;·&nbsp; <span style="color:var(--gold)">Fast Track</span></div>
               <div style="font-size:10px;color:var(--mid);margin-top:2px;">Priority dispatch · tracked</div>
             </div>
@@ -954,7 +958,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
             <div style="width:16px;height:16px;border-radius:50%;border:2px solid var(--pink);flex-shrink:0;display:flex;align-items:center;justify-content:center;" id="ship-dot-usps">
               <div style="width:8px;height:8px;border-radius:50%;background:var(--pink);" id="ship-fill-usps"></div>
             </div>
-            <div>
+            <div style="min-width:0;">
               <div style="font-size:12px;font-weight:500;color:var(--black);">Delivery 12–18 days &nbsp;·&nbsp; <span style="color:var(--mid)">USPS</span></div>
               <div style="font-size:10px;color:var(--mid);margin-top:2px;">Standard delivery · tracked</div>
             </div>
