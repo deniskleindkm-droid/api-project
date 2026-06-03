@@ -24,8 +24,7 @@ def get_products(
         query = query.where(Product.final_price >= min_price)
     if max_price:
         query = query.where(Product.final_price <= max_price)
-    collection_id: Optional[int] = None,    
-    
+
     products = session.exec(query).all()
     return products
 

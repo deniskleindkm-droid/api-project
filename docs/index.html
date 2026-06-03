@@ -1106,9 +1106,11 @@ function renderCollectionProducts(prods){
 async function loadProducts(){
   try{
     const res = await fetch(`${API}/products`);
-    allProducts = await res.json();
-    // Re-render tiles now that we have products for daily images
-    if(allCollections.length) renderCollectionTiles(allCollections);
+    const data = await res.json();
+    if(Array.isArray(data)&&data.length>0){
+      allProducts = data;
+      if(allCollections.length) renderCollectionTiles(allCollections);
+    }
   }catch{}
 }
 
@@ -1174,8 +1176,17 @@ function getMaterialLabel(p){
   return 'Fine Sterling Silver & Gold';
 }
 
-function openPP(id){
-  const p = allProducts.find(x=>x.id===id);
+async function openPP(id){
+  let p = allProducts.find(x=>x.id===id);
+  if(!p){
+    // Product not in local cache — fetch directly then cache it
+    try{
+      const res = await fetch(`${API}/products/${id}`);
+      if(!res.ok)return;
+      p = await res.json();
+      allProducts.push(p);
+    }catch{return;}
+  }
   if(!p)return;
 
   // ── Images ──
