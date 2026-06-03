@@ -839,31 +839,21 @@ def silverbene_save_one(collection: str = "Rings"):
     import traceback, json as _json
     try:
         from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
-        from app.agents.jewelry_scoring import score_jewelry_product
         from app.agents.jewelry_pricing import calculate_jewelry_price
         from app.agents.shipping_agent import get_best_shipping
         from app.agents.bulk_import_agent import batch_rewrite_products, COLLECTION_STRATEGIES
         from app.agents.store_manager import add_product_to_store
         from app.agents.store_config import get_config
-        from datetime import datetime, timedelta
 
         sb = SilverbeneAdapter()
-        end = datetime.utcnow()
-        start = end - timedelta(days=60)
         strategy = COLLECTION_STRATEGIES.get(collection, {})
-        keyword = strategy.get("keywords", ["ring"])[0] if strategy.get("keywords") else "ring"
 
-        resp = sb._get("/api/dropshipping/product_list_by_date", {
-            "start_date": f"{start.year}-{start.month}",
-            "end_date": f"{end.year}-{end.month}",
-            "keywords": keyword,
-            "is_really_stock": 1,
-        })
-        items = resp.get("data", {}).get("data", [])
-        if not items:
-            return {"error": f"No products from Silverbene for keyword={keyword}"}
+        # Use the adapter's full search (handles date windows + is_really_stock=0)
+        products = sb.search_by_category(collection, limit=3)
+        if not products:
+            return {"error": f"No products from Silverbene for collection={collection}"}
 
-        std = sb._to_standard(items[0])
+        std = products[0]
         score = score_jewelry_product(std)
         if score["rejected"]:
             return {"error": "Product rejected by scorer", "reason": score["rejection_reason"],
