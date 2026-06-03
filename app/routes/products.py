@@ -3,8 +3,49 @@ from sqlmodel import Session, select
 from app.models.product import Product, ProductCreate
 from app.database import get_session
 from typing import Optional
+from pydantic import BaseModel
 
 router = APIRouter()
+
+
+# ── HERO BANNER ───────────────────────────────────────────────────────────────
+
+class HeroUpdate(BaseModel):
+    banner_url: Optional[str] = None    # direct URL (CDN, Cloudinary, etc.)
+    banner_b64: Optional[str] = None    # base64 encoded image for direct upload
+    tagline: Optional[str] = None
+    master_key: str
+
+@router.get("/store/hero")
+def get_hero():
+    """Public — returns current hero banner URL and tagline for the storefront."""
+    from app.agents.store_config import get_config
+    return {
+        "banner_url": get_config("hero_banner_url", default="") or None,
+        "tagline": get_config("hero_tagline", default="Crafted with love. Worn with confidence."),
+    }
+
+@router.put("/store/hero")
+def update_hero(data: HeroUpdate):
+    """Command Center — update the hero banner URL/image and tagline."""
+    import os
+    from app.agents.store_config import set_config
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(data.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    if data.banner_url is not None:
+        set_config("hero_banner_url", data.banner_url, "Hero banner image URL")
+    elif data.banner_b64 is not None:
+        # Store base64 directly — small images only (< 500KB after encoding)
+        if len(data.banner_b64) > 700_000:
+            raise HTTPException(status_code=400, detail="Image too large — use a URL instead (host on Cloudinary or Imgur)")
+        set_config("hero_banner_url", data.banner_b64, "Hero banner image base64")
+
+    if data.tagline is not None:
+        set_config("hero_tagline", data.tagline, "Hero banner tagline text")
+
+    return {"status": "updated", "message": "Banner updated — refresh the storefront to see it live"}
 
 @router.get("/products")
 def get_products(

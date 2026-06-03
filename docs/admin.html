@@ -161,6 +161,58 @@
             <div class="loading">Loading...</div>
         </div>
 
+        <!-- BANNER EDITOR -->
+        <div class="section-title">Storefront Banner</div>
+        <div style="background:#0f0f0f;border:1px solid #1a1a1a;padding:24px;margin-bottom:40px;">
+
+            <!-- Current preview -->
+            <div style="margin-bottom:20px;">
+                <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#555;margin-bottom:10px;">Current Banner</div>
+                <div id="banner-preview" style="width:100%;height:180px;background:#111;border:1px solid #1a1a1a;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;">
+                    <img id="banner-preview-img" src="" style="width:100%;height:100%;object-fit:cover;display:none;" onerror="this.style.display='none';document.getElementById('banner-no-img').style.display='flex'"/>
+                    <div id="banner-no-img" style="display:flex;flex-direction:column;align-items:center;gap:8px;color:#333;">
+                        <div style="font-size:28px;">🖼</div>
+                        <div style="font-size:11px;letter-spacing:1px;">No banner set</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- URL input -->
+            <div style="margin-bottom:16px;">
+                <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#555;margin-bottom:8px;">Paste Image URL</div>
+                <div style="display:flex;gap:8px;">
+                    <input id="banner-url-input" type="text" placeholder="https://your-image-url.jpg"
+                        style="flex:1;padding:10px 14px;background:#111;border:1px solid #222;color:#e0e0e0;font-size:12px;font-family:'Inter',sans-serif;outline:none;"
+                        oninput="previewBannerUrl(this.value)"/>
+                </div>
+            </div>
+
+            <!-- File upload -->
+            <div style="margin-bottom:16px;">
+                <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#555;margin-bottom:8px;">Or Upload Image <span style="color:#333;font-size:9px;">(max ~400KB)</span></div>
+                <label style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#1a1a1a;border:1px solid #222;color:#888;font-size:11px;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:1px;transition:border-color 0.2s;">
+                    <span>📁</span> Choose File
+                    <input type="file" id="banner-file-input" accept="image/*" style="display:none;" onchange="handleBannerFile(this)"/>
+                </label>
+                <span id="banner-file-name" style="margin-left:10px;font-size:11px;color:#555;"></span>
+            </div>
+
+            <!-- Tagline input -->
+            <div style="margin-bottom:20px;">
+                <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#555;margin-bottom:8px;">Hero Tagline</div>
+                <input id="banner-tagline-input" type="text" placeholder="Crafted with love. Worn with confidence."
+                    style="width:100%;padding:10px 14px;background:#111;border:1px solid #222;color:#e0e0e0;font-size:12px;font-family:'Inter',sans-serif;outline:none;box-sizing:border-box;"/>
+            </div>
+
+            <!-- Status + Save -->
+            <div style="display:flex;align-items:center;gap:12px;">
+                <button onclick="saveBanner()" style="padding:10px 24px;background:#d4849c;border:none;color:white;font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:1px;transition:background 0.2s;">
+                    Save Banner
+                </button>
+                <div id="banner-status" style="font-size:11px;color:#555;"></div>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -436,6 +488,102 @@ async function loadBusinessSnapshot() {
 
 // Auto refresh every 60 seconds
 setInterval(loadDashboard, 60000);
+
+// ============================================================
+// BANNER EDITOR
+// ============================================================
+let bannerB64 = null; // holds base64 data from file upload
+
+async function loadBanner() {
+    try {
+        const res = await fetch(`${API}/store/hero`);
+        if (!res.ok) return;
+        const d = await res.json();
+        if (d.banner_url) {
+            showBannerPreview(d.banner_url);
+            document.getElementById('banner-url-input').value = d.banner_url.startsWith('data:') ? '' : d.banner_url;
+        }
+        if (d.tagline) document.getElementById('banner-tagline-input').value = d.tagline;
+    } catch(e) {}
+}
+
+function showBannerPreview(src) {
+    const img = document.getElementById('banner-preview-img');
+    const ph  = document.getElementById('banner-no-img');
+    if (src) {
+        img.src = src;
+        img.style.display = 'block';
+        ph.style.display  = 'none';
+    } else {
+        img.style.display = 'none';
+        ph.style.display  = 'flex';
+    }
+}
+
+function previewBannerUrl(val) {
+    bannerB64 = null; // clear any file upload
+    document.getElementById('banner-file-name').textContent = '';
+    showBannerPreview(val.trim() || null);
+}
+
+function handleBannerFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 450_000) {
+        document.getElementById('banner-status').textContent = '⚠ File too large. Use a URL instead or compress the image below 400KB.';
+        document.getElementById('banner-status').style.color = '#ef4444';
+        return;
+    }
+    document.getElementById('banner-file-name').textContent = file.name;
+    document.getElementById('banner-url-input').value = '';
+    const reader = new FileReader();
+    reader.onload = e => {
+        bannerB64 = e.target.result; // full data:image/...;base64,... string
+        showBannerPreview(bannerB64);
+    };
+    reader.readAsDataURL(file);
+}
+
+async function saveBanner() {
+    const statusEl = document.getElementById('banner-status');
+    statusEl.textContent = 'Saving…';
+    statusEl.style.color = '#555';
+
+    const urlInput = document.getElementById('banner-url-input').value.trim();
+    const tagline  = document.getElementById('banner-tagline-input').value.trim();
+
+    const body = { master_key: masterKey };
+    if (bannerB64)      body.banner_b64 = bannerB64;
+    else if (urlInput)  body.banner_url = urlInput;
+    else                body.banner_url = ''; // clear banner
+    if (tagline) body.tagline = tagline;
+
+    try {
+        const res = await fetch(`${API}/store/hero`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const d = await res.json();
+        if (res.ok) {
+            statusEl.textContent = '✓ Banner saved — live on storefront now';
+            statusEl.style.color = '#22c55e';
+        } else {
+            statusEl.textContent = `✕ ${d.detail || 'Error saving'}`;
+            statusEl.style.color = '#ef4444';
+        }
+    } catch(e) {
+        statusEl.textContent = '✕ Connection error';
+        statusEl.style.color = '#ef4444';
+    }
+}
+
+// Load banner when dashboard opens
+const _origLoadDashboard = loadDashboard;
+loadDashboard = async function() {
+    await _origLoadDashboard();
+    loadBanner();
+};
 </script>
 </body>
 </html>

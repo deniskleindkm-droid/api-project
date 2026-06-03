@@ -1025,11 +1025,19 @@ function startTimer(){
   setInterval(()=>{s--;if(s<0){s=59;m--;}if(m<0){m=59;h--;}if(h<0)h=23;document.getElementById('timer').textContent=`${pad(h)}:${pad(m)}:${pad(s)}`;},1000);
 }
 
-function loadHero(){
-  const url=localStorage.getItem('mk_hero');
-  const tl=localStorage.getItem('mk_hero_tagline');
-  if(url){document.getElementById('hero-img').src=url;document.getElementById('hero-img').style.display='block';document.getElementById('hero-ph').style.display='none';}
-  if(tl)document.getElementById('hero-tagline-el').textContent=tl;
+async function loadHero(){
+  try{
+    const res=await fetch(`${API}/store/hero`);
+    if(!res.ok)return;
+    const d=await res.json();
+    if(d.banner_url){
+      const img=document.getElementById('hero-img');
+      img.src=d.banner_url;
+      img.style.display='block';
+      document.getElementById('hero-ph').style.display='none';
+    }
+    if(d.tagline) document.getElementById('hero-tagline-el').textContent=d.tagline;
+  }catch{}
 }
 
 // ── COLLECTIONS ──
