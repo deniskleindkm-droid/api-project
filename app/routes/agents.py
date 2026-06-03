@@ -746,6 +746,24 @@ def test_supplier():
         "first_product": products[0] if products else None
     }
 
+@router.post("/silverbene/debug-import")
+def silverbene_debug_import(collection: str = "Rings", max_products: int = 3):
+    """
+    Synchronous debug import — runs in the request, returns full result with errors.
+    Use this to diagnose what's happening step by step.
+    """
+    import traceback
+    try:
+        from app.agents.bulk_import_agent import import_for_collection, COLLECTION_STRATEGIES
+        collection = collection.strip().title()
+        if collection not in COLLECTION_STRATEGIES:
+            return {"error": f"Unknown collection. Available: {list(COLLECTION_STRATEGIES.keys())}"}
+        strategy = {**COLLECTION_STRATEGIES[collection], "max_per_run": max_products}
+        result = import_for_collection(collection, strategy)
+        return {"status": "done", "result": result}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+
 @router.post("/silverbene/test-import")
 def silverbene_test_import(collection: str = "Rings", max_products: int = 5):
     """
