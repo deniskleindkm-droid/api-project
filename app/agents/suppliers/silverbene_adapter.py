@@ -3,7 +3,6 @@ from typing import Optional
 import requests
 import json
 import os
-from datetime import datetime, timedelta
 
 SILVERBENE_BASE = "https://s.silverbene.com"
 
@@ -102,51 +101,34 @@ class SilverbeneAdapter(SupplierAdapter):
 
     # ── CATALOG SEARCH ────────────────────────────────────────────────────────
 
-    def search(self, keyword: str, limit: int = 20, page: int = 1,
-               months_back: int = 14) -> list:
+    def search(self, keyword: str, limit: int = 20) -> list:
         """
-        Search Silverbene catalog by keyword using product_list_by_date.
-        Uses a wide date range (default 14 months) to get full catalog coverage.
-        Returns list of products in Mikisi standard format.
+        Search Silverbene catalog by keyword.
+        Uses a fixed wide date range covering their full catalog.
         """
-        # API limits date range to 2 months per call — batch if needed
-        # For simplicity we use 2-month windows and merge results
-        all_items = []
-        seen_skus = set()
+        resp = self._get(ENDPOINT_PRODUCT_BY_DATE, {
+            "start_date": "2020-1",
+            "end_date": "2030-1",
+            "keywords": keyword,
+            "is_really_stock": 1,
+        })
 
-        end_dt = datetime.utcnow()
-        window_months = 2
+        if resp.get("code") != 0:
+            print(f"[Silverbene] search error: {resp.get('message')} keyword={keyword}")
+            return []
 
-        for offset in range(0, months_back, window_months):
-            window_end = end_dt - timedelta(days=offset * 30)
-            window_start = window_end - timedelta(days=window_months * 30)
-            start_str = f"{window_start.year}-{window_start.month}"
-            end_str = f"{window_end.year}-{window_end.month}"
-
-            resp = self._get(ENDPOINT_PRODUCT_BY_DATE, {
-                "start_date": start_str,
-                "end_date": end_str,
-                "keywords": keyword,
-                "is_really_stock": 1,
-            })
-
-            if resp.get("code") != 0:
-                print(f"[Silverbene] search error: {resp.get('message')} for keyword={keyword}")
+        items = resp.get("data", {}).get("data", [])
+        result = []
+        seen = set()
+        for item in items:
+            sku = item.get("sku", "")
+            if sku and sku not in seen:
+                seen.add(sku)
+                result.append(self._to_standard(item))
+            if len(result) >= limit:
                 break
 
-            items = resp.get("data", {}).get("data", [])
-            for item in items:
-                sku = item.get("sku", "")
-                if sku and sku not in seen_skus:
-                    seen_skus.add(sku)
-                    all_items.append(self._to_standard(item))
-                if len(all_items) >= limit:
-                    break
-
-            if len(all_items) >= limit:
-                break
-
-        return all_items[:limit]
+        return result
 
     def search_by_category(self, category_name: str, limit: int = 50) -> list:
         """

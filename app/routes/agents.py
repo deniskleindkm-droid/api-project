@@ -752,14 +752,11 @@ def silverbene_ping():
     import traceback, os, requests
     token = os.getenv("SILVERBENE_API_KEY", "")
     try:
-        from datetime import datetime, timedelta
-        end = datetime.utcnow()
-        start = end - timedelta(days=60)
         url = "https://s.silverbene.com/api/dropshipping/product_list_by_date"
         params = {
             "token": token,
-            "start_date": f"{start.year}-{start.month}",
-            "end_date": f"{end.year}-{end.month}",
+            "start_date": "2020-1",
+            "end_date": "2030-1",
             "keywords": "ring",
             "is_really_stock": 1,
         }

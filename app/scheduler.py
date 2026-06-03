@@ -59,6 +59,98 @@ Focus analysis on beauty market opportunities, not sneakers or streetwear.
         traceback.print_exc()
 
 
+def run_silverbene_stock_sync():
+    """
+    Live stock sync — checks every Silverbene product's option_id against
+    Silverbene's stock API and updates qty in our store.
+    If stock hits 0, marks product inactive. Runs every 6 hours.
+    """
+    try:
+        from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+        from app.models.product import Product
+        from sqlmodel import Session, select
+        from app.database import engine
+        import json
+
+        sb = SilverbeneAdapter()
+
+        with Session(engine) as session:
+            products = session.exec(
+                select(Product).where(
+                    Product.supplier_name == "Silverbene",
+                    Product.is_active == True
+                )
+            ).all()
+
+        if not products:
+            print("[Silverbene Sync] No Silverbene products to check")
+            return
+
+        # Collect all option_ids (stored in cj_sku field)
+        id_map = {}
+        for p in products:
+            option_id = p.cj_sku
+            if option_id:
+                id_map[str(option_id)] = p.id
+
+        if not id_map:
+            print("[Silverbene Sync] No option_ids found on products")
+            return
+
+        # Batch check stock — comma-separated option_ids
+        batch_size = 50
+        option_ids = list(id_map.keys())
+        updated = 0
+        deactivated = 0
+
+        for i in range(0, len(option_ids), batch_size):
+            batch = option_ids[i:i + batch_size]
+            resp = sb._get("/api/dropshipping/option_qty", {
+                "option_id": ",".join(batch)
+            })
+
+            if resp.get("code") != 0:
+                print(f"[Silverbene Sync] Stock check error: {resp.get('message')}")
+                continue
+
+            stock_data = resp.get("data", [])
+            if not isinstance(stock_data, list):
+                continue
+
+            with Session(engine) as session:
+                for item in stock_data:
+                    option_id = str(item.get("option_id", ""))
+                    qty = int(item.get("qty", 0))
+                    product_id = id_map.get(option_id)
+                    if not product_id:
+                        continue
+
+                    product = session.get(Product, product_id)
+                    if not product:
+                        continue
+
+                    if qty == 0 and product.is_active:
+                        product.is_active = False
+                        session.add(product)
+                        deactivated += 1
+                        print(f"[Silverbene Sync] ⚠ Out of stock — deactivated: {product.name[:50]}")
+                    elif qty > 0 and product.stock != qty:
+                        product.stock = qty
+                        if not product.is_active:
+                            product.is_active = True
+                        session.add(product)
+                        updated += 1
+
+                session.commit()
+
+        print(f"[Silverbene Sync] ✅ Done — {updated} updated, {deactivated} deactivated out of {len(products)} products")
+
+    except Exception as e:
+        import traceback
+        print(f"[Silverbene Sync] Error: {e}")
+        traceback.print_exc()
+
+
 def run_signal_processor():
     try:
         from app.agents.nervous_system import process_signals
@@ -206,6 +298,14 @@ def start_scheduler():
         replace_existing=True
     )
 
+    scheduler.add_job(
+        run_silverbene_stock_sync,
+        trigger=IntervalTrigger(hours=6),
+        id='silverbene_stock_sync',
+        name='Silverbene Live Stock Sync',
+        replace_existing=True
+    )
+
     scheduler.start()
     print("[Scheduler] ✅ ARIA scheduler started with jobs:")
     print("[Scheduler]   → Market check: every 6 hours")
@@ -216,3 +316,4 @@ def start_scheduler():
     print("[Scheduler]   → Analytics agent: every 6 hours")
     print("[Scheduler]   → Bulk import: every 24 hours")
     print("[Scheduler]   → ARIA self-check: every 30 minutes")
+    print("[Scheduler]   → Silverbene stock sync: every 6 hours")
