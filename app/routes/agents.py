@@ -754,27 +754,33 @@ def silverbene_ping():
     try:
         url = "https://s.silverbene.com/api/dropshipping/product_list_by_date"
         # Show raw response for diagnosis
-        # Test with multiple known-good date ranges to find what works
-        from datetime import datetime, timedelta
-        now = datetime.utcnow()
-        test_ranges = [
-            ("2026-3", "2026-5"),
-            ("2026-1", "2026-3"),
-            ("2025-11", "2026-1"),
-            ("2025-9", "2025-11"),
-        ]
+        # Test different combinations to find what returns products
         results = {}
         import requests as req2
-        for start, end in test_ranges:
-            r2 = req2.get(url, params={"token": token, "start_date": start, "end_date": end, "keywords": "ring", "is_really_stock": 1}, timeout=15)
-            body = r2.text[:200]
-            results[f"{start}_to_{end}"] = body
+        combos = [
+            ("2024-1", "2024-3", "ring", 1),
+            ("2024-1", "2024-3", "ring", 0),
+            ("2024-1", "2024-3", "", 0),
+            ("2023-1", "2023-3", "ring", 0),
+            ("2025-1", "2025-3", "ring", 0),
+            ("2025-1", "2025-3", "necklace", 0),
+        ]
+        for start, end, kw, stock in combos:
+            p = {"token": token, "start_date": start, "end_date": end, "is_really_stock": stock}
+            if kw:
+                p["keywords"] = kw
+            r2 = req2.get(url, params=p, timeout=15)
+            try:
+                j = r2.json()
+                count = len(j.get("data", {}).get("data", [])) if isinstance(j.get("data"), dict) else 0
+                results[f"{start}_{end}_{kw or 'nokw'}_stock{stock}"] = f"code={j.get('code')} count={count}"
+            except Exception:
+                results[f"{start}_{end}_{kw or 'nokw'}_stock{stock}"] = r2.text[:100]
         params = {
             "token": token,
-            "start_date": "2025-9",
-            "end_date": "2025-11",
-            "keywords": "ring",
-            "is_really_stock": 1,
+            "start_date": "2024-1",
+            "end_date": "2024-3",
+            "is_really_stock": 0,
         }
         r = requests.get(url, params=params, timeout=30)
         raw_text = r.text[:500]
