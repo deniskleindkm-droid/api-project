@@ -1117,7 +1117,7 @@ function getDailyImage(products, collectionId){
   const colProds = products.filter(p=>p.collection_id===collectionId||p.category===collectionId);
   if(!colProds.length)return null;
   const dayIdx = Math.floor(Date.now()/(1000*60*60*24)) % colProds.length;
-  return colProds[dayIdx]?.image_url||null;
+  return colProds[dayIdx]?.content_image_url||colProds[dayIdx]?.image_url||null;
 }
 
 function renderCollectionTiles(cols){
@@ -1177,7 +1177,7 @@ function renderCollectionProducts(prods){
   if(!prods||!prods.length){grid.innerHTML='<div class="loading">No pieces in this collection yet</div>';return;}
   // Assign badges based on position / stock
   grid.innerHTML = prods.map((p,i)=>{
-    const img = p.image_url || getPlaceholder();
+    const img = p.content_image_url || p.image_url || getPlaceholder();
     const name = trunc(cleanName(p.name),55);
     const outOfStock = !p.stock || p.stock === 0;
     let badge='';
@@ -1224,7 +1224,7 @@ function doSearch(val){
   if(!matches.length){box.innerHTML=`<div class="search-empty">No pieces found for "${val}"</div>`;box.classList.add('open');return;}
   box.innerHTML = matches.map(p=>`
     <div class="sri" onclick="openPP(${p.id});document.getElementById('search-drop').classList.remove('open');document.getElementById('search-input').value=''">
-      <div class="sri-img"><img src="${p.image_url||getPlaceholder()}" onerror="this.src='${getPlaceholder()}'"/></div>
+      <div class="sri-img"><img src="${p.content_image_url||p.image_url||getPlaceholder()}" onerror="this.src='${getPlaceholder()}'"/></div>
       <div class="sri-text">
         <span class="sri-name">${trunc(cleanName(p.name),42)}</span>
         <span class="sri-price">$${p.final_price.toFixed(2)}</span>
@@ -1298,7 +1298,8 @@ async function openPP(id){
 
   // ── Images ──
   try{ppImages=p.images?JSON.parse(p.images):[];}catch{ppImages=[];}
-  if(!ppImages.length&&p.image_url)ppImages=[p.image_url];
+  if(p.content_image_url)ppImages=[p.content_image_url,...ppImages.filter(u=>u!==p.content_image_url)];
+  else if(!ppImages.length&&p.image_url)ppImages=[p.image_url];
   if(!ppImages.length)ppImages=[getPlaceholder()];
   ppIdx=0;
 
@@ -1513,7 +1514,7 @@ function renderCart(data){
     return `
     <div class="cart-item">
       <div class="ci-img" onclick="openPP(${item.product_id})" style="cursor:pointer" title="View product">
-        <img src="${item.image_url||getPlaceholder()}" onerror="this.src='${getPlaceholder()}'"/>
+        <img src="${item.content_image_url||item.image_url||getPlaceholder()}" onerror="this.src='${getPlaceholder()}'"/>
       </div>
       <div class="ci-info">
         <div class="ci-brand" onclick="openPP(${item.product_id})" style="cursor:pointer">Mikisi</div>
