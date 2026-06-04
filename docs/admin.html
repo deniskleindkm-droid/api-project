@@ -541,8 +541,8 @@ async function loadBusinessSnapshot() {
         let contentPosted = 0;
         if (contentRes && contentRes.ok) {
             const contentData = await contentRes.json();
-            contentReady = contentData.ready || 0;
-            contentPosted = contentData.posted || 0;
+            contentReady  = contentData.with_content_image || 0;
+            contentPosted = contentData.with_video || 0;
         }
 
         const collectionsRes = await fetch(`${API}/collections`);
@@ -570,14 +570,14 @@ async function loadBusinessSnapshot() {
                 <div class="snapshot-sub">Categories</div>
             </div>
             <div class="snapshot-card">
-                <div class="snapshot-label">Content Ready</div>
+                <div class="snapshot-label">With AI Images</div>
                 <div class="snapshot-value">${contentReady}</div>
-                <div class="snapshot-sub">Awaiting posting</div>
+                <div class="snapshot-sub">Generated content</div>
             </div>
             <div class="snapshot-card">
-                <div class="snapshot-label">Content Posted</div>
+                <div class="snapshot-label">With Videos</div>
                 <div class="snapshot-value">${contentPosted}</div>
-                <div class="snapshot-sub">Published</div>
+                <div class="snapshot-sub">Generated videos</div>
             </div>`;
 
         // Signal health

@@ -131,6 +131,9 @@ def process_signals():
             elif signal.signal_type == "CONTENT_BATCH_COMPLETE":
                 _handle_content_batch_complete(payload)
 
+            elif signal.signal_type == "CONTENT_FAILED":
+                _handle_content_failed(payload)
+
             elif signal.signal_type == "CONTENT_NEEDS_REVIEW":
                 _handle_content_needs_review(payload)
 
@@ -344,8 +347,10 @@ def _handle_content_batch_complete(payload):
     videos_generated = payload.get("videos_generated", 0)
     total_cost       = payload.get("total_cost", 0.0)
     batch_type       = payload.get("batch_type", "batch")
+    failed           = payload.get("failed", 0)
+    hero_url         = payload.get("hero_video_url", "")
 
-    print(f"[Nervous System] Content batch done: {images_generated} images, {videos_generated} videos — ${total_cost:.2f}")
+    print(f"[Nervous System] Content batch done: {images_generated} images, {videos_generated} videos, {failed} failed — ${total_cost:.2f}")
 
     try:
         import os
@@ -353,21 +358,68 @@ def _handle_content_batch_complete(payload):
         from app.agents.email_partner import send_email
 
         situation = (
-            f"Mikisi content agent just completed a {batch_type}. "
-            f"{images_generated} product images and {videos_generated} videos were generated and saved to Cloudinary. "
-            f"Total generation cost: ${total_cost:.2f}. "
-            f"Dennis needs a brief update on what content was produced and what the store looks like now."
+            f"Mikisi content agent completed: {batch_type}. "
+            f"{images_generated} images and {videos_generated} videos generated and saved to Cloudinary. "
+            f"{f'{failed} failed. ' if failed else ''}"
+            f"Total cost: ${total_cost:.2f}. "
+            f"{f'Hero video is now live: {hero_url}. ' if hero_url else ''}"
+            f"Give Dennis a warm, specific update. Mention what this means for the store."
         )
-        result = aria_think(situation=situation, urgency="low")
+        result = aria_think(situation=situation, urgency="medium")
         email_data = result.get("email_to_dennis", {}) if result else {}
         body    = email_data.get("body", "")
-        subject = email_data.get("subject", f"Mikisi Content Update — {images_generated} images, {videos_generated} videos")
+        subject = email_data.get("subject",
+            f"Mikisi Content Update — {images_generated} images · {videos_generated} videos")
         dennis  = os.getenv("DENNIS_EMAIL")
-        if body and dennis:
+        if dennis:
+            # Send even if ARIA body is empty — don't leave Dennis in the dark
+            if not body:
+                body = (
+                    f"<p>Content generation complete.</p>"
+                    f"<p><strong>{images_generated}</strong> images and <strong>{videos_generated}</strong> videos "
+                    f"generated and saved to Cloudinary. Total cost: <strong>${total_cost:.2f}</strong>.</p>"
+                    f"{f'<p>Hero video is live: <a href=\"{hero_url}\">{hero_url}</a></p>' if hero_url else ''}"
+                )
             send_email(dennis, subject, body, is_html=True)
-            print(f"[Nervous System] ARIA content report sent to Dennis")
+            print(f"[Nervous System] Content report sent to Dennis")
     except Exception as e:
-        print(f"[Nervous System] ARIA content report error: {e}")
+        print(f"[Nervous System] Content report error: {e}")
+
+
+def _handle_content_failed(payload):
+    """Fired on any content generation failure — emails Dennis immediately."""
+    asset_type = payload.get("asset_type", "unknown")
+    name       = payload.get("name", "unknown product")
+    reason     = payload.get("reason", "unknown error")
+    timestamp  = payload.get("timestamp", "")
+
+    print(f"[Nervous System] CONTENT FAILED — {asset_type} for '{name}': {reason}")
+
+    try:
+        import os
+        from app.agents.email_partner import send_email
+        dennis = os.getenv("DENNIS_EMAIL")
+        if dennis:
+            send_email(
+                to=dennis,
+                subject=f"Mikisi Content Error — {asset_type} failed",
+                body=(
+                    f"<p style='font-family:sans-serif;'>"
+                    f"<strong>Content generation failed</strong></p>"
+                    f"<p style='font-family:sans-serif;color:#666;'>"
+                    f"<strong>Asset:</strong> {asset_type}<br>"
+                    f"<strong>Product:</strong> {name}<br>"
+                    f"<strong>Reason:</strong> {reason}<br>"
+                    f"<strong>Time:</strong> {timestamp}</p>"
+                    f"<p style='font-family:sans-serif;font-size:12px;color:#999;'>"
+                    f"Check Railway logs for full stack trace. "
+                    f"Trigger regeneration from Command Center → Products.</p>"
+                ),
+                is_html=True
+            )
+            print(f"[Nervous System] Failure alert sent to Dennis")
+    except Exception as e:
+        print(f"[Nervous System] Failed to send failure alert: {e}")
 
 
 def _handle_content_needs_review(payload):

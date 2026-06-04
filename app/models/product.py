@@ -73,6 +73,10 @@ class ProductPublic(SQLModel):
     last_price_sync: Optional[datetime] = None
     is_premium: bool = False
     needs_review: bool = False
+    content_image_url: Optional[str] = None
+    content_lifestyle_url: Optional[str] = None
+    video_url: Optional[str] = None
+    content_generated_at: Optional[datetime] = None
 
 
 class ProductCreate(SQLModel):
