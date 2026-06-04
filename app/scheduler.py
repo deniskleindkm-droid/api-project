@@ -145,7 +145,22 @@ def run_bulk_import():
         from app.agents.bulk_import_agent import run_bulk_import_agent
         run_bulk_import_agent()
     except Exception as e:
-        print(f"[Scheduler] Bulk import error: {e}")            
+        print(f"[Scheduler] Bulk import error: {e}")
+
+
+def run_daily_content():
+    """
+    Daily content job: generate 2 videos per category for newest products.
+    Runs at 09:00 UTC — generates up to 12 videos/day.
+    Images are generated at import time, not here.
+    """
+    try:
+        from app.agents.content_agent import run_daily_video_batch
+        run_daily_video_batch()
+        _heartbeat("content_agent", "daily video batch complete")
+    except Exception as e:
+        _heartbeat("content_agent", f"error: {str(e)[:80]}")
+        print(f"[Scheduler] Content agent error: {e}")            
 
 
 def run_aria_self_check():
@@ -250,6 +265,14 @@ def start_scheduler():
     )
 
     scheduler.add_job(
+        run_daily_content,
+        trigger=IntervalTrigger(hours=24),
+        id='daily_content',
+        name='Content Agent — Daily Video Batch',
+        replace_existing=True
+    )
+
+    scheduler.add_job(
         run_silverbene_stock_sync,
         trigger=IntervalTrigger(hours=6),
         id='silverbene_stock_sync',
@@ -268,3 +291,4 @@ def start_scheduler():
     print("[Scheduler]   → Bulk import: every 24 hours")
     print("[Scheduler]   → ARIA self-check: every 30 minutes")
     print("[Scheduler]   → Silverbene stock sync: every 6 hours")
+    print("[Scheduler]   → Content agent (daily videos): every 24 hours")

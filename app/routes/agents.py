@@ -992,13 +992,52 @@ def trigger_market_check():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/agents/generate-content/{product_id}")
-def generate_content(product_id: int):
+def generate_content(product_id: int, with_video: bool = False, session: Session = Depends(get_session)):
+    """Generate images (and optionally video) for a single product."""
     try:
-        from app.agents.content_agent import generate_all_content
-        result = generate_all_content(product_id)
+        from app.agents.content_agent import generate_product_content
+        product = session.get(__import__('app.models.product', fromlist=['Product']).Product, product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        result = generate_product_content(product, with_video=with_video)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))    
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agents/content/run-images")
+def run_image_pipeline(limit: int = None):
+    """Generate images for all products that don't have content yet. Runs in background."""
+    import threading
+    def _run():
+        from app.agents.content_agent import run_image_pipeline
+        run_image_pipeline(limit=limit)
+    threading.Thread(target=_run, daemon=True).start()
+    return {"status": "started", "message": f"Image pipeline started — check content-stats for progress"}
+
+
+@router.post("/agents/content/run-videos-initial")
+def run_initial_videos():
+    """One-time: generate videos for top 20 products + all collection tiles + hero."""
+    import threading
+    def _run():
+        from app.agents.content_agent import run_video_pipeline_initial
+        run_video_pipeline_initial()
+    threading.Thread(target=_run, daemon=True).start()
+    return {"status": "started", "message": "Initial video pipeline started (top 20 + collections + hero)"}
+
+
+@router.post("/agents/content/run-hero")
+def run_hero():
+    """Generate the hero banner video."""
+    import threading
+    def _run():
+        from app.agents.content_agent import generate_hero_content
+        generate_hero_content()
+    threading.Thread(target=_run, daemon=True).start()
+    return {"status": "started", "message": "Hero banner generation started"}
     
 @router.get("/agents/ledger")
 def get_action_ledger(session: Session = Depends(get_session)):
@@ -1013,14 +1052,39 @@ def get_action_ledger(session: Session = Depends(get_session)):
 
 @router.get("/agents/content-stats")
 def get_content_stats(session: Session = Depends(get_session)):
-    from app.models.content import ProductContent
-    ready = session.exec(
-        select(ProductContent).where(ProductContent.status == "ready")
+    from app.models.product import Product
+    from app.models.agent import AgentMemory
+    import json as _json
+
+    total   = session.exec(select(Product).where(Product.is_active == True)).all()
+    with_img = [p for p in total if p.content_image_url]
+    with_vid = [p for p in total if p.video_url]
+
+    # Last 10 generation log entries
+    logs = session.exec(
+        select(AgentMemory)
+        .where(AgentMemory.agent_name == "content_agent",
+               AgentMemory.memory_type == "generation_log")
+        .order_by(AgentMemory.id.desc())
+        .limit(10)
     ).all()
-    posted = session.exec(
-        select(ProductContent).where(ProductContent.status == "posted")
-    ).all()
-    return {"ready": len(ready), "posted": len(posted)}
+    recent = []
+    for l in logs:
+        try:
+            recent.append(_json.loads(l.content))
+        except Exception:
+            pass
+
+    total_cost = sum(r.get("cost_usd", 0) for r in recent)
+    return {
+        "total_products":      len(total),
+        "with_content_image":  len(with_img),
+        "with_video":          len(with_vid),
+        "pending_images":      len(total) - len(with_img),
+        "pending_videos":      len(total) - len(with_vid),
+        "recent_generations":  recent,
+        "recent_cost_usd":     round(total_cost, 4),
+    }
 
 
 @router.get("/agents/status")

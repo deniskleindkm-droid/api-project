@@ -128,6 +128,9 @@ def process_signals():
             elif signal.signal_type == "CONTENT_READY":
                 _handle_content_ready(payload)
 
+            elif signal.signal_type == "CONTENT_BATCH_COMPLETE":
+                _handle_content_batch_complete(payload)
+
             elif signal.signal_type == "CONTENT_NEEDS_REVIEW":
                 _handle_content_needs_review(payload)
 
@@ -325,17 +328,46 @@ def _handle_order_delayed(payload):
 
 
 def _handle_content_ready(payload):
-    content_id = payload.get("content_id")
-    platform = payload.get("platform")
-    score = payload.get("score")
-    auto_post = payload.get("auto_post", False)
-    print(f"[Nervous System] 🎨 Content ready: ID {content_id} for {platform} (score: {score})")
-    if auto_post:
-        try:
-            from app.agents.posting_agent import post_content
-            post_content(content_id)
-        except Exception as e:
-            print(f"[Nervous System] Posting failed: {e}")
+    product_id   = payload.get("product_id")
+    product_name = payload.get("product_name", "")
+    asset_type   = payload.get("asset_type", "")
+    total_cost   = payload.get("total_cost", 0.0)
+    images_done  = payload.get("images_done", 0)
+    videos_done  = payload.get("videos_done", 0)
+
+    print(f"[Nervous System] Content ready: {product_name} — {images_done} images, {videos_done} videos (${total_cost:.2f})")
+
+
+def _handle_content_batch_complete(payload):
+    """Fired after a full batch run — ARIA reports to Dennis."""
+    images_generated = payload.get("images_generated", 0)
+    videos_generated = payload.get("videos_generated", 0)
+    total_cost       = payload.get("total_cost", 0.0)
+    batch_type       = payload.get("batch_type", "batch")
+
+    print(f"[Nervous System] Content batch done: {images_generated} images, {videos_generated} videos — ${total_cost:.2f}")
+
+    try:
+        import os
+        from app.agents.aria_intelligence import aria_think
+        from app.agents.email_partner import send_email
+
+        situation = (
+            f"Mikisi content agent just completed a {batch_type}. "
+            f"{images_generated} product images and {videos_generated} videos were generated and saved to Cloudinary. "
+            f"Total generation cost: ${total_cost:.2f}. "
+            f"Dennis needs a brief update on what content was produced and what the store looks like now."
+        )
+        result = aria_think(situation=situation, urgency="low")
+        email_data = result.get("email_to_dennis", {}) if result else {}
+        body    = email_data.get("body", "")
+        subject = email_data.get("subject", f"Mikisi Content Update — {images_generated} images, {videos_generated} videos")
+        dennis  = os.getenv("DENNIS_EMAIL")
+        if body and dennis:
+            send_email(dennis, subject, body, is_html=True)
+            print(f"[Nervous System] ARIA content report sent to Dennis")
+    except Exception as e:
+        print(f"[Nervous System] ARIA content report error: {e}")
 
 
 def _handle_content_needs_review(payload):

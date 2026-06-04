@@ -37,6 +37,11 @@ class Product(SQLModel, table=True):
     # Product flags
     is_premium: bool = False
     needs_review: bool = False
+    # Generated content — Cloudinary URLs only, never fal.ai/Runway (they expire)
+    content_image_url: Optional[str] = None      # clean product shot
+    content_lifestyle_url: Optional[str] = None  # lifestyle shot (skin tone rotated)
+    video_url: Optional[str] = None              # product video
+    content_generated_at: Optional[datetime] = None
 
 
 class ProductPublic(SQLModel):
