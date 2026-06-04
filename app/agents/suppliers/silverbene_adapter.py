@@ -356,7 +356,19 @@ class SilverbeneAdapter(SupplierAdapter):
                 if not value:
                     continue
 
-                if name in ("chain length", "length") and re.search(r'\d+\s*mm', value, re.I):
+                if name in ("chain length", "length") and re.search(r'\d+\s*(mm|cm)', value, re.I):
+                    for chip in parse_necklace_length(value):
+                        if chip not in seen_sizes:
+                            seen_sizes.add(chip)
+                            sizes.append(chip)
+                elif name == "size" and re.search(r'\d+\s*(mm|cm)', value, re.I):
+                    # Size attribute with a length value (e.g. "45cm", "450mm")
+                    for chip in parse_necklace_length(value):
+                        if chip not in seen_sizes:
+                            seen_sizes.add(chip)
+                            sizes.append(chip)
+                elif name in COLOR_ATTRIBUTE_NAMES and re.search(r'\d+\s*cm', value, re.I):
+                    # Length hidden in Color attribute (e.g. "1.0mm, 40cm")
                     for chip in parse_necklace_length(value):
                         if chip not in seen_sizes:
                             seen_sizes.add(chip)
@@ -414,15 +426,25 @@ def parse_necklace_length(chain_length_str: str) -> list:
     """
     Convert a Silverbene chain length string into display chips.
 
-    Input:  "400mm - 450mm Adjustable"  /  "410mm"  /  "400mm - 600mm"
-    Output: ["400mm / 16\"", "450mm / 18\"", "Adjustable"]
+    Handles mm and cm inputs:
+      "400mm - 450mm Adjustable" -> ["400mm / 16\"", "450mm / 18\"", "Adjustable"]
+      "45cm"                     -> ["450mm / 18\""]
+      "1.0mm, 40cm"              -> ["400mm / 16\""]
+      "40cm - 50cm"              -> ["400mm / 16\"", "450mm / 18\"", "500mm / 20\""]
 
     For ranges, every standard length between lo and hi is included.
     """
     s = chain_length_str.strip()
     is_adjustable = "adjustable" in s.lower()
 
-    nums = [int(m) for m in re.findall(r'\d+', s) if 200 <= int(m) <= 1000]
+    # Normalise: convert any cm values to mm before extracting numbers
+    def _cm_to_mm(match):
+        val = float(match.group(1))
+        return str(int(round(val * 10))) + "mm"
+
+    s_mm = re.sub(r'(\d+(?:\.\d+)?)\s*cm', _cm_to_mm, s, flags=re.I)
+
+    nums = [int(m) for m in re.findall(r'\d+', s_mm) if 200 <= int(m) <= 1000]
     if not nums:
         return []
 
