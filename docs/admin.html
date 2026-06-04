@@ -93,9 +93,70 @@
 
         /* LOADING */
         .loading { text-align: center; padding: 40px; color: #333; font-size: 13px; letter-spacing: 1px; }
+
+        /* PRODUCTS SECTION */
+        .cat-tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 1px solid #1a1a1a; overflow-x: auto; }
+        .cat-tab { padding: 10px 20px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #444; cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.2s; font-family: 'Inter', sans-serif; background: none; border-top: none; border-left: none; border-right: none; }
+        .cat-tab:hover { color: #888; }
+        .cat-tab.active { color: #d4849c; border-bottom-color: #d4849c; }
+        .cat-count { display: inline-block; background: #1a1a1a; color: #555; font-size: 9px; padding: 1px 6px; margin-left: 6px; border-radius: 2px; }
+        .cat-tab.active .cat-count { background: rgba(212,132,156,0.15); color: #d4849c; }
+
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-bottom: 40px; }
+        .prod-card { background: #0f0f0f; border: 1px solid #1a1a1a; cursor: pointer; position: relative; transition: border-color 0.2s; }
+        .prod-card:hover { border-color: #333; }
+        .prod-card:hover .prod-del { opacity: 1; }
+        .prod-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #111; }
+        .prod-thumb-ph { width: 100%; aspect-ratio: 1; background: #111; display: flex; align-items: center; justify-content: center; color: #222; font-size: 28px; }
+        .prod-info { padding: 10px; }
+        .prod-name { font-size: 11px; color: #ccc; line-height: 1.4; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .prod-price { font-size: 13px; color: #d4849c; font-family: 'Playfair Display', serif; }
+        .prod-stock { font-size: 9px; color: #444; margin-top: 3px; letter-spacing: 1px; }
+        .prod-has-content { position: absolute; top: 6px; left: 6px; display: flex; gap: 3px; }
+        .content-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .content-dot.img { background: #22c55e; }
+        .content-dot.vid { background: #d4849c; }
+        .prod-del { position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; background: rgba(0,0,0,0.7); border: 1px solid #333; color: #666; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transition: all 0.2s; }
+        .prod-del:hover { background: #ef4444; border-color: #ef4444; color: white; }
+
+        /* PRODUCT DETAIL PANEL */
+        .prod-panel-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: none; }
+        .prod-panel-overlay.open { display: block; }
+        .prod-panel { position: fixed; top: 0; right: -520px; width: 500px; height: 100vh; background: #0a0a0a; border-left: 1px solid #1a1a1a; z-index: 201; overflow-y: auto; transition: right 0.3s ease; display: flex; flex-direction: column; }
+        .prod-panel.open { right: 0; }
+        .panel-head { padding: 20px 24px; border-bottom: 1px solid #1a1a1a; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: #0a0a0a; z-index: 10; }
+        .panel-close { background: none; border: none; color: #555; font-size: 20px; cursor: pointer; padding: 4px; line-height: 1; }
+        .panel-close:hover { color: white; }
+        .panel-body { padding: 24px; flex: 1; }
+        .panel-img { width: 100%; aspect-ratio: 1; object-fit: cover; background: #111; margin-bottom: 20px; display: block; }
+        .panel-field { margin-bottom: 14px; }
+        .panel-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #444; margin-bottom: 5px; }
+        .panel-value { font-size: 13px; color: #ccc; line-height: 1.5; }
+        .panel-price { font-family: 'Playfair Display', serif; font-size: 24px; color: #d4849c; }
+        .panel-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+        .panel-chip { padding: 3px 10px; background: #111; border: 1px solid #1a1a1a; font-size: 10px; color: #666; letter-spacing: 1px; }
+        .cdn-link { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; background: #111; border: 1px solid #1a1a1a; color: #888; font-size: 11px; text-decoration: none; letter-spacing: 1px; transition: all 0.2s; margin-right: 8px; margin-bottom: 8px; }
+        .cdn-link:hover { border-color: #d4849c; color: #d4849c; }
+        .panel-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }
+        .panel-btn { padding: 11px; border: 1px solid #222; background: #111; color: #888; font-size: 11px; letter-spacing: 1px; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s; text-align: center; }
+        .panel-btn:hover { border-color: #d4849c; color: #d4849c; }
+        .panel-btn.danger { border-color: #2a1111; color: #555; }
+        .panel-btn.danger:hover { background: #ef4444; border-color: #ef4444; color: white; }
+        .panel-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .panel-status { font-size: 11px; color: #555; margin-top: 10px; min-height: 16px; }
     </style>
 </head>
 <body>
+
+<!-- PRODUCT DETAIL PANEL -->
+<div class="prod-panel-overlay" id="panel-overlay" onclick="closePanel()"></div>
+<div class="prod-panel" id="prod-panel">
+    <div class="panel-head">
+        <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#555;">Product Detail</div>
+        <button class="panel-close" onclick="closePanel()">×</button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+</div>
 
 <div class="auth-screen" id="auth-screen">
     <div class="auth-title">Command Center</div>
@@ -159,6 +220,13 @@
         <div class="section-title">Business Snapshot</div>
         <div class="snapshot-grid" id="snapshot-grid">
             <div class="loading">Loading...</div>
+        </div>
+
+        <!-- PRODUCTS -->
+        <div class="section-title">Products</div>
+        <div class="cat-tabs" id="cat-tabs"></div>
+        <div class="product-grid" id="product-grid">
+            <div class="loading" style="grid-column:1/-1;">Loading products…</div>
         </div>
 
         <!-- BANNER EDITOR -->
@@ -651,6 +719,211 @@ async function saveBanner() {
     }
 }
 
+// ============================================================
+// PRODUCTS MANAGER
+// ============================================================
+const CATEGORIES = ['Rings','Necklaces','Bracelets','Earrings','Anklets','Ear Cuffs'];
+let allProducts = [];
+let activeCategory = 'Rings';
+
+async function loadProducts() {
+    try {
+        const res = await fetch(`${API}/products`);
+        allProducts = await res.json();
+        buildCategoryTabs();
+        renderProducts(activeCategory);
+    } catch(e) {
+        document.getElementById('product-grid').innerHTML =
+            '<div class="loading" style="grid-column:1/-1;color:#ef4444;">Failed to load products</div>';
+    }
+}
+
+function buildCategoryTabs() {
+    const tabs = document.getElementById('cat-tabs');
+    tabs.innerHTML = CATEGORIES.map(cat => {
+        const count = allProducts.filter(p => p.category === cat).length;
+        return `<button class="cat-tab${cat===activeCategory?' active':''}" onclick="switchCat('${cat}')">
+            ${cat} <span class="cat-count">${count}</span>
+        </button>`;
+    }).join('');
+}
+
+function switchCat(cat) {
+    activeCategory = cat;
+    buildCategoryTabs();
+    renderProducts(cat);
+}
+
+function renderProducts(cat) {
+    const grid = document.getElementById('product-grid');
+    const products = allProducts.filter(p => p.category === cat);
+
+    if (!products.length) {
+        grid.innerHTML = '<div class="loading" style="grid-column:1/-1;">No products in this category</div>';
+        return;
+    }
+
+    grid.innerHTML = products.map(p => {
+        const thumb = p.content_image_url || p.image_url || '';
+        const hasImg = !!p.content_image_url;
+        const hasVid = !!p.video_url;
+        return `<div class="prod-card" onclick="openPanel(${p.id})">
+            <div class="prod-has-content">
+                ${hasImg ? '<div class="content-dot img" title="Has AI image"></div>' : ''}
+                ${hasVid ? '<div class="content-dot vid" title="Has video"></div>' : ''}
+            </div>
+            <button class="prod-del" onclick="event.stopPropagation();deleteProduct(${p.id},this)" title="Remove from store">×</button>
+            ${thumb
+                ? `<img class="prod-thumb" src="${thumb}" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
+                : ''}
+            <div class="prod-thumb-ph" ${thumb?'style="display:none"':''}>◇</div>
+            <div class="prod-info">
+                <div class="prod-name">${p.name}</div>
+                <div class="prod-price">$${p.final_price}</div>
+                <div class="prod-stock">${p.stock > 0 ? `${p.stock} in stock` : 'Out of stock'}</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Panel ────────────────────────────────────────────────────
+function openPanel(productId) {
+    const p = allProducts.find(x => x.id === productId);
+    if (!p) return;
+
+    const sizes   = tryParse(p.sizes, []);
+    const colors  = tryParse(p.colors, []);
+    const thumb   = p.content_image_url || p.image_url || '';
+    const lifeImg = p.content_lifestyle_url || '';
+
+    document.getElementById('panel-body').innerHTML = `
+        ${thumb ? `<img class="panel-img" src="${thumb}" onerror="this.style.display='none'">` : ''}
+
+        <div class="panel-field">
+            <div class="panel-label">Name</div>
+            <div class="panel-value" style="font-size:16px;color:white;">${p.name}</div>
+        </div>
+
+        <div class="panel-field" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+                <div class="panel-label">Price</div>
+                <div class="panel-price">$${p.final_price}</div>
+            </div>
+            <div>
+                <div class="panel-label">Stock</div>
+                <div class="panel-value">${p.stock}</div>
+            </div>
+        </div>
+
+        <div class="panel-field">
+            <div class="panel-label">Material</div>
+            <div class="panel-value">${p.material || '—'}</div>
+        </div>
+
+        <div class="panel-field">
+            <div class="panel-label">Description</div>
+            <div class="panel-value" style="font-size:12px;color:#888;line-height:1.7;">${p.description || '—'}</div>
+        </div>
+
+        ${sizes.length ? `<div class="panel-field">
+            <div class="panel-label">Sizes</div>
+            <div class="panel-chips">${sizes.map(s=>`<span class="panel-chip">${s}</span>`).join('')}</div>
+        </div>` : ''}
+
+        ${colors.length ? `<div class="panel-field">
+            <div class="panel-label">Metal Finish</div>
+            <div class="panel-chips">${colors.map(c=>`<span class="panel-chip">${c}</span>`).join('')}</div>
+        </div>` : ''}
+
+        <div class="panel-field">
+            <div class="panel-label">Cloudinary Assets</div>
+            ${p.content_image_url
+                ? `<a class="cdn-link" href="${p.content_image_url}" target="_blank">◇ AI Image</a>`
+                : '<span style="font-size:11px;color:#333;">No AI image yet</span>'}
+            ${lifeImg
+                ? `<a class="cdn-link" href="${lifeImg}" target="_blank">◇ Lifestyle</a>`
+                : ''}
+            ${p.video_url
+                ? `<a class="cdn-link" href="${p.video_url}" target="_blank">▷ Video</a>`
+                : ''}
+            ${p.image_url && p.image_url !== p.content_image_url
+                ? `<a class="cdn-link" href="${p.image_url}" target="_blank" style="border-style:dashed;">⊡ Source</a>`
+                : ''}
+        </div>
+
+        <div class="panel-actions">
+            <button class="panel-btn" id="btn-gen-img" onclick="generateForProduct(${p.id}, false)">Generate Image</button>
+            <button class="panel-btn" id="btn-gen-vid" onclick="generateForProduct(${p.id}, true)">Generate Video</button>
+            <button class="panel-btn danger" style="grid-column:1/-1;" onclick="deleteProduct(${p.id}, null, true)">Remove from Store</button>
+        </div>
+        <div class="panel-status" id="panel-status"></div>
+    `;
+
+    document.getElementById('prod-panel').classList.add('open');
+    document.getElementById('panel-overlay').classList.add('open');
+}
+
+function closePanel() {
+    document.getElementById('prod-panel').classList.remove('open');
+    document.getElementById('panel-overlay').classList.remove('open');
+}
+
+async function generateForProduct(productId, withVideo) {
+    const statusEl = document.getElementById('panel-status');
+    const btn = document.getElementById(withVideo ? 'btn-gen-vid' : 'btn-gen-img');
+    btn.disabled = true;
+    btn.textContent = withVideo ? 'Generating video…' : 'Generating image…';
+    statusEl.textContent = withVideo
+        ? 'Running fal.ai + Runway (~2 min)…'
+        : 'Running fal.ai FLUX (~20s)…';
+    statusEl.style.color = '#888';
+
+    try {
+        const res = await fetch(
+            `${API}/agents/generate-content/${productId}?with_video=${withVideo}`,
+            { method: 'POST' }
+        );
+        const d = await res.json();
+        if (res.ok) {
+            statusEl.textContent = withVideo
+                ? 'Video generated and saved to Cloudinary.'
+                : 'Image generated and saved to Cloudinary.';
+            statusEl.style.color = '#22c55e';
+            // Refresh product list so new URLs appear
+            await loadProducts();
+            openPanel(productId);
+        } else {
+            statusEl.textContent = `Error: ${d.detail || 'unknown'}`;
+            statusEl.style.color = '#ef4444';
+        }
+    } catch(e) {
+        statusEl.textContent = 'Connection error';
+        statusEl.style.color = '#ef4444';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = withVideo ? 'Generate Video' : 'Generate Image';
+    }
+}
+
+async function deleteProduct(productId, btnEl, fromPanel = false) {
+    if (!confirm('Remove this product from the store?')) return;
+
+    try {
+        const res = await fetch(`${API}/products/${productId}`, { method: 'DELETE' });
+        if (res.ok) {
+            allProducts = allProducts.filter(p => p.id !== productId);
+            if (fromPanel) closePanel();
+            buildCategoryTabs();
+            renderProducts(activeCategory);
+        }
+    } catch(e) {}
+}
+
+function tryParse(val, fallback) {
+    if (!val) return fallback;
+    try { return JSON.parse(val); } catch { return fallback; }
+}
+
 // Load banner when dashboard opens
 const _origLoadDashboard = loadDashboard;
 loadDashboard = async function() {
@@ -658,6 +931,7 @@ loadDashboard = async function() {
     loadBanner();
     loadHeroVideo();
     loadContentStats();
+    loadProducts();
 };
 
 // ============================================================
