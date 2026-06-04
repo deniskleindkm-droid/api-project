@@ -988,6 +988,19 @@ footer{background:var(--black);padding:52px 48px 36px;}
   </div>
 </div>
 
+<!-- INFO MODALS — Returns / Shipping / Contact -->
+<div class="modal-overlay" id="info-overlay" onclick="closeInfo()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:300;"></div>
+
+<div id="info-modal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:min(520px,92vw);background:white;z-index:301;padding:40px 36px 36px;
+  font-family:'Jost',sans-serif;max-height:85vh;overflow-y:auto;">
+  <button onclick="closeInfo()" style="position:absolute;top:16px;right:20px;background:none;border:none;
+    font-size:22px;color:#aaa;cursor:pointer;line-height:1;">×</button>
+  <div id="info-title" style="font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:300;
+    color:#0e0e0e;margin-bottom:20px;letter-spacing:0.5px;"></div>
+  <div id="info-body" style="font-size:13px;font-weight:300;color:#555;line-height:1.9;"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <footer>
@@ -998,10 +1011,9 @@ footer{background:var(--black);padding:52px 48px 36px;}
     </div>
     <div class="footer-links">
       <span class="footer-link" onclick="scrollToAbout()">About Us</span>
-      <span class="footer-link">Returns</span>
-      <span class="footer-link">Shipping</span>
-      <span class="footer-link">Care Guide</span>
-      <span class="footer-link">Contact</span>
+      <span class="footer-link" onclick="openInfo('returns')">Returns</span>
+      <span class="footer-link" onclick="openInfo('shipping')">Shipping</span>
+      <span class="footer-link" onclick="openInfo('contact')">Contact</span>
     </div>
   </div>
   <div class="footer-bottom">
@@ -1716,6 +1728,70 @@ function showCollections(){
   document.getElementById('collections-home').scrollIntoView({behavior:'smooth'});
 }
 function scrollToAbout(){const a=document.getElementById('about');a.style.display='flex';setTimeout(()=>a.scrollIntoView({behavior:'smooth'}),100);}
+
+const INFO_CONTENT = {
+  returns: {
+    title: 'Returns Policy',
+    body: `
+      <p style="margin-bottom:16px;">We want you to love every piece you receive. If something isn't right, we're here to help.</p>
+      <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">30-Day Return Window</strong><br>
+      You may return any item within 30 days of delivery. Items must be unworn, undamaged, and in their original condition.</p>
+      <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">How to Return</strong><br>
+      Email us at <a href="mailto:hello@mikisi.co" style="color:#d4849c;">hello@mikisi.co</a> with your order number and the reason for your return. We'll guide you through the next steps.</p>
+      <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Refunds</strong><br>
+      Once your return is confirmed, your refund will be processed within 7 business days to your original payment method.</p>
+      <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Exceptions</strong><br>
+      For hygiene reasons, earrings cannot be returned unless they arrive faulty or damaged. If your item arrives damaged, please photograph it and contact us within 48 hours.</p>
+      <p style="color:#aaa;font-size:11px;margin-top:20px;">Questions? We're always at <a href="mailto:hello@mikisi.co" style="color:#d4849c;">hello@mikisi.co</a></p>
+    `
+  },
+  shipping: {
+    title: 'Shipping Information',
+    body: `
+      <p style="margin-bottom:16px;">Shipping is included in every price you see — no surprises at checkout.</p>
+      <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Carrier</strong><br>
+      All orders ship via USPS with full tracking from dispatch to your door.</p>
+      <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Delivery Time</strong><br>
+      8–10 business days from order confirmation.</p>
+      <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Tracking</strong><br>
+      You'll receive a tracking number by email once your order ships. You can follow your package every step of the way.</p>
+      <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Customs & Duties</strong><br>
+      Customs duty is included in your order — no extra charges on delivery.</p>
+      <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Currently Shipping To</strong><br>
+      United States, Canada, United Kingdom, Australia, Tanzania, Kenya, South Africa, Nigeria, Ghana, and more.</p>
+      <p style="color:#aaa;font-size:11px;margin-top:20px;">Questions about your order? <a href="mailto:hello@mikisi.co" style="color:#d4849c;">hello@mikisi.co</a></p>
+    `
+  },
+  contact: {
+    title: 'Contact Us',
+    body: `
+      <p style="margin-bottom:20px;">We'd love to hear from you — whether it's a question about an order, sizing advice, or just a hello.</p>
+      <p style="margin-bottom:16px;">
+        <strong style="color:#0e0e0e;font-weight:500;">Email</strong><br>
+        <a href="mailto:hello@mikisi.co" style="color:#d4849c;font-size:15px;">hello@mikisi.co</a>
+      </p>
+      <p style="margin-bottom:16px;font-size:12px;color:#888;">We respond to every message within 24 hours.</p>
+      <p style="font-size:12px;color:#aaa;margin-top:24px;line-height:1.7;">
+        For order-related queries please include your order number.<br>
+        For returns and exchanges, visit our <span onclick="openInfo('returns')" style="color:#d4849c;cursor:pointer;">Returns Policy</span>.
+      </p>
+    `
+  }
+};
+
+function openInfo(type) {
+  const c = INFO_CONTENT[type];
+  if (!c) return;
+  document.getElementById('info-title').textContent = c.title;
+  document.getElementById('info-body').innerHTML = c.body;
+  document.getElementById('info-overlay').style.display = 'block';
+  document.getElementById('info-modal').style.display = 'block';
+}
+
+function closeInfo() {
+  document.getElementById('info-overlay').style.display = 'none';
+  document.getElementById('info-modal').style.display = 'none';
+}
 function showBreadcrumb(name){document.getElementById('breadcrumb').style.display='flex';document.getElementById('bc-current').textContent=name;}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
 </script>
