@@ -53,15 +53,19 @@ def _call_fal(prompt: str, aspect_ratio: str) -> str:
     result = fal_client.subscribe(
         MODEL,
         arguments={
-            "prompt": prompt,
-            "num_images": 1,
-            "enable_safety_checker": False,
-            "output_format": "jpeg",
-            "aspect_ratio": aspect_ratio,
+            "prompt":           prompt,
+            "num_images":       1,
+            "output_format":    "jpeg",
+            "aspect_ratio":     aspect_ratio,
+            "safety_tolerance": "6",   # 1=strictest 6=most permissive — correct param for FLUX Pro Ultra
         },
     )
     images = result.get("images", [])
-    return images[0]["url"] if images else ""
+    if not images:
+        # Log the full response so Railway shows exactly what fal.ai returned
+        print(f"[fal.ai] Empty images in response. Full result: {result}")
+        return ""
+    return images[0]["url"]
 
 
 def generate_clean_shot(product_name: str, material: str) -> str:
@@ -79,7 +83,9 @@ def generate_clean_shot(product_name: str, material: str) -> str:
     try:
         return _call_fal(prompt, "1:1")
     except Exception as e:
-        print(f"[fal.ai] Clean shot failed '{product_name}': {e}")
+        import traceback
+        print(f"[fal.ai] Clean shot EXCEPTION '{product_name}': {e}")
+        traceback.print_exc()
         return ""
 
 
@@ -106,7 +112,9 @@ def generate_lifestyle_shot(product_name: str, material: str,
     try:
         return _call_fal(prompt, aspect)
     except Exception as e:
-        print(f"[fal.ai] Lifestyle {tone} failed '{product_name}': {e}")
+        import traceback
+        print(f"[fal.ai] Lifestyle EXCEPTION '{product_name}' tone={tone}: {e}")
+        traceback.print_exc()
         return ""
 
 
@@ -122,14 +130,16 @@ def generate_hero_image() -> str:
     try:
         return _call_fal(prompt, "16:9")
     except Exception as e:
-        print(f"[fal.ai] Hero image failed: {e}")
+        import traceback
+        print(f"[fal.ai] Hero image EXCEPTION: {e}")
+        traceback.print_exc()
         return ""
 
 
 def generate_collection_tile_image(collection_name: str) -> str:
     """Editorial flat lay for a collection tile."""
     prompt = (
-        f"Flat lay editorial of {collection_name} on cream marble surface, "
+        f"Flat lay editorial of {collection_name} jewelry on cream marble surface, "
         "925 sterling silver pieces arranged elegantly, "
         "warm light from top left, subtle shadows, "
         f"{BRAND_TAIL}"
@@ -137,5 +147,7 @@ def generate_collection_tile_image(collection_name: str) -> str:
     try:
         return _call_fal(prompt, "1:1")
     except Exception as e:
-        print(f"[fal.ai] Collection tile image failed '{collection_name}': {e}")
+        import traceback
+        print(f"[fal.ai] Collection tile EXCEPTION '{collection_name}': {e}")
+        traceback.print_exc()
         return ""
