@@ -18,11 +18,12 @@ class HeroUpdate(BaseModel):
 
 @router.get("/store/hero")
 def get_hero():
-    """Public — returns current hero banner URL and tagline for the storefront."""
+    """Public — returns hero banner image, video, and tagline for the storefront."""
     from app.agents.store_config import get_config
     return {
         "banner_url": get_config("hero_banner_url", default="") or None,
-        "tagline": get_config("hero_tagline", default="Crafted with love. Worn with confidence."),
+        "video_url":  get_config("hero_video_url",  default="") or None,
+        "tagline":    get_config("hero_tagline", default="Crafted with love. Worn with confidence."),
     }
 
 @router.put("/store/hero")

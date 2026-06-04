@@ -26,8 +26,10 @@ def _upload_image(url: str, public_id: str, tags: list) -> str:
         public_id=public_id,
         overwrite=True,
         resource_type="image",
-        quality="auto:best",
-        fetch_format="auto",
+        # auto:good balances quality vs file size — fast on mobile without looking cheap
+        quality="auto:good",
+        fetch_format="auto",          # WebP/AVIF on supported browsers
+        width=1200, crop="limit",     # cap at 1200px — enough for retina, not wasteful
         tags=tags,
     )
     return result.get("secure_url", "")
@@ -39,6 +41,10 @@ def _upload_video(url: str, public_id: str, tags: list) -> str:
         public_id=public_id,
         overwrite=True,
         resource_type="video",
+        # Cloudinary transcodes to H.264 + AAC, normalises bitrate for mobile
+        video_codec="auto",
+        audio_codec="none",           # jewelry videos have no audio
+        quality="auto",
         tags=tags,
     )
     return result.get("secure_url", "")
