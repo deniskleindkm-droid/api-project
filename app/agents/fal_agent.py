@@ -68,11 +68,26 @@ def _call_fal(prompt: str, aspect_ratio: str) -> str:
     return images[0]["url"]
 
 
-def generate_clean_shot(product_name: str, material: str) -> str:
+def _safe_call(prompt: str, aspect_ratio: str, label: str) -> tuple:
     """
-    Product alone on ivory marble — no person, pure product focus.
-    Used as the primary product panel image.
+    Calls fal.ai and returns (url, error_message).
+    error_message is '' on success, actual exception text on failure.
     """
+    try:
+        url = _call_fal(prompt, aspect_ratio)
+        if not url:
+            return "", "fal.ai returned empty images array (possible safety filter or API issue)"
+        return url, ""
+    except Exception as e:
+        import traceback
+        msg = str(e)
+        print(f"[fal.ai] EXCEPTION in {label}: {msg}")
+        traceback.print_exc()
+        return "", msg
+
+
+def generate_clean_shot(product_name: str, material: str) -> tuple:
+    """Returns (url, error). url is '' on failure."""
     prompt = (
         f"Professional product photography of {product_name}, "
         f"{material} jewelry piece isolated, "
@@ -80,22 +95,13 @@ def generate_clean_shot(product_name: str, material: str) -> str:
         "cream ivory background, macro detail, no hands, pure product, "
         f"{BRAND_TAIL}"
     )
-    try:
-        return _call_fal(prompt, "1:1")
-    except Exception as e:
-        import traceback
-        print(f"[fal.ai] Clean shot EXCEPTION '{product_name}': {e}")
-        traceback.print_exc()
-        return ""
+    return _safe_call(prompt, "1:1", f"clean_shot:{product_name}")
 
 
 def generate_lifestyle_shot(product_name: str, material: str,
                              category: str, product_id: int,
-                             skin_tone: str = None) -> str:
-    """
-    Product worn on skin — partial body, no full face.
-    skin_tone: override, else auto-rotated from product_id.
-    """
+                             skin_tone: str = None) -> tuple:
+    """Returns (url, error). url is '' on failure."""
     tone = skin_tone or _skin_tone_for(product_id)
     skin_desc = SKIN_TONE_DESC[tone]
     composition, aspect = _composition(category)
@@ -106,20 +112,14 @@ def generate_lifestyle_shot(product_name: str, material: str,
         "expression calm and self-possessed, she chose herself, "
         "natural hair movement, clean neutral nails, jewelry is the focus, "
         "shallow depth of field 85mm f/1.4, "
-        "NEVER full face forward looking at camera, "
+        "partial body only, no full face toward camera, "
         f"{BRAND_TAIL}"
     )
-    try:
-        return _call_fal(prompt, aspect)
-    except Exception as e:
-        import traceback
-        print(f"[fal.ai] Lifestyle EXCEPTION '{product_name}' tone={tone}: {e}")
-        traceback.print_exc()
-        return ""
+    return _safe_call(prompt, aspect, f"lifestyle:{product_name}:{tone}")
 
 
-def generate_hero_image() -> str:
-    """Cinematic hero banner image — no specific product."""
+def generate_hero_image() -> tuple:
+    """Returns (url, error)."""
     prompt = (
         "Cinematic close crop, 925 sterling silver jewelry draped on warm brown skin, "
         "collarbone and neck, cream and gold tones, light drifts across frame catching "
@@ -127,27 +127,15 @@ def generate_hero_image() -> str:
         "empowering intimate, photorealistic, ultra detailed, "
         f"{BRAND_TAIL}"
     )
-    try:
-        return _call_fal(prompt, "16:9")
-    except Exception as e:
-        import traceback
-        print(f"[fal.ai] Hero image EXCEPTION: {e}")
-        traceback.print_exc()
-        return ""
+    return _safe_call(prompt, "16:9", "hero_image")
 
 
-def generate_collection_tile_image(collection_name: str) -> str:
-    """Editorial flat lay for a collection tile."""
+def generate_collection_tile_image(collection_name: str) -> tuple:
+    """Returns (url, error)."""
     prompt = (
         f"Flat lay editorial of {collection_name} jewelry on cream marble surface, "
         "925 sterling silver pieces arranged elegantly, "
         "warm light from top left, subtle shadows, "
         f"{BRAND_TAIL}"
     )
-    try:
-        return _call_fal(prompt, "1:1")
-    except Exception as e:
-        import traceback
-        print(f"[fal.ai] Collection tile EXCEPTION '{collection_name}': {e}")
-        traceback.print_exc()
-        return ""
+    return _safe_call(prompt, "1:1", f"collection_tile:{collection_name}")
