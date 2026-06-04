@@ -69,9 +69,14 @@ def generate_product_content(product: Product, with_video: bool = False) -> dict
     result   = {"product_id": pid, "images": {}, "video": None, "total_cost": 0.0}
 
     with _semaphore:
-        # Clean shot
+        # Silverbene source image — passed to FLUX Redux as the reference
+        source_url = product.image_url or ""
+        if not source_url:
+            print(f"[Content] [{pid}] WARNING: no source image_url for {name}")
+
+        # Clean shot — same product on ivory marble
         print(f"[Content] [{pid}] Step 1/3 clean shot: {name}")
-        raw_clean, err_clean = generate_clean_shot(name, material)
+        raw_clean, err_clean = generate_clean_shot(name, material, source_url)
         if raw_clean:
             cdn_clean = store_product_image(pid, raw_clean, "clean")
             if cdn_clean:
@@ -84,9 +89,9 @@ def generate_product_content(product: Product, with_video: bool = False) -> dict
         else:
             _fail("image_clean", name, err_clean)
 
-        # Lifestyle shot
+        # Lifestyle shot — same product worn on skin
         print(f"[Content] [{pid}] Step 2/3 lifestyle shot: {name}")
-        raw_life, err_life = generate_lifestyle_shot(name, material, category, pid)
+        raw_life, err_life = generate_lifestyle_shot(name, material, category, pid, source_url)
         if raw_life:
             cdn_life = store_product_image(pid, raw_life, "lifestyle")
             if cdn_life:
