@@ -10,7 +10,7 @@ import time
 import requests
 
 RUNWAY_API_KEY = os.getenv("RUNWAY_API_KEY", "")
-RUNWAY_BASE    = "https://api.runwayml.com/v1"
+RUNWAY_BASE    = "https://api.dev.runwayml.com/v1"
 RUNWAY_VERSION = "2024-11-06"
 POLL_INTERVAL  = 10   # seconds between status checks
 POLL_TIMEOUT   = 300  # 5 minutes max wait
