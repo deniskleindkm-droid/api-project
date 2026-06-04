@@ -3,6 +3,7 @@ load_dotenv()
 
 import os
 import json
+import re
 from datetime import datetime
 from sqlmodel import Session, select
 from app.database import engine
@@ -134,6 +135,9 @@ def run_silverbene_stock_agent():
             "newly_reactivated": newly_reactivated,
         }
 
+        # ── Step 3b: Refresh chain lengths for flagged necklaces ────────────
+        _refresh_necklace_lengths(sb)
+
         # ── Step 4: Write to AgentMemory — command center reads this ─────────
         try:
             from app.models.agent import AgentMemory
@@ -200,6 +204,77 @@ def run_silverbene_stock_agent():
         print(f"[Silverbene Stock Agent] Error: {e}")
         traceback.print_exc()
         return {"error": str(e)}
+
+
+def _refresh_necklace_lengths(sb):
+    """
+    Every stock sync cycle: re-fetch Silverbene data for necklaces that are
+    flagged needs_length_review=True and try to extract real chain lengths.
+    Clears the flag when data is found.
+    """
+    from app.agents.suppliers.silverbene_adapter import parse_necklace_length
+
+    LENGTH_RE = re.compile(r'\d+\s*(mm|cm)', re.I)
+    COLOR_NAMES = {"color", "colour", "metal color", "metal finish", "finish"}
+
+    try:
+        with Session(engine) as session:
+            flagged = session.exec(
+                select(Product).where(
+                    Product.category == "Necklaces",
+                    Product.needs_length_review == True,
+                    Product.is_active == True,
+                )
+            ).all()
+
+        if not flagged:
+            return
+
+        print(f"[Silverbene Stock Agent] Refreshing chain lengths for {len(flagged)} necklaces")
+        fixed = 0
+
+        for p in flagged:
+            sku = p.cj_product_id
+            if not sku:
+                continue
+
+            fresh = sb.get_by_sku(sku)
+            if not fresh:
+                continue
+
+            options = fresh.get("_options", [])
+            chips = []
+            seen = set()
+
+            for opt in (options if isinstance(options, list) else []):
+                for attr in opt.get("attribute", []):
+                    name = attr.get("name", "").lower().strip()
+                    value = attr.get("value", "").strip()
+                    if not value or not LENGTH_RE.search(value):
+                        continue
+                    if name in ("chain length", "length", "size") or \
+                       (name in COLOR_NAMES and re.search(r'\d+\s*cm', value, re.I)):
+                        for chip in parse_necklace_length(value):
+                            if chip not in seen:
+                                seen.add(chip)
+                                chips.append(chip)
+
+            if chips:
+                with Session(engine) as session:
+                    prod = session.get(Product, p.id)
+                    if prod:
+                        prod.sizes = json.dumps(chips)
+                        prod.needs_length_review = False
+                        session.add(prod)
+                        session.commit()
+                fixed += 1
+                print(f"[Silverbene Stock Agent] Chain length found for: {p.name[:50]} → {chips}")
+
+        if fixed:
+            print(f"[Silverbene Stock Agent] Chain lengths updated: {fixed}/{len(flagged)}")
+
+    except Exception as e:
+        print(f"[Silverbene Stock Agent] Chain length refresh error: {e}")
 
 
 def _aria_stock_report(total_checked, updated, deactivated, reactivated,
