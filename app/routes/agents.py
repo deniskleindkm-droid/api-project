@@ -1458,3 +1458,197 @@ def backfill_variants(session: Session = Depends(get_session)):
         "failed": failed,
         "errors": errors[:20]
     }
+
+
+# ── CONNECTION CHECKER ────────────────────────────────────────────────────────
+
+@router.get("/agents/check-connections")
+def check_connections():
+    """
+    Test every integration and return a live status report.
+    Green = working. Red = missing token or API error.
+    Safe to call any time — read-only, no posts are made.
+    """
+    import os, requests as _req
+
+    def _ok(name, detail=""):
+        return {"name": name, "status": "connected", "detail": detail}
+
+    def _missing(name, detail=""):
+        return {"name": name, "status": "missing_token", "detail": detail}
+
+    def _error(name, detail=""):
+        return {"name": name, "status": "error", "detail": detail}
+
+    results = []
+
+    # ── Core infrastructure ───────────────────────────────────────────────────
+    results.append(
+        _ok("Silverbene API", "key configured")
+        if os.getenv("SILVERBENE_API_KEY") else
+        _missing("Silverbene API", "Set SILVERBENE_API_KEY in Railway")
+    )
+
+    results.append(
+        _ok("fal.ai", "key configured")
+        if os.getenv("FAL_KEY") else
+        _missing("fal.ai", "Set FAL_KEY in Railway")
+    )
+
+    results.append(
+        _ok("Runway", "key configured")
+        if os.getenv("RUNWAY_API_KEY") else
+        _missing("Runway", "Set RUNWAY_API_KEY in Railway")
+    )
+
+    results.append(
+        _ok("Cloudinary", "key configured")
+        if os.getenv("CLOUDINARY_API_KEY") else
+        _missing("Cloudinary", "Set CLOUDINARY_API_KEY in Railway")
+    )
+
+    results.append(
+        _ok("Anthropic / ARIA", "key configured")
+        if os.getenv("ANTHROPIC_API_KEY") else
+        _missing("Anthropic / ARIA", "Set ANTHROPIC_API_KEY in Railway")
+    )
+
+    results.append(
+        _ok("Stripe", "key configured")
+        if os.getenv("STRIPE_SECRET_KEY") else
+        _missing("Stripe", "Set STRIPE_SECRET_KEY in Railway — payments won't work without this")
+    )
+
+    # ── Social platforms ──────────────────────────────────────────────────────
+    ig_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+    ig_account = os.getenv("INSTAGRAM_ACCOUNT_ID")
+    if ig_token and ig_account:
+        try:
+            r = _req.get(
+                f"https://graph.facebook.com/v18.0/{ig_account}",
+                params={"fields": "id,username", "access_token": ig_token},
+                timeout=8
+            )
+            d = r.json()
+            if "id" in d:
+                results.append(_ok("Instagram", f"@{d.get('username', ig_account)}"))
+            else:
+                results.append(_error("Instagram", d.get("error", {}).get("message", "Token invalid")))
+        except Exception as e:
+            results.append(_error("Instagram", str(e)[:80]))
+    elif ig_token or ig_account:
+        results.append(_missing("Instagram", "Have token but missing INSTAGRAM_ACCOUNT_ID (or vice versa)"))
+    else:
+        results.append(_missing("Instagram",
+            "Need INSTAGRAM_ACCESS_TOKEN + INSTAGRAM_ACCOUNT_ID — "
+            "get from Meta Business > Settings > Instagram > Generate Token"))
+
+    fb_token = os.getenv("FACEBOOK_ACCESS_TOKEN")
+    fb_page = os.getenv("FACEBOOK_PAGE_ID")
+    if fb_token and fb_page:
+        try:
+            r = _req.get(
+                f"https://graph.facebook.com/v18.0/{fb_page}",
+                params={"fields": "id,name", "access_token": fb_token},
+                timeout=8
+            )
+            d = r.json()
+            if "id" in d:
+                results.append(_ok("Facebook", d.get("name", fb_page)))
+            else:
+                results.append(_error("Facebook", d.get("error", {}).get("message", "Token invalid")))
+        except Exception as e:
+            results.append(_error("Facebook", str(e)[:80]))
+    elif fb_token or fb_page:
+        results.append(_missing("Facebook", "Have token but missing FACEBOOK_PAGE_ID (or vice versa)"))
+    else:
+        results.append(_missing("Facebook",
+            "Need FACEBOOK_ACCESS_TOKEN + FACEBOOK_PAGE_ID — "
+            "get from Meta Business > Settings > Page > Generate Token"))
+
+    tt_token = os.getenv("TIKTOK_ACCESS_TOKEN")
+    if tt_token:
+        try:
+            r = _req.get(
+                "https://open.tiktokapis.com/v2/user/info/",
+                headers={"Authorization": f"Bearer {tt_token}"},
+                params={"fields": "open_id,display_name"},
+                timeout=8
+            )
+            d = r.json()
+            if d.get("data"):
+                name = d["data"].get("user", {}).get("display_name", "connected")
+                results.append(_ok("TikTok", name))
+            else:
+                results.append(_error("TikTok", d.get("error", {}).get("message", "Token invalid")))
+        except Exception as e:
+            results.append(_error("TikTok", str(e)[:80]))
+    else:
+        results.append(_missing("TikTok",
+            "Need TIKTOK_ACCESS_TOKEN — "
+            "get from TikTok Developers > My Apps > your app > Keys & Token"))
+
+    pin_token = os.getenv("PINTEREST_ACCESS_TOKEN")
+    pin_board = os.getenv("PINTEREST_BOARD_ID")
+    if pin_token and pin_board:
+        try:
+            r = _req.get(
+                "https://api.pinterest.com/v5/user_account",
+                headers={"Authorization": f"Bearer {pin_token}"},
+                timeout=8
+            )
+            d = r.json()
+            if "username" in d:
+                results.append(_ok("Pinterest", f"@{d['username']}"))
+            else:
+                results.append(_error("Pinterest", d.get("message", "Token invalid")))
+        except Exception as e:
+            results.append(_error("Pinterest", str(e)[:80]))
+    elif pin_token or pin_board:
+        results.append(_missing("Pinterest", "Have token but missing PINTEREST_BOARD_ID (or vice versa)"))
+    else:
+        results.append(_missing("Pinterest",
+            "Need PINTEREST_ACCESS_TOKEN + PINTEREST_BOARD_ID — "
+            "get from Pinterest Developers > My Apps > your app"))
+
+    # ── Auto-posting status ───────────────────────────────────────────────────
+    from app.agents.store_config import get_config
+    auto = get_config("auto_posting_enabled", default="false")
+    social_ready = sum(
+        1 for r in results
+        if r["name"] in ("Instagram", "Facebook", "TikTok", "Pinterest")
+        and r["status"] == "connected"
+    )
+    results.append({
+        "name": "Auto-posting",
+        "status": "enabled" if auto == "true" else "disabled",
+        "detail": (
+            f"{social_ready} platform(s) connected. Auto-posting is ON." if auto == "true"
+            else f"{social_ready} platform(s) connected. Call POST /agents/enable-auto-posting to turn on."
+        )
+    })
+
+    connected = sum(1 for r in results if r["status"] in ("connected", "enabled"))
+    total = len(results)
+    return {
+        "summary": f"{connected}/{total} integrations connected",
+        "integrations": results
+    }
+
+
+@router.post("/agents/enable-auto-posting")
+def enable_auto_posting():
+    """Turn on automatic scheduled posting to all connected social platforms."""
+    from app.agents.store_config import set_config, get_config
+    from app.agents.aria_security import verify_master_key
+    set_config("auto_posting_enabled", "true", "Automatic social media posting")
+    return {"status": "enabled", "message": "Auto-posting is now ON. ARIA will post on schedule."}
+
+
+@router.post("/agents/disable-auto-posting")
+def disable_auto_posting():
+    """Turn off automatic social media posting."""
+    from app.agents.store_config import set_config
+    set_config("auto_posting_enabled", "false", "Automatic social media posting")
+    return {"status": "disabled", "message": "Auto-posting is now OFF."}
+    }
