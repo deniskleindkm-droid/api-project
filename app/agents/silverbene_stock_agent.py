@@ -14,26 +14,25 @@ def run_silverbene_stock_agent():
     """
     Silverbene Stock Agent — runs every 6 hours automatically.
 
-    What it does:
-    1. Fetches live stock for every Silverbene product via option_qty API
-    2. Updates stock quantity in the store
-    3. Deactivates products that are out of stock at Silverbene
-    4. Reactivates products when stock returns
-    5. ARIA reviews the changes and emails Dennis if action is needed
+    Every cycle:
+    1. Checks live stock for every Silverbene product
+    2. Updates stock quantities, marks out-of-stock, reactivates restocks
+    3. Refreshes sizes for ALL categories (rings, necklaces, bracelets, anklets, etc.)
+       wherever Silverbene has new or missing data
+    4. Emails Dennis via ARIA whenever anything changes
     """
 
-    print(f"\n[Silverbene Stock Agent] 🔄 Starting stock sync — {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+    print(f"\n[Silverbene Stock Agent] Starting sync — {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
 
     try:
         from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
         sb = SilverbeneAdapter()
 
-        # ── Step 1: Load all active Silverbene products ───────────────────────
+        # ── Step 1: Load all Silverbene products (active + recently inactive) ──
         with Session(engine) as session:
             active_products = session.exec(
                 select(Product).where(Product.supplier_name == "Silverbene", Product.is_active == True)
             ).all()
-            # Also check recently deactivated ones — they may be back in stock
             inactive_products = session.exec(
                 select(Product).where(Product.supplier_name == "Silverbene", Product.is_active == False)
             ).all()
@@ -42,7 +41,7 @@ def run_silverbene_stock_agent():
 
         if not all_products:
             print("[Silverbene Stock Agent] No Silverbene products in store")
-            return {"checked": 0, "updated": 0, "deactivated": 0, "reactivated": 0}
+            return {"checked": 0, "updated": 0, "deactivated": 0, "reactivated": 0, "sizes_updated": 0}
 
         # ── Step 2: Build option_id → product map ────────────────────────────
         id_map = {}
@@ -51,26 +50,22 @@ def run_silverbene_stock_agent():
                 id_map[str(p.cj_sku)] = p.id
 
         if not id_map:
-            print("[Silverbene Stock Agent] No option_ids found on products — cannot check stock")
-            return {"checked": 0, "updated": 0, "deactivated": 0, "reactivated": 0}
+            print("[Silverbene Stock Agent] No option_ids found — cannot check stock")
+            return {"checked": 0, "updated": 0, "deactivated": 0, "reactivated": 0, "sizes_updated": 0}
 
-        print(f"[Silverbene Stock Agent] Checking {len(id_map)} products against Silverbene live inventory")
+        print(f"[Silverbene Stock Agent] Checking {len(id_map)} products")
 
-        # ── Step 3: Check stock in batches of 50 ────────────────────────────
+        # ── Step 3: Stock check in batches of 50 ─────────────────────────────
         updated = 0
         deactivated = 0
         reactivated = 0
         newly_outofstock = []
         newly_reactivated = []
+        stock_quantity_changes = []
 
-        option_ids = list(id_map.keys())
-        batch_size = 50
-
-        for i in range(0, len(option_ids), batch_size):
-            batch = option_ids[i:i + batch_size]
-            resp = sb._get("/api/dropshipping/option_qty", {
-                "option_id": ",".join(batch)
-            })
+        for i in range(0, len(list(id_map.keys())), 50):
+            batch = list(id_map.keys())[i:i + 50]
+            resp = sb._get("/api/dropshipping/option_qty", {"option_id": ",".join(batch)})
 
             if not isinstance(resp, dict) or resp.get("code") != 0:
                 print(f"[Silverbene Stock Agent] API error: {resp.get('message') if isinstance(resp, dict) else resp}")
@@ -97,15 +92,14 @@ def run_silverbene_stock_agent():
                     if qty == 0:
                         if product.stock != 0:
                             product.stock = 0
-                            product.is_active = True  # keep visible — UI shows 'Out of Stock'
+                            product.is_active = True
                             session.add(product)
                             deactivated += 1
                             newly_outofstock.append(product.name[:60])
-                            print(f"[Silverbene Stock Agent] ⚠ Out of stock → showing 'Out of Stock': {product.name[:50]}")
+                            print(f"[Silverbene Stock Agent] Out of stock: {product.name[:50]}")
                     else:
-                        stock_changed = product.stock != qty
+                        old_qty = product.stock
                         was_inactive = not product.is_active
-
                         product.stock = qty
                         product.is_active = True
                         session.add(product)
@@ -113,32 +107,32 @@ def run_silverbene_stock_agent():
                         if was_inactive:
                             reactivated += 1
                             newly_reactivated.append(product.name[:60])
-                            print(f"[Silverbene Stock Agent] ✅ Back in stock → visible: {product.name[:50]}")
-                        elif stock_changed:
+                            print(f"[Silverbene Stock Agent] Back in stock: {product.name[:50]}")
+                        elif old_qty != qty:
                             updated += 1
+                            stock_quantity_changes.append(
+                                f"{product.name[:40]} ({old_qty} → {qty})"
+                            )
 
                 session.commit()
 
         total_checked = len(id_map)
-        print(f"\n[Silverbene Stock Agent] ✅ Sync complete:")
-        print(f"  • Checked: {total_checked} products")
-        print(f"  • Stock updated: {updated}")
-        print(f"  • Deactivated (out of stock): {deactivated}")
-        print(f"  • Reactivated (back in stock): {reactivated}")
+        print(f"[Silverbene Stock Agent] Stock: checked={total_checked} updated={updated} "
+              f"out_of_stock={deactivated} restocked={reactivated}")
 
+        # ── Step 4: Refresh sizes for ALL categories ──────────────────────────
+        sizes_updated, sizes_detail = _refresh_product_sizes(sb)
+
+        # ── Step 5: Write to AgentMemory ──────────────────────────────────────
         result = {
             "checked": total_checked,
             "updated": updated,
             "deactivated": deactivated,
             "reactivated": reactivated,
+            "sizes_updated": sizes_updated,
             "newly_outofstock": newly_outofstock,
             "newly_reactivated": newly_reactivated,
         }
-
-        # ── Step 3b: Refresh chain lengths for flagged necklaces ────────────
-        _refresh_necklace_lengths(sb)
-
-        # ── Step 4: Write to AgentMemory — command center reads this ─────────
         try:
             from app.models.agent import AgentMemory
             with Session(engine) as session:
@@ -147,12 +141,10 @@ def run_silverbene_stock_agent():
                     memory_type="sync_run",
                     content=json.dumps({
                         "timestamp": datetime.utcnow().isoformat(),
-                        "checked": total_checked,
-                        "updated": updated,
-                        "deactivated": deactivated,
-                        "reactivated": reactivated,
+                        **result,
                         "out_of_stock": newly_outofstock[:5],
                         "restocked": newly_reactivated[:5],
+                        "sizes_detail": sizes_detail[:5],
                     }),
                     confidence=0.9
                 ))
@@ -160,41 +152,36 @@ def run_silverbene_stock_agent():
         except Exception as e:
             print(f"[Silverbene Stock Agent] Memory write error: {e}")
 
-        # ── Step 5: Emit signals to nervous system ───────────────────────────
+        # ── Step 6: Nervous system signals ───────────────────────────────────
         try:
             from app.agents.nervous_system import emit
-            emit(
-                signal_type="STOCK_SYNC_COMPLETE",
-                sender="silverbene_stock_agent",
-                payload=result,
-                priority=8
-            )
+            emit(signal_type="STOCK_SYNC_COMPLETE", sender="silverbene_stock_agent",
+                 payload=result, priority=8)
             for name in newly_outofstock:
-                emit(
-                    signal_type="STOCK_OUT",
-                    sender="silverbene_stock_agent",
-                    payload={"product_name": name},
-                    priority=3
-                )
+                emit(signal_type="STOCK_OUT", sender="silverbene_stock_agent",
+                     payload={"product_name": name}, priority=3)
             for name in newly_reactivated:
-                emit(
-                    signal_type="STOCK_RESTORED",
-                    sender="silverbene_stock_agent",
-                    payload={"product_name": name},
-                    priority=6
-                )
+                emit(signal_type="STOCK_RESTORED", sender="silverbene_stock_agent",
+                     payload={"product_name": name}, priority=6)
         except Exception as e:
-            print(f"[Silverbene Stock Agent] Signal emit error: {e}")
+            print(f"[Silverbene Stock Agent] Signal error: {e}")
 
-        # ── Step 6: ARIA reviews changes and alerts Dennis if needed ─────────
-        if deactivated > 0 or reactivated > 0:
-            _aria_stock_report(
+        # ── Step 7: Email Dennis if ANYTHING changed ──────────────────────────
+        any_change = (
+            deactivated > 0 or reactivated > 0 or
+            updated > 0 or sizes_updated > 0
+        )
+        if any_change:
+            _aria_sync_report(
                 total_checked=total_checked,
                 updated=updated,
                 deactivated=deactivated,
                 reactivated=reactivated,
+                sizes_updated=sizes_updated,
                 newly_outofstock=newly_outofstock,
-                newly_reactivated=newly_reactivated
+                newly_reactivated=newly_reactivated,
+                stock_quantity_changes=stock_quantity_changes,
+                sizes_detail=sizes_detail,
             )
 
         return result
@@ -206,34 +193,46 @@ def run_silverbene_stock_agent():
         return {"error": str(e)}
 
 
-def _refresh_necklace_lengths(sb):
+def _refresh_product_sizes(sb) -> tuple:
     """
-    Every stock sync cycle: re-fetch Silverbene data for necklaces that are
-    flagged needs_length_review=True and try to extract real chain lengths.
-    Clears the flag when data is found.
+    Re-fetch Silverbene data for every product that is missing sizes or
+    flagged needs_length_review, across ALL categories.
+
+    Returns (count_updated, list_of_detail_strings).
+
+    Categories handled:
+      Rings     — ring sizes (e.g. "6", "7", "8", "US 7")
+      Necklaces — chain lengths converted to "450mm / 18\"" chips
+      Bracelets — bracelet sizes (e.g. "16cm", "17cm", "S", "M")
+      Anklets   — anklet sizes  (e.g. "20cm", "22cm")
+      Earrings  — size if present (often none)
+      Ear Cuffs — size if present
     """
-    from app.agents.suppliers.silverbene_adapter import parse_necklace_length
-
-    LENGTH_RE = re.compile(r'\d+\s*(mm|cm)', re.I)
-    COLOR_NAMES = {"color", "colour", "metal color", "metal finish", "finish"}
-
     try:
+        from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+        adapter = SilverbeneAdapter()
+
         with Session(engine) as session:
-            flagged = session.exec(
+            # Products missing sizes OR flagged for review, across all categories
+            needs_refresh = session.exec(
                 select(Product).where(
-                    Product.category == "Necklaces",
-                    Product.needs_length_review == True,
+                    Product.supplier_name == "Silverbene",
                     Product.is_active == True,
+                    (Product.sizes == None) | (Product.needs_length_review == True),
                 )
             ).all()
 
-        if not flagged:
-            return
+        if not needs_refresh:
+            print("[Silverbene Stock Agent] All product sizes are up to date")
+            return 0, []
 
-        print(f"[Silverbene Stock Agent] Refreshing chain lengths for {len(flagged)} necklaces")
+        print(f"[Silverbene Stock Agent] Refreshing sizes for {len(needs_refresh)} products "
+              f"across all categories")
+
         fixed = 0
+        detail = []
 
-        for p in flagged:
+        for p in needs_refresh:
             sku = p.cj_product_id
             if not sku:
                 continue
@@ -243,82 +242,109 @@ def _refresh_necklace_lengths(sb):
                 continue
 
             options = fresh.get("_options", [])
-            chips = []
-            seen = set()
+            sizes_list, _ = adapter._extract_variants(options)
 
-            for opt in (options if isinstance(options, list) else []):
-                for attr in opt.get("attribute", []):
-                    name = attr.get("name", "").lower().strip()
-                    value = attr.get("value", "").strip()
-                    if not value or not LENGTH_RE.search(value):
-                        continue
-                    if name in ("chain length", "length", "size") or \
-                       (name in COLOR_NAMES and re.search(r'\d+\s*cm', value, re.I)):
-                        for chip in parse_necklace_length(value):
-                            if chip not in seen:
-                                seen.add(chip)
-                                chips.append(chip)
-
-            if chips:
+            if sizes_list:
                 with Session(engine) as session:
                     prod = session.get(Product, p.id)
                     if prod:
-                        prod.sizes = json.dumps(chips)
+                        old_sizes = prod.sizes
+                        prod.sizes = json.dumps(sizes_list)
                         prod.needs_length_review = False
                         session.add(prod)
                         session.commit()
                 fixed += 1
-                print(f"[Silverbene Stock Agent] Chain length found for: {p.name[:50]} → {chips}")
+                detail.append(
+                    f"{p.category} — {p.name[:45]}: {sizes_list}"
+                )
+                print(f"[Silverbene Stock Agent] Sizes updated [{p.category}] "
+                      f"{p.name[:45]} → {sizes_list}")
 
         if fixed:
-            print(f"[Silverbene Stock Agent] Chain lengths updated: {fixed}/{len(flagged)}")
+            print(f"[Silverbene Stock Agent] Sizes refreshed: {fixed} products updated")
+
+        return fixed, detail
 
     except Exception as e:
-        print(f"[Silverbene Stock Agent] Chain length refresh error: {e}")
+        print(f"[Silverbene Stock Agent] Size refresh error: {e}")
+        return 0, []
 
 
-def _aria_stock_report(total_checked, updated, deactivated, reactivated,
-                       newly_outofstock, newly_reactivated):
-    """ARIA thinks about the stock changes and emails Dennis if action is needed."""
+def _aria_sync_report(total_checked, updated, deactivated, reactivated,
+                      sizes_updated, newly_outofstock, newly_reactivated,
+                      stock_quantity_changes, sizes_detail):
+    """
+    ARIA reviews the full sync results and emails Dennis with everything
+    that changed — stock levels, out-of-stock alerts, restocks, and size updates.
+    """
     try:
         from app.agents.aria_intelligence import aria_think
         from app.agents.aria_memory import store_episode
         from app.agents.email_partner import send_email
 
-        outofstock_list = "\n".join(f"- {name}" for name in newly_outofstock[:10])
-        reactivated_list = "\n".join(f"- {name}" for name in newly_reactivated[:10])
+        # Build a clear situation summary for ARIA
+        parts = [
+            f"Silverbene 6-hour sync completed. Checked {total_checked} products.",
+        ]
 
-        situation = (
-            f"Silverbene stock sync completed. "
-            f"Checked {total_checked} products. "
-            f"{deactivated} products went out of stock at Silverbene and have been hidden from the store. "
-            f"{reactivated} products came back in stock and are now visible again. "
-            f"{updated} products had their stock quantity updated. "
-            + (f"\nOut of stock: {outofstock_list}" if newly_outofstock else "")
-            + (f"\nBack in stock: {reactivated_list}" if newly_reactivated else "")
-            + "\nDennis should know if action is needed — e.g. replacing out-of-stock products or celebrating restocks."
+        if deactivated > 0:
+            names = "\n".join(f"  - {n}" for n in newly_outofstock[:10])
+            parts.append(
+                f"\n{deactivated} product(s) are now OUT OF STOCK at Silverbene "
+                f"(shown as 'Out of Stock' in store):\n{names}"
+            )
+
+        if reactivated > 0:
+            names = "\n".join(f"  - {n}" for n in newly_reactivated[:10])
+            parts.append(
+                f"\n{reactivated} product(s) came BACK IN STOCK and are now visible:\n{names}"
+            )
+
+        if updated > 0:
+            changes = "\n".join(f"  - {c}" for c in stock_quantity_changes[:10])
+            parts.append(
+                f"\n{updated} product(s) had their stock quantity updated:\n{changes}"
+            )
+
+        if sizes_updated > 0:
+            items = "\n".join(f"  - {d}" for d in sizes_detail[:10])
+            parts.append(
+                f"\n{sizes_updated} product(s) had size/length data refreshed from Silverbene:\n{items}"
+            )
+
+        parts.append(
+            "\nPlease summarise these changes for Dennis in a clean, confident store-owner email. "
+            "Use Mikisi brand tone — empowering, elegant, direct. "
+            "If products went out of stock, suggest finding replacements. "
+            "If sizes were updated, mention the store is now showing accurate sizing."
         )
 
-        result = aria_think(situation=situation, urgency="medium" if deactivated > 2 else "low")
+        situation = "\n".join(parts)
+
+        urgency = "high" if deactivated > 3 else "medium" if (deactivated > 0 or reactivated > 0) else "low"
+        result = aria_think(situation=situation, urgency=urgency)
 
         store_episode(
-            event=f"Stock sync: {deactivated} out of stock, {reactivated} reactivated",
-            context=situation[:200],
-            decision="ARIA reviewed stock changes and notified Dennis",
-            outcome="stock_synced",
+            event=f"Sync: {deactivated} OOS, {reactivated} restocked, {updated} qty changes, {sizes_updated} sizes updated",
+            context=situation[:300],
+            decision="ARIA sent sync summary to Dennis",
+            outcome="sync_reported",
             significance="medium" if deactivated > 0 else "low"
         )
 
         dennis_email = os.getenv("DENNIS_EMAIL")
         if dennis_email and result:
-            urgency = result.get("urgency_level", "low")
-            if urgency in ["high", "medium"] or deactivated > 0 or reactivated > 0:
-                email_data = result.get("email_to_dennis", {})
-                subject = email_data.get("subject", f"Mikisi Stock Update — {deactivated} out of stock, {reactivated} restocked")
-                body = email_data.get("body", "")
-                if body:
-                    send_email(dennis_email, subject, body, is_html=True)
-                    print(f"[Silverbene Stock Agent] ✉ ARIA stock report sent to Dennis")
+            email_data = result.get("email_to_dennis", {})
+            subject = email_data.get(
+                "subject",
+                f"Mikisi Sync Update — {deactivated} OOS · {reactivated} restocked · {sizes_updated} sizes refreshed"
+            )
+            body = email_data.get("body", "")
+            if body:
+                send_email(dennis_email, subject, body, is_html=True)
+                print(f"[Silverbene Stock Agent] Email sent to Dennis via ARIA")
+            else:
+                print(f"[Silverbene Stock Agent] ARIA returned no email body")
 
     except Exception as e:
         print(f"[Silverbene Stock Agent] ARIA report error: {e}")
