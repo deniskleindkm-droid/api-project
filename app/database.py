@@ -41,6 +41,7 @@ def create_db():
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS last_price_sync timestamp"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS is_premium boolean DEFAULT false"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS needs_review boolean DEFAULT false"))
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS needs_length_review boolean DEFAULT false"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS content_image_url varchar(500)"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS content_lifestyle_url varchar(500)"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS video_url varchar(500)"))

@@ -3,6 +3,7 @@ from typing import Optional
 import requests
 import json
 import os
+import re
 
 SILVERBENE_BASE = "https://s.silverbene.com"
 
@@ -303,6 +304,8 @@ class SilverbeneAdapter(SupplierAdapter):
         stock = sum(int(o.get("qty", 0)) for o in options) if options else 999
 
         sizes, colors = self._extract_variants(options)
+        if not sizes:
+            sizes = _parse_chain_length_from_desc(raw.get("desc", "")) or None
         material = self._infer_material_from_desc(raw.get("desc", ""), colors)
 
         return {
@@ -353,8 +356,13 @@ class SilverbeneAdapter(SupplierAdapter):
                 if not value:
                     continue
 
-                if name in SIZE_ATTRIBUTE_NAMES:
-                    value = " ".join(value.split())  # normalize whitespace
+                if name in ("chain length", "length") and re.search(r'\d+\s*mm', value, re.I):
+                    for chip in parse_necklace_length(value):
+                        if chip not in seen_sizes:
+                            seen_sizes.add(chip)
+                            sizes.append(chip)
+                elif name in SIZE_ATTRIBUTE_NAMES:
+                    value = " ".join(value.split())
                     if value not in seen_sizes:
                         seen_sizes.add(value)
                         sizes.append(value)
@@ -394,6 +402,55 @@ class SilverbeneAdapter(SupplierAdapter):
         return base
 
 
+MM_TO_INCHES = {
+    350: '14"', 380: '15"', 400: '16"', 410: '16"',
+    420: '16.5"', 450: '18"', 460: '18"', 480: '19"',
+    500: '20"', 550: '22"', 600: '24"', 650: '26"',
+    700: '28"', 750: '30"',
+}
+
+
+def parse_necklace_length(chain_length_str: str) -> list:
+    """
+    Convert a Silverbene chain length string into display chips.
+
+    Input:  "400mm - 450mm Adjustable"  /  "410mm"  /  "400mm - 600mm"
+    Output: ["400mm / 16\"", "450mm / 18\"", "Adjustable"]
+
+    For ranges, every standard length between lo and hi is included.
+    """
+    s = chain_length_str.strip()
+    is_adjustable = "adjustable" in s.lower()
+
+    nums = [int(m) for m in re.findall(r'\d+', s) if 200 <= int(m) <= 1000]
+    if not nums:
+        return []
+
+    if len(nums) >= 2:
+        lo, hi = min(nums), max(nums)
+        mm_values = sorted(k for k in MM_TO_INCHES if lo <= k <= hi)
+        if not mm_values:
+            mm_values = sorted({lo, hi})
+    else:
+        mm_values = [nums[0]]
+
+    chips = []
+    seen = set()
+    for mm in mm_values:
+        if mm in MM_TO_INCHES:
+            chip = f'{mm}mm / {MM_TO_INCHES[mm]}'
+        else:
+            chip = f'{mm}mm / {round(mm / 25.4, 1)}"'
+        if chip not in seen:
+            seen.add(chip)
+            chips.append(chip)
+
+    if is_adjustable:
+        chips.append("Adjustable")
+
+    return chips
+
+
 def _clean_color_value(value: str) -> str:
     """
     Strip category-word prefixes Silverbene puts in Color attribute values.
@@ -406,6 +463,22 @@ def _clean_color_value(value: str) -> str:
         if lower.startswith(prefix + " "):
             return value[len(prefix):].strip()
     return value
+
+
+def _parse_chain_length_from_desc(desc: str) -> list:
+    """
+    Extract chain length from Silverbene HTML description.
+    Looks for patterns like:
+      <li>Chain Length: 400mm - 450mm Adjustable</li>
+      <li>Length: 450mm</li>
+    Returns parsed chips list, or empty list if nothing found.
+    """
+    m = re.search(r'[Cc]hain\s+[Ll]ength[:\s]+([^<\n]{3,60})', desc)
+    if not m:
+        m = re.search(r'\bLength[:\s]+(\d{3,4}\s*mm[^<\n]{0,40})', desc)
+    if m:
+        return parse_necklace_length(m.group(1))
+    return []
 
 
 def collection_name_log(name: str) -> str:
