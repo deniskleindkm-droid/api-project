@@ -103,6 +103,80 @@ def run_pinterest_analytics():
         print(f"[Scheduler] Pinterest analytics error: {e}")
 
 
+def run_daily_digest():
+    """
+    Daily 08:00 UTC: email Dennis a store health summary regardless of changes.
+    Covers stock sync status, product counts, flagged items, system health.
+    """
+    try:
+        from sqlmodel import Session, select, func
+        from app.database import engine
+        from app.models.product import Product
+        from app.models.order import Order
+        from app.models.agent import AgentMemory
+        from app.agents.aria_intelligence import aria_think
+        from app.agents.email_partner import send_email
+        from app.agents.store_config import get_config
+        import json, os
+        from datetime import datetime, timedelta
+
+        with Session(engine) as session:
+            total_active   = session.exec(select(func.count()).select_from(Product).where(Product.is_active == True)).one()
+            out_of_stock   = session.exec(select(func.count()).select_from(Product).where(Product.is_active == True, Product.stock == 0)).one()
+            low_stock      = session.exec(select(func.count()).select_from(Product).where(Product.is_active == True, Product.stock > 0, Product.stock <= 10)).one()
+            no_image       = session.exec(select(func.count()).select_from(Product).where(Product.is_active == True, Product.content_image_url == None)).one()
+            pinned         = session.exec(select(func.count()).select_from(Product).where(Product.pinterest_pin_id != None)).one()
+            needs_review   = session.exec(select(func.count()).select_from(Product).where(Product.needs_length_review == True)).one()
+            orders_today   = session.exec(select(func.count()).select_from(Order).where(
+                Order.created_at >= datetime.utcnow().replace(hour=0, minute=0, second=0)
+            )).one()
+
+            # Last stock sync
+            last_sync = session.exec(
+                select(AgentMemory)
+                .where(AgentMemory.agent_name == "silverbene_stock_agent", AgentMemory.memory_type == "sync_run")
+                .order_by(AgentMemory.id.desc()).limit(1)
+            ).first()
+
+        last_sync_ts = "never"
+        if last_sync:
+            try:
+                last_sync_ts = json.loads(last_sync.content).get("timestamp", "")[:16] + " UTC"
+            except Exception:
+                pass
+
+        situation = (
+            f"Daily Mikisi store digest for Dennis — {datetime.utcnow().strftime('%A %d %B %Y')}.\n\n"
+            f"Store snapshot:\n"
+            f"  Active products: {total_active}\n"
+            f"  Out of stock: {out_of_stock}\n"
+            f"  Low stock (≤10 units): {low_stock}\n"
+            f"  Missing AI images: {no_image}\n"
+            f"  Pinterest pinned: {pinned}/{total_active}\n"
+            f"  Products flagged for review: {needs_review}\n"
+            f"  Orders today: {orders_today}\n"
+            f"  Last stock sync: {last_sync_ts}\n\n"
+            f"Write Dennis a clean, confident daily store digest. Mikisi tone — elegant and direct. "
+            f"Highlight anything that needs attention. If everything looks good, say so clearly. "
+            f"Keep it under 200 words."
+        )
+
+        result = aria_think(situation=situation, urgency="low")
+        dennis_email = os.getenv("DENNIS_EMAIL")
+        if dennis_email and result:
+            email_data = result.get("email_to_dennis", {})
+            subject = email_data.get("subject", f"Mikisi Daily Digest — {datetime.utcnow().strftime('%d %b %Y')}")
+            body    = email_data.get("body", "")
+            if body:
+                send_email(dennis_email, subject, body, is_html=True)
+                print(f"[Scheduler] Daily digest sent to Dennis")
+
+        _heartbeat("aria", "daily digest sent")
+
+    except Exception as e:
+        print(f"[Scheduler] Daily digest error: {e}")
+
+
 def run_signal_processor():
     try:
         from app.agents.nervous_system import process_signals
@@ -289,6 +363,7 @@ def start_scheduler():
         trigger=IntervalTrigger(hours=6),
         id='silverbene_stock_sync',
         name='Silverbene Live Stock Sync',
+        next_run_time=datetime.utcnow(),   # run immediately on startup, then every 6h
         replace_existing=True
     )
 
@@ -297,6 +372,14 @@ def start_scheduler():
         trigger=CronTrigger(hour=0, minute=5),
         id='pinterest_analytics',
         name='Pinterest Daily Analytics Pull',
+        replace_existing=True
+    )
+
+    scheduler.add_job(
+        run_daily_digest,
+        trigger=CronTrigger(hour=8, minute=0),
+        id='daily_digest',
+        name='ARIA Daily Store Digest Email',
         replace_existing=True
     )
 
@@ -313,3 +396,4 @@ def start_scheduler():
     print("[Scheduler]   → Silverbene stock sync: every 6 hours")
     print("[Scheduler]   → Content agent (daily videos): every 24 hours")
     print("[Scheduler]   → Pinterest analytics: daily at 00:05 UTC")
+    print("[Scheduler]   → Daily digest email: every day at 08:00 UTC")
