@@ -275,6 +275,81 @@ def post_to_facebook(content, image_url, product_name):
         return {"success": False, "reason": str(e)}
 
 
+def post_to_reddit(content, image_url, product_name):
+    """
+    Reddit OAuth2 adapter — posts to jewelry subreddits.
+    Requires: REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET,
+              REDDIT_USERNAME, REDDIT_PASSWORD
+    Optional: REDDIT_SUBREDDITS (comma-separated, default: jewelry,Jewellery)
+    """
+    client_id     = os.getenv("REDDIT_CLIENT_ID")
+    client_secret = os.getenv("REDDIT_CLIENT_SECRET")
+    username      = os.getenv("REDDIT_USERNAME")
+    password      = os.getenv("REDDIT_PASSWORD")
+
+    if not all([client_id, client_secret, username, password]):
+        print(f"[Posting] Reddit credentials not connected — queuing content {content.id}")
+        return {"success": False, "reason": "credentials_missing", "queued": True}
+
+    subreddits_raw = os.getenv("REDDIT_SUBREDDITS", "jewelry,Jewellery")
+    subreddits = [s.strip() for s in subreddits_raw.split(",") if s.strip()]
+
+    try:
+        import requests as _req
+
+        # Step 1 — get OAuth token (script-app password flow)
+        auth = _req.auth.HTTPBasicAuth(client_id, client_secret)
+        token_resp = _req.post(
+            "https://www.reddit.com/api/v1/access_token",
+            auth=auth,
+            data={"grant_type": "password", "username": username, "password": password},
+            headers={"User-Agent": "Mikisi/1.0"}
+        )
+        token_data = token_resp.json()
+        token = token_data.get("access_token")
+        if not token:
+            return {"success": False, "reason": f"Reddit auth failed: {token_data.get('error', 'unknown')}"}
+
+        headers = {
+            "Authorization": f"bearer {token}",
+            "User-Agent": "Mikisi/1.0"
+        }
+
+        title = f"{product_name} — handcrafted 925 sterling silver"
+        body = f"{content.caption}\n\n[Shop Mikisi](https://mikisi.co)"
+
+        posted_to = []
+        for sub in subreddits:
+            # Post as a link submission with image URL
+            resp = _req.post(
+                "https://oauth.reddit.com/api/submit",
+                headers=headers,
+                data={
+                    "sr":        sub,
+                    "kind":      "link",
+                    "title":     title[:300],
+                    "url":       image_url,
+                    "resubmit":  True,
+                    "nsfw":      False,
+                    "spoiler":   False,
+                }
+            )
+            data = resp.json()
+            if data.get("success") or data.get("jquery"):
+                posted_to.append(sub)
+                print(f"[Posting] ✅ Posted to r/{sub}: {product_name}")
+            else:
+                err = data.get("json", {}).get("errors", [])
+                print(f"[Posting] Reddit r/{sub} error: {err}")
+
+        if posted_to:
+            return {"success": True, "subreddits": posted_to}
+        return {"success": False, "reason": "Could not post to any subreddit — check permissions"}
+
+    except Exception as e:
+        return {"success": False, "reason": str(e)}
+
+
 # ============================================================
 # PLATFORM ROUTER
 # Routes to correct adapter based on platform name
@@ -286,6 +361,7 @@ PLATFORM_ADAPTERS = {
     "tiktok": post_to_tiktok,
     "pinterest": post_to_pinterest,
     "facebook": post_to_facebook,
+    "reddit": post_to_reddit,
 }
 
 

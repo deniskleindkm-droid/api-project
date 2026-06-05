@@ -1611,12 +1611,42 @@ def check_connections():
             "Need PINTEREST_ACCESS_TOKEN + PINTEREST_BOARD_ID — "
             "get from Pinterest Developers > My Apps > your app"))
 
+    # ── Reddit ────────────────────────────────────────────────────────────────
+    reddit_id  = os.getenv("REDDIT_CLIENT_ID")
+    reddit_sec = os.getenv("REDDIT_CLIENT_SECRET")
+    reddit_usr = os.getenv("REDDIT_USERNAME")
+    reddit_pwd = os.getenv("REDDIT_PASSWORD")
+    if all([reddit_id, reddit_sec, reddit_usr, reddit_pwd]):
+        try:
+            import requests as _req2
+            r = _req2.post(
+                "https://www.reddit.com/api/v1/access_token",
+                auth=_req2.auth.HTTPBasicAuth(reddit_id, reddit_sec),
+                data={"grant_type": "password", "username": reddit_usr, "password": reddit_pwd},
+                headers={"User-Agent": "Mikisi/1.0"},
+                timeout=8
+            )
+            d = r.json()
+            if d.get("access_token"):
+                subs = os.getenv("REDDIT_SUBREDDITS", "jewelry,Jewellery")
+                results.append(_ok("Reddit", f"u/{reddit_usr} → r/{subs}"))
+            else:
+                results.append(_error("Reddit", d.get("error", "Auth failed")))
+        except Exception as e:
+            results.append(_error("Reddit", str(e)[:80]))
+    elif any([reddit_id, reddit_sec, reddit_usr, reddit_pwd]):
+        results.append(_missing("Reddit", "Partially configured — need all 4 vars"))
+    else:
+        results.append(_missing("Reddit",
+            "Need REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USERNAME, REDDIT_PASSWORD — "
+            "get from reddit.com/prefs/apps > create app (type: script)"))
+
     # ── Auto-posting status ───────────────────────────────────────────────────
     from app.agents.store_config import get_config
     auto = get_config("auto_posting_enabled", default="false")
     social_ready = sum(
         1 for r in results
-        if r["name"] in ("Instagram", "Facebook", "TikTok", "Pinterest")
+        if r["name"] in ("Instagram", "Facebook", "TikTok", "Pinterest", "Reddit")
         and r["status"] == "connected"
     )
     results.append({
