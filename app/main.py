@@ -47,6 +47,14 @@ app.include_router(collections_router)
 def serve_frontend():
     return FileResponse("docs/index.html")
 
+@app.get("/terms")
+def serve_terms():
+    return FileResponse("docs/terms.html")
+
+@app.get("/privacy")
+def serve_privacy():
+    return FileResponse("docs/privacy.html")
+
 @app.get("/health")
 def health_check():
     return {
