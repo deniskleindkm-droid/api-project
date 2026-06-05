@@ -89,6 +89,10 @@ def process_order_background(checkout_data: dict):
 
             print(f"[Payments] Found {len(cart_items)} cart items for {user_email}")
 
+            if not cart_items:
+                print(f"[Payments] Cart already empty for {user_email} — webhook retry or already processed. Skipping.")
+                return
+
             for item in cart_items:
                 product = session.get(Product, item.product_id)
                 if product:
@@ -191,15 +195,17 @@ def process_order_background(checkout_data: dict):
                             customer_name=f"{customer_first} {customer_last}",
                             supplier_name="Silverbene"
                         )
-                        # Update order status in DB
                         with Session(engine) as session:
                             order_rec = session.get(Order, order_id)
                             if order_rec:
                                 order_rec.status = "processing"
+                                order_rec.supplier_notified = True
                                 session.add(order_rec)
                                 session.commit()
+                    elif not result.get("success"):
+                        print(f"[Payments] Silverbene rejected order for {d['name']}: {result.get('reason', 'unknown error')}")
                 else:
-                    print(f"[Payments] No option_id for {d['name']} — manual fulfillment needed")
+                    print(f"[Payments] No Silverbene option_id for {d['name']} — manual fulfillment needed")
         except Exception as e:
             print(f"[Payments] Silverbene forwarding failed: {e}")
 
@@ -239,7 +245,7 @@ def process_order_background(checkout_data: dict):
 </tr>
 </table>
 <br>
-<p style="color:#d4849c;font-weight:bold;">CJ order forwarding attempted automatically.</p>
+<p style="color:#d4849c;font-weight:bold;">Silverbene order forwarding attempted automatically.</p>
 <p>Ship to: {shipping_address}</p>
 </body></html>""",
                 is_html=True
@@ -320,3 +326,27 @@ async def stripe_webhook(
         background_tasks.add_task(process_order_background, checkout_data)
 
     return {"status": "ok"}
+
+
+@router.post("/payments/recover-order/{session_id}")
+async def recover_missed_order(
+    session_id: str,
+    background_tasks: BackgroundTasks,
+    token: str = Depends(oauth2_scheme)
+):
+    """
+    Admin endpoint: manually replay a Stripe checkout session that the webhook missed.
+    Use this when a customer paid but the order wasn't recorded.
+    """
+    payload = verify_token(token)
+    if not payload or payload.get("sub") != os.getenv("DENNIS_EMAIL"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    try:
+        checkout_data = stripe.checkout.Session.retrieve(session_id)
+        if checkout_data.get("payment_status") != "paid":
+            raise HTTPException(status_code=400, detail="Session not paid yet")
+        background_tasks.add_task(process_order_background, dict(checkout_data))
+        return {"status": "recovery_started", "session_id": session_id}
+    except stripe.error.StripeError as e:
+        raise HTTPException(status_code=400, detail=str(e))

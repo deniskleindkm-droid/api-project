@@ -577,7 +577,7 @@ nav{
 .co-total-amount{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;color:var(--black);}
 
 /* ── TOAST ── */
-.toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:var(--black);color:white;padding:12px 26px;font-size:11px;font-weight:300;letter-spacing:1.5px;z-index:400;opacity:0;transition:opacity 0.3s;white-space:nowrap;box-shadow:0 8px 40px rgba(0,0,0,0.15);}
+.toast{position:fixed;bottom:max(32px,env(safe-area-inset-bottom,0px) + 16px);left:50%;transform:translateX(-50%);background:var(--black);color:white;padding:12px 26px;font-size:11px;font-weight:300;letter-spacing:1.5px;z-index:9999;opacity:0;transition:opacity 0.3s;white-space:nowrap;box-shadow:0 8px 40px rgba(0,0,0,0.15);}
 .toast.show{opacity:1;}
 .loading{text-align:center;padding:72px;color:var(--light);font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17px;grid-column:1/-1;}
 
@@ -1415,8 +1415,16 @@ async function openPP(id){
   // ── Add to Cart — passes selected size & color ──
   atcBtn.onclick=()=>{
     if(atcBtn.disabled)return;
+    atcBtn.disabled=true;
+    atcBtn.textContent='Added to Cart ✓';
+    atcBtn.style.background='#22c55e';
     addToCart(p.id, cleanName(p.name), ppSelectedSize, ppSelectedColor);
-    closePP();
+    setTimeout(()=>{
+      if(!p.stock||p.stock===0)return;
+      atcBtn.disabled=false;
+      atcBtn.textContent='Add to Cart';
+      atcBtn.style.background='';
+    },2000);
   };
 
   // Reset variant selection for this product

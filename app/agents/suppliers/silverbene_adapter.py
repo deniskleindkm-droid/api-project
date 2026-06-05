@@ -251,8 +251,11 @@ class SilverbeneAdapter(SupplierAdapter):
             option_id=use_option,
             qty=quantity
         )
-        carrier_code = methods[0].get("carrier_code", "") if methods else ""
-        method_code = methods[0].get("method_code", "") if methods else ""
+        if not methods:
+            print(f"[Silverbene] No shipping methods returned for option_id={use_option} — cannot place order")
+            return self.standard_order(success=False, supplier_order_id="", reason="No shipping methods available")
+        carrier_code = methods[0].get("carrier_code", "")
+        method_code = methods[0].get("method_code", "")
 
         order_option_id = option_id or product_id
 
