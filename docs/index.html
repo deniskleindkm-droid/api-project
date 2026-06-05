@@ -1185,9 +1185,9 @@ function renderCollectionProducts(prods){
     const outOfStock = !p.stock || p.stock === 0;
     let badge='';
     if(outOfStock) badge=`<div class="pcard-badge" style="background:var(--mid);letter-spacing:1px">Out of Stock</div>`;
-    else if(p.is_featured||i===0) badge=`<div class="pcard-badge badge-signature">✦ Signature</div>`;
+    else if(p.is_featured) badge=`<div class="pcard-badge badge-signature">✦ Signature</div>`;
     else if(p.stock<=10) badge=`<div class="pcard-badge badge-limited">❋ Limited · ${p.stock} left</div>`;
-    else if(p.is_new||i<3) badge=`<div class="pcard-badge badge-new">New</div>`;
+    else if(p.is_new) badge=`<div class="pcard-badge badge-new">New</div>`;
     const liked = wishlist.includes(p.id);
     return `<div class="pcard" onclick="openPP(${p.id})" style="${outOfStock?'opacity:0.6':''}">
       <div class="pcard-img">
