@@ -1589,9 +1589,9 @@ def check_connections():
             "get from TikTok Developers > My Apps > your app > Keys & Token"))
 
     pin_token = os.getenv("PINTEREST_ACCESS_TOKEN")
-    pin_board = os.getenv("PINTEREST_BOARD_ID")
-    if pin_token and pin_board:
+    if pin_token:
         try:
+            # Check account access
             r = _req.get(
                 "https://api.pinterest.com/v5/user_account",
                 headers={"Authorization": f"Bearer {pin_token}"},
@@ -1599,17 +1599,41 @@ def check_connections():
             )
             d = r.json()
             if "username" in d:
-                results.append(_ok("Pinterest", f"@{d['username']}"))
+                username = d["username"]
+                # Also probe boards:write scope
+                probe = _req.post(
+                    "https://api.pinterest.com/v5/boards",
+                    headers={"Authorization": f"Bearer {pin_token}",
+                             "Content-Type": "application/json"},
+                    json={"name": "_scope_probe_", "privacy": "SECRET"},
+                    timeout=8
+                )
+                pd = probe.json()
+                if pd.get("code") == 3:  # missing scope
+                    missing_scopes = pd.get("message", "")
+                    results.append(_error(
+                        "Pinterest",
+                        f"@{username} connected but token missing scopes: {missing_scopes} — "
+                        f"regenerate token with boards:write + pins:write + catalogs:write"
+                    ))
+                else:
+                    # Real board was created — delete it immediately
+                    probe_id = pd.get("id", "")
+                    if probe_id:
+                        _req.delete(
+                            f"https://api.pinterest.com/v5/boards/{probe_id}",
+                            headers={"Authorization": f"Bearer {pin_token}"},
+                            timeout=8
+                        )
+                    results.append(_ok("Pinterest", f"@{username} — all scopes verified"))
             else:
-                results.append(_error("Pinterest", d.get("message", "Token invalid")))
+                results.append(_error("Pinterest", d.get("message", "Token invalid or expired")))
         except Exception as e:
             results.append(_error("Pinterest", str(e)[:80]))
-    elif pin_token or pin_board:
-        results.append(_missing("Pinterest", "Have token but missing PINTEREST_BOARD_ID (or vice versa)"))
     else:
         results.append(_missing("Pinterest",
-            "Need PINTEREST_ACCESS_TOKEN + PINTEREST_BOARD_ID — "
-            "get from Pinterest Developers > My Apps > your app"))
+            "Need PINTEREST_ACCESS_TOKEN — "
+            "get from Pinterest Developers > My Apps > your app > Generate token"))
 
     # ── Auto-posting status ───────────────────────────────────────────────────
     from app.agents.store_config import get_config
