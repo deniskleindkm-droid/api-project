@@ -12,6 +12,7 @@ from app.models.store_config import StoreConfig
 from app.models.aria_operational import ARIAActionLedger, ARIATool, ARIAConversationState, ARIABusinessState, ARIAPolicy
 from app.models.order import Order, OrderTracking
 from app.models.content import ProductContent
+from app.models.platform_analytics import PlatformAnalytics
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users.db")
@@ -42,6 +43,10 @@ def create_db():
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS is_premium boolean DEFAULT false"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS needs_review boolean DEFAULT false"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS needs_length_review boolean DEFAULT false"))
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS pinterest_pin_id varchar(200)"))
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS pinterest_synced_at timestamp"))
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS pinterest_catalog_id varchar(200)"))
+        conn.execute(text("ALTER TABLE collection ADD COLUMN IF NOT EXISTS pinterest_board_id varchar(200)"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS content_image_url varchar(500)"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS content_lifestyle_url varchar(500)"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS video_url varchar(500)"))

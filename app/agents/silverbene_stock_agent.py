@@ -97,6 +97,12 @@ def run_silverbene_stock_agent():
                             deactivated += 1
                             newly_outofstock.append(product.name[:60])
                             print(f"[Silverbene Stock Agent] Out of stock: {product.name[:50]}")
+                            if product.pinterest_pin_id:
+                                try:
+                                    from app.agents.pinterest_agent import update_product_availability
+                                    update_product_availability(product.id, False)
+                                except Exception:
+                                    pass
                     else:
                         old_qty = product.stock
                         was_inactive = not product.is_active
@@ -108,6 +114,12 @@ def run_silverbene_stock_agent():
                             reactivated += 1
                             newly_reactivated.append(product.name[:60])
                             print(f"[Silverbene Stock Agent] Back in stock: {product.name[:50]}")
+                            if product.pinterest_pin_id:
+                                try:
+                                    from app.agents.pinterest_agent import update_product_availability
+                                    update_product_availability(product.id, True)
+                                except Exception:
+                                    pass
                         elif old_qty != qty:
                             updated += 1
                             stock_quantity_changes.append(

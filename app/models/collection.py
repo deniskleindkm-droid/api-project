@@ -12,3 +12,4 @@ class Collection(SQLModel, table=True):
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     video_url: Optional[str] = None
+    pinterest_board_id: Optional[str] = None

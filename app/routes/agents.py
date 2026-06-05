@@ -1636,6 +1636,107 @@ def check_connections():
     }
 
 
+# ── PINTEREST ─────────────────────────────────────────────────────────────────
+
+@router.post("/agents/pinterest/create-boards")
+def pinterest_create_boards():
+    """Run once — creates the 6 Mikisi Pinterest boards and saves their IDs."""
+    try:
+        from app.agents.pinterest_agent import ensure_boards_exist
+        board_ids = ensure_boards_exist()
+        return {"status": "done", "boards": board_ids}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agents/pinterest/sync-product/{product_id}")
+def pinterest_sync_product(product_id: int, session: Session = Depends(get_session)):
+    """Manually sync a single product to Pinterest (catalog + pin)."""
+    try:
+        from app.models.product import Product
+        from app.agents.pinterest_agent import sync_product
+        product = session.get(Product, product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        result = sync_product(product)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agents/pinterest/sync-all")
+def pinterest_sync_all():
+    """
+    Backfill: sync all active products without a pin_id to Pinterest.
+    Runs in background — returns immediately.
+    """
+    import threading
+
+    def _run():
+        from sqlmodel import Session, select
+        from app.database import engine
+        from app.models.product import Product
+        from app.agents.pinterest_agent import sync_product
+
+        with Session(engine) as s:
+            products = s.exec(
+                select(Product).where(
+                    Product.is_active == True,
+                    Product.pinterest_pin_id == None,
+                )
+            ).all()
+
+        print(f"[Pinterest] Backfill: syncing {len(products)} products")
+        done = 0
+        for p in products:
+            result = sync_product(p)
+            if result.get("pin_id"):
+                done += 1
+        print(f"[Pinterest] Backfill complete: {done}/{len(products)} pinned")
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"status": "started", "message": "Pinterest backfill running in background"}
+
+
+@router.get("/agents/pinterest/analytics")
+def pinterest_analytics():
+    """Pull today's Pinterest analytics for all pinned products."""
+    try:
+        from app.agents.pinterest_agent import pull_analytics
+        result = pull_analytics()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/agents/pinterest/status")
+def pinterest_status(session: Session = Depends(get_session)):
+    """Overview: boards created, products pinned, analytics entries."""
+    from sqlmodel import func
+    from app.models.product import Product
+    from app.models.platform_analytics import PlatformAnalytics
+    from app.agents.store_config import get_config
+
+    total     = session.exec(select(func.count()).select_from(Product).where(Product.is_active == True)).one()
+    pinned    = session.exec(select(func.count()).select_from(Product).where(Product.pinterest_pin_id != None)).one()
+    analytics = session.exec(select(func.count()).select_from(PlatformAnalytics).where(PlatformAnalytics.platform == "pinterest")).one()
+
+    boards = {}
+    for cat in ["Necklaces","Earrings","Rings","Bracelets","Anklets","Ear Cuffs"]:
+        key = f"pinterest_board_{cat.lower().replace(' ','_')}"
+        boards[cat] = get_config(key, default="") or "not created"
+
+    return {
+        "boards": boards,
+        "products_total": total,
+        "products_pinned": pinned,
+        "products_not_pinned": total - pinned,
+        "analytics_entries": analytics,
+    }
+
+
 @router.post("/agents/enable-auto-posting")
 def enable_auto_posting():
     """Turn on automatic scheduled posting to all connected social platforms."""

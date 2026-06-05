@@ -43,6 +43,10 @@ class Product(SQLModel, table=True):
     content_lifestyle_url: Optional[str] = None  # lifestyle shot (skin tone rotated)
     video_url: Optional[str] = None              # product video
     content_generated_at: Optional[datetime] = None
+    # Pinterest
+    pinterest_pin_id: Optional[str] = None
+    pinterest_synced_at: Optional[datetime] = None
+    pinterest_catalog_id: Optional[str] = None
 
 
 class ProductPublic(SQLModel):

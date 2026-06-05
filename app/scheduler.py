@@ -3,6 +3,7 @@ load_dotenv()
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
 
 
@@ -89,6 +90,17 @@ def run_silverbene_stock_sync():
         run_silverbene_stock_agent()
     except Exception as e:
         print(f"[Scheduler] Silverbene stock agent error: {e}")
+
+
+def run_pinterest_analytics():
+    """Daily midnight: pull Pinterest pin metrics into analytics table."""
+    try:
+        from app.agents.pinterest_agent import pull_analytics
+        result = pull_analytics()
+        _heartbeat("pinterest_agent", f"analytics pulled: {result.get('pins_synced',0)} pins")
+    except Exception as e:
+        _heartbeat("pinterest_agent", f"analytics error: {str(e)[:80]}")
+        print(f"[Scheduler] Pinterest analytics error: {e}")
 
 
 def run_signal_processor():
@@ -280,6 +292,14 @@ def start_scheduler():
         replace_existing=True
     )
 
+    scheduler.add_job(
+        run_pinterest_analytics,
+        trigger=CronTrigger(hour=0, minute=5),
+        id='pinterest_analytics',
+        name='Pinterest Daily Analytics Pull',
+        replace_existing=True
+    )
+
     scheduler.start()
     print("[Scheduler] ✅ ARIA scheduler started with jobs:")
     print("[Scheduler]   → Market check: every 6 hours")
@@ -292,3 +312,4 @@ def start_scheduler():
     print("[Scheduler]   → ARIA self-check: every 30 minutes")
     print("[Scheduler]   → Silverbene stock sync: every 6 hours")
     print("[Scheduler]   → Content agent (daily videos): every 24 hours")
+    print("[Scheduler]   → Pinterest analytics: daily at 00:05 UTC")

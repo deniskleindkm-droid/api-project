@@ -246,6 +246,16 @@ def import_product_from_supplier(standard_product: dict, markup: float = None) -
             except Exception as e:
                 print(f"[Store Manager] Signal emission failed: {e}")
 
+            # Pinterest — catalog sync + pin creation (non-blocking)
+            try:
+                import threading
+                from app.agents.pinterest_agent import sync_product as _pinterest_sync
+                threading.Thread(
+                    target=_pinterest_sync, args=(product,), daemon=True
+                ).start()
+            except Exception as e:
+                print(f"[Store Manager] Pinterest sync skipped: {e}")
+
             print(f"[Store Manager] ✅ Imported: {mikisi_name} at ${final_price}")
             return {
                 "success": True,
