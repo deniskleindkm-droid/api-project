@@ -266,7 +266,7 @@ class SilverbeneAdapter(SupplierAdapter):
         order_option_id = option_id or product_id
 
         payload = {
-            "options": [{"option_id": str(order_option_id), "qty": quantity}],
+            "products": [{"option_id": str(order_option_id), "qty": quantity}],
             "shipping_address": {
                 "firstname":   customer.get("first_name", ""),
                 "lastname":    customer.get("last_name", ""),
