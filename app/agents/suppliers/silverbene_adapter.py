@@ -325,6 +325,7 @@ class SilverbeneAdapter(SupplierAdapter):
         if not sizes:
             sizes = _parse_chain_length_from_desc(raw.get("desc", "")) or None
         material = self._infer_material_from_desc(raw.get("desc", ""), colors)
+        specs = self._extract_specs_from_desc(raw.get("desc", ""))
 
         return {
             **self.standard_product(
@@ -344,6 +345,7 @@ class SilverbeneAdapter(SupplierAdapter):
             "material": material,
             "sizes": json.dumps(sizes) if sizes else None,
             "colors": json.dumps(colors) if colors else None,
+            "specs": json.dumps(specs) if specs else None,
             # Scoring helpers
             "supplier_rating": 5.0,
             "material_name_en_set": [material] if material else [],
@@ -403,6 +405,55 @@ class SilverbeneAdapter(SupplierAdapter):
                         colors.append(display)
 
         return sizes or None, colors or None
+
+    def _extract_specs_from_desc(self, desc: str) -> dict:
+        """
+        Parse structured product specs from Silverbene's raw HTML description.
+        Must be called BEFORE description is rewritten by ARIA — raw <li> tags only exist here.
+        Returns only fields with real data; never inserts placeholder values.
+        """
+        specs = {}
+        text = re.sub(r'<[^>]+>', ' ', desc)  # strip HTML, work on plain text
+
+        # Weight: "Total Weight: 3g" / "Weight: 1.5g"
+        m = re.search(r'(?:total\s+)?weight\s*[:\-]\s*([\d.]+\s*g)\b', text, re.I)
+        if m:
+            specs['weight'] = m.group(1).strip()
+
+        # Stone type: "Stone Type: Cubic Zirconia" / "Stone Name: Natural Pearl"
+        m = re.search(r'stone\s+(?:type|name|material|color)?\s*[:\-]\s*([^\n,<]{2,40})', text, re.I)
+        if m:
+            val = m.group(1).strip().rstrip('.')
+            if val:
+                specs['stone'] = val
+
+        # Setting: "Setting Type: Prong" / "Setting Style: Bezel"
+        m = re.search(r'setting\s+(?:type|style)?\s*[:\-]\s*([^\n,<]{2,30})', text, re.I)
+        if m:
+            val = m.group(1).strip()
+            if val:
+                specs['setting'] = val
+
+        # Band / ring width: "Ring Width: 2mm" / "Band Width: 4mm"
+        m = re.search(r'(?:ring|band|item)?\s*width\s*[:\-]\s*([\d.]+\s*mm)', text, re.I)
+        if m:
+            specs['width'] = m.group(1).strip()
+
+        # Ring face / top size: "Ring Top Size: 8mm*8mm"
+        m = re.search(r'ring\s+top\s+(?:size|dimension)\s*[:\-]\s*([^\n<]{2,30})', text, re.I)
+        if m:
+            val = m.group(1).strip()
+            if val:
+                specs['ring_top'] = val
+
+        # Purity: "Purity: S925" — only capture if different from what material already says
+        m = re.search(r'purity\s*[:\-]\s*([^\n<]{2,20})', text, re.I)
+        if m:
+            val = m.group(1).strip()
+            if val:
+                specs['purity'] = val
+
+        return specs
 
     def _infer_material_from_desc(self, desc: str, colors: list = None) -> str:
         """

@@ -28,6 +28,7 @@ class Product(SQLModel, table=True):
     material: Optional[str] = None
     sizes: Optional[str] = None
     colors: Optional[str] = None
+    specs: Optional[str] = None  # JSON extracted from raw Silverbene desc before ARIA rewrites it
     # Pricing internals — never expose to frontend
     silverbene_cost: Optional[float] = None
     markup_used: Optional[float] = None
@@ -74,6 +75,7 @@ class ProductPublic(SQLModel):
     material: Optional[str] = None
     sizes: Optional[str] = None
     colors: Optional[str] = None
+    specs: Optional[str] = None
     shipping_cost: Optional[float] = None
     last_price_sync: Optional[datetime] = None
     is_premium: bool = False

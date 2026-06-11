@@ -424,6 +424,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 "material": product.get("material") or "",
                 "sizes": _resolve_sizes(product.get("sizes"), product.get("category", "")),
                 "colors": product.get("colors"),
+                "specs": product.get("specs") or None,
                 # Pricing internals
                 "silverbene_cost": cost_price,
                 "markup_used":     pricing["markup_used"],

@@ -119,6 +119,7 @@ def add_product_to_store(product_data):
             material=product_data.get("material") or None,
             sizes=product_data.get("sizes") or None,
             colors=product_data.get("colors") or None,
+            specs=product_data.get("specs") or None,
             silverbene_cost=product_data.get("silverbene_cost"),
             markup_used=product_data.get("markup_used"),
             shipping_cost=product_data.get("shipping_cost"),

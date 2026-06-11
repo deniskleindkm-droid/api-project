@@ -234,6 +234,14 @@ def run_bulk_import():
         print(f"[Scheduler] Bulk import error: {e}")
 
 
+def run_specs_backfill():
+    try:
+        from app.agents.specs_backfill_agent import run_specs_backfill
+        run_specs_backfill()
+    except Exception as e:
+        print(f"[Scheduler] Specs backfill error: {e}")
+
+
 def run_daily_content():
     """
     Daily content job: generate 2 videos per category for newest products.
@@ -349,6 +357,15 @@ def start_scheduler():
     id='bulk_import',
     name='Bulk Product Import Agent',
     replace_existing=True
+    )
+
+    scheduler.add_job(
+        run_specs_backfill,
+        trigger=IntervalTrigger(hours=24),
+        id='specs_backfill',
+        name='Specs Backfill — populate product details from Silverbene',
+        next_run_time=datetime.utcnow(),
+        replace_existing=True
     )
 
     scheduler.add_job(
