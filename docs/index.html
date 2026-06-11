@@ -1285,28 +1285,37 @@ const COLOR_LABEL = {
   'platinum':   'Platinum',
 };
 
-// Strip Silverbene size suffixes and trailing catalog numbers from variant names
-// e.g. "Pink_16+3cm" → "Pink", "Dark Blue Spinel 113#_16+3cm" → "Dark Blue Spinel", "Rose Red#_16+3cm" → "Rose Red"
+// Strip Silverbene size suffixes, catalog numbers, and SKU prefixes with dash/underscore separator
+// Used during variant extraction for clean deduplication
+// e.g. "L889-Purple CZ" → "Purple CZ", "Pink_16+3cm" → "Pink", "Dark Blue Spinel 113#_16+3cm" → "Dark Blue Spinel"
 function cleanVariantName(name){
   if(!name) return name;
   return name
-    .replace(/_\d[\d+cm]*$/i,'')   // _16+3cm, _18cm, _20cm …
-    .replace(/\s+\d+#?\s*$/g,'')   // trailing  113#  or  113
-    .replace(/#\s*$/g,'')          // trailing lone #
+    .replace(/^[A-Za-z]{1,4}\d+[-_]/i,'') // L889-, L900-, SB12- style SKU prefixes
+    .replace(/_\d[\d+cm]*$/i,'')           // _16+3cm, _18cm, _20cm …
+    .replace(/\s+\d+#?\s*$/g,'')           // trailing  113#  or  113
+    .replace(/#\s*$/g,'')                  // trailing lone #
     .trim();
 }
 
-// Detect Silverbene SKU-code variant names like PD0883(only pendant), SB1234 etc.
-// Returns { isSku, note } where note is a customer-facing string or null.
-function parseSKUVariant(name){
-  if(!name) return {isSku:false,note:null};
-  const m=name.match(/^[A-Za-z]{1,3}\d{3,}(?:\(([^)]+)\))?$/i);
-  if(!m) return {isSku:false,note:null};
-  const inner=(m[1]||'').toLowerCase();
+// Full variant processing for display — strips all SKU noise and extracts customer notes.
+// Handles: L889-Purple CZ → {display:"Purple CZ"}, PD0883(Only Pendant) → {display:"", isSku:true, note:"Pendant only…"}
+// Every variant label passes through this before being shown to customers.
+function processVariant(name){
+  if(!name) return {display:'',note:null,isSku:false};
+  let s=name.trim();
+  // Capture pendant/chain info from raw string before stripping anything
   let note=null;
-  if(inner.includes('pendant')) note='Pendant only — chain not included';
-  else if(inner.includes('chain')) note='Chain only — pendant not included';
-  return {isSku:true,note};
+  const lo=s.toLowerCase();
+  if(lo.includes('pendant')) note='Pendant only — chain not included';
+  else if(lo.includes('only chain')||lo.includes('chain only')) note='Chain only — pendant not included';
+  // Strip leading SKU prefix: letters + digits + optional dash/underscore (L889-, PD0883, SB1234 etc.)
+  s=s.replace(/^[A-Za-z]{1,4}\d+[-_]?/i,'');
+  // Strip pendant/chain parenthetical if that's all that remains after SKU strip
+  s=s.replace(/^\s*\([^)]*(?:pendant|chain)[^)]*\)\s*$/i,'').trim();
+  // Strip size suffixes and trailing catalog numbers
+  s=s.replace(/_\d[\d+cm]*$/i,'').replace(/\s+\d+#?\s*$/g,'').replace(/#\s*$/g,'').trim();
+  return {display:s, note, isSku:s.length===0};
 }
 
 // Detect collection name for a product
@@ -1392,18 +1401,14 @@ async function openPP(id){
   noteEl.style.display='none'; noteEl.textContent='';
   const colorChips=colors.filter(c=>typeof c==='string');
   if(colorChips.length){
-    const cleanedChips=colorChips.map(c=>cleanVariantName(c));
-    const skuParsed=cleanedChips.map(c=>parseSKUVariant(c));
-    // Surface the first meaningful SKU note (pendant only, chain only etc.)
-    const variantNote=skuParsed.map(s=>s.note).find(n=>n)||null;
+    const processed=colorChips.map(c=>processVariant(c));
+    const variantNote=processed.map(p=>p.note).find(n=>n)||null;
     if(variantNote){noteEl.textContent=variantNote;noteEl.style.display='block';}
-    const allSku=skuParsed.every(s=>s.isSku);
+    const allSku=processed.every(p=>p.isSku);
     if(allSku){
-      // Nothing customer-facing to show — hide color section entirely
       document.getElementById('pp-colors-wrap').style.display='none';
     }else{
-      // Keep only non-SKU chips (filter out any PD####-style entries)
-      const realChips=cleanedChips.filter((_,i)=>!skuParsed[i].isSku);
+      const realChips=processed.filter(p=>!p.isSku).map(p=>p.display);
       document.getElementById('pp-colors-wrap').style.display='block';
       const isAllMetal=realChips.every(c=>metalKeys.has(c.toLowerCase().trim()));
       document.querySelector('#pp-colors-wrap .pp-section-title').textContent=isAllMetal?'Metal Finish':'Color';
