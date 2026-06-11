@@ -1497,10 +1497,14 @@ async function openPP(id){
     const ADJUSTABLE_VALS=new Set(['adjustable','one size / adjustable','one size','one size adjustable']);
     const isAdjustableOnly=sizes.length===1&&ADJUSTABLE_VALS.has(sizes[0].toLowerCase().trim());
     if(isAdjustableOnly&&colName==='rings'){
-      // Open/adjustable ring — show section with helper text instead of a chip
+      // Open/adjustable ring — show a passive "Adjustable" chip + small helper note
+      const nameHasOpen=(p.name||'').toLowerCase().includes('open');
+      const helperText=nameHasOpen?'Fits most sizes':'Fits most sizes · open band style';
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
-      document.getElementById('pp-size-chips').innerHTML='<span style="font-size:11px;color:var(--mid);font-style:italic;letter-spacing:0.5px;">Open band · fits most sizes</span>';
+      document.getElementById('pp-size-chips').innerHTML=
+        `<button class="pp-chip active" style="cursor:default;pointer-events:none;">Adjustable</button>`+
+        `<div style="margin-top:6px;font-size:10px;color:var(--mid);font-style:italic;letter-spacing:0.5px;">${helperText}</div>`;
     }else if(sizes.length>=2){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
