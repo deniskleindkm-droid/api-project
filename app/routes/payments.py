@@ -327,8 +327,11 @@ async def stripe_webhook(
         raise HTTPException(status_code=400, detail=str(e))
 
     if event["type"] == "checkout.session.completed":
-        checkout_data = event["data"]["object"]
-        background_tasks.add_task(process_order_background, checkout_data)
+        obj = event["data"]["object"]
+        metadata = getattr(obj, "metadata", None) or {}
+        if not isinstance(metadata, dict):
+            metadata = dict(metadata)
+        background_tasks.add_task(process_order_background, {"metadata": metadata})
 
     return {"status": "ok"}
 
@@ -348,10 +351,13 @@ async def recover_missed_order(
         raise HTTPException(status_code=403, detail="Admin only")
 
     try:
-        checkout_data = stripe.checkout.Session.retrieve(session_id)
-        if checkout_data.get("payment_status") != "paid":
+        checkout_obj = stripe.checkout.Session.retrieve(session_id)
+        if getattr(checkout_obj, "payment_status", None) != "paid":
             raise HTTPException(status_code=400, detail="Session not paid yet")
-        background_tasks.add_task(process_order_background, dict(checkout_data))
+        metadata = getattr(checkout_obj, "metadata", None) or {}
+        if not isinstance(metadata, dict):
+            metadata = dict(metadata)
+        background_tasks.add_task(process_order_background, {"metadata": metadata})
         return {"status": "recovery_started", "session_id": session_id}
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=str(e))
