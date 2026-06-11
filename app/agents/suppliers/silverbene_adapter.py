@@ -277,7 +277,7 @@ class SilverbeneAdapter(SupplierAdapter):
                 "firstname":   customer.get("first_name", ""),
                 "lastname":    customer.get("last_name", ""),
                 "email":       customer.get("email", ""),
-                "telephone":   customer.get("phone", ""),
+                "telephone":   customer.get("phone") or "0000000000",
                 "street":      address.get("line1", ""),
                 "city":        address.get("city", ""),
                 "region":      address.get("state", ""),
