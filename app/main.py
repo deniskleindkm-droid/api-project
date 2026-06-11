@@ -45,17 +45,19 @@ app.include_router(collections_router)
 app.include_router(tiktok_auth_router)
 
 
+_NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
+
 @app.get("/")
 def serve_frontend():
-    return FileResponse("docs/index.html")
+    return FileResponse("docs/index.html", headers=_NO_CACHE)
 
 @app.get("/terms")
 def serve_terms():
-    return FileResponse("docs/terms.html")
+    return FileResponse("docs/terms.html", headers=_NO_CACHE)
 
 @app.get("/privacy")
 def serve_privacy():
-    return FileResponse("docs/privacy.html")
+    return FileResponse("docs/privacy.html", headers=_NO_CACHE)
 
 @app.get("/health")
 def health_check():
