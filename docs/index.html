@@ -580,6 +580,13 @@ nav{
 .toast{position:fixed;bottom:max(32px,env(safe-area-inset-bottom,0px) + 16px);left:50%;transform:translateX(-50%);background:var(--black);color:white;padding:12px 26px;font-size:11px;font-weight:300;letter-spacing:1.5px;z-index:9999;opacity:0;transition:opacity 0.3s;white-space:nowrap;box-shadow:0 8px 40px rgba(0,0,0,0.15);}
 .toast.show{opacity:1;}
 
+/* ── PRODUCT SPECS / DETAILS ── */
+.pp-details{margin:14px 0 4px;border-top:1px solid var(--border);padding-top:14px;display:none;}
+.pp-detail-row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--border);}
+.pp-detail-row:last-child{border-bottom:none;}
+.pp-detail-key{font-size:9px;font-weight:300;letter-spacing:2px;text-transform:uppercase;color:var(--mid);flex-shrink:0;}
+.pp-detail-val{font-size:11px;font-weight:300;color:var(--charcoal);text-align:right;max-width:62%;word-break:break-word;}
+
 /* ── ORDERS MODAL ── */
 .orders-modal{background:white;width:100%;max-width:520px;position:relative;box-shadow:0 24px 80px rgba(0,0,0,0.12);max-height:90vh;overflow-y:auto;}
 .order-card{padding:20px 36px;border-bottom:1px solid var(--border);}
@@ -918,6 +925,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
           <div class="pp-section-title">Material</div>
           <div class="pp-material" id="pp-material"></div>
         </div>
+        <div class="pp-details" id="pp-details"></div>
         <div class="pp-meta" id="pp-meta"></div>
         <div id="pp-stock-wrap" style="display:none">
           <div class="pp-stock-low" id="pp-stock">❋ <span></span></div>
@@ -1298,6 +1306,47 @@ function cleanVariantName(name){
     .trim();
 }
 
+// Parse technical specs from Silverbene description HTML (<ul><li>Key: Value</li>…</ul>)
+// Returns [{k, v}] for the DETAILS section on the product modal.
+function parseSpecs(desc){
+  if(!desc) return [];
+  const specs=[];
+  const seen=new Set();
+  const WANT={
+    'weight':'Weight','total weight':'Weight',
+    'ring diameter':'Diameter','diameter':'Diameter',
+    'ring top size':'Ring Top','ring top':'Ring Top',
+    'stone':'Stone','stone type':'Stone','stone color':'Stone',
+    'ring type':'Ring Type',
+    'pendant size':'Dimensions','pendant dimensions':'Dimensions',
+    'purity':'Purity',
+  };
+  const tmp=document.createElement('div');
+  tmp.innerHTML=desc;
+  tmp.querySelectorAll('li').forEach(li=>{
+    const text=li.textContent.trim();
+    const ci=text.indexOf(':');
+    if(ci===-1) return;
+    const rawKey=text.slice(0,ci).trim().toLowerCase();
+    const val=text.slice(ci+1).trim();
+    if(!val||val.length>100) return;
+    const label=WANT[rawKey];
+    if(!label||seen.has(label)) return;
+    seen.add(label);
+    let display=val;
+    if(label==='Diameter'){
+      const m=val.match(/([\d.]+)\s*mm/i);
+      if(m){
+        const mm=parseFloat(m[1]);
+        const us=Math.round(((Math.PI*mm-36.5)/2.56)*2)/2;
+        if(us>=3&&us<=15) display=`${val} · approx. US size ${us}`;
+      }
+    }
+    specs.push({k:label,v:display});
+  });
+  return specs;
+}
+
 // Full variant processing for display — strips all SKU noise and extracts customer notes.
 // Handles: L889-Purple CZ → {display:"Purple CZ"}, PD0883(Only Pendant) → {display:"", isSku:true, note:"Pendant only…"}
 // Every variant label passes through this before being shown to customers.
@@ -1374,6 +1423,14 @@ async function openPP(id){
   if(matLabel){document.getElementById('pp-material').textContent=matLabel;document.getElementById('pp-material-wrap').style.display='block';}
   else document.getElementById('pp-material-wrap').style.display='none';
 
+  // ── Specs / Details ──
+  const specs=parseSpecs(p.description);
+  const detailsEl=document.getElementById('pp-details');
+  if(specs.length){
+    detailsEl.innerHTML=specs.map(s=>`<div class="pp-detail-row"><span class="pp-detail-key">${s.k}</span><span class="pp-detail-val">${s.v}</span></div>`).join('');
+    detailsEl.style.display='block';
+  }else{detailsEl.innerHTML='';detailsEl.style.display='none';}
+
   // ── Stock ──
   if(p.stock&&p.stock<=15){
     document.getElementById('pp-stock').querySelector('span').textContent=`Only ${p.stock} pieces remaining`;
@@ -1405,10 +1462,11 @@ async function openPP(id){
     const variantNote=processed.map(p=>p.note).find(n=>n)||null;
     if(variantNote){noteEl.textContent=variantNote;noteEl.style.display='block';}
     const allSku=processed.every(p=>p.isSku);
-    if(allSku){
+    const realChips=processed.filter(p=>!p.isSku).map(p=>p.display);
+    if(allSku||realChips.length<=1){
+      // 0 = all SKU codes, 1 = only one option (no choice to offer) — hide
       document.getElementById('pp-colors-wrap').style.display='none';
     }else{
-      const realChips=processed.filter(p=>!p.isSku).map(p=>p.display);
       document.getElementById('pp-colors-wrap').style.display='block';
       const isAllMetal=realChips.every(c=>metalKeys.has(c.toLowerCase().trim()));
       document.querySelector('#pp-colors-wrap .pp-section-title').textContent=isAllMetal?'Metal Finish':'Color';
@@ -1436,9 +1494,21 @@ async function openPP(id){
   if(sizes.length){
     const colName=getCollectionName(p);
     const sizeLabel=CATEGORY_SIZE_LABEL[colName]||'Size';
-    document.getElementById('pp-sizes-wrap').style.display='block';
-    document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
-    document.getElementById('pp-size-chips').innerHTML=sizes.map((s,i)=>`<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'size')">${s}</button>`).join('');
+    const ADJUSTABLE_VALS=new Set(['adjustable','one size / adjustable','one size','one size adjustable']);
+    const isAdjustableOnly=sizes.length===1&&ADJUSTABLE_VALS.has(sizes[0].toLowerCase().trim());
+    if(isAdjustableOnly&&colName==='rings'){
+      // Open/adjustable ring — show section with helper text instead of a chip
+      document.getElementById('pp-sizes-wrap').style.display='block';
+      document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
+      document.getElementById('pp-size-chips').innerHTML='<span style="font-size:11px;color:var(--mid);font-style:italic;letter-spacing:0.5px;">Open band · fits most sizes</span>';
+    }else if(sizes.length>=2){
+      document.getElementById('pp-sizes-wrap').style.display='block';
+      document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
+      document.getElementById('pp-size-chips').innerHTML=sizes.map((s,i)=>`<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'size')">${s}</button>`).join('');
+    }else{
+      // Single non-meaningful size chip (e.g. bracelet "One Size / Adjustable") — hide
+      document.getElementById('pp-sizes-wrap').style.display='none';
+    }
   }else document.getElementById('pp-sizes-wrap').style.display='none';
 
   // ── Stock status — reflects live Silverbene sync (auto-updates every 6h) ──
