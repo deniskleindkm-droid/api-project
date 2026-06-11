@@ -44,20 +44,23 @@ def run_specs_backfill():
                 skipped += 1
                 continue
 
-            desc = raw.get("desc", "")
+            # get_by_sku returns the processed dict — raw HTML desc is under 'description' key
+            desc = raw.get("description", "")
             specs = sb._extract_specs_from_desc(desc)
-
-            if not specs:
-                skipped += 1
-                continue
 
             with Session(engine) as session:
                 product = session.get(Product, p.id)
                 if product:
-                    product.specs = json.dumps(specs)
+                    # Store real specs if found; store '{}' if none found so this
+                    # product isn't re-fetched on every future run
+                    product.specs = json.dumps(specs) if specs else '{}'
                     session.add(product)
                     session.commit()
-                    updated += 1
+                    if specs:
+                        updated += 1
+                        print(f"[Specs Backfill] ✓ {p.name[:50]} → {list(specs.keys())}")
+                    else:
+                        skipped += 1
 
         except Exception as e:
             print(f"[Specs Backfill] Error on product {p.id} ({p.name[:40]}): {e}")
