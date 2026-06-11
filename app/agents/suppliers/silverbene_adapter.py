@@ -413,45 +413,58 @@ class SilverbeneAdapter(SupplierAdapter):
         Returns only fields with real data; never inserts placeholder values.
         """
         specs = {}
-        text = re.sub(r'<[^>]+>', ' ', desc)  # strip HTML, work on plain text
+        text = re.sub(r'<[^>]+>', ' ', desc)  # strip HTML tags, work on plain text
 
-        # Weight: "Total Weight: 3g" / "Weight: 1.5g"
-        m = re.search(r'(?:total\s+)?weight\s*[:\-]\s*([\d.]+\s*g)\b', text, re.I)
-        if m:
-            specs['weight'] = m.group(1).strip()
+        def _get(pattern):
+            m = re.search(pattern, text, re.I)
+            if m:
+                val = m.group(1).strip().rstrip('.,')
+                return val if val and len(val) < 80 else None
+            return None
 
-        # Stone type: "Stone Type: Cubic Zirconia" / "Stone Name: Natural Pearl"
-        m = re.search(r'stone\s+(?:type|name|material|color)?\s*[:\-]\s*([^\n,<]{2,40})', text, re.I)
-        if m:
-            val = m.group(1).strip().rstrip('.')
-            if val:
-                specs['stone'] = val
+        # Weight — keep in grams (industry standard even for US jewelry)
+        w = _get(r'(?:total\s+)?weight\s*[:\-]\s*([\d.]+\s*g)\b')
+        if w: specs['weight'] = w
 
-        # Setting: "Setting Type: Prong" / "Setting Style: Bezel"
-        m = re.search(r'setting\s+(?:type|style)?\s*[:\-]\s*([^\n,<]{2,30})', text, re.I)
-        if m:
-            val = m.group(1).strip()
-            if val:
-                specs['setting'] = val
+        # Main stone — e.g. "Tiger Eye Stone", "Cubic Zirconia", "Natural Pearl"
+        s = _get(r'(?:main\s+)?stone\s+(?:type|name|material)?\s*[:\-]\s*([^\n,<]{2,50})')
+        if s: specs['stone'] = s
 
-        # Band / ring width: "Ring Width: 2mm" / "Band Width: 4mm"
-        m = re.search(r'(?:ring|band|item)?\s*width\s*[:\-]\s*([\d.]+\s*mm)', text, re.I)
-        if m:
-            specs['width'] = m.group(1).strip()
+        # Accent stone — e.g. "Pearl"
+        a = _get(r'accent\s+stone\s*[:\-]\s*([^\n,<]{2,50})')
+        if a: specs['accent_stone'] = a
+
+        # Setting — e.g. "Prong", "Bezel", "Pavé"
+        st = _get(r'setting\s+(?:type|style)?\s*[:\-]\s*([^\n,<]{2,40})')
+        if st: specs['setting'] = st
+
+        # Closure — e.g. "Lobster Clasp With Extension Chain"
+        cl = _get(r'closure\s*[:\-]\s*([^\n<]{2,60})')
+        if cl: specs['closure'] = cl
+
+        # Finish — e.g. "Polished Glossy Surface"
+        fi = _get(r'finish\s*[:\-]\s*([^\n,<]{2,50})')
+        if fi: specs['finish'] = fi
+
+        # Color / color combination — e.g. "Brown, White, Gold Tone"
+        co = _get(r'color\s+(?:combination|description)?\s*[:\-]\s*([^\n<]{2,60})')
+        if co: specs['color'] = co
+
+        # Bead shape / description — e.g. "Round Tiger Eye Beads With Pearl Accents"
+        bs = _get(r'bead\s+(?:shape|type|description)?\s*[:\-]\s*([^\n<]{2,80})')
+        if bs: specs['bead_shape'] = bs
+
+        # Band / ring width
+        bw = _get(r'(?:ring|band|chain|item)?\s*width\s*[:\-]\s*([\d.]+\s*mm)')
+        if bw: specs['width'] = bw
 
         # Ring face / top size: "Ring Top Size: 8mm*8mm"
-        m = re.search(r'ring\s+top\s+(?:size|dimension)\s*[:\-]\s*([^\n<]{2,30})', text, re.I)
-        if m:
-            val = m.group(1).strip()
-            if val:
-                specs['ring_top'] = val
+        rt = _get(r'ring\s+top\s+(?:size|dimension)\s*[:\-]\s*([^\n<]{2,30})')
+        if rt: specs['ring_top'] = rt
 
-        # Purity: "Purity: S925" — only capture if different from what material already says
-        m = re.search(r'purity\s*[:\-]\s*([^\n<]{2,20})', text, re.I)
-        if m:
-            val = m.group(1).strip()
-            if val:
-                specs['purity'] = val
+        # Purity
+        pu = _get(r'purity\s*[:\-]\s*([^\n<]{2,20})')
+        if pu: specs['purity'] = pu
 
         return specs
 

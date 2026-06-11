@@ -919,6 +919,10 @@ footer{background:var(--black);padding:52px 48px 36px;}
           <div class="pp-section-title">Stone Color</div>
           <div class="pp-chips" id="pp-stone-chips"></div>
         </div>
+        <div id="pp-width-wrap" style="display:none">
+          <div class="pp-section-title">Chain Width</div>
+          <div class="pp-chips" id="pp-width-chips"></div>
+        </div>
         <div id="pp-sizes-wrap" style="display:none">
           <div class="pp-section-title">Size</div>
           <div class="pp-chips" id="pp-size-chips"></div>
@@ -1074,6 +1078,7 @@ let cartItems = [];
 let ppSelectedSize = null;
 let ppSelectedColor = null;
 let ppSelectedStone = null;
+let ppSelectedWidth = null;
 let ppOpening = false; // guard — prevents double-click opening two panels
 let wishlist = JSON.parse(localStorage.getItem('mk_wishlist')||'[]');
 
@@ -1311,6 +1316,47 @@ function cleanVariantName(name){
     .trim();
 }
 
+// Convert cm to fractional-inch display used for bracelet/necklace lengths
+function cmToInchDisplay(cm){
+  const inches=cm/2.54;
+  const rounded=Math.round(inches*2)/2; // nearest ½"
+  const whole=Math.floor(rounded);
+  const half=rounded-whole;
+  return half===0?`${whole}"`:whole===0?`½"`:(`${whole}½"`);
+}
+
+// Detect if a chip is a compound Silverbene variant string (packs multiple attributes in one name)
+// e.g. "3 mm wide, 18K gold, length: 16.5 cm, weight: 2 g"  OR  "Yellow Gold 2.2mm"
+const _COMPOUND_RE=/(\d+(?:\.\d+)?)\s*mm|length\s*[:\-]|weight\s*[:\-]/i;
+const _METAL_RE=/rhodium|18k|yellow\s+gold|rose\s+gold|white\s+gold|\bgold\b|silver|platinum/i;
+function isCompoundVariant(name){ return _COMPOUND_RE.test(name)&&_METAL_RE.test(name); }
+
+// Parse one compound variant string into {metal, width, length_cm, weight}
+function parseCompoundVariant(name){
+  const r={metal:null,width:null,length_cm:null,weight:null};
+  if(/18k/i.test(name)) r.metal='18K Gold';
+  else if(/rose\s+gold/i.test(name)) r.metal='Rose Gold';
+  else if(/white\s+gold/i.test(name)) r.metal='White Gold';
+  else if(/yellow\s+gold/i.test(name)) r.metal='Yellow Gold';
+  else if(/rhodium/i.test(name)) r.metal='Rhodium';
+  else if(/\bgold\b/i.test(name)) r.metal='Gold';
+  else if(/silver/i.test(name)) r.metal='Silver';
+  // Width: "3 mm wide" or "2.2mm" — but NOT the mm from a length measurement
+  const cleanedForWidth=name.replace(/length\s*[:\-]?\s*[\d.]+\s*(?:cm|mm|in)/gi,'');
+  const wm=cleanedForWidth.match(/(\d+(?:\.\d+)?)\s*mm/i);
+  if(wm) r.width=`${wm[1]}mm`;
+  // Length
+  const lm=name.match(/length\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*(cm|mm|in)/i);
+  if(lm){
+    const v=parseFloat(lm[1]),u=lm[2].toLowerCase();
+    r.length_cm=u==='cm'?v:u==='mm'?v/10:v*2.54;
+  }
+  // Weight — stored only, not a selector
+  const gm=name.match(/weight\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*g/i);
+  if(gm) r.weight=`${gm[1]}g`;
+  return r;
+}
+
 // Build DETAILS rows from p.specs JSON (extracted from raw Silverbene desc at import time).
 // All values are real product data — nothing is shown if the field is missing.
 // US measurement standards: band widths kept in mm, weights in grams, ring face converted to US size.
@@ -1320,10 +1366,15 @@ function parseSpecs(p){
   let raw;
   try{ raw=JSON.parse(p.specs); }catch{ return rows; }
 
-  if(raw.stone)   rows.push({k:'Stone',   v:raw.stone});
-  if(raw.setting) rows.push({k:'Setting', v:raw.setting});
-  if(raw.weight)  rows.push({k:'Weight',  v:raw.weight});
-  if(raw.width)   rows.push({k:'Width',   v:raw.width});
+  if(raw.stone)       rows.push({k:'Stone',   v:raw.stone});
+  if(raw.accent_stone)rows.push({k:'Accent',  v:raw.accent_stone});
+  if(raw.bead_shape)  rows.push({k:'Beads',   v:raw.bead_shape});
+  if(raw.setting)     rows.push({k:'Setting', v:raw.setting});
+  if(raw.closure)     rows.push({k:'Closure', v:raw.closure});
+  if(raw.finish)      rows.push({k:'Finish',  v:raw.finish});
+  if(raw.color)       rows.push({k:'Color',   v:raw.color});
+  if(raw.weight)      rows.push({k:'Weight',  v:raw.weight});
+  if(raw.width)       rows.push({k:'Width',   v:raw.width});
 
   if(raw.ring_top){
     const m=raw.ring_top.match(/([\d.]+)\s*mm/i);
@@ -1419,8 +1470,7 @@ async function openPP(id){
 
   // ── Specs / Details ──
   const specRows=parseSpecs(p);
-  // Always prepend Metal if material is known — it anchors the DETAILS section
-  if(p.material) specRows.unshift({k:'Metal', v:p.material});
+  // Metal is already shown in the MATERIAL section above — don't duplicate it here
   const detailsEl=document.getElementById('pp-details');
   if(specRows.length){
     detailsEl.innerHTML=specRows.map(s=>`<div class="pp-detail-row"><span class="pp-detail-key">${s.k}</span><span class="pp-detail-val">${s.v}</span></div>`).join('');
@@ -1479,7 +1529,31 @@ async function openPP(id){
           }
           return c;
         });
+      }else if(realChips.some(isCompoundVariant)){
+        // ── Compound variant names: parse into separate Metal / Width / Length selectors ──
+        const parsed=realChips.map(parseCompoundVariant);
+        const uniqueMetals=[...new Set(parsed.map(r=>r.metal).filter(Boolean))];
+        const uniqueWidths=[...new Set(parsed.map(r=>r.width).filter(Boolean))];
+        const uniqueLengthsCm=[...new Set(parsed.map(r=>r.length_cm).filter(Boolean))].sort((a,b)=>a-b);
+        // Metal Finish
+        if(uniqueMetals.length>=2){
+          document.getElementById('pp-colors-wrap').style.display='block';
+          document.querySelector('#pp-colors-wrap .pp-section-title').textContent='Metal Finish';
+          document.getElementById('pp-color-chips').innerHTML=uniqueMetals.map((m,i)=>
+            `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${m}</button>`
+          ).join('');
+        }else document.getElementById('pp-colors-wrap').style.display='none';
+        // Chain Width (only show if multiple options)
+        if(uniqueWidths.length>=2){
+          document.getElementById('pp-width-wrap').style.display='block';
+          document.getElementById('pp-width-chips').innerHTML=uniqueWidths.map((w,i)=>
+            `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'width')">${w}</button>`
+          ).join('');
+        }else document.getElementById('pp-width-wrap').style.display='none';
+        // Promote lengths into size section (converted to inches)
+        if(uniqueLengthsCm.length>=2) sizes=uniqueLengthsCm.map(cmToInchDisplay);
       }else{
+        // ── Normal color / metal chips ──
         document.getElementById('pp-colors-wrap').style.display='block';
         const isAllMetal=realChips.every(c=>metalKeys.has(c.toLowerCase().trim()));
         document.querySelector('#pp-colors-wrap .pp-section-title').textContent=isAllMetal?'Metal Finish':'Color';
@@ -1487,9 +1561,13 @@ async function openPP(id){
           const label=COLOR_LABEL[c.toLowerCase().trim()]||c;
           return `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${label}</button>`;
         }).join('');
+        document.getElementById('pp-width-wrap').style.display='none';
       }
     }
-  }else document.getElementById('pp-colors-wrap').style.display='none';
+  }else{
+    document.getElementById('pp-colors-wrap').style.display='none';
+    document.getElementById('pp-width-wrap').style.display='none';
+  }
 
   // ── Stone Color chips — extracted from "Main Stone" / stone attributes in variants ──
   const STONE_ATTRS=new Set(['main stone','stone','stone color','stone type','birthstone']);
@@ -1586,9 +1664,13 @@ async function openPP(id){
       : '✓ In Stock';
   const stockColor = (!p.stock||p.stock===0)?'var(--mid)':p.stock<=10?'var(--pink)':'#22c55e';
 
+  // Badge shows only the base metal — strip plating/finish qualifiers so it stays short
+  const badgeMetal=p.material
+    ? p.material.replace(/\s*\([^)]*\)/g,'').replace(/^S925\b/,'925').trim()
+    : null;
   document.getElementById('pp-meta').innerHTML=`
     <div class="pp-meta-item">⇉ Ships via USPS &nbsp;·&nbsp; 8–10 business days</div>
-    <div class="pp-meta-item">◇ ${matLabel||'Fine Sterling Silver'}</div>
+    ${badgeMetal?`<div class="pp-meta-item">◇ ${badgeMetal}</div>`:''}
     <div class="pp-meta-item" style="color:${stockColor};border-color:${stockColor}20">${stockLabel}</div>`;
 
   // ── Add to Cart — passes selected size & color ──
@@ -1608,10 +1690,11 @@ async function openPP(id){
   };
 
   // Reset variant selection for this product
-  ppSelectedSize = sizes.length ? sizes[0] : null;
-  // only set a color if the color chips section is actually visible (not hidden due to measurement-only promotion)
+  ppSelectedSize  = sizes.length ? sizes[0] : null;
   ppSelectedColor = (document.getElementById('pp-colors-wrap').style.display!=='none'&&colorChips.length) ? colorChips[0] : null;
   ppSelectedStone = stones.length ? stones[0] : null;
+  ppSelectedWidth = document.getElementById('pp-width-wrap').style.display!=='none'
+    ? (document.getElementById('pp-width-chips').querySelector('.pp-chip')?.textContent||null) : null;
 
   updatePPGallery();
   document.getElementById('pp-overlay').classList.add('open');
@@ -1642,9 +1725,10 @@ function closePP(){document.getElementById('pp-overlay').classList.remove('open'
 function selectChip(btn,type){
   btn.closest('.pp-chips').querySelectorAll('.pp-chip').forEach(b=>b.classList.remove('active','tanzanite-active'));
   btn.classList.add('active');
-  if(type==='size') ppSelectedSize=btn.textContent.trim();
+  if(type==='size')  ppSelectedSize=btn.textContent.trim();
   if(type==='color') ppSelectedColor=btn.textContent.trim();
   if(type==='stone') ppSelectedStone=btn.textContent.trim();
+  if(type==='width') ppSelectedWidth=btn.textContent.trim();
 }
 
 // ── WISHLIST ──
