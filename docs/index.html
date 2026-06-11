@@ -913,6 +913,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
           <div class="pp-chips" id="pp-size-chips"></div>
         </div>
         <div class="pp-desc" id="pp-desc"></div>
+        <div id="pp-variant-note" style="display:none;font-size:11px;font-style:italic;color:var(--mid);margin-top:8px;letter-spacing:0.5px;"></div>
         <div id="pp-material-wrap" style="display:none">
           <div class="pp-section-title">Material</div>
           <div class="pp-material" id="pp-material"></div>
@@ -1295,6 +1296,19 @@ function cleanVariantName(name){
     .trim();
 }
 
+// Detect Silverbene SKU-code variant names like PD0883(only pendant), SB1234 etc.
+// Returns { isSku, note } where note is a customer-facing string or null.
+function parseSKUVariant(name){
+  if(!name) return {isSku:false,note:null};
+  const m=name.match(/^[A-Za-z]{1,3}\d{3,}(?:\(([^)]+)\))?$/i);
+  if(!m) return {isSku:false,note:null};
+  const inner=(m[1]||'').toLowerCase();
+  let note=null;
+  if(inner.includes('pendant')) note='Pendant only — chain not included';
+  else if(inner.includes('chain')) note='Chain only — pendant not included';
+  return {isSku:true,note};
+}
+
 // Detect collection name for a product
 function getCollectionName(p){
   if(p.collection_name) return p.collection_name.toLowerCase();
@@ -1374,16 +1388,30 @@ async function openPP(id){
     }catch{}
   }
   const metalKeys=new Set(Object.keys(COLOR_LABEL));
+  const noteEl=document.getElementById('pp-variant-note');
+  noteEl.style.display='none'; noteEl.textContent='';
   const colorChips=colors.filter(c=>typeof c==='string');
   if(colorChips.length){
-    document.getElementById('pp-colors-wrap').style.display='block';
     const cleanedChips=colorChips.map(c=>cleanVariantName(c));
-    const isAllMetal=cleanedChips.every(c=>metalKeys.has(c.toLowerCase().trim()));
-    document.querySelector('#pp-colors-wrap .pp-section-title').textContent=isAllMetal?'Metal Finish':'Color';
-    document.getElementById('pp-color-chips').innerHTML=cleanedChips.map((c,i)=>{
-      const label=COLOR_LABEL[c.toLowerCase().trim()]||c;
-      return `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${label}</button>`;
-    }).join('');
+    const skuParsed=cleanedChips.map(c=>parseSKUVariant(c));
+    // Surface the first meaningful SKU note (pendant only, chain only etc.)
+    const variantNote=skuParsed.map(s=>s.note).find(n=>n)||null;
+    if(variantNote){noteEl.textContent=variantNote;noteEl.style.display='block';}
+    const allSku=skuParsed.every(s=>s.isSku);
+    if(allSku){
+      // Nothing customer-facing to show — hide color section entirely
+      document.getElementById('pp-colors-wrap').style.display='none';
+    }else{
+      // Keep only non-SKU chips (filter out any PD####-style entries)
+      const realChips=cleanedChips.filter((_,i)=>!skuParsed[i].isSku);
+      document.getElementById('pp-colors-wrap').style.display='block';
+      const isAllMetal=realChips.every(c=>metalKeys.has(c.toLowerCase().trim()));
+      document.querySelector('#pp-colors-wrap .pp-section-title').textContent=isAllMetal?'Metal Finish':'Color';
+      document.getElementById('pp-color-chips').innerHTML=realChips.map((c,i)=>{
+        const label=COLOR_LABEL[c.toLowerCase().trim()]||c;
+        return `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${label}</button>`;
+      }).join('');
+    }
   }else document.getElementById('pp-colors-wrap').style.display='none';
 
   // ── Size chips — from p.sizes or extracted from variants ──
