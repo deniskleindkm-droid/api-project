@@ -232,6 +232,7 @@ class SilverbeneAdapter(SupplierAdapter):
             "products":   [{"option_id": str(option_id), "qty": qty}] if option_id else [],
         }
         resp = self._post(ENDPOINT_SHIPPING, payload)
+        print(f"[Silverbene] Shipping methods response: {resp}")
         if resp.get("code") == 0:
             raw = resp.get("data", [])
             # Normalise field names — Silverbene uses 'way' for the method code
