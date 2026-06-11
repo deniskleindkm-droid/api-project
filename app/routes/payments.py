@@ -303,6 +303,13 @@ def process_order_background(checkout_data: dict):
         print(f"[Payments] Background processing failed: {e}")
 
 
+def _stripe_meta(obj, key: str, default: str = "") -> str:
+    try:
+        return obj[key]
+    except (KeyError, TypeError):
+        return default
+
+
 @router.post("/payments/webhook")
 async def stripe_webhook(
     request: Request,
@@ -328,9 +335,12 @@ async def stripe_webhook(
 
     if event["type"] == "checkout.session.completed":
         obj = event["data"]["object"]
-        metadata = getattr(obj, "metadata", None) or {}
-        if not isinstance(metadata, dict):
-            metadata = dict(metadata)
+        raw = getattr(obj, "metadata", None) or {}
+        metadata = {
+            "user_email":      _stripe_meta(raw, "user_email"),
+            "shipping_address": _stripe_meta(raw, "shipping_address"),
+            "shipping_method":  _stripe_meta(raw, "shipping_method", "usps"),
+        }
         background_tasks.add_task(process_order_background, {"metadata": metadata})
 
     return {"status": "ok"}
@@ -354,9 +364,12 @@ async def recover_missed_order(
         checkout_obj = stripe.checkout.Session.retrieve(session_id)
         if getattr(checkout_obj, "payment_status", None) != "paid":
             raise HTTPException(status_code=400, detail="Session not paid yet")
-        metadata = getattr(checkout_obj, "metadata", None) or {}
-        if not isinstance(metadata, dict):
-            metadata = dict(metadata)
+        raw = getattr(checkout_obj, "metadata", None) or {}
+        metadata = {
+            "user_email":       _stripe_meta(raw, "user_email"),
+            "shipping_address": _stripe_meta(raw, "shipping_address"),
+            "shipping_method":  _stripe_meta(raw, "shipping_method", "usps"),
+        }
         background_tasks.add_task(process_order_background, {"metadata": metadata})
         return {"status": "recovery_started", "session_id": session_id}
     except stripe.error.StripeError as e:
