@@ -733,7 +733,97 @@ def cj_import_by_id(pid: str, markup: float = 3.0):
 def cj_debug(pid: str):
     from app.agents.cj_dropshipping import get_product_details
     data = get_product_details(pid)
-    return data    
+    return data
+
+
+@router.post("/agents/silverbene/retry-order/{order_id}")
+def silverbene_retry_order(order_id: int, master_key: str, session: Session = Depends(get_session)):
+    """
+    Retry Silverbene forwarding for an order that is already paid in the DB
+    but whose supplier placement failed or was never attempted.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    from app.models.order import Order
+    from app.models.product import Product
+    from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+    from app.agents.tracking_agent import create_tracking_entry
+    from app.database import engine
+    from sqlmodel import Session as DBSession
+
+    order = session.get(Order, order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail=f"Order {order_id} not found")
+    if order.status not in ("paid", "processing"):
+        raise HTTPException(status_code=400, detail=f"Order status is '{order.status}' — only paid/processing orders can be retried")
+
+    product = session.get(Product, order.product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail=f"Product {order.product_id} not found")
+
+    option_id = product.cj_sku
+    if not option_id:
+        raise HTTPException(status_code=400, detail=f"Product has no Silverbene option_id (cj_sku)")
+
+    # Build customer from user_id (email)
+    parts = order.user_id.split("@")[0].split(".")
+    customer = {
+        "first_name": parts[0].capitalize(),
+        "last_name":  parts[1].capitalize() if len(parts) > 1 else "Customer",
+        "email":      order.user_id,
+        "phone":      "",
+    }
+
+    # Parse stored shipping address string
+    addr_parts = [p.strip() for p in order.shipping_address.split(",")]
+    address = {
+        "line1":        addr_parts[0] if len(addr_parts) > 0 else "",
+        "city":         addr_parts[1] if len(addr_parts) > 1 else "",
+        "state":        addr_parts[2] if len(addr_parts) > 2 else "",
+        "state_code":   addr_parts[2][:2].upper() if len(addr_parts) > 2 else "",
+        "postal_code":  addr_parts[3] if len(addr_parts) > 3 else "",
+        "country_code": addr_parts[4].upper() if len(addr_parts) > 4 else "US",
+    }
+
+    sb = SilverbeneAdapter()
+    result = sb.place_order(
+        product_id=str(option_id),
+        customer=customer,
+        address=address,
+        quantity=order.quantity,
+        option_id=str(option_id),
+    )
+
+    print(f"[Silverbene Retry] order_id={order_id} result={result}")
+
+    if result.get("success"):
+        create_tracking_entry(
+            order_id=order_id,
+            cj_order_id=result.get("supplier_order_id", ""),
+            customer_email=order.user_id,
+            customer_name=f"{customer['first_name']} {customer['last_name']}",
+            supplier_name="Silverbene"
+        )
+        with DBSession(engine) as s:
+            o = s.get(Order, order_id)
+            if o:
+                o.status = "processing"
+                o.supplier_notified = True
+                s.add(o)
+                s.commit()
+        return {
+            "success": True,
+            "order_id": order_id,
+            "supplier_order_id": result.get("supplier_order_id"),
+            "message": "Order forwarded to Silverbene and status set to processing",
+        }
+    else:
+        return {
+            "success": False,
+            "order_id": order_id,
+            "reason": result.get("reason", "Unknown error"),
+        }
 
 @router.get("/suppliers/test")
 def test_supplier():
