@@ -281,8 +281,7 @@ class SilverbeneAdapter(SupplierAdapter):
                 "postcode":    address.get("postal_code", ""),
                 "country_id":  address.get("country_code", "US"),
             },
-            "shipping_carrier_code": carrier_code,
-            "shipping_method_code":  method_code,
+            "shipping_method": carrier_code,
         }
 
         result = self._post(ENDPOINT_CREATE_ORDER, payload)
