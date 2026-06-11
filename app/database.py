@@ -56,6 +56,8 @@ def create_db():
         conn.execute(text("ALTER TABLE cartitem ADD COLUMN IF NOT EXISTS selected_color varchar(100)"))
         conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS shipping_method varchar(50)'))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS specs text"))
+        # Reset empty-placeholder specs so the backfill retries them with the fixed logic
+        conn.execute(text("UPDATE product SET specs = NULL WHERE specs = '{}'"))
         conn.commit()
 
     _setup_defaults()
