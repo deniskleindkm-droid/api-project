@@ -33,7 +33,7 @@ _CATEGORY_PREFIXES = {"anklet", "bracelet", "necklace", "ring", "earring", "pend
 
 # Attribute names Silverbene uses per category type
 SIZE_ATTRIBUTE_NAMES = {"size", "ring size", "length", "bracelet size", "anklet size", "chain length"}
-COLOR_ATTRIBUTE_NAMES = {"color", "colour", "metal color", "metal finish", "finish"}
+COLOR_ATTRIBUTE_NAMES = {"color", "colour", "metal color", "metal finish", "finish", "main stone", "stone", "stone color", "stone type", "birthstone"}
 
 
 class SilverbeneAdapter(SupplierAdapter):

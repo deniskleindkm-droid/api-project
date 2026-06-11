@@ -915,6 +915,10 @@ footer{background:var(--black);padding:52px 48px 36px;}
           <div class="pp-section-title">Metal Finish</div>
           <div class="pp-chips" id="pp-color-chips"></div>
         </div>
+        <div id="pp-stone-wrap" style="display:none">
+          <div class="pp-section-title">Stone Color</div>
+          <div class="pp-chips" id="pp-stone-chips"></div>
+        </div>
         <div id="pp-sizes-wrap" style="display:none">
           <div class="pp-section-title">Size</div>
           <div class="pp-chips" id="pp-size-chips"></div>
@@ -1069,6 +1073,7 @@ let pendingVerifyEmail = '';
 let cartItems = [];
 let ppSelectedSize = null;
 let ppSelectedColor = null;
+let ppSelectedStone = null;
 let ppOpening = false; // guard — prevents double-click opening two panels
 let wishlist = JSON.parse(localStorage.getItem('mk_wishlist')||'[]');
 
@@ -1439,6 +1444,8 @@ async function openPP(id){
 
   // ── Color / Metal Finish chips ──
   // Use p.colors if set; otherwise extract live from p.variants (Silverbene option format)
+  // sizes declared here so measurement-only color chips can promote themselves into the size section
+  let sizes=[];
   let colors=[];
   try{colors=p.colors?JSON.parse(p.colors):[];}catch{colors=[];}
   if(!colors.length&&p.variants){
@@ -1464,22 +1471,59 @@ async function openPP(id){
     const allSku=processed.every(p=>p.isSku);
     const realChips=processed.filter(p=>!p.isSku).map(p=>p.display);
     if(allSku||realChips.length<=1){
-      // 0 = all SKU codes, 1 = only one option (no choice to offer) — hide
       document.getElementById('pp-colors-wrap').style.display='none';
     }else{
-      document.getElementById('pp-colors-wrap').style.display='block';
-      const isAllMetal=realChips.every(c=>metalKeys.has(c.toLowerCase().trim()));
-      document.querySelector('#pp-colors-wrap .pp-section-title').textContent=isAllMetal?'Metal Finish':'Color';
-      document.getElementById('pp-color-chips').innerHTML=realChips.map((c,i)=>{
-        const label=COLOR_LABEL[c.toLowerCase().trim()]||c;
-        return `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${label}</button>`;
-      }).join('');
+      const MEASURE_RE=/^(\d+(?:\.\d+)?)\s*(mm|cm)\s*$/i;
+      const isMeasureOnly=realChips.every(c=>MEASURE_RE.test(c.trim()));
+      if(isMeasureOnly){
+        // Lengths stored as color variants (Silverbene quirk for bracelets/anklets) — promote to size section
+        document.getElementById('pp-colors-wrap').style.display='none';
+        sizes=realChips.map(c=>{
+          const m=c.trim().match(MEASURE_RE);
+          if(m){
+            const val=parseFloat(m[1]);
+            const unit=m[2].toLowerCase();
+            const inches=unit==='cm'?val/2.54:val/25.4;
+            return `${Math.round(inches*10)/10}"`;
+          }
+          return c;
+        });
+      }else{
+        document.getElementById('pp-colors-wrap').style.display='block';
+        const isAllMetal=realChips.every(c=>metalKeys.has(c.toLowerCase().trim()));
+        document.querySelector('#pp-colors-wrap .pp-section-title').textContent=isAllMetal?'Metal Finish':'Color';
+        document.getElementById('pp-color-chips').innerHTML=realChips.map((c,i)=>{
+          const label=COLOR_LABEL[c.toLowerCase().trim()]||c;
+          return `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${label}</button>`;
+        }).join('');
+      }
     }
   }else document.getElementById('pp-colors-wrap').style.display='none';
 
+  // ── Stone Color chips — extracted from "Main Stone" / stone attributes in variants ──
+  const STONE_ATTRS=new Set(['main stone','stone','stone color','stone type','birthstone']);
+  let stones=[];
+  if(p.variants){
+    try{
+      JSON.parse(p.variants).forEach(opt=>{
+        (opt.attribute||[]).forEach(attr=>{
+          if(STONE_ATTRS.has((attr.name||'').toLowerCase())&&attr.value){
+            if(!stones.includes(attr.value)) stones.push(attr.value);
+          }
+        });
+      });
+    }catch{}
+  }
+  if(stones.length>=2){
+    document.getElementById('pp-stone-wrap').style.display='block';
+    document.getElementById('pp-stone-chips').innerHTML=stones.map((s,i)=>
+      `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'stone')">${s}</button>`
+    ).join('');
+  }else document.getElementById('pp-stone-wrap').style.display='none';
+
   // ── Size chips — from p.sizes or extracted from variants ──
-  let sizes=[];
-  try{sizes=p.sizes?JSON.parse(p.sizes):[];}catch{sizes=[];}
+  // (sizes declared above — may already contain promoted bracelet/anklet lengths from color detection)
+  if(!sizes.length){try{sizes=p.sizes?JSON.parse(p.sizes):[];}catch{sizes=[];}}
   if(!sizes.length&&p.variants){
     try{
       JSON.parse(p.variants).forEach(opt=>{
@@ -1562,7 +1606,8 @@ async function openPP(id){
     atcBtn.disabled=true;
     atcBtn.textContent='Added to Cart ✓';
     atcBtn.style.background='#22c55e';
-    addToCart(p.id, cleanName(p.name), ppSelectedSize, ppSelectedColor);
+    const effectiveColor=ppSelectedColor&&ppSelectedStone?`${ppSelectedColor} · ${ppSelectedStone}`:ppSelectedColor||ppSelectedStone||null;
+    addToCart(p.id, cleanName(p.name), ppSelectedSize, effectiveColor);
     setTimeout(()=>{
       if(!p.stock||p.stock===0)return;
       atcBtn.disabled=false;
@@ -1573,7 +1618,9 @@ async function openPP(id){
 
   // Reset variant selection for this product
   ppSelectedSize = sizes.length ? sizes[0] : null;
-  ppSelectedColor = colorChips.length ? colorChips[0] : null;
+  // only set a color if the color chips section is actually visible (not hidden due to measurement-only promotion)
+  ppSelectedColor = (document.getElementById('pp-colors-wrap').style.display!=='none'&&colorChips.length) ? colorChips[0] : null;
+  ppSelectedStone = stones.length ? stones[0] : null;
 
   updatePPGallery();
   document.getElementById('pp-overlay').classList.add('open');
@@ -1606,6 +1653,7 @@ function selectChip(btn,type){
   btn.classList.add('active');
   if(type==='size') ppSelectedSize=btn.textContent.trim();
   if(type==='color') ppSelectedColor=btn.textContent.trim();
+  if(type==='stone') ppSelectedStone=btn.textContent.trim();
 }
 
 // ── WISHLIST ──
