@@ -221,14 +221,17 @@ class SilverbeneAdapter(SupplierAdapter):
     # ── ORDERS ────────────────────────────────────────────────────────────────
 
     def get_shipping_methods(self, country_code: str = "US",
-                             option_id: str = None, qty: int = 1) -> list:
+                             option_id: str = None, qty: int = 1,
+                             postcode: str = "", city: str = "") -> list:
         """
         Get available shipping methods for a country + product.
-        Silverbene requires POST JSON with products array to return methods.
+        postcode and city are required by Silverbene for accurate rates.
         Returns list of dicts with: way, title, price, carrier_code, method_code.
         """
         payload = {
             "country_id": country_code,
+            "postcode":   postcode,
+            "city":       city,
             "products":   [{"option_id": str(option_id), "qty": qty}] if option_id else [],
         }
         for attempt in range(2):
@@ -256,37 +259,38 @@ class SilverbeneAdapter(SupplierAdapter):
         """
         Place a dropship order with Silverbene.
         product_id = Silverbene option_id (NOT sku — orders use option_id).
+        use_credit: true pays from store credit balance automatically.
         """
         use_option = option_id or product_id
         methods = self.get_shipping_methods(
             address.get("country_code", "US"),
             option_id=use_option,
-            qty=quantity
+            qty=quantity,
+            postcode=address.get("postal_code", ""),
+            city=address.get("city", ""),
         )
         if not methods:
             print(f"[Silverbene] No shipping methods returned for option_id={use_option} — cannot place order")
             return self.standard_order(success=False, supplier_order_id="", reason="No shipping methods available")
         carrier_code = methods[0].get("carrier_code", "")
-        method_code = methods[0].get("method_code", "")
 
         order_option_id = option_id or product_id
 
         payload = {
             "products": [{"option_id": str(order_option_id), "qty": quantity}],
-            "shipping_address": {
-                "firstname":   customer.get("first_name", ""),
-                "lastname":    customer.get("last_name", ""),
-                "email":       customer.get("email", ""),
-                "telephone":   customer.get("phone") or "0000000000",
-                "street":      address.get("line1", ""),
-                "city":        address.get("city", ""),
-                "region":      address.get("state", ""),
-                "region_code": address.get("state_code", None),
-                "region_id":   address.get("region_id", None),
-                "postcode":    address.get("postal_code", ""),
-                "country_id":  address.get("country_code", "US"),
-            },
             "shipping_method": carrier_code,
+            "use_credit": True,
+            "shipping_address": {
+                "firstname":  customer.get("first_name", ""),
+                "lastname":   customer.get("last_name", ""),
+                "email":      customer.get("email", ""),
+                "telephone":  customer.get("phone") or "0000000000",
+                "street":     address.get("line1", ""),
+                "city":       address.get("city", ""),
+                "region":     address.get("state", ""),
+                "postcode":   address.get("postal_code", ""),
+                "country_id": address.get("country_code", "US"),
+            },
         }
 
         result = self._post(ENDPOINT_CREATE_ORDER, payload)
