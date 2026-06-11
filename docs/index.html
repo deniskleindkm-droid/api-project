@@ -579,6 +579,26 @@ nav{
 /* ── TOAST ── */
 .toast{position:fixed;bottom:max(32px,env(safe-area-inset-bottom,0px) + 16px);left:50%;transform:translateX(-50%);background:var(--black);color:white;padding:12px 26px;font-size:11px;font-weight:300;letter-spacing:1.5px;z-index:9999;opacity:0;transition:opacity 0.3s;white-space:nowrap;box-shadow:0 8px 40px rgba(0,0,0,0.15);}
 .toast.show{opacity:1;}
+
+/* ── ORDERS MODAL ── */
+.orders-modal{background:white;width:100%;max-width:520px;position:relative;box-shadow:0 24px 80px rgba(0,0,0,0.12);max-height:90vh;overflow-y:auto;}
+.order-card{padding:20px 36px;border-bottom:1px solid var(--border);}
+.order-card:last-child{border-bottom:none;}
+.order-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.order-num{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;}
+.order-badge{font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:400;padding:4px 10px;border:1px solid;}
+.order-badge.pending,.order-badge.paid{color:#92400e;border-color:#fcd34d;background:#fffbeb;}
+.order-badge.processing{color:var(--tanzanite);border-color:var(--tanzanite);background:var(--tanzanite-pale);}
+.order-badge.shipped,.order-badge.delivered{color:#166534;border-color:#86efac;background:#f0fdf4;}
+.order-meta{font-size:11px;color:var(--mid);font-weight:300;margin-bottom:4px;}
+.order-tracking{margin-top:12px;padding:10px 14px;background:var(--ivory);border:1px solid var(--border);font-size:11px;display:flex;align-items:center;gap:8px;}
+.order-tracking-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);flex-shrink:0;}
+.order-tracking a{color:var(--pink);text-decoration:none;word-break:break-all;}
+.order-tracking a:hover{text-decoration:underline;}
+.orders-empty{text-align:center;padding:60px 36px;color:var(--mid);}
+.orders-empty p{font-family:'Cormorant Garamond',serif;font-size:20px;font-style:italic;margin-bottom:8px;color:var(--black);}
+.orders-empty span{font-size:11px;font-weight:300;letter-spacing:1px;}
+.orders-loading{text-align:center;padding:60px;color:var(--light);font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17px;}
 .loading{text-align:center;padding:72px;color:var(--light);font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17px;grid-column:1/-1;}
 
 /* Collection mode — hide all homepage sections, show only the collection */
@@ -727,6 +747,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
   </div>
   <div class="nav-right">
     <span id="user-greeting" class="nav-user" style="display:none"></span>
+    <button class="nav-icon" id="orders-btn" onclick="openOrders()" style="display:none;font-size:14px;" title="My Orders">◫</button>
     <button class="nav-icon" onclick="toggleCart()" style="position:relative">
       🛍 <span class="cart-badge" id="cart-count">0</span>
     </button>
@@ -1723,9 +1744,9 @@ function logout(){
   showToast('Signed out');
 }
 function updateAuthUI(){
-  const g=document.getElementById('user-greeting'),ab=document.getElementById('auth-btn'),lb=document.getElementById('logout-btn');
-  if(token&&userEmail){const n=(userName||userEmail.split(' ')[0]).split(' ')[0];g.textContent=n;g.style.display='block';ab.style.display='none';lb.style.display='block';}
-  else{g.style.display='none';ab.style.display='block';lb.style.display='none';}
+  const g=document.getElementById('user-greeting'),ab=document.getElementById('auth-btn'),lb=document.getElementById('logout-btn'),ob=document.getElementById('orders-btn');
+  if(token&&userEmail){const n=(userName||userEmail.split(' ')[0]).split(' ')[0];g.textContent=n;g.style.display='block';ab.style.display='none';lb.style.display='block';if(ob)ob.style.display='block';}
+  else{g.style.display='none';ab.style.display='block';lb.style.display='none';if(ob)ob.style.display='none';}
 }
 
 function goHome(){
@@ -1806,6 +1827,61 @@ function closeInfo() {
 }
 function showBreadcrumb(name){document.getElementById('breadcrumb').style.display='flex';document.getElementById('bc-current').textContent=name;}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+
+/* ── ORDERS ── */
+function openOrders(){
+  if(!token){openAuth();return;}
+  document.getElementById('orders-modal').classList.add('open');
+  document.body.style.overflow='hidden';
+  fetchOrders();
+}
+function closeOrders(){
+  document.getElementById('orders-modal').classList.remove('open');
+  document.body.style.overflow='';
+}
+async function fetchOrders(){
+  const body=document.getElementById('orders-body');
+  body.innerHTML='<div class="orders-loading">Loading your orders…</div>';
+  try{
+    const res=await fetch(`${API}/orders`,{headers:{Authorization:`Bearer ${token}`}});
+    if(!res.ok) throw new Error('failed');
+    renderOrders(await res.json());
+  }catch(e){
+    body.innerHTML='<div class="orders-empty"><p>Couldn\'t load orders</p><span>Please try again</span></div>';
+  }
+}
+function renderOrders(orders){
+  const body=document.getElementById('orders-body');
+  if(!orders||orders.length===0){
+    body.innerHTML='<div class="orders-empty"><p>No orders yet</p><span>Your orders will appear here after checkout</span></div>';
+    return;
+  }
+  orders.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  const statusLabel={pending:'Pending',paid:'Paid',processing:'Processing',shipped:'Shipped',delivered:'Delivered'};
+  body.innerHTML=orders.map(o=>{
+    const date=new Date(o.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
+    const badge=o.status||'pending';
+    const label=statusLabel[badge]||badge;
+    const trackHtml=o.tracking_number
+      ?`<div class="order-tracking"><span class="order-tracking-label">Tracking</span><a href="https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(o.tracking_number)}" target="_blank" rel="noopener">${o.tracking_number}</a></div>`
+      :(badge==='shipped'||badge==='delivered'?'<div class="order-tracking"><span class="order-tracking-label">Tracking</span><span style="color:var(--mid)">Number on its way</span></div>':'');
+    return`<div class="order-card">
+      <div class="order-header"><span class="order-num">Order #${o.id}</span><span class="order-badge ${badge}">${label}</span></div>
+      <div class="order-meta">${date} · ${o.quantity} item${o.quantity>1?'s':''} · $${Number(o.total_price).toFixed(2)}</div>
+      ${trackHtml}
+    </div>`;
+  }).join('');
+}
 </script>
+
+<!-- ORDERS MODAL -->
+<div class="modal-overlay" id="orders-modal" onclick="if(event.target===this)closeOrders()">
+  <div class="orders-modal">
+    <button class="close-modal" onclick="closeOrders()">✕</button>
+    <div class="modal-top"><h2>My Orders</h2><p>Track your recent purchases</p></div>
+    <div id="orders-body"></div>
+  </div>
+</div>
+
 </body>
 </html>
