@@ -311,14 +311,19 @@ async def stripe_webhook(
 ):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
-    webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+    webhook_secret = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()
 
     try:
         if webhook_secret:
             event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
         else:
+            print("[Payments] WARNING: STRIPE_WEBHOOK_SECRET not set — skipping signature verification")
             event = json.loads(payload)
+    except stripe.error.SignatureVerificationError as e:
+        print(f"[Payments] Webhook signature mismatch — check STRIPE_WEBHOOK_SECRET in Railway: {e}")
+        raise HTTPException(status_code=400, detail="Invalid signature")
     except Exception as e:
+        print(f"[Payments] Webhook parse error: {type(e).__name__}: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
     if event["type"] == "checkout.session.completed":

@@ -195,7 +195,13 @@ class SilverbeneAdapter(SupplierAdapter):
         """Fetch a specific product by its SKU."""
         resp = self._get(ENDPOINT_PRODUCT_LIST, {"sku": sku})
         if resp.get("code") == 0:
-            items = resp.get("data", {}).get("data", [])
+            data = resp.get("data", {})
+            if isinstance(data, list):
+                items = data
+            elif isinstance(data, dict):
+                items = data.get("data", [])
+            else:
+                items = []
             if items:
                 return self._to_standard(items[0])
         return None

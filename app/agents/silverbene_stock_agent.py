@@ -245,32 +245,37 @@ def _refresh_product_sizes(sb) -> tuple:
         detail = []
 
         for p in needs_refresh:
-            sku = p.cj_product_id
-            if not sku:
+            try:
+                sku = p.cj_product_id
+                if not sku:
+                    continue
+
+                fresh = sb.get_by_sku(sku)
+                if not fresh or not isinstance(fresh, dict):
+                    continue
+
+                options = fresh.get("_options", [])
+                if not isinstance(options, list):
+                    continue
+                sizes_list, _ = adapter._extract_variants(options)
+
+                if sizes_list:
+                    with Session(engine) as session:
+                        prod = session.get(Product, p.id)
+                        if prod:
+                            prod.sizes = json.dumps(sizes_list)
+                            prod.needs_length_review = False
+                            session.add(prod)
+                            session.commit()
+                    fixed += 1
+                    detail.append(
+                        f"{p.category} — {p.name[:45]}: {sizes_list}"
+                    )
+                    print(f"[Silverbene Stock Agent] Sizes updated [{p.category}] "
+                          f"{p.name[:45]} → {sizes_list}")
+            except Exception as e:
+                print(f"[Silverbene Stock Agent] Size refresh skipped for {p.name[:45]}: {e}")
                 continue
-
-            fresh = sb.get_by_sku(sku)
-            if not fresh:
-                continue
-
-            options = fresh.get("_options", [])
-            sizes_list, _ = adapter._extract_variants(options)
-
-            if sizes_list:
-                with Session(engine) as session:
-                    prod = session.get(Product, p.id)
-                    if prod:
-                        old_sizes = prod.sizes
-                        prod.sizes = json.dumps(sizes_list)
-                        prod.needs_length_review = False
-                        session.add(prod)
-                        session.commit()
-                fixed += 1
-                detail.append(
-                    f"{p.category} — {p.name[:45]}: {sizes_list}"
-                )
-                print(f"[Silverbene Stock Agent] Sizes updated [{p.category}] "
-                      f"{p.name[:45]} → {sizes_list}")
 
         if fixed:
             print(f"[Silverbene Stock Agent] Sizes refreshed: {fixed} products updated")
