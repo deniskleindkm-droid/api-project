@@ -1284,6 +1284,17 @@ const COLOR_LABEL = {
   'platinum':   'Platinum',
 };
 
+// Strip Silverbene size suffixes and trailing catalog numbers from variant names
+// e.g. "Pink_16+3cm" → "Pink", "Dark Blue Spinel 113#_16+3cm" → "Dark Blue Spinel", "Rose Red#_16+3cm" → "Rose Red"
+function cleanVariantName(name){
+  if(!name) return name;
+  return name
+    .replace(/_\d[\d+cm]*$/i,'')   // _16+3cm, _18cm, _20cm …
+    .replace(/\s+\d+#?\s*$/g,'')   // trailing  113#  or  113
+    .replace(/#\s*$/g,'')          // trailing lone #
+    .trim();
+}
+
 // Detect collection name for a product
 function getCollectionName(p){
   if(p.collection_name) return p.collection_name.toLowerCase();
@@ -1354,17 +1365,22 @@ async function openPP(id){
     try{
       JSON.parse(p.variants).forEach(opt=>{
         (opt.attribute||[]).forEach(attr=>{
-          if((attr.name||'').toLowerCase()==='color'&&attr.value&&!colors.includes(attr.value))
-            colors.push(attr.value);
+          if((attr.name||'').toLowerCase()==='color'&&attr.value){
+            const cleaned=cleanVariantName(attr.value);
+            if(cleaned&&!colors.includes(cleaned)) colors.push(cleaned);
+          }
         });
       });
     }catch{}
   }
-  const colorKeys=Object.keys(COLOR_LABEL);
+  const metalKeys=new Set(Object.keys(COLOR_LABEL));
   const colorChips=colors.filter(c=>typeof c==='string');
   if(colorChips.length){
     document.getElementById('pp-colors-wrap').style.display='block';
-    document.getElementById('pp-color-chips').innerHTML=colorChips.map((c,i)=>{
+    const cleanedChips=colorChips.map(c=>cleanVariantName(c));
+    const isAllMetal=cleanedChips.every(c=>metalKeys.has(c.toLowerCase().trim()));
+    document.querySelector('#pp-colors-wrap .pp-section-title').textContent=isAllMetal?'Metal Finish':'Color';
+    document.getElementById('pp-color-chips').innerHTML=cleanedChips.map((c,i)=>{
       const label=COLOR_LABEL[c.toLowerCase().trim()]||c;
       return `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${label}</button>`;
     }).join('');
