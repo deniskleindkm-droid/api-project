@@ -249,6 +249,15 @@ def run_daily_content():
         print(f"[Scheduler] Content agent error: {e}")            
 
 
+def run_order_recovery():
+    try:
+        from app.agents.order_recovery_agent import run_order_recovery_agent
+        run_order_recovery_agent()
+        _heartbeat("order_recovery_agent", "order recovery cycle")
+    except Exception as e:
+        print(f"[Scheduler] Order recovery error: {e}")
+
+
 def run_aria_self_check():
     """ARIA proactively reads the store every 30 min and alerts Dennis if anything needs attention."""
     try:
@@ -343,6 +352,15 @@ def start_scheduler():
     )
 
     scheduler.add_job(
+        run_order_recovery,
+        trigger=IntervalTrigger(minutes=30),
+        id='order_recovery',
+        name='Order Recovery Agent — Auto-retry failed Silverbene orders',
+        next_run_time=datetime.utcnow(),
+        replace_existing=True
+    )
+
+    scheduler.add_job(
         run_aria_self_check,
         trigger=IntervalTrigger(minutes=30),
         id='aria_self_check',
@@ -397,3 +415,4 @@ def start_scheduler():
     print("[Scheduler]   → Content agent (daily videos): every 24 hours")
     print("[Scheduler]   → Pinterest analytics: daily at 00:05 UTC")
     print("[Scheduler]   → Daily digest email: every day at 08:00 UTC")
+    print("[Scheduler]   → Order recovery agent: every 30 minutes")
