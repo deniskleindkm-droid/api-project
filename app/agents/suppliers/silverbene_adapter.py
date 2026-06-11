@@ -231,20 +231,25 @@ class SilverbeneAdapter(SupplierAdapter):
             "country_id": country_code,
             "products":   [{"option_id": str(option_id), "qty": qty}] if option_id else [],
         }
-        resp = self._post(ENDPOINT_SHIPPING, payload)
-        print(f"[Silverbene] Shipping methods response: {resp}")
-        if resp.get("code") == 0:
-            raw = resp.get("data", [])
-            # Normalise field names — Silverbene uses 'way' for the method code
-            return [
-                {
-                    **m,
-                    "carrier_code": m.get("way", ""),
-                    "method_code":  m.get("way", ""),
-                }
-                for m in raw
-            ]
-        return []
+        for attempt in range(2):
+            resp = self._post(ENDPOINT_SHIPPING, payload)
+            print(f"[Silverbene] Shipping methods response (attempt {attempt + 1}): {resp}")
+            if resp.get("code") == 0:
+                raw = resp.get("data", [])
+                if raw:
+                    return [
+                        {
+                            **m,
+                            "carrier_code": m.get("way", ""),
+                            "method_code":  m.get("way", ""),
+                        }
+                        for m in raw
+                    ]
+            import time; time.sleep(2)
+
+        # Silverbene intermittently returns empty methods — fall back to known US method
+        print("[Silverbene] Shipping methods empty after retry — using fallback SUX")
+        return [{"carrier_code": "SUX", "method_code": "SUX", "way": "SUX"}]
 
     def place_order(self, product_id: str, customer: dict, address: dict,
                     quantity: int = 1, option_id: str = None) -> dict:
