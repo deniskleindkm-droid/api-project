@@ -123,6 +123,37 @@ async def tiktok_user_info():
     return JSONResponse(status_code=200, content=data)
 
 
+@router.post("/test-post")
+async def tiktok_test_post():
+    """Temporary endpoint — tests TikTok Direct Post flow with sandbox token."""
+    access_token = os.getenv("TIKTOK_ACCESS_TOKEN")
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            "https://open.tiktokapis.com/v2/post/publish/video/init/",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "post_info": {
+                    "title": "925 sterling silver ring. New arrivals at mikisi.co #jewelry #sterlingsilver #luxury",
+                    "privacy_level": "SELF_ONLY",
+                    "disable_duet": False,
+                    "disable_comment": False,
+                    "disable_stitch": False,
+                },
+                "source_info": {
+                    "source": "PULL_FROM_URL",
+                    "video_url": "https://res.cloudinary.com/ds8qviz1o/video/upload/v1780941636/mikisi/videos/rings_571.mp4",
+                },
+            },
+        )
+
+    print(f"[TikTok] Test post response: {response.status_code} — {response.json()}")
+    return JSONResponse(status_code=response.status_code, content=response.json())
+
+
 @router.get("/refresh")
 async def tiktok_refresh(refresh_token: str):
     async with httpx.AsyncClient() as client:
