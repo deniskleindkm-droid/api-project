@@ -35,54 +35,30 @@ def _fetch_raw_silverbene(sb, sku: str) -> dict:
 
 def _extract_specs_from_raw(raw: dict, sb) -> dict:
     """
-    Extract specs from the raw Silverbene item dict.
-    Tries multiple fields since Silverbene stores specs in different places:
-      - raw['desc']       → HTML description with <li> spec tags
-      - raw['attribute']  → list of {name, value} pairs (product attributes)
-      - raw['spec']       → may exist on some products
+    Extract specs from the raw Silverbene product_list response.
+    product_list uses 'description' (not 'desc') and has 'weight' as a direct field.
     """
     specs = {}
 
-    # Primary: parse raw HTML desc field (before any AI rewrite)
-    desc = raw.get("desc", "")
-    if desc:
-        specs.update(sb._extract_specs_from_desc(desc))
+    # Weight is a direct top-level field in product_list (a number, in grams)
+    weight = raw.get("weight")
+    if weight is not None:
+        try:
+            w = float(weight)
+            if w > 0:
+                specs["weight"] = f"{w:g}g"
+        except (TypeError, ValueError):
+            pass
 
-    # Secondary: attribute list — [{name: "Stone Type", value: "Cubic Zirconia"}, ...]
-    attr_map = {
-        "stone type": "stone", "main stone": "stone", "stone name": "stone",
-        "accent stone": "accent_stone",
-        "stone color": "stone",
-        "bead shape": "bead_shape", "bead type": "bead_shape",
-        "setting": "setting", "setting type": "setting",
-        "closure": "closure", "clasp": "closure",
-        "finish": "finish", "surface": "finish",
-        "color": "color", "color combination": "color",
-        "total weight": "weight", "weight": "weight",
-        "ring width": "width", "band width": "width", "chain width": "width",
-        "ring top size": "ring_top",
-        "purity": "purity",
-    }
-    for attr in raw.get("attribute", []):
-        if not isinstance(attr, dict):
-            continue
-        key = (attr.get("name") or attr.get("key") or "").strip().lower()
-        val = (attr.get("value") or "").strip()
-        if key and val and key in attr_map:
-            field = attr_map[key]
-            if field not in specs:  # don't overwrite desc-parsed values
-                specs[field] = val
-
-    # Also try 'spec' field if present
-    for attr in raw.get("spec", []):
-        if not isinstance(attr, dict):
-            continue
-        key = (attr.get("name") or attr.get("key") or "").strip().lower()
-        val = (attr.get("value") or "").strip()
-        if key and val and key in attr_map:
-            field = attr_map[key]
-            if field not in specs:
-                specs[field] = val
+    # Parse the description HTML for spec <li> tags —
+    # product_list calls it 'description'; product_by_date calls it 'desc'
+    desc_html = raw.get("description") or raw.get("desc") or ""
+    if desc_html:
+        parsed = sb._extract_specs_from_desc(desc_html)
+        # Don't overwrite weight we already got from the direct field
+        for k, v in parsed.items():
+            if k not in specs:
+                specs[k] = v
 
     return specs
 
@@ -112,16 +88,15 @@ def run_specs_backfill():
     if products:
         first_raw = _fetch_raw_silverbene(sb, products[0].cj_product_id)
         if first_raw:
-            known_fields = [k for k in first_raw.keys() if k not in ('gallery',)]
-            print(f"[Specs Backfill] Raw API fields available: {known_fields}")
-            for field in ('desc', 'attribute', 'spec', 'specification'):
+            print(f"[Specs Backfill] Raw API fields: {list(first_raw.keys())}")
+            for field in ('description', 'desc', 'weight'):
                 val = first_raw.get(field)
-                if val:
-                    preview = str(val)[:200]
+                if val is not None:
+                    preview = str(val)[:300]
                     print(f"[Specs Backfill]   {field}: {preview}")
         else:
-            print(f"[Specs Backfill] WARNING: get_by_sku returned nothing for first product "
-                  f"({products[0].cj_product_id}) — API may not support SKU lookup")
+            print(f"[Specs Backfill] WARNING: raw fetch returned nothing for first product "
+                  f"({products[0].cj_product_id})")
 
     updated = 0
     skipped = 0
