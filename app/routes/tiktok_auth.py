@@ -147,9 +147,11 @@ async def tiktok_test_post():
                 "post_info": {
                     "title": "925 sterling silver ring. New arrivals at mikisi.co #jewelry #sterlingsilver #luxury",
                     "privacy_level": "SELF_ONLY",
-                    "disable_duet": False,
-                    "disable_comment": False,
-                    "disable_stitch": False,
+                    "disable_duet": True,
+                    "disable_comment": True,
+                    "disable_stitch": True,
+                    "brand_content_toggle": False,
+                    "brand_organic_toggle": False,
                 },
                 "source_info": {
                     "source": "FILE_UPLOAD",
