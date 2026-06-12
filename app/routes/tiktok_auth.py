@@ -125,11 +125,19 @@ async def tiktok_user_info():
 
 @router.post("/test-post")
 async def tiktok_test_post():
-    """Temporary endpoint — tests TikTok Direct Post flow with sandbox token."""
+    """Temporary endpoint — tests TikTok Direct Post flow (FILE_UPLOAD) with sandbox token."""
     access_token = os.getenv("TIKTOK_ACCESS_TOKEN")
+    video_url = "https://res.cloudinary.com/ds8qviz1o/video/upload/v1780941636/mikisi/videos/rings_571.mp4"
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
+    async with httpx.AsyncClient(timeout=120) as client:
+        # Step 1 — download video from Cloudinary
+        video_resp = await client.get(video_url)
+        video_bytes = video_resp.content
+        video_size = len(video_bytes)
+        print(f"[TikTok] Downloaded video: {video_size} bytes")
+
+        # Step 2 — init the upload
+        init_resp = await client.post(
             "https://open.tiktokapis.com/v2/post/publish/video/init/",
             headers={
                 "Authorization": f"Bearer {access_token}",
@@ -144,14 +152,38 @@ async def tiktok_test_post():
                     "disable_stitch": False,
                 },
                 "source_info": {
-                    "source": "PULL_FROM_URL",
-                    "video_url": "https://res.cloudinary.com/ds8qviz1o/video/upload/v1780941636/mikisi/videos/rings_571.mp4",
+                    "source": "FILE_UPLOAD",
+                    "video_size": video_size,
+                    "chunk_size": video_size,
+                    "total_chunk_count": 1,
                 },
             },
         )
+        init_data = init_resp.json()
+        print(f"[TikTok] Init response: {init_resp.status_code} — {init_data}")
 
-    print(f"[TikTok] Test post response: {response.status_code} — {response.json()}")
-    return JSONResponse(status_code=response.status_code, content=response.json())
+        if init_resp.status_code != 200 or "data" not in init_data:
+            return JSONResponse(status_code=init_resp.status_code, content=init_data)
+
+        publish_id = init_data["data"]["publish_id"]
+        upload_url = init_data["data"]["upload_url"]
+
+        # Step 3 — upload the video bytes
+        put_resp = await client.put(
+            upload_url,
+            headers={
+                "Content-Type": "video/mp4",
+                "Content-Range": f"bytes 0-{video_size - 1}/{video_size}",
+            },
+            content=video_bytes,
+        )
+        print(f"[TikTok] Upload response: {put_resp.status_code}")
+
+    return JSONResponse(status_code=200, content={
+        "publish_id": publish_id,
+        "upload_status": put_resp.status_code,
+        "video_size_bytes": video_size,
+    })
 
 
 @router.get("/refresh")
