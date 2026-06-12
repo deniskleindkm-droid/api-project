@@ -102,7 +102,7 @@ async def tiktok_user_info():
                 "Content-Type": "application/json",
             },
             params={
-                "fields": "open_id,union_id,avatar_url,display_name,bio_description,profile_deep_link,is_verified,follower_count,following_count,likes_count,video_count"
+                "fields": "open_id,union_id,avatar_url,display_name"
             },
         )
 
