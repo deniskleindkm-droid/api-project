@@ -80,6 +80,49 @@ async def tiktok_callback(request: Request):
     }
 
 
+@router.get("/user")
+async def tiktok_user_info():
+    """
+    Calls TikTok's /v2/user/info/ endpoint using the stored access token.
+    Used to verify the token is valid and display connected account info.
+    """
+    access_token = os.getenv("TIKTOK_ACCESS_TOKEN")
+
+    if not access_token:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "TIKTOK_ACCESS_TOKEN not set in environment variables"},
+        )
+
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://open.tiktokapis.com/v2/user/info/",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+            params={
+                "fields": "open_id,union_id,avatar_url,display_name,bio_description,profile_deep_link,is_verified,follower_count,following_count,likes_count,video_count"
+            },
+        )
+
+    if response.status_code != 200:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "TikTok API call failed",
+                "status_code": response.status_code,
+                "detail": response.json(),
+            },
+        )
+
+    data = response.json()
+    user = data.get("data", {}).get("user", {})
+    print(f"[TikTok] User info fetched — display_name={user.get('display_name')} open_id={user.get('open_id')}")
+
+    return JSONResponse(status_code=200, content=data)
+
+
 @router.get("/refresh")
 async def tiktok_refresh(refresh_token: str):
     async with httpx.AsyncClient() as client:
