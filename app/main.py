@@ -51,6 +51,10 @@ _NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "
 def serve_frontend():
     return FileResponse("docs/index.html", headers=_NO_CACHE)
 
+@app.get("/catalog")
+def serve_catalog():
+    return FileResponse("docs/catalog.html", headers=_NO_CACHE)
+
 @app.get("/terms")
 def serve_terms():
     return FileResponse("docs/terms.html", headers=_NO_CACHE)
