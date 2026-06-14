@@ -36,7 +36,7 @@ class Product(SQLModel, table=True):
     shipping_cost: Optional[float] = None
     last_price_sync: Optional[datetime] = None
     # Product flags
-    is_published: bool = True   # False = staging only; True = live on storefront
+    is_published: Optional[bool] = Field(default=True)   # False = staging; True = live on storefront; NULL treated as True
     is_premium: bool = False
     needs_review: bool = False
     needs_length_review: bool = False
@@ -68,7 +68,7 @@ class ProductPublic(SQLModel):
     supplier_url: Optional[str] = None
     shipping_days: int = 7
     is_active: bool = True
-    is_published: bool = True
+    is_published: Optional[bool] = True
     created_at: Optional[datetime] = None
     collection_id: Optional[int] = None
     cj_product_id: Optional[str] = None

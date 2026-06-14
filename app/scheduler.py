@@ -242,6 +242,14 @@ def run_specs_backfill():
         print(f"[Scheduler] Specs backfill error: {e}")
 
 
+def run_db_cleanup():
+    try:
+        from app.agents.db_cleanup_agent import run_db_cleanup as _cleanup
+        _cleanup()
+    except Exception as e:
+        print(f"[Scheduler] DB cleanup error: {e}")
+
+
 def run_balance_check():
     """
     Daily check: if Silverbene store credit drops below $50, email Dennis.
@@ -467,7 +475,16 @@ def start_scheduler():
         trigger=CronTrigger(hour=9, minute=5),
         id='balance_check',
         name='Silverbene Store Credit Balance Monitor',
-        next_run_time=datetime.utcnow(),   # verify endpoint on startup too
+        next_run_time=datetime.utcnow(),
+        replace_existing=True
+    )
+
+    scheduler.add_job(
+        run_db_cleanup,
+        trigger=CronTrigger(hour=3, minute=0),
+        id='db_cleanup',
+        name='DB Cleanup — hard-delete dead non-Silverbene products',
+        next_run_time=datetime.utcnow(),   # run immediately on startup to clear existing junk
         replace_existing=True
     )
 

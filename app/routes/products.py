@@ -56,8 +56,11 @@ def get_products(
     max_price: Optional[float] = None,
     session: Session = Depends(get_session)
 ):
-    # Storefront only shows published + active products
-    query = select(Product).where(Product.is_active == True, Product.is_published == True)
+    # Storefront: active + published. NULL is_published treated as published (pre-migration rows)
+    query = select(Product).where(
+        Product.is_active == True,
+        (Product.is_published == True) | (Product.is_published == None)
+    )
 
     if brand:
         query = query.where(Product.brand == brand)
@@ -205,40 +208,31 @@ def get_catalog(master_key: str, session: Session = Depends(get_session)):
         "Rings", "Necklaces", "Bracelets", "Earrings", "Anklets", "Ear Cuffs"
     ]
 
-    all_products = session.exec(select(Product).where(Product.is_active != None)).all()
+    # Only Silverbene products — excludes old soft-deleted products from before Silverbene
+    all_products = session.exec(
+        select(Product).where(Product.supplier_name == "Silverbene")
+    ).all()
 
     catalog = {}
     for col in collections:
         col_products = [p for p in all_products if p.category == col]
+        def card(p):
+            return {
+                "id": p.id,
+                "name": p.name,
+                "image_url": p.content_image_url or p.image_url,
+                "final_price": p.final_price,
+                "stock": p.stock,
+                "in_stock": p.stock > 0,
+                "is_published": p.is_published,
+                "is_active": p.is_active,
+                "category": p.category,
+            }
+
+        # NULL is_published means the migration hasn't populated it yet — treat as published
         catalog[col] = {
-            "published": [
-                {
-                    "id": p.id,
-                    "name": p.name,
-                    "image_url": p.content_image_url or p.image_url,
-                    "final_price": p.final_price,
-                    "stock": p.stock,
-                    "in_stock": p.stock > 0,
-                    "is_published": p.is_published,
-                    "is_active": p.is_active,
-                    "category": p.category,
-                }
-                for p in col_products if p.is_published
-            ],
-            "unpublished": [
-                {
-                    "id": p.id,
-                    "name": p.name,
-                    "image_url": p.content_image_url or p.image_url,
-                    "final_price": p.final_price,
-                    "stock": p.stock,
-                    "in_stock": p.stock > 0,
-                    "is_published": p.is_published,
-                    "is_active": p.is_active,
-                    "category": p.category,
-                }
-                for p in col_products if not p.is_published
-            ],
+            "published":   [card(p) for p in col_products if p.is_published is not False],
+            "unpublished": [card(p) for p in col_products if p.is_published is False],
         }
 
     # Summary counts for the top-level dashboard
