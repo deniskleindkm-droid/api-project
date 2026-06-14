@@ -242,6 +242,50 @@ def run_specs_backfill():
         print(f"[Scheduler] Specs backfill error: {e}")
 
 
+def run_balance_check():
+    """
+    Daily check: if Silverbene store credit drops below $50, email Dennis.
+    Runs at 09:05 UTC (just after the daily digest).
+    """
+    try:
+        from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+        from app.agents.email_partner import send_email
+        import os
+
+        sb = SilverbeneAdapter()
+        balance = sb.check_balance()
+
+        if balance < 0:
+            print("[Balance Check] Could not retrieve Silverbene balance — endpoint may not exist yet")
+            return
+
+        print(f"[Balance Check] Silverbene store credit: ${balance:.2f}")
+
+        LOW_BALANCE_THRESHOLD = 50.0
+        if balance < LOW_BALANCE_THRESHOLD:
+            dennis = os.getenv("DENNIS_EMAIL")
+            if dennis:
+                send_email(
+                    to=dennis,
+                    subject=f"⚠️ Silverbene balance low: ${balance:.2f} remaining",
+                    body=f"""<html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+<h2 style="color:#c0392b;">⚠️ Silverbene Store Credit Low</h2>
+<p>Your Silverbene dropshipping balance has dropped below ${LOW_BALANCE_THRESHOLD:.0f}.</p>
+<p><b>Current balance: ${balance:.2f}</b></p>
+<p>Top up now to avoid order failures:</p>
+<ul>
+  <li>Contact Jacky: <a href="mailto:jackyli@silverbene.com">jackyli@silverbene.com</a></li>
+  <li>WhatsApp: +86 180 2239 4913</li>
+</ul>
+<p style="color:#666;font-size:13px;">This alert fires daily when balance is below ${LOW_BALANCE_THRESHOLD:.0f}.</p>
+</body></html>""",
+                    is_html=True,
+                )
+                print(f"[Balance Check] Low balance alert sent to Dennis (${balance:.2f})")
+    except Exception as e:
+        print(f"[Scheduler] Balance check error: {e}")
+
+
 def run_daily_content():
     """
     Daily content job: generate 2 videos per category for newest products.
@@ -415,6 +459,15 @@ def start_scheduler():
         trigger=CronTrigger(hour=8, minute=0),
         id='daily_digest',
         name='ARIA Daily Store Digest Email',
+        replace_existing=True
+    )
+
+    scheduler.add_job(
+        run_balance_check,
+        trigger=CronTrigger(hour=9, minute=5),
+        id='balance_check',
+        name='Silverbene Store Credit Balance Monitor',
+        next_run_time=datetime.utcnow(),   # verify endpoint on startup too
         replace_existing=True
     )
 

@@ -171,41 +171,90 @@ def process_order_background(checkout_data: dict):
                     ).order_by(Order.id.desc()).limit(len(order_details))
                 ).all()
 
+            # Pre-flight: check Silverbene balance before placing any orders.
+            # If balance is critically low (<$20), hold all orders as pending_credit
+            # rather than letting Silverbene send payment requests.
+            sb_balance = silverbene.check_balance()
+            balance_ok = sb_balance < 0 or sb_balance >= 20  # -1 means API unavailable → proceed
+            if sb_balance >= 0 and sb_balance < 50:
+                # Warn Dennis proactively (not critical yet, but worth knowing)
+                silverbene._alert_low_credit(
+                    subject=f"⚠️ Silverbene balance low: ${sb_balance:.2f}",
+                    body=(
+                        f"<p>Your Silverbene store credit is <b>${sb_balance:.2f}</b>. "
+                        f"Top up now to avoid order failures.</p>"
+                        f"<p>Contact Jacky: <a href='mailto:jackyli@silverbene.com'>jackyli@silverbene.com</a> "
+                        f"or WhatsApp +86 180 2239 4913</p>"
+                    ),
+                )
+            print(f"[Payments] Silverbene balance: {'${:.2f}'.format(sb_balance) if sb_balance >= 0 else 'unknown'} — proceed={balance_ok}")
+
             for i, d in enumerate(order_details):
                 option_id = d.get("cj_sku")   # cj_sku stores Silverbene option_id
                 sku       = d.get("cj_product_id")
+                db_order_id = saved_orders[i].id if saved_orders and i < len(saved_orders) else (saved_orders[0].id if saved_orders else None)
                 print(f"[Payments] Forwarding to Silverbene: {d['name']} | option_id={option_id}")
 
-                if option_id:
-                    result = silverbene.place_order(
-                        product_id=str(option_id),
-                        customer=customer,
-                        address=address,
-                        quantity=d["qty"],
-                        option_id=str(option_id),
-                    )
-                    print(f"[Payments] Silverbene order result: {result}")
+                if not option_id:
+                    print(f"[Payments] No Silverbene option_id for {d['name']} — manual fulfillment needed")
+                    continue
 
-                    if result.get("success") and saved_orders:
-                        order_id = saved_orders[i].id if i < len(saved_orders) else saved_orders[0].id
-                        create_tracking_entry(
-                            order_id=order_id,
-                            cj_order_id=result.get("supplier_order_id", ""),
-                            customer_email=user_email,
-                            customer_name=f"{customer_first} {customer_last}",
-                            supplier_name="Silverbene"
-                        )
+                # If balance is critically low, hold order instead of risking a Silverbene payment request
+                if not balance_ok and db_order_id:
+                    with Session(engine) as session:
+                        order_rec = session.get(Order, db_order_id)
+                        if order_rec:
+                            order_rec.status = "pending_credit"
+                            session.add(order_rec)
+                            session.commit()
+                    silverbene._alert_low_credit(
+                        subject=f"❌ Order #{db_order_id} held — Silverbene balance too low (${sb_balance:.2f})",
+                        body=(
+                            f"<p>Order <b>#{db_order_id}</b> for <b>{d['name']}</b> could not be sent to Silverbene "
+                            f"because your store credit is <b>${sb_balance:.2f}</b> — below the $20 safety threshold.</p>"
+                            f"<p>The customer has been charged and will receive a confirmation email from Mikisi. "
+                            f"The order will be retried automatically every 2 hours once your balance is topped up.</p>"
+                            f"<p><b>Top up now:</b> Contact Jacky at "
+                            f"<a href='mailto:jackyli@silverbene.com'>jackyli@silverbene.com</a></p>"
+                        ),
+                    )
+                    print(f"[Payments] Order #{db_order_id} held as pending_credit — balance ${sb_balance:.2f}")
+                    continue
+
+                result = silverbene.place_order(
+                    product_id=str(option_id),
+                    customer=customer,
+                    address=address,
+                    quantity=d["qty"],
+                    option_id=str(option_id),
+                )
+                print(f"[Payments] Silverbene order result: {result}")
+
+                if result.get("success") and db_order_id:
+                    create_tracking_entry(
+                        order_id=db_order_id,
+                        cj_order_id=result.get("supplier_order_id", ""),
+                        customer_email=user_email,
+                        customer_name=f"{customer_first} {customer_last}",
+                        supplier_name="Silverbene"
+                    )
+                    with Session(engine) as session:
+                        order_rec = session.get(Order, db_order_id)
+                        if order_rec:
+                            order_rec.status = "processing"
+                            order_rec.supplier_notified = True
+                            session.add(order_rec)
+                            session.commit()
+                elif not result.get("success"):
+                    reason = result.get("reason", "unknown error")
+                    print(f"[Payments] Silverbene rejected order for {d['name']}: {reason}")
+                    if "insufficient_credit" in reason and db_order_id:
                         with Session(engine) as session:
-                            order_rec = session.get(Order, order_id)
+                            order_rec = session.get(Order, db_order_id)
                             if order_rec:
-                                order_rec.status = "processing"
-                                order_rec.supplier_notified = True
+                                order_rec.status = "pending_credit"
                                 session.add(order_rec)
                                 session.commit()
-                    elif not result.get("success"):
-                        print(f"[Payments] Silverbene rejected order for {d['name']}: {result.get('reason', 'unknown error')}")
-                else:
-                    print(f"[Payments] No Silverbene option_id for {d['name']} — manual fulfillment needed")
         except Exception as e:
             print(f"[Payments] Silverbene forwarding failed: {e}")
 

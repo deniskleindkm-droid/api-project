@@ -14,6 +14,7 @@ ENDPOINT_PRODUCT_BY_DATE   = "/api/dropshipping/product_list_by_date"  # GET —
 ENDPOINT_OPTION_QTY        = "/api/dropshipping/option_qty"             # GET — stock by option_id
 ENDPOINT_SHIPPING          = "/api/dropshipping/get_shipping_method"    # GET — shipping methods
 ENDPOINT_CREATE_ORDER      = "/api/dropshipping/create_order"           # POST — place order
+ENDPOINT_STORE_CREDIT      = "/api/dropshipping/store_credit"           # GET — account balance
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Search keywords per Mikisi collection
@@ -259,7 +260,11 @@ class SilverbeneAdapter(SupplierAdapter):
         """
         Place a dropship order with Silverbene.
         product_id = Silverbene option_id (NOT sku — orders use option_id).
-        use_credit: true pays from store credit balance automatically.
+        use_credit: true charges our store credit balance automatically.
+
+        IMPORTANT: We use our admin email (not customer email) in the Silverbene
+        shipping address so any Silverbene payment/status emails go to us, never
+        to the customer. Customers should never know Silverbene exists.
         """
         use_option = option_id or product_id
         methods = self.get_shipping_methods(
@@ -275,6 +280,7 @@ class SilverbeneAdapter(SupplierAdapter):
         carrier_code = methods[0].get("carrier_code", "")
 
         order_option_id = option_id or product_id
+        admin_email = os.getenv("ADMIN_EMAIL") or os.getenv("DENNIS_EMAIL") or "hello@mikisi.co"
 
         payload = {
             "products": [{"option_id": str(order_option_id), "qty": quantity}],
@@ -283,7 +289,7 @@ class SilverbeneAdapter(SupplierAdapter):
             "shipping_address": {
                 "firstname":  customer.get("first_name", ""),
                 "lastname":   customer.get("last_name", ""),
-                "email":      customer.get("email", ""),
+                "email":      admin_email,   # never expose customer email to supplier
                 "telephone":  customer.get("phone") or "0000000000",
                 "street":     address.get("line1", ""),
                 "city":       address.get("city", ""),
@@ -294,13 +300,76 @@ class SilverbeneAdapter(SupplierAdapter):
         }
 
         result = self._post(ENDPOINT_CREATE_ORDER, payload)
-        order_id = result.get("data", {}).get("order_id", "") if result.get("code") == 0 else ""
+        code = result.get("code")
+        data = result.get("data", {}) or {}
+        order_id = str(data.get("order_id", ""))
+        payment_required = data.get("payment_required", False)
 
-        return self.standard_order(
-            success=bool(order_id),
-            supplier_order_id=str(order_id),
-            reason=result.get("message", ""),
+        print(f"[Silverbene] create_order response: code={code} order_id={order_id} payment_required={payment_required}")
+
+        # Case 1 — credit covered the full amount, order is processing
+        if code == 0 and order_id and not payment_required:
+            return self.standard_order(success=True, supplier_order_id=order_id, reason="paid_from_credit")
+
+        # Case 2 — order created but credit didn't fully cover it, Silverbene needs extra payment
+        if code == 0 and order_id and payment_required:
+            pay_url  = data.get("pay_url", "")
+            amount   = data.get("amount_due") or data.get("total_price", "?")
+            print(f"[Silverbene] ⚠️  Credit shortfall — order {order_id} needs ${amount} payment. URL: {pay_url}")
+            self._alert_low_credit(
+                subject=f"⚠️ Silverbene order {order_id} needs payment — credit shortfall",
+                body=(
+                    f"<p>Order <b>{order_id}</b> was created at Silverbene but your store credit "
+                    f"didn't fully cover it.</p>"
+                    f"<p><b>Amount due:</b> ${amount}</p>"
+                    f"<p><b>Pay here:</b> <a href='{pay_url}'>{pay_url}</a></p>"
+                    f"<p>Top up your Silverbene balance to avoid this in future orders.</p>"
+                ),
+            )
+            # Return success=True so the order moves to 'processing' — it exists at Silverbene
+            return self.standard_order(success=True, supplier_order_id=order_id, reason="pending_payment_shortfall")
+
+        # Case 3 — insufficient credit, order was NOT created
+        message = result.get("message", "unknown error")
+        print(f"[Silverbene] ❌ Order failed: code={code} message={message}")
+        self._alert_low_credit(
+            subject="❌ Silverbene order FAILED — insufficient store credit",
+            body=(
+                f"<p>An order could not be placed at Silverbene because your store credit balance "
+                f"is too low.</p>"
+                f"<p><b>Error:</b> {message}</p>"
+                f"<p>Top up your Silverbene balance immediately at "
+                f"<a href='https://silverbene.com'>silverbene.com</a> or contact Jacky "
+                f"(jackyli@silverbene.com).</p>"
+            ),
         )
+        return self.standard_order(success=False, supplier_order_id="", reason=f"insufficient_credit: {message}")
+
+    def check_balance(self) -> float:
+        """Returns the current Silverbene store credit balance in USD, or -1 on error."""
+        result = self._get(ENDPOINT_STORE_CREDIT)
+        if result.get("code") == 0:
+            balance = result.get("data", {})
+            if isinstance(balance, dict):
+                amount = balance.get("amount") or balance.get("balance") or balance.get("credit", -1)
+            else:
+                amount = float(balance) if balance else -1
+            try:
+                return float(amount)
+            except (TypeError, ValueError):
+                pass
+        print(f"[Silverbene] Balance check failed: {result}")
+        return -1
+
+    def _alert_low_credit(self, subject: str, body: str):
+        """Email Dennis about a credit / payment issue."""
+        try:
+            from app.agents.email_partner import send_email
+            dennis = os.getenv("DENNIS_EMAIL") or os.getenv("ADMIN_EMAIL")
+            if dennis:
+                send_email(to=dennis, subject=subject, body=f"<html><body style='font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;'>{body}</body></html>", is_html=True)
+        except Exception as e:
+            print(f"[Silverbene] Alert email failed: {e}")
 
     def get_tracking(self, order_id: str) -> dict:
         """Tracking — endpoint to be added when Silverbene shares it."""

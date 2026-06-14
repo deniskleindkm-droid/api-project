@@ -29,7 +29,7 @@ def run_order_recovery_agent():
         with Session(engine) as session:
             pending = session.exec(
                 select(Order).where(
-                    Order.status == "paid",
+                    (Order.status == "paid") | (Order.status == "pending_credit"),
                     Order.supplier_notified == False,
                     Order.created_at < cutoff_recent,
                 )
@@ -45,10 +45,20 @@ def run_order_recovery_agent():
         recovered = []
         failed = []
 
+        # Check balance before retrying — if still critically low, skip pending_credit orders
+        sb_balance = sb.check_balance()
+        balance_ok = sb_balance < 0 or sb_balance >= 20
+        if not balance_ok:
+            print(f"[Order Recovery] Silverbene balance ${sb_balance:.2f} still too low — skipping pending_credit orders")
+
         for order in pending:
             try:
                 with Session(engine) as session:
                     product = session.get(Product, order.product_id)
+
+                if order.status == "pending_credit" and not balance_ok:
+                    print(f"[Order Recovery] Order {order.id} skipped — still pending_credit and balance too low")
+                    continue
 
                 if not product or not product.cj_sku:
                     print(f"[Order Recovery] Order {order.id}: no Silverbene option_id — skipping")
