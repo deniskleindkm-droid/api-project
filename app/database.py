@@ -58,6 +58,9 @@ def create_db():
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS specs text"))
         # Reset empty-placeholder specs so the backfill retries them with the fixed logic
         conn.execute(text("UPDATE product SET specs = NULL WHERE specs = '{}'"))
+        # is_published: default TRUE so all existing products stay live on deploy
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS is_published boolean DEFAULT true"))
+        conn.execute(text("UPDATE product SET is_published = true WHERE is_published IS NULL"))
         conn.commit()
 
     _setup_defaults()

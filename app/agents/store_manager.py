@@ -127,6 +127,7 @@ def add_product_to_store(product_data):
             is_premium=product_data.get("is_premium", False),
             needs_review=product_data.get("needs_review", False),
             is_active=not product_data.get("needs_review", False),
+            is_published=False,   # new imports start in staging — Dennis publishes manually
         )
         session.add(product)
         session.commit()

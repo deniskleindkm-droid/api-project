@@ -56,7 +56,8 @@ def get_products(
     max_price: Optional[float] = None,
     session: Session = Depends(get_session)
 ):
-    query = select(Product).where(Product.is_active == True)
+    # Storefront only shows published + active products
+    query = select(Product).where(Product.is_active == True, Product.is_published == True)
 
     if brand:
         query = query.where(Product.brand == brand)
@@ -136,6 +137,123 @@ def get_categories(session: Session = Depends(get_session)):
     products = session.exec(select(Product).where(Product.is_active == True)).all()
     categories = list(set([p.category for p in products]))
     return {"categories": sorted(categories)}
+
+class PublishRequest(BaseModel):
+    master_key: str
+    product_ids: Optional[List[int]] = None   # None = apply to all in category
+    category: Optional[str] = None            # target a whole collection at once
+
+
+@router.post("/admin/products/publish")
+def publish_products(data: PublishRequest, session: Session = Depends(get_session)):
+    """Admin — publish one product, a batch, or an entire collection."""
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(data.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    query = select(Product)
+    if data.product_ids:
+        query = query.where(Product.id.in_(data.product_ids))
+    elif data.category:
+        query = query.where(Product.category == data.category)
+    else:
+        raise HTTPException(status_code=400, detail="Provide product_ids or category")
+
+    products = session.exec(query).all()
+    for p in products:
+        p.is_published = True
+        session.add(p)
+    session.commit()
+    return {"published": len(products), "ids": [p.id for p in products]}
+
+
+@router.post("/admin/products/unpublish")
+def unpublish_products(data: PublishRequest, session: Session = Depends(get_session)):
+    """Admin — unpublish one product, a batch, or an entire collection."""
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(data.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    query = select(Product)
+    if data.product_ids:
+        query = query.where(Product.id.in_(data.product_ids))
+    elif data.category:
+        query = query.where(Product.category == data.category)
+    else:
+        raise HTTPException(status_code=400, detail="Provide product_ids or category")
+
+    products = session.exec(query).all()
+    for p in products:
+        p.is_published = False
+        session.add(p)
+    session.commit()
+    return {"unpublished": len(products), "ids": [p.id for p in products]}
+
+
+@router.get("/admin/catalog")
+def get_catalog(master_key: str, session: Session = Depends(get_session)):
+    """
+    Admin — returns ALL products grouped by collection, split into
+    published / unpublished. Used by the admin staging panel.
+    Each product includes stock status for the badge.
+    """
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    collections = [
+        "Rings", "Necklaces", "Bracelets", "Earrings", "Anklets", "Ear Cuffs"
+    ]
+
+    all_products = session.exec(select(Product).where(Product.is_active != None)).all()
+
+    catalog = {}
+    for col in collections:
+        col_products = [p for p in all_products if p.category == col]
+        catalog[col] = {
+            "published": [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "image_url": p.content_image_url or p.image_url,
+                    "final_price": p.final_price,
+                    "stock": p.stock,
+                    "in_stock": p.stock > 0,
+                    "is_published": p.is_published,
+                    "is_active": p.is_active,
+                    "category": p.category,
+                }
+                for p in col_products if p.is_published
+            ],
+            "unpublished": [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "image_url": p.content_image_url or p.image_url,
+                    "final_price": p.final_price,
+                    "stock": p.stock,
+                    "in_stock": p.stock > 0,
+                    "is_published": p.is_published,
+                    "is_active": p.is_active,
+                    "category": p.category,
+                }
+                for p in col_products if not p.is_published
+            ],
+        }
+
+    # Summary counts for the top-level dashboard
+    total = len(all_products)
+    published_count = sum(1 for p in all_products if p.is_published)
+
+    return {
+        "summary": {
+            "total": total,
+            "published": published_count,
+            "staged": total - published_count,
+        },
+        "collections": catalog,
+    }
+
 
 @router.put("/products/{product_id}/collection")
 def assign_collection(
