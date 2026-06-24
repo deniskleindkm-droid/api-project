@@ -150,7 +150,8 @@ def post_to_tiktok(content, image_url, product_name):
     TikTok Content Posting API adapter.
     Requires: TIKTOK_ACCESS_TOKEN
     """
-    access_token = os.getenv("TIKTOK_ACCESS_TOKEN")
+    from app.agents.tiktok_token import get_access_token
+    access_token = get_access_token()
 
     if not access_token:
         print(f"[Posting] TikTok credentials not connected — queuing content {content.id}")

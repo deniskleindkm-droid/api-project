@@ -196,6 +196,40 @@ def run_tracking_check():
         print(f"[Scheduler] Tracking check error: {e}")
 
 
+def run_tiktok_token_refresh():
+    """
+    Daily refresh of the TikTok access token using the stored refresh token.
+    Runs at 06:00 UTC — well within the 24h access token lifetime.
+    If refresh fails (refresh token itself expired/revoked), email Dennis
+    with a link to re-authorize, since that step requires human OAuth consent.
+    """
+    try:
+        from app.agents.tiktok_token import refresh
+        refresh()
+        _heartbeat("tiktok_token_refresh", "TikTok token refreshed")
+    except Exception as e:
+        _heartbeat("tiktok_token_refresh", f"error: {str(e)[:80]}")
+        print(f"[Scheduler] TikTok token refresh error: {e}")
+        try:
+            from app.agents.email_partner import send_email
+            import os
+            dennis = os.getenv("DENNIS_EMAIL")
+            if dennis:
+                send_email(
+                    to=dennis,
+                    subject="ACTION REQUIRED — TikTok token refresh failed",
+                    body="""<html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+<h2 style="color:#c0392b;">ACTION REQUIRED — TikTok token refresh failed</h2>
+<p>Your TikTok access token could not be refreshed automatically. You need to re-authorize once by clicking this link:</p>
+<p><a href="https://api-project-production-d424.up.railway.app/auth/tiktok/login">https://api-project-production-d424.up.railway.app/auth/tiktok/login</a></p>
+<p>This takes 30 seconds and will restore automatic posting to @mikisiproducts.</p>
+</body></html>""",
+                    is_html=True,
+                )
+        except Exception as email_err:
+            print(f"[Scheduler] Failed to send TikTok refresh alert email: {email_err}")
+
+
 def run_posting_check():
     try:
         from app.agents.posting_agent import run_posting_agent
@@ -488,6 +522,14 @@ def start_scheduler():
         replace_existing=True
     )
 
+    scheduler.add_job(
+        run_tiktok_token_refresh,
+        trigger=CronTrigger(hour=6, minute=0),
+        id='tiktok_token_refresh',
+        name='TikTok Access Token Auto-Refresh',
+        replace_existing=True
+    )
+
     scheduler.start()
     print("[Scheduler] ✅ ARIA scheduler started with jobs:")
     print("[Scheduler]   → Market check: every 6 hours")
@@ -502,4 +544,5 @@ def start_scheduler():
     print("[Scheduler]   → Content agent (daily videos): every 24 hours")
     print("[Scheduler]   → Pinterest analytics: daily at 00:05 UTC")
     print("[Scheduler]   → Daily digest email: every day at 08:00 UTC")
+    print("[Scheduler]   → TikTok token refresh: every day at 06:00 UTC")
     print("[Scheduler]   → Order recovery agent: every 30 minutes")

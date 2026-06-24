@@ -86,7 +86,8 @@ async def tiktok_user_info():
     Calls TikTok's /v2/user/info/ endpoint using the stored access token.
     Used to verify the token is valid and display connected account info.
     """
-    access_token = os.getenv("TIKTOK_ACCESS_TOKEN")
+    from app.agents.tiktok_token import get_access_token
+    access_token = get_access_token()
 
     if not access_token:
         return JSONResponse(
@@ -126,7 +127,8 @@ async def tiktok_user_info():
 @router.post("/test-post")
 async def tiktok_test_post():
     """Temporary endpoint — tests TikTok Direct Post flow (FILE_UPLOAD) with sandbox token."""
-    access_token = os.getenv("TIKTOK_ACCESS_TOKEN")
+    from app.agents.tiktok_token import get_access_token
+    access_token = get_access_token()
     video_url = "https://res.cloudinary.com/ds8qviz1o/video/upload/v1780941636/mikisi/videos/rings_571.mp4"
 
     async with httpx.AsyncClient(timeout=120) as client:
@@ -191,7 +193,8 @@ async def tiktok_test_post():
 @router.post("/test-inbox")
 async def tiktok_test_inbox():
     """Temporary endpoint — tests TikTok inbox (unaudited) post flow with sandbox token."""
-    access_token = os.getenv("TIKTOK_ACCESS_TOKEN")
+    from app.agents.tiktok_token import get_access_token
+    access_token = get_access_token()
     video_url = "https://res.cloudinary.com/ds8qviz1o/video/upload/v1780941636/mikisi/videos/rings_571.mp4"
 
     async with httpx.AsyncClient(timeout=120) as client:

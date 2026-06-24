@@ -1656,7 +1656,8 @@ def check_connections():
             "Need FACEBOOK_ACCESS_TOKEN + FACEBOOK_PAGE_ID — "
             "get from Meta Business > Settings > Page > Generate Token"))
 
-    tt_token = os.getenv("TIKTOK_ACCESS_TOKEN")
+    from app.agents.tiktok_token import get_access_token as _get_tiktok_token
+    tt_token = _get_tiktok_token()
     if tt_token:
         try:
             r = _req.get(
