@@ -85,13 +85,27 @@ def _get(endpoint: str, params: dict = None) -> dict:
         return {}
 
 
+def _is_scope_error(resp: dict) -> bool:
+    """Trial access grants read scopes only — writes come back as a permission error."""
+    if not isinstance(resp, dict):
+        return False
+    if resp.get("code") == 3:
+        return True
+    message = str(resp.get("message", "")).lower()
+    return "permission" in message or "scope" in message
+
+
 def _post(endpoint: str, data: dict) -> dict:
     try:
         r = requests.post(
             f"{PINTEREST_API}{endpoint}", headers=_headers(),
             json=data, timeout=15
         )
-        return r.json()
+        resp = r.json()
+        if _is_scope_error(resp):
+            print("[Pinterest] Pinterest write skipped — Trial access only. "
+                  "Upgrade to Standard access to enable auto-pinning.")
+        return resp
     except Exception as e:
         print(f"[Pinterest] POST {endpoint} error: {e}")
         return {}
