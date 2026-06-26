@@ -63,70 +63,73 @@ def run_silverbene_stock_agent():
         newly_reactivated = []
         stock_quantity_changes = []
 
-        for i in range(0, len(list(id_map.keys())), 50):
-            batch = list(id_map.keys())[i:i + 50]
-            resp = sb._get("/api/dropshipping/option_qty", {"option_id": ",".join(batch)})
+        all_option_ids = list(id_map.keys())
+        for single_id in all_option_ids:
+            # Query one option_id at a time — Silverbene batch queries return the
+            # full comma-joined string as option_id, breaking the lookup map.
+            resp = sb._get("/api/dropshipping/option_qty", {"option_id": single_id})
 
             if not isinstance(resp, dict) or resp.get("code") != 0:
-                print(f"[Silverbene Stock Agent] API error: {resp.get('message') if isinstance(resp, dict) else resp}")
+                print(f"[Silverbene Stock Agent] API error for {single_id}: {resp.get('message') if isinstance(resp, dict) else resp}")
                 continue
 
             stock_data = resp.get("data", [])
-            if not isinstance(stock_data, list):
+            if not isinstance(stock_data, list) or not stock_data:
+                continue
+
+            item = stock_data[0] if stock_data else {}
+            if not isinstance(item, dict):
+                continue
+
+            # Silverbene uses "qyt" (not "qty") on the option_qty endpoint
+            qty = int(item.get("qty", item.get("qyt", 0)) or 0)
+            product_id = id_map.get(single_id)
+            if not product_id:
                 continue
 
             with Session(engine) as session:
-                for item in stock_data:
-                    if not isinstance(item, dict):
-                        continue
-                    option_id = str(item.get("option_id", ""))
-                    qty = int(item.get("qty", 0) or 0)
-                    product_id = id_map.get(option_id)
-                    if not product_id:
-                        continue
+                product = session.get(Product, product_id)
+                if not product:
+                    continue
 
-                    product = session.get(Product, product_id)
-                    if not product:
-                        continue
-
-                    if qty == 0:
-                        if product.stock != 0:
-                            product.stock = 0
-                            product.is_active = True
-                            session.add(product)
-                            deactivated += 1
-                            newly_outofstock.append(product.name[:60])
-                            print(f"[Silverbene Stock Agent] Out of stock: {product.name[:50]}")
-                            if product.pinterest_pin_id:
-                                try:
-                                    from app.agents.pinterest_agent import update_product_availability
-                                    update_product_availability(product.id, False)
-                                except Exception:
-                                    pass
-                    else:
-                        old_qty = product.stock
-                        was_inactive = not product.is_active
-                        product.stock = qty
+                if qty == 0:
+                    if product.stock != 0:
+                        product.stock = 0
                         product.is_active = True
                         session.add(product)
+                        session.commit()
+                        deactivated += 1
+                        newly_outofstock.append(product.name[:60])
+                        print(f"[Silverbene Stock Agent] Out of stock: {product.name[:50]}")
+                        if product.pinterest_pin_id:
+                            try:
+                                from app.agents.pinterest_agent import update_product_availability
+                                update_product_availability(product.id, False)
+                            except Exception:
+                                pass
+                else:
+                    old_qty = product.stock
+                    was_inactive = not product.is_active
+                    product.stock = qty
+                    product.is_active = True
+                    session.add(product)
+                    session.commit()
 
-                        if was_inactive:
-                            reactivated += 1
-                            newly_reactivated.append(product.name[:60])
-                            print(f"[Silverbene Stock Agent] Back in stock: {product.name[:50]}")
-                            if product.pinterest_pin_id:
-                                try:
-                                    from app.agents.pinterest_agent import update_product_availability
-                                    update_product_availability(product.id, True)
-                                except Exception:
-                                    pass
-                        elif old_qty != qty:
-                            updated += 1
-                            stock_quantity_changes.append(
-                                f"{product.name[:40]} ({old_qty} → {qty})"
-                            )
-
-                session.commit()
+                    if was_inactive:
+                        reactivated += 1
+                        newly_reactivated.append(product.name[:60])
+                        print(f"[Silverbene Stock Agent] Back in stock: {product.name[:50]}")
+                        if product.pinterest_pin_id:
+                            try:
+                                from app.agents.pinterest_agent import update_product_availability
+                                update_product_availability(product.id, True)
+                            except Exception:
+                                pass
+                    elif old_qty != qty:
+                        updated += 1
+                        stock_quantity_changes.append(
+                            f"{product.name[:40]} ({old_qty} → {qty})"
+                        )
 
         total_checked = len(id_map)
         print(f"[Silverbene Stock Agent] Stock: checked={total_checked} updated={updated} "
