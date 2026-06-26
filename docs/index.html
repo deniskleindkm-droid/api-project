@@ -1854,12 +1854,7 @@ async function removeFromCart(id){
 function toggleCart(){
   const open=document.getElementById('cart-sidebar').classList.toggle('open');
   document.getElementById('cart-overlay').classList.toggle('open');
-  if(open){
-    const s=document.getElementById('cart-sidebar');
-    s.style.pointerEvents='none';
-    setTimeout(()=>{s.style.pointerEvents='';},260);
-    loadCart();
-  }
+  if(open)loadCart();
 }
 
 // ── CHECKOUT ──
