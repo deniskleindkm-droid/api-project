@@ -452,7 +452,7 @@ nav{
   position:relative;background:var(--ivory);
   height:320px;flex-shrink:0;overflow:hidden;
 }
-.pp-gallery img{width:100%;height:100%;object-fit:cover;}
+.pp-gallery img{width:100%;height:100%;object-fit:cover;transition:opacity 0.15s ease;}
 .pp-gal-arrow{
   position:absolute;top:50%;transform:translateY(-50%);
   background:rgba(255,255,255,0.85);border:none;
@@ -1161,6 +1161,11 @@ let ppSelectedColor = null;
 let ppSelectedStone = null;
 let ppSelectedWidth = null;
 let ppOpening = false; // guard — prevents double-click opening two panels
+let ppCurrentProduct = null;
+let ppBaseDesc = '';
+let ppBaseMaterial = null;
+let ppVariants = [];
+let ppBaseImages = [];
 let wishlist = JSON.parse(localStorage.getItem('mk_wishlist')||'[]');
 
 // ── HELPERS ──
@@ -1174,6 +1179,83 @@ function cleanName(str){
   return stripHtml(str).replace(/^Mikisi\s*[-–—]\s*/i,'').trim();
 }
 function trunc(str,n){return str&&str.length>n?str.substring(0,n)+'…':str||'';}
+
+// ── VARIANT-AWARE HELPERS ──
+function getVariantMaterial(variantLabel,baseMaterial){
+  if(!variantLabel)return baseMaterial;
+  const v=variantLabel.toLowerCase();
+  if(/pearl/.test(v))return '925 Sterling Silver with Freshwater Pearl';
+  if(/moissanite/.test(v))return '925 Sterling Silver with Moissanite';
+  if(/\bcz\b|zirconia/.test(v))return '925 Sterling Silver with Cubic Zirconia';
+  if(/turquoise/.test(v))return '925 Sterling Silver with Turquoise';
+  if(/opal/.test(v))return '925 Sterling Silver with Opal';
+  if(/white\s+gold/.test(v))return 'White Gold Plated 925 Sterling Silver';
+  if(/\bblack\b/.test(v))return 'Black Rhodium Plated 925 Sterling Silver';
+  if(/yellow\s+gold|\bgold\b/.test(v))return '18K Gold Plated 925 Sterling Silver';
+  if(/rose\s+gold|\bpink\b/.test(v))return 'Rose Gold Plated 925 Sterling Silver';
+  if(/rhodium|\bsilver\b|\bwhite\b/.test(v))return 'Rhodium Plated 925 Sterling Silver';
+  return baseMaterial;
+}
+
+function adaptDescForVariant(baseDesc,variantLabel){
+  if(!baseDesc||!variantLabel)return baseDesc;
+  const v=variantLabel.toLowerCase();
+  let d=baseDesc;
+  if(/rhodium/.test(v)){
+    d=d.replace(/yellow gold/gi,'rhodium').replace(/rose gold/gi,'rhodium');
+    d=d.replace(/gold plat(ing|ed|e)/gi,'rhodium plating').replace(/gold finish/gi,'rhodium finish');
+    d=d.replace(/\bgold\b/gi,'rhodium');
+  }else if(/\bblack\b/.test(v)){
+    d=d.replace(/yellow gold/gi,'black rhodium').replace(/rose gold/gi,'black rhodium');
+    d=d.replace(/\bgold\b/gi,'black rhodium').replace(/\brodhium\b/gi,'black rhodium');
+  }else if(/white\s+gold/.test(v)){
+    d=d.replace(/yellow gold/gi,'white gold').replace(/rose gold/gi,'white gold');
+    d=d.replace(/\bgold\b/gi,'white gold').replace(/\brodhium\b/gi,'white gold');
+  }else if(/rose\s+gold|\bpink\b/.test(v)){
+    d=d.replace(/yellow gold/gi,'rose gold').replace(/\brodhium\b/gi,'rose gold');
+    d=d.replace(/\bgold\b/gi,'rose gold');
+  }else if(/yellow\s+gold|\bgold\b/.test(v)){
+    d=d.replace(/rhodium plat(ing|ed|e)/gi,'gold plating').replace(/\brodhium\b/gi,'gold');
+    d=d.replace(/silver finish/gi,'gold finish');
+  }
+  return d;
+}
+
+function findVariantImage(chipLabel){
+  for(const opt of ppVariants){
+    if(!opt.image_url)continue;
+    for(const attr of(opt.attribute||[])){
+      if((attr.name||'').toLowerCase()!=='color'||!attr.value)continue;
+      const cleaned=cleanVariantName(attr.value);
+      const processed=processVariant(cleaned);
+      const displayLabel=COLOR_LABEL[processed.display.toLowerCase().trim()]||processed.display;
+      if(displayLabel===chipLabel)return opt.image_url;
+      if(isCompoundVariant(cleaned)&&parseCompoundVariant(cleaned).metal===chipLabel)return opt.image_url;
+    }
+  }
+  return null;
+}
+
+function applyVariantUI(chipLabel){
+  const varImg=findVariantImage(chipLabel);
+  const imgEl=document.getElementById('pp-img');
+  if(varImg||(ppBaseImages.length&&ppImages[0]!==ppBaseImages[0])){
+    imgEl.style.opacity='0';
+    setTimeout(()=>{
+      ppImages=varImg?[varImg,...ppBaseImages.filter(u=>u!==varImg)]:[...ppBaseImages];
+      ppIdx=0;
+      updatePPGallery();
+      imgEl.style.opacity='1';
+    },150);
+  }
+  const mat=getVariantMaterial(chipLabel,ppBaseMaterial);
+  const matEl=document.getElementById('pp-material');
+  const matWrap=document.getElementById('pp-material-wrap');
+  if(mat){matEl.textContent=mat;matWrap.style.display='block';}
+  else if(ppBaseMaterial){matEl.textContent=ppBaseMaterial;matWrap.style.display='block';}
+  else{matWrap.style.display='none';}
+  document.getElementById('pp-desc').textContent=adaptDescForVariant(ppBaseDesc,chipLabel);
+}
 
 // ── INIT ──
 window.onload = async()=>{
@@ -1541,6 +1623,13 @@ async function openPP(id){
   if(!ppImages.length)ppImages=[getPlaceholder()];
   ppIdx=0;
 
+  // ── Variant context — store for dynamic updates on chip selection ──
+  ppCurrentProduct=p;
+  ppBaseDesc=trunc(stripHtml(p.description||''),320);
+  ppBaseMaterial=getMaterialLabel(p);
+  try{ppVariants=p.variants?JSON.parse(p.variants):[];}catch{ppVariants=[];}
+  ppBaseImages=[...ppImages];
+
   // ── Basic info ──
   document.getElementById('pp-brand').textContent='Mikisi';
   document.getElementById('pp-name').textContent=trunc(cleanName(p.name),70);
@@ -1813,7 +1902,7 @@ function selectChip(btn,type){
   btn.closest('.pp-chips').querySelectorAll('.pp-chip').forEach(b=>b.classList.remove('active','tanzanite-active'));
   btn.classList.add('active');
   if(type==='size')  ppSelectedSize=btn.textContent.trim();
-  if(type==='color') ppSelectedColor=btn.textContent.trim();
+  if(type==='color'){ppSelectedColor=btn.textContent.trim();applyVariantUI(ppSelectedColor);}
   if(type==='stone') ppSelectedStone=btn.textContent.trim();
   if(type==='width') ppSelectedWidth=btn.textContent.trim();
 }
