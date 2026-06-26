@@ -389,7 +389,7 @@ nav{
 .cart-sidebar{
   position:fixed;top:0;right:-500px;width:460px;height:100%;
   background:white;z-index:201;
-  transition:right 0.4s cubic-bezier(0.4,0,0.2,1);
+  transition:right 0.25s cubic-bezier(0.4,0,0.2,1);
   display:flex;flex-direction:column;
   box-shadow:-4px 0 40px rgba(0,0,0,0.08);border-left:1px solid var(--border);
 }
@@ -418,7 +418,7 @@ nav{
   width:100%;padding:15px;background:var(--black);color:white;border:none;
   cursor:pointer;font-size:10px;font-weight:300;letter-spacing:3px;
   text-transform:uppercase;transition:background 0.3s;margin-bottom:10px;
-  font-family:'Jost',sans-serif;
+  font-family:'Jost',sans-serif;touch-action:manipulation;
 }
 .checkout-btn:hover{background:var(--pink);}
 .cart-trust{text-align:center;font-size:9px;color:var(--mid);letter-spacing:1.5px;font-weight:300;text-transform:uppercase;}
@@ -439,7 +439,7 @@ nav{
   max-height:92vh;border-radius:20px 20px 0 0;
   display:flex;flex-direction:column;
   box-shadow:0 -8px 48px rgba(0,0,0,0.12);
-  animation:slideUp 0.35s cubic-bezier(0.4,0,0.2,1) forwards;
+  animation:slideUp 0.2s cubic-bezier(0.4,0,0.2,1) forwards;
   overflow:hidden;
 }
 @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
@@ -522,6 +522,7 @@ nav{
   cursor:pointer;font-size:10px;font-weight:300;
   letter-spacing:3px;text-transform:uppercase;
   transition:background 0.3s;font-family:'Jost',sans-serif;
+  touch-action:manipulation;
 }
 .pp-atc:hover{background:var(--pink);}
 .pp-close{
@@ -1710,7 +1711,8 @@ async function openPP(id){
   updatePPGallery();
   document.getElementById('pp-overlay').classList.add('open');
   document.body.style.overflow='hidden';
-  ppOpening=false; // ready for next open
+  ppOpening=false;
+  if(!atcBtn.disabled){atcBtn.style.pointerEvents='none';setTimeout(()=>{atcBtn.style.pointerEvents='';},220);}
 }
 
 function updatePPGallery(){
@@ -1852,7 +1854,12 @@ async function removeFromCart(id){
 function toggleCart(){
   const open=document.getElementById('cart-sidebar').classList.toggle('open');
   document.getElementById('cart-overlay').classList.toggle('open');
-  if(open)loadCart();
+  if(open){
+    const s=document.getElementById('cart-sidebar');
+    s.style.pointerEvents='none';
+    setTimeout(()=>{s.style.pointerEvents='';},260);
+    loadCart();
+  }
 }
 
 // ── CHECKOUT ──
