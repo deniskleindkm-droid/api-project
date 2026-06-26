@@ -170,6 +170,29 @@ def publish_products(data: PublishRequest, session: Session = Depends(get_sessio
     return {"published": len(products), "ids": [p.id for p in products]}
 
 
+@router.post("/admin/products/restore")
+def restore_products(data: PublishRequest, session: Session = Depends(get_session)):
+    """Admin — restore soft-deleted (is_active=False) products by id list or category."""
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(data.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    query = select(Product)
+    if data.product_ids:
+        query = query.where(Product.id.in_(data.product_ids))
+    elif data.category:
+        query = query.where(Product.category == data.category)
+    else:
+        raise HTTPException(status_code=400, detail="Provide product_ids or category")
+
+    products = session.exec(query).all()
+    for p in products:
+        p.is_active = True
+        session.add(p)
+    session.commit()
+    return {"restored": len(products), "ids": [p.id for p in products]}
+
+
 @router.post("/admin/products/unpublish")
 def unpublish_products(data: PublishRequest, session: Session = Depends(get_session)):
     """Admin — unpublish one product, a batch, or an entire collection."""
