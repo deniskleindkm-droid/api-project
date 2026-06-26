@@ -1786,11 +1786,12 @@ async function addToCart(productId, name, size=null, color=null){
       body:JSON.stringify(body)
     });
     if(res.ok){
-      // Sync cart in background — no spinner, no wait
       loadCart();
     }else if(res.status===401){
+      // Token expired — drop it, save to guest cart instead, no login popup
+      token=null;localStorage.removeItem('token');
       badge.textContent=Math.max(0,parseInt(badge.textContent)-1);
-      openAuth();
+      addToCart(productId,name,size,color);
     }else{
       badge.textContent=Math.max(0,parseInt(badge.textContent)-1);
       showToast('Could not add — try again');
