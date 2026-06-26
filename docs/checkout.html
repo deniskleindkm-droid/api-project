@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Adding to Cart — Mikisi</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Jost:wght@200;300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --cream:#fdf9f6;
+  --ivory:#f7f2ed;
+  --gold:#c9a96e;
+  --gold-light:#e8d5b0;
+  --pink:#d4849c;
+  --black:#0e0e0e;
+  --charcoal:#2a2a2a;
+  --mid:#6b6b6b;
+  --border:#ece5dd;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  font-family:'Jost',sans-serif;
+  background:var(--cream);
+  color:var(--black);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  padding:24px;
+}
+
+/* Logo */
+.logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:28px;font-weight:400;letter-spacing:7px;
+  text-transform:uppercase;color:var(--black);
+  margin-bottom:48px;
+}
+.logo em{color:var(--gold);font-style:italic;}
+
+/* Main card */
+.card{
+  background:white;
+  border:1px solid var(--border);
+  padding:40px 36px;
+  width:100%;max-width:460px;
+  text-align:center;
+}
+
+/* Spinner */
+.spinner{
+  width:36px;height:36px;
+  border:2px solid var(--border);
+  border-top-color:var(--gold);
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+  margin:0 auto 24px;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.state-label{
+  font-size:10px;font-weight:300;
+  letter-spacing:3px;text-transform:uppercase;
+  color:var(--mid);margin-bottom:6px;
+}
+.state-heading{
+  font-family:'Cormorant Garamond',serif;
+  font-size:24px;font-weight:300;
+  color:var(--black);margin-bottom:28px;
+}
+
+/* Product rows */
+.product-list{
+  border-top:1px solid var(--border);
+  margin-top:4px;
+  text-align:left;
+}
+.product-row{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 0;border-bottom:1px solid var(--border);
+  opacity:0;animation:fadeIn 0.4s ease forwards;
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.product-img{
+  width:56px;height:56px;flex-shrink:0;
+  background:var(--ivory);overflow:hidden;
+}
+.product-img img{width:100%;height:100%;object-fit:cover;}
+.product-info{flex:1;min-width:0;}
+.product-name{
+  font-family:'Cormorant Garamond',serif;
+  font-size:15px;font-weight:400;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  margin-bottom:3px;
+}
+.product-qty{font-size:10px;font-weight:300;color:var(--mid);letter-spacing:1px;}
+.product-price{
+  font-family:'Cormorant Garamond',serif;
+  font-size:16px;font-weight:400;color:var(--black);
+  flex-shrink:0;
+}
+.product-check{
+  color:var(--gold);font-size:14px;flex-shrink:0;
+}
+
+/* Done state */
+.done-icon{
+  font-size:22px;letter-spacing:6px;color:var(--gold);
+  margin-bottom:14px;
+}
+.done-heading{
+  font-family:'Cormorant Garamond',serif;
+  font-size:24px;font-weight:300;
+  color:var(--black);margin-bottom:8px;
+}
+.done-sub{
+  font-size:11px;font-weight:300;color:var(--mid);
+  letter-spacing:1.5px;text-transform:uppercase;
+  margin-bottom:24px;
+}
+.progress-track{
+  height:2px;background:var(--border);
+  position:relative;overflow:hidden;
+}
+.progress-fill{
+  height:100%;background:var(--gold);
+  width:0%;transition:width 0.05s linear;
+}
+
+/* Error state */
+.error-icon{font-size:20px;color:var(--mid);margin-bottom:12px;}
+.error-msg{
+  font-size:13px;font-weight:300;color:var(--mid);
+  margin-bottom:20px;line-height:1.7;
+}
+.go-btn{
+  display:inline-block;
+  padding:12px 32px;
+  background:var(--black);color:white;
+  font-size:10px;font-weight:300;letter-spacing:3px;
+  text-transform:uppercase;font-family:'Jost',sans-serif;
+  text-decoration:none;cursor:pointer;border:none;
+  transition:background 0.2s;
+}
+.go-btn:hover{background:var(--pink);}
+
+/* Hidden */
+.hidden{display:none;}
+
+@media(max-width:480px){
+  .card{padding:28px 20px;}
+  .logo{font-size:22px;letter-spacing:5px;margin-bottom:36px;}
+}
+</style>
+</head>
+<body>
+
+<div class="logo">Mik<em>i</em>si</div>
+
+<div class="card" id="card">
+
+  <!-- LOADING STATE -->
+  <div id="state-loading">
+    <div class="spinner"></div>
+    <div class="state-label">Please wait</div>
+    <div class="state-heading">Adding to your cart…</div>
+  </div>
+
+  <!-- PRODUCT LIST (populated by JS) -->
+  <div class="product-list hidden" id="product-list"></div>
+
+  <!-- DONE STATE -->
+  <div id="state-done" class="hidden">
+    <div class="done-icon">✦</div>
+    <div class="done-heading">Taking you to your cart</div>
+    <div class="done-sub">All items added successfully</div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+
+  <!-- ERROR STATE -->
+  <div id="state-error" class="hidden">
+    <div class="error-icon">◇</div>
+    <div class="error-msg">No products were found. You'll be taken to the store.</div>
+    <a href="https://mikisi.co/" class="go-btn">Go to Store</a>
+  </div>
+
+</div>
+
+<script>
+const API = 'https://api-project-production-d424.up.railway.app';
+const STORE = 'https://mikisi.co';
+const CART_KEY = 'mikisi_guest_cart';
+
+function getCart(){try{return JSON.parse(localStorage.getItem(CART_KEY)||'[]');}catch{return [];}}
+function saveCart(items){localStorage.setItem(CART_KEY,JSON.stringify(items));}
+
+function addToCart(product, qty){
+  const cart = getCart();
+  const existing = cart.find(i => i.product_id === product.id);
+  if(existing){
+    existing.quantity += qty;
+    existing.subtotal = existing.price * existing.quantity;
+  } else {
+    cart.push({
+      product_id: product.id,
+      name: product.name,
+      price: product.final_price,
+      image_url: product.content_image_url || product.image_url || null,
+      quantity: qty,
+      subtotal: product.final_price * qty,
+      selected_size: null,
+      selected_color: null,
+    });
+  }
+  saveCart(cart);
+}
+
+function cleanName(n){return (n||'').replace(/\b(925|Sterling Silver|Silver|Gold Plated|Plated)\b/gi,'').replace(/\s{2,}/g,' ').trim();}
+function trunc(s,n){return s&&s.length>n?s.slice(0,n)+'…':s||'';}
+
+function show(id){document.getElementById(id).classList.remove('hidden');}
+function hide(id){document.getElementById(id).classList.add('hidden');}
+
+function parseProducts(){
+  const p = new URLSearchParams(window.location.search);
+
+  // Primary format: products=504:2,689:3
+  const productsParam = p.get('products');
+  if(productsParam){
+    return productsParam.split(',')
+      .map(pair => { const [id,qty] = pair.split(':'); return {id:parseInt(id),qty:parseInt(qty)||1}; })
+      .filter(x => !isNaN(x.id) && x.id > 0);
+  }
+
+  // Legacy format: product_ids=504,689&quantities=2,3
+  const idsParam = p.get('product_ids');
+  if(idsParam){
+    const ids = idsParam.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n));
+    const qtys = (p.get('quantities')||'').split(',').map(s=>parseInt(s.trim())||1);
+    return ids.map((id,i) => ({id, qty: qtys[i]||1}));
+  }
+
+  return [];
+}
+
+async function fetchProduct(id){
+  const res = await fetch(`${API}/products/${id}`);
+  if(!res.ok) return null;
+  return res.json();
+}
+
+function renderProductRow(product, qty){
+  const list = document.getElementById('product-list');
+  const row = document.createElement('div');
+  row.className = 'product-row';
+  row.innerHTML = `
+    <div class="product-img">
+      <img src="${product.content_image_url||product.image_url||''}"
+           onerror="this.style.display='none'" alt=""/>
+    </div>
+    <div class="product-info">
+      <div class="product-name">${trunc(cleanName(product.name),42)}</div>
+      <div class="product-qty">Qty ${qty} &nbsp;·&nbsp; ${product.category||''}</div>
+    </div>
+    <div class="product-price">$${(product.final_price*qty).toFixed(2)}</div>
+    <div class="product-check">✦</div>
+  `;
+  list.appendChild(row);
+}
+
+async function run(){
+  const pairs = parseProducts();
+
+  if(!pairs.length){
+    hide('state-loading');
+    show('state-error');
+    setTimeout(()=>{ window.location.href = STORE; }, 3000);
+    return;
+  }
+
+  let added = 0;
+  show('product-list');
+
+  for(const {id, qty} of pairs){
+    try{
+      const product = await fetchProduct(id);
+      if(product && product.id){
+        addToCart(product, qty);
+        renderProductRow(product, qty);
+        hide('state-loading');
+        added++;
+      }
+    }catch(_){}
+  }
+
+  if(added === 0){
+    hide('product-list');
+    hide('state-loading');
+    show('state-error');
+    setTimeout(()=>{ window.location.href = STORE; }, 3000);
+    return;
+  }
+
+  // Show done state with progress bar then redirect
+  hide('state-loading');
+  show('state-done');
+
+  const fill = document.getElementById('progress-fill');
+  const duration = 1800;
+  const interval = 30;
+  let elapsed = 0;
+  const timer = setInterval(()=>{
+    elapsed += interval;
+    fill.style.width = Math.min(100, (elapsed/duration)*100) + '%';
+    if(elapsed >= duration){
+      clearInterval(timer);
+      window.location.href = STORE + '/?cart=open';
+    }
+  }, interval);
+}
+
+run();
+</script>
+
+</body>
+</html>

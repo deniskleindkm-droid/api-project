@@ -1183,6 +1183,7 @@ window.onload = async()=>{
   await Promise.all([loadCollections(),loadProducts()]);
   loadCart();
   const p = new URLSearchParams(window.location.search);
+  if(p.get('cart')==='open'){setTimeout(()=>toggleCart(),300);}
   if(p.get('payment')==='success'){
     if(!token){document.getElementById('guest-confirm-modal').classList.add('open');}
     else{document.getElementById('success-banner').classList.add('show');setTimeout(()=>document.getElementById('success-banner').classList.remove('show'),10000);}
