@@ -1453,16 +1453,23 @@ const CATEGORY_SIZE_LABEL = {
   'jewelry sets': 'Size',
 };
 
-// Metal finish label map — maps raw API values to display names
+// Metal finish label map — maps raw API values to customer-facing display names.
+// Silverbene single-word color names are translated to jewelry-accurate labels here
+// so no other code needs to know about supplier naming conventions.
 const COLOR_LABEL = {
   'gold':       'Gold',
   'yellow gold':'Yellow Gold',
   'rose gold':  'Rose Gold',
   'white gold': 'White Gold',
   'silver':     'Silver',
-  'rhodium':    'Rhodium',
+  'rhodium':    'Silver',      // rhodium plating = silver look to the customer
   'tanzanite':  'Tanzanite',
   'platinum':   'Platinum',
+  // Silverbene raw single-word names
+  'pink':       'Rose Gold',
+  'yellow':     'Yellow Gold',
+  'white':      'White Gold',
+  'black':      'Black',
 };
 
 // Strip Silverbene size suffixes, catalog numbers, and SKU prefixes with dash/underscore separator
@@ -1709,7 +1716,7 @@ async function openPP(id){
           document.getElementById('pp-colors-wrap').style.display='block';
           document.querySelector('#pp-colors-wrap .pp-section-title').textContent='Metal Finish';
           document.getElementById('pp-color-chips').innerHTML=uniqueMetals.map((m,i)=>
-            `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${m}</button>`
+            `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${COLOR_LABEL[m.toLowerCase().trim()]||m}</button>`
           ).join('');
         }else document.getElementById('pp-colors-wrap').style.display='none';
         // Chain Width (only show if multiple options)
@@ -1860,10 +1867,16 @@ async function openPP(id){
 
   // Reset variant selection for this product
   ppSelectedSize  = sizes.length ? sizes[0] : null;
-  ppSelectedColor = (document.getElementById('pp-colors-wrap').style.display!=='none'&&colorChips.length) ? colorChips[0] : null;
+  // Read display text of first chip (post-COLOR_LABEL rename) so cart receives friendly name
+  ppSelectedColor = document.getElementById('pp-colors-wrap').style.display!=='none'
+    ? (document.querySelector('#pp-color-chips .pp-chip')?.textContent?.trim()||null) : null;
   ppSelectedStone = stones.length ? stones[0] : null;
   ppSelectedWidth = document.getElementById('pp-width-wrap').style.display!=='none'
     ? (document.getElementById('pp-width-chips').querySelector('.pp-chip')?.textContent||null) : null;
+
+  // Apply material + description for the initially-selected chip
+  const initChip=document.querySelector('#pp-color-chips .pp-chip.active');
+  if(initChip)applyVariantUI(initChip.textContent.trim());
 
   updatePPGallery();
   document.getElementById('pp-overlay').classList.add('open');
