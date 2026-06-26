@@ -577,6 +577,31 @@ nav{
 .co-total-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);font-weight:300;}
 .co-total-amount{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;color:var(--black);}
 
+/* ── CHECKOUT ENTRY ── */
+.co-entry-btn{width:100%;display:flex;align-items:center;gap:16px;padding:20px 22px;border:1px solid var(--border);background:none;cursor:pointer;text-align:left;transition:all 0.2s;margin-bottom:12px;font-family:'Jost',sans-serif;touch-action:manipulation;}
+.co-entry-btn:hover{border-color:var(--gold);background:var(--ivory);}
+.co-entry-guest{background:var(--black);color:white;border-color:var(--black);}
+.co-entry-guest:hover{background:var(--pink-deep);border-color:var(--pink-deep);}
+.co-entry-icon{font-size:18px;color:var(--gold);flex-shrink:0;}
+.co-entry-guest .co-entry-icon{color:rgba(201,169,110,0.7);}
+.co-entry-label{flex:1;}
+.co-entry-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;letter-spacing:0.5px;color:var(--black);display:block;}
+.co-entry-guest .co-entry-title{color:white;}
+.co-entry-sub{font-size:10px;font-weight:300;letter-spacing:1.5px;color:var(--mid);text-transform:uppercase;margin-top:3px;display:block;}
+.co-entry-guest .co-entry-sub{color:rgba(255,255,255,0.55);}
+.co-entry-arrow{font-size:22px;color:var(--light);margin-left:auto;}
+.co-entry-guest .co-entry-arrow{color:rgba(255,255,255,0.25);}
+.co-entry-trust{text-align:center;font-size:10px;color:var(--mid);letter-spacing:1.5px;margin-top:20px;font-weight:300;text-transform:uppercase;}
+/* Guest post-purchase */
+.gpc-icon{text-align:center;font-size:22px;letter-spacing:6px;color:var(--gold);margin-bottom:14px;}
+.gpc-title{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300;text-align:center;margin-bottom:10px;}
+.gpc-sub{font-size:13px;font-weight:300;color:var(--mid);text-align:center;line-height:1.85;margin-bottom:28px;}
+.gpc-prompt{border-top:1px solid var(--border);padding-top:24px;}
+.gpc-prompt-text{font-size:13px;font-weight:300;color:var(--charcoal);line-height:1.75;margin-bottom:18px;text-align:center;}
+.gpc-btns{display:flex;gap:10px;}
+.gpc-skip{background:none;border:1px solid var(--border);color:var(--mid);cursor:pointer;padding:13px;font-size:9px;font-weight:300;letter-spacing:2px;text-transform:uppercase;font-family:'Jost',sans-serif;transition:all 0.2s;flex:1;touch-action:manipulation;}
+.gpc-skip:hover{background:var(--ivory);}
+
 /* ── TOAST ── */
 .toast{position:fixed;bottom:max(32px,env(safe-area-inset-bottom,0px) + 16px);left:50%;transform:translateX(-50%);background:var(--black);color:white;padding:12px 26px;font-size:11px;font-weight:300;letter-spacing:1.5px;z-index:9999;opacity:0;transition:opacity 0.3s;white-space:nowrap;box-shadow:0 8px 40px rgba(0,0,0,0.15);}
 .toast.show{opacity:1;}
@@ -1035,6 +1060,54 @@ footer{background:var(--black);padding:52px 48px 36px;}
   </div>
 </div>
 
+<!-- CHECKOUT ENTRY — sign in vs guest -->
+<div class="modal-overlay" id="checkout-entry-modal">
+  <div class="modal" style="max-width:440px;">
+    <button class="close-modal" onclick="closeCheckoutEntry()">×</button>
+    <div class="modal-top">
+      <h2>Secure Checkout</h2>
+      <p>How would you like to continue?</p>
+    </div>
+    <div class="modal-body">
+      <button class="co-entry-btn" onclick="closeCheckoutEntry();openAuth()">
+        <span class="co-entry-icon">◈</span>
+        <span class="co-entry-label">
+          <span class="co-entry-title">Sign In</span>
+          <span class="co-entry-sub">Sign in to your account</span>
+        </span>
+        <span class="co-entry-arrow">›</span>
+      </button>
+      <button class="co-entry-btn co-entry-guest" onclick="proceedAsGuest()">
+        <span class="co-entry-icon">◇</span>
+        <span class="co-entry-label">
+          <span class="co-entry-title">Continue as Guest</span>
+          <span class="co-entry-sub">No account required</span>
+        </span>
+        <span class="co-entry-arrow">›</span>
+      </button>
+      <div class="co-entry-trust">🔒 Secure checkout &nbsp;·&nbsp; SSL encrypted</div>
+    </div>
+  </div>
+</div>
+
+<!-- GUEST POST-PURCHASE — optional account creation -->
+<div class="modal-overlay" id="guest-confirm-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-body" style="padding-top:44px;padding-bottom:40px;">
+      <div class="gpc-icon">✦</div>
+      <div class="gpc-title">Your order is confirmed</div>
+      <div class="gpc-sub">Thank you for your purchase.<br>A confirmation email is on its way to you.</div>
+      <div class="gpc-prompt">
+        <div class="gpc-prompt-text">Want to track your order easily next time?<br>Create a free account in 30 seconds.</div>
+        <div class="gpc-btns">
+          <button class="m-btn pink" onclick="openRegister()" style="flex:1;margin-bottom:0;padding:13px;font-size:9px;">Create Account</button>
+          <button class="gpc-skip" onclick="closeGuestConfirm()">No thanks</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- INFO MODALS — Returns / Shipping / Contact -->
 <div class="modal-overlay" id="info-overlay" onclick="closeInfo()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:300;"></div>
 
@@ -1111,8 +1184,8 @@ window.onload = async()=>{
   loadCart();
   const p = new URLSearchParams(window.location.search);
   if(p.get('payment')==='success'){
-    document.getElementById('success-banner').classList.add('show');
-    setTimeout(()=>document.getElementById('success-banner').classList.remove('show'),10000);
+    if(!token){document.getElementById('guest-confirm-modal').classList.add('open');}
+    else{document.getElementById('success-banner').classList.add('show');setTimeout(()=>document.getElementById('success-banner').classList.remove('show'),10000);}
   }
   const prodMatch = window.location.pathname.match(/^\/products\/(\d+)$/);
   if(prodMatch) openPP(Number(prodMatch[1]));
@@ -1862,6 +1935,10 @@ function openCheckout(){
   if(!cartItems.length){showToast('Your cart is empty');return;}
   document.getElementById('cart-sidebar').classList.remove('open');
   document.getElementById('cart-overlay').classList.remove('open');
+  if(!token){document.getElementById('checkout-entry-modal').classList.add('open');return;}
+  _openCheckoutForm();
+}
+function _openCheckoutForm(){
   document.getElementById('guest-fields').style.display=token?'none':'block';
   const summary=document.getElementById('co-summary');
   const total=cartItems.reduce((s,i)=>s+i.subtotal,0);
@@ -1869,6 +1946,10 @@ function openCheckout(){
   document.getElementById('checkout-modal').classList.add('open');
 }
 function closeCheckout(){document.getElementById('checkout-modal').classList.remove('open');}
+function closeCheckoutEntry(){document.getElementById('checkout-entry-modal').classList.remove('open');}
+function proceedAsGuest(){closeCheckoutEntry();_openCheckoutForm();}
+function closeGuestConfirm(){document.getElementById('guest-confirm-modal').classList.remove('open');}
+function openRegister(){closeGuestConfirm();resetAuth();switchAuth();document.getElementById('auth-modal').classList.add('open');}
 
 function selectShipping(method, el){
   // No-op — shipping is fixed (USPS, built into product price)
