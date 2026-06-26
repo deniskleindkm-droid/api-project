@@ -1197,40 +1197,21 @@ function getVariantMaterial(variantLabel,baseMaterial){
   return baseMaterial;
 }
 
-// Map a chip label to the canonical finish word used in description substitution
-function chipToFinishTerm(chipLabel){
-  if(!chipLabel)return null;
-  const v=chipLabel.toLowerCase();
-  if(/white\s+gold/.test(v))       return 'white gold';
-  if(/\bblack\b/.test(v))          return 'black rhodium';
-  if(/yellow\s+gold/.test(v))      return 'yellow gold';
-  if(/rose\s+gold|\bpink\b/.test(v)) return 'rose gold';
-  if(/\bgold\b/.test(v))           return 'gold';
-  if(/rhodium/.test(v))            return 'rhodium';
-  if(/\bsilver\b/.test(v))         return 'silver';
-  return null;
-}
-
-// Replace all finish color terms in the description with the selected variant's finish.
-// Handles every pairing (gold↔rhodium, rose gold↔silver, gold↔silver, etc.) dynamically
-// without per-pair hardcoding.
+// Replace finish color terms in the description by reading the actual chip labels —
+// no hardcoded finish names. Other chips' labels become the search patterns;
+// the selected chip's label becomes the replacement.
 function adaptDescForVariant(baseDesc,variantLabel){
   if(!baseDesc||!variantLabel)return baseDesc;
-  const target=chipToFinishTerm(variantLabel);
-  if(!target)return baseDesc;
+  const otherLabels=[...document.querySelectorAll('#pp-color-chips .pp-chip')]
+    .map(b=>b.textContent.trim())
+    .filter(l=>l&&l.toLowerCase()!==variantLabel.toLowerCase());
+  if(!otherLabels.length)return baseDesc;
   let d=baseDesc;
-  // Compound terms first (order matters — replace before single words)
-  d=d.replace(/\bblack\s+rhodium\b/gi,target);
-  d=d.replace(/\bwhite\s+gold\b/gi,target);
-  d=d.replace(/\byellow\s+gold\b/gi,target);
-  d=d.replace(/\brose\s+gold\b/gi,target);
-  // Plating and finish phrases
-  d=d.replace(/\bgold[- ]plat(?:ing|ed|e)\b/gi,`${target} plating`);
-  d=d.replace(/\b(?:gold|rhodium|silver)\s+finish\b/gi,`${target} finish`);
-  // Single finish-metal words (rhodium is unambiguous; gold is safe in jewelry context)
-  d=d.replace(/\brodhium\b/gi,target);
-  d=d.replace(/\brhodium\b/gi,target);
-  d=d.replace(/\bgold\b/gi,target);
+  // Longer labels first so compound names (e.g. "Rose Gold") match before substrings (e.g. "Gold")
+  otherLabels.sort((a,b)=>b.length-a.length).forEach(label=>{
+    const escaped=label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    d=d.replace(new RegExp(escaped,'gi'),variantLabel);
+  });
   return d;
 }
 
