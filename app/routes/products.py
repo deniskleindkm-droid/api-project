@@ -145,6 +145,7 @@ class PublishRequest(BaseModel):
     master_key: str
     product_ids: Optional[List[int]] = None   # None = apply to all in category
     category: Optional[str] = None            # target a whole collection at once
+    default_stock: Optional[int] = None       # used by restore endpoint only
 
 
 @router.post("/admin/products/publish")
@@ -188,6 +189,8 @@ def restore_products(data: PublishRequest, session: Session = Depends(get_sessio
     products = session.exec(query).all()
     for p in products:
         p.is_active = True
+        if data.default_stock is not None:
+            p.stock = data.default_stock
         session.add(p)
     session.commit()
     return {"restored": len(products), "ids": [p.id for p in products]}
