@@ -67,6 +67,10 @@ def serve_terms():
 def serve_privacy():
     return FileResponse("docs/privacy.html", headers=_NO_CACHE)
 
+@app.get("/returns")
+def serve_returns():
+    return FileResponse("docs/returns.html", headers=_NO_CACHE)
+
 @app.get("/health")
 def health_check():
     return {
