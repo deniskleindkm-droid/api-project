@@ -836,6 +836,21 @@ def test_supplier():
         "first_product": products[0] if products else None
     }
 
+@router.get("/silverbene/check-stock")
+def silverbene_check_stock_raw(option_ids: str, master_key: str):
+    """Debug — query Silverbene option_qty directly for a comma-separated list of option_ids."""
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    try:
+        from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+        sb = SilverbeneAdapter()
+        resp = sb._get("/api/dropshipping/option_qty", {"option_id": option_ids})
+        return {"raw_response": resp, "queried": option_ids}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/silverbene/sync-stock")
 def silverbene_sync_stock_now():
     """Trigger an immediate run of the Silverbene Stock Agent outside the 6-hour schedule."""
