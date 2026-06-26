@@ -15,6 +15,7 @@ from app.routes.collections import router as collections_router
 from app.routes.tiktok_auth import router as tiktok_auth_router
 from app.routes.pinterest_auth import router as pinterest_auth_router
 from app.routes.meta_feed import router as meta_feed_router
+from app.routes.meta_checkout import router as meta_checkout_router
 
 from dotenv import load_dotenv
 import os
@@ -47,6 +48,7 @@ app.include_router(collections_router)
 app.include_router(tiktok_auth_router)
 app.include_router(pinterest_auth_router)
 app.include_router(meta_feed_router)
+app.include_router(meta_checkout_router)
 
 
 _NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
@@ -70,6 +72,10 @@ def serve_privacy():
 @app.get("/returns")
 def serve_returns():
     return FileResponse("docs/returns.html", headers=_NO_CACHE)
+
+@app.get("/products/{product_id}")
+def serve_product_page(product_id: int):
+    return FileResponse("docs/index.html", headers=_NO_CACHE)
 
 @app.get("/health")
 def health_check():

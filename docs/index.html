@@ -1106,6 +1106,10 @@ window.onload = async()=>{
     document.getElementById('success-banner').classList.add('show');
     setTimeout(()=>document.getElementById('success-banner').classList.remove('show'),10000);
   }
+  const prodMatch = window.location.pathname.match(/^\/products\/(\d+)$/);
+  if(prodMatch) openPP(Number(prodMatch[1]));
+  const addParam = p.get('add');
+  if(addParam) addParam.split(',').forEach(pair=>{const[id,qty]=pair.split(':');if(id)addToCart(Number(id),'',null,null);});
 };
 
 function startTimer(){
