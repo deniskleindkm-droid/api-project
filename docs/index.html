@@ -996,6 +996,13 @@ footer{background:var(--black);padding:52px 48px 36px;}
     <div class="modal-body">
       <div id="co-msg" class="m-msg"></div>
       <div class="co-summary" id="co-summary"></div>
+      <div id="guest-fields" style="display:none;">
+        <div class="m-row">
+          <div class="m-group"><label>First Name</label><input type="text" id="co-fname" placeholder="First name"/></div>
+          <div class="m-group"><label>Last Name</label><input type="text" id="co-lname" placeholder="Last name"/></div>
+        </div>
+        <div class="m-group"><label>Email Address</label><input type="email" id="co-email" placeholder="you@example.com"/></div>
+      </div>
       <div class="m-group"><label>Street Address</label><input type="text" id="co-street" placeholder="123 Main Street"/></div>
       <div class="m-group"><label>City</label><input type="text" id="co-city" placeholder="City"/></div>
       <div class="m-row">
@@ -1100,7 +1107,7 @@ window.onload = async()=>{
   startTimer();
   loadHero();
   await Promise.all([loadCollections(),loadProducts()]);
-  if(token)loadCart();
+  loadCart();
   const p = new URLSearchParams(window.location.search);
   if(p.get('payment')==='success'){
     document.getElementById('success-banner').classList.add('show');
@@ -1745,9 +1752,23 @@ function toggleWish(id){
   if(btn){btn.textContent=wishlist.includes(id)?'♥':'♡';btn.classList.toggle('liked',wishlist.includes(id));}
 }
 
+// ── GUEST CART (localStorage) ──
+function getGuestCart(){try{return JSON.parse(localStorage.getItem('mikisi_guest_cart')||'[]');}catch{return [];}}
+function setGuestCart(items){localStorage.setItem('mikisi_guest_cart',JSON.stringify(items));}
+
 // ── CART ──
 async function addToCart(productId, name, size=null, color=null){
-  if(!token){openAuth();return;}
+  if(!token){
+    const variantNote=size||color?` · ${[color,size].filter(Boolean).join(', ')}`:'';
+    const cart=getGuestCart();
+    const existing=cart.find(i=>i.product_id===productId&&i.selected_size===(size||null)&&i.selected_color===(color||null));
+    if(existing){existing.quantity+=1;existing.subtotal=existing.price*existing.quantity;}
+    else{const p=allProducts.find(x=>x.id===productId);cart.push({product_id:productId,name:p?p.name:(name||'Product'),price:p?p.final_price:0,image_url:p?(p.content_image_url||p.image_url||null):null,quantity:1,subtotal:p?p.final_price:0,selected_size:size||null,selected_color:color||null});}
+    setGuestCart(cart);
+    document.getElementById('cart-count').textContent=cart.reduce((s,i)=>s+i.quantity,0);
+    showToast(`Added${variantNote}`);
+    return;
+  }
 
   // Instant feedback — don't wait for server
   const badge=document.getElementById('cart-count');
@@ -1781,7 +1802,12 @@ async function addToCart(productId, name, size=null, color=null){
 }
 
 async function loadCart(){
-  if(!token)return;
+  if(!token){
+    const cart=getGuestCart();
+    cartItems=cart.map(i=>({cart_item_id:i.product_id,product_id:i.product_id,name:i.name,brand:'Mikisi',price:i.price,quantity:i.quantity,subtotal:i.subtotal,image_url:i.image_url,content_image_url:i.image_url,selected_size:i.selected_size,selected_color:i.selected_color}));
+    renderCart({items:cartItems,total:cart.reduce((s,i)=>s+i.subtotal,0)});
+    return;
+  }
   try{const res=await fetch(`${API}/cart`,{headers:{'Authorization':`Bearer ${token}`}});if(res.ok){const d=await res.json();cartItems=d.items||[];renderCart(d);}}catch{}
 }
 
@@ -1813,24 +1839,30 @@ function renderCart(data){
   }).join('');
 }
 
-async function removeFromCart(id){try{await fetch(`${API}/cart/${id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${token}`}});loadCart();}catch{}}
+async function removeFromCart(id){
+  if(!token){
+    const cart=getGuestCart();
+    const idx=cart.findIndex(i=>i.product_id===id);
+    if(idx>=0){if(cart[idx].quantity>1){cart[idx].quantity-=1;cart[idx].subtotal=cart[idx].price*cart[idx].quantity;}else{cart.splice(idx,1);}setGuestCart(cart);}
+    loadCart();return;
+  }
+  try{await fetch(`${API}/cart/${id}`,{method:'DELETE',headers:{'Authorization':`Bearer ${token}`}});loadCart();}catch{}
+}
 function toggleCart(){
   const open=document.getElementById('cart-sidebar').classList.toggle('open');
   document.getElementById('cart-overlay').classList.toggle('open');
-  // Only refresh if opening and cart might be stale
-  if(open&&token)loadCart();
+  if(open)loadCart();
 }
 
 // ── CHECKOUT ──
 function openCheckout(){
-  if(!token){openAuth();return;}
+  if(!cartItems.length){showToast('Your cart is empty');return;}
   document.getElementById('cart-sidebar').classList.remove('open');
   document.getElementById('cart-overlay').classList.remove('open');
+  document.getElementById('guest-fields').style.display=token?'none':'block';
   const summary=document.getElementById('co-summary');
-  if(cartItems.length){
-    const total=cartItems.reduce((s,i)=>s+i.subtotal,0);
-    summary.innerHTML=`<div class="co-summary-title">Your Order</div>${cartItems.map(i=>`<div class="co-item"><div class="co-item-name">${trunc(cleanName(i.name),42)} × ${i.quantity}</div><div class="co-item-price">$${i.subtotal.toFixed(2)}</div></div>`).join('')}<div class="co-total"><div class="co-total-label">Total</div><div class="co-total-amount">$${total.toFixed(2)}</div></div>`;
-  }
+  const total=cartItems.reduce((s,i)=>s+i.subtotal,0);
+  summary.innerHTML=`<div class="co-summary-title">Your Order</div>${cartItems.map(i=>`<div class="co-item"><div class="co-item-name">${trunc(cleanName(i.name),42)} × ${i.quantity}</div><div class="co-item-price">$${i.subtotal.toFixed(2)}</div></div>`).join('')}<div class="co-total"><div class="co-total-label">Total</div><div class="co-total-amount">$${total.toFixed(2)}</div></div>`;
   document.getElementById('checkout-modal').classList.add('open');
 }
 function closeCheckout(){document.getElementById('checkout-modal').classList.remove('open');}
@@ -1864,10 +1896,25 @@ async function placeOrder(){
   const country=document.getElementById('co-country').value;
   if(!street||!city||!state||!zip){showCoMsg('Please complete all address fields','error');return;}
   const address=`${street}, ${city}, ${state} ${zip}, ${country}`;
-  const shippingMethod='fast_track'; // always Fast Track — built into product price
+  const shippingMethod='fast_track';
   const btn=document.getElementById('pay-btn');
-  // Instant feedback — don't wait for Stripe to respond before showing activity
   btn.textContent='Preparing payment…';btn.disabled=true;
+  if(!token){
+    const email=document.getElementById('co-email').value.trim();
+    const fname=document.getElementById('co-fname').value.trim();
+    const lname=document.getElementById('co-lname').value.trim();
+    if(!fname||!lname){showCoMsg('Please enter your first and last name','error');btn.textContent='Pay Securely';btn.disabled=false;return;}
+    if(!email||!email.includes('@')){showCoMsg('Please enter a valid email address','error');btn.textContent='Pay Securely';btn.disabled=false;return;}
+    const gCart=getGuestCart();
+    if(!gCart.length){showCoMsg('Your cart is empty','error');btn.textContent='Pay Securely';btn.disabled=false;return;}
+    try{
+      const res=await fetch(`${API}/payments/guest-checkout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:gCart.map(i=>({product_id:i.product_id,quantity:i.quantity})),email,first_name:fname,last_name:lname,shipping_address:address,shipping_method:shippingMethod})});
+      const data=await res.json();
+      if(res.ok){localStorage.removeItem('mikisi_guest_cart');window.location.href=data.checkout_url;}
+      else{showCoMsg(data.detail||'Something went wrong','error');btn.textContent='Pay Securely';btn.disabled=false;}
+    }catch{showCoMsg('Connection error','error');btn.textContent='Pay Securely';btn.disabled=false;}
+    return;
+  }
   try{
     const res=await fetch(`${API}/payments/create-checkout`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({shipping_address:address,shipping_method:shippingMethod})});
     const data=await res.json();

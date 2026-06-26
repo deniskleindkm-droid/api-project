@@ -73,58 +73,159 @@ def create_checkout_session(
     return {"checkout_url": checkout_session.url}
 
 
+class GuestCartItem(BaseModel):
+    product_id: int
+    quantity: int = 1
+
+class GuestCheckoutRequest(BaseModel):
+    items: list[GuestCartItem]
+    email: str
+    first_name: str
+    last_name: str
+    shipping_address: str
+    shipping_method: str = "usps"
+
+
+@router.post("/payments/guest-checkout")
+def create_guest_checkout_session(
+    request: GuestCheckoutRequest,
+    session: Session = Depends(get_session),
+):
+    if not request.items:
+        raise HTTPException(status_code=400, detail="Cart is empty")
+
+    line_items = []
+    items_meta = []
+    for item in request.items:
+        product = session.get(Product, item.product_id)
+        if not product or not product.is_active:
+            raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
+        line_items.append({
+            "price_data": {
+                "currency": "usd",
+                "product_data": {
+                    "name": f"Mikisi — {product.name[:50]}",
+                    "description": (product.description or "")[:50],
+                },
+                "unit_amount": int(product.final_price * 100),
+            },
+            "quantity": item.quantity,
+        })
+        items_meta.append({"product_id": product.id, "quantity": item.quantity})
+
+    checkout_session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        line_items=line_items,
+        mode="payment",
+        success_url="https://mikisi.co/?payment=success",
+        cancel_url="https://mikisi.co/",
+        customer_email=request.email,
+        metadata={
+            "user_email":       request.email,
+            "first_name":       request.first_name,
+            "last_name":        request.last_name,
+            "shipping_address": request.shipping_address,
+            "shipping_method":  request.shipping_method,
+            "guest_items":      json.dumps(items_meta),
+            "is_guest":         "true",
+        },
+    )
+    return {"checkout_url": checkout_session.url}
+
+
 def process_order_background(checkout_data: dict):
     try:
         user_email = checkout_data["metadata"]["user_email"]
         shipping_address = checkout_data["metadata"]["shipping_address"]
         shipping_method = checkout_data["metadata"].get("shipping_method", "usps")
+        is_guest = checkout_data["metadata"].get("is_guest") == "true"
+        first_name = checkout_data["metadata"].get("first_name", "")
+        last_name = checkout_data["metadata"].get("last_name", "")
+        guest_items_raw = checkout_data["metadata"].get("guest_items", "[]")
 
         order_details = []
         total = 0
 
         with Session(engine) as session:
-            cart_items = session.exec(
-                select(CartItem).where(CartItem.user_id == user_email)
-            ).all()
+            if is_guest:
+                guest_items = json.loads(guest_items_raw)
+                print(f"[Payments] Guest order — {len(guest_items)} item(s) for {user_email}")
+                for item_data in guest_items:
+                    product = session.get(Product, item_data["product_id"])
+                    qty = item_data.get("quantity", 1)
+                    if product:
+                        subtotal = product.final_price * qty
+                        total += subtotal
+                        order_details.append({
+                            "name": product.name,
+                            "qty": qty,
+                            "price": product.final_price,
+                            "subtotal": subtotal,
+                            "supplier": product.supplier_name,
+                            "supplier_url": product.supplier_url,
+                            "product_id": product.id,
+                            "cj_sku": product.cj_sku,
+                            "cj_product_id": product.cj_product_id,
+                        })
+                        print(f"[Payments] Guest item: {product.name} — CJ SKU: {product.cj_sku}")
+                        order = Order(
+                            user_id=user_email,
+                            guest_email=user_email,
+                            is_guest=True,
+                            product_id=product.id,
+                            quantity=qty,
+                            total_price=subtotal,
+                            status="paid",
+                            shipping_address=shipping_address,
+                            shipping_method=shipping_method,
+                        )
+                        product.stock -= qty
+                        session.add(order)
+                        session.add(product)
+                session.commit()
+            else:
+                cart_items = session.exec(
+                    select(CartItem).where(CartItem.user_id == user_email)
+                ).all()
 
-            print(f"[Payments] Found {len(cart_items)} cart items for {user_email}")
+                print(f"[Payments] Found {len(cart_items)} cart items for {user_email}")
 
-            if not cart_items:
-                print(f"[Payments] Cart already empty for {user_email} — webhook retry or already processed. Skipping.")
-                return
+                if not cart_items:
+                    print(f"[Payments] Cart already empty for {user_email} — webhook retry or already processed. Skipping.")
+                    return
 
-            for item in cart_items:
-                product = session.get(Product, item.product_id)
-                if product:
-                    subtotal = product.final_price * item.quantity
-                    total += subtotal
-                    order_details.append({
-                        "name": product.name,
-                        "qty": item.quantity,
-                        "price": product.final_price,
-                        "subtotal": subtotal,
-                        "supplier": product.supplier_name,
-                        "supplier_url": product.supplier_url,
-                        "product_id": item.product_id,
-                        "cj_sku": product.cj_sku,
-                        "cj_product_id": product.cj_product_id,
-                    })
-                    print(f"[Payments] Item: {product.name} — CJ SKU: {product.cj_sku}")
-                    order = Order(
-                        user_id=user_email,
-                        product_id=item.product_id,
-                        quantity=item.quantity,
-                        total_price=subtotal,
-                        status="paid",
-                        shipping_address=shipping_address,
-                        shipping_method=shipping_method,
-                    )
-                    product.stock -= item.quantity
-                    session.add(order)
-                    session.add(product)
-                    session.delete(item)
+                for item in cart_items:
+                    product = session.get(Product, item.product_id)
+                    if product:
+                        subtotal = product.final_price * item.quantity
+                        total += subtotal
+                        order_details.append({
+                            "name": product.name,
+                            "qty": item.quantity,
+                            "price": product.final_price,
+                            "subtotal": subtotal,
+                            "supplier": product.supplier_name,
+                            "supplier_url": product.supplier_url,
+                            "product_id": item.product_id,
+                            "cj_sku": product.cj_sku,
+                            "cj_product_id": product.cj_product_id,
+                        })
+                        print(f"[Payments] Item: {product.name} — CJ SKU: {product.cj_sku}")
+                        order = Order(
+                            user_id=user_email,
+                            product_id=item.product_id,
+                            quantity=item.quantity,
+                            total_price=subtotal,
+                            status="paid",
+                            shipping_address=shipping_address,
+                            shipping_method=shipping_method,
+                        )
+                        product.stock -= item.quantity
+                        session.add(order)
+                        session.add(product)
+                        session.delete(item)
 
-            session.commit()
+                session.commit()
 
         print(f"[Payments] Order details collected: {len(order_details)} items, total ${total:.2f}")
 
@@ -136,9 +237,13 @@ def process_order_background(checkout_data: dict):
 
             print(f"[Payments] Starting Silverbene forwarding for {len(order_details)} items")
 
-            customer_name_parts = user_email.split("@")[0].split(".")
-            customer_first = customer_name_parts[0].capitalize()
-            customer_last  = customer_name_parts[1].capitalize() if len(customer_name_parts) > 1 else "Customer"
+            if first_name:
+                customer_first = first_name.capitalize()
+                customer_last  = last_name.capitalize() if last_name else "Customer"
+            else:
+                customer_name_parts = user_email.split("@")[0].split(".")
+                customer_first = customer_name_parts[0].capitalize()
+                customer_last  = customer_name_parts[1].capitalize() if len(customer_name_parts) > 1 else "Customer"
 
             # Parse shipping_address string into structured fields
             # Expected format: "123 Street, City, State, ZIP, Country"
@@ -386,9 +491,13 @@ async def stripe_webhook(
         obj = event["data"]["object"]
         raw = getattr(obj, "metadata", None) or {}
         metadata = {
-            "user_email":      _stripe_meta(raw, "user_email"),
+            "user_email":       _stripe_meta(raw, "user_email"),
             "shipping_address": _stripe_meta(raw, "shipping_address"),
             "shipping_method":  _stripe_meta(raw, "shipping_method", "usps"),
+            "is_guest":         _stripe_meta(raw, "is_guest"),
+            "guest_items":      _stripe_meta(raw, "guest_items"),
+            "first_name":       _stripe_meta(raw, "first_name"),
+            "last_name":        _stripe_meta(raw, "last_name"),
         }
         background_tasks.add_task(process_order_background, {"metadata": metadata})
 

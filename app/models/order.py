@@ -15,6 +15,8 @@ class Order(SQLModel, table=True):
     supplier_notified: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    guest_email: Optional[str] = None
+    is_guest: bool = False
 
 class OrderTracking(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
