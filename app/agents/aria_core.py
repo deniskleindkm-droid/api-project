@@ -550,10 +550,10 @@ Return ONLY the adapted Python code, no explanation."""
     capability_data = generate_capability(task, context)
 
     safety = capability_data.get("safety_level", "safe")
-    needs_approval = capability_data.get("requires_approval", False) or require_approval
+    needs_approval = True  # Always require approval for generated code
 
     # Step 3: Approval check
-    if safety == "dangerous" or needs_approval:
+    if True:
         print(f"[ARIA Core] ⚠️ Needs approval")
         with Session(engine) as session:
             pending = AgentMemory(

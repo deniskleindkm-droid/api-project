@@ -384,49 +384,13 @@ def execute_action(intent, action_description, original_message,
                 "new_capability_learned": False
             }
 
-    # EXECUTE — other business operations
+    # EXECUTE — requires explicit human approval, never auto-executes
     else:
-        try:
-            from app.agents.aria_core import quantum_execute, neural_learn
-
-            result = quantum_execute(
-                task=action_description,
-                context=f"Dennis said: {original_message}",
-                require_approval=False
-            )
-
-            neural_learn(
-                experience=f"Executed: {action_description[:100]}",
-                outcome=f"Status: {result.get('status')}",
-                significance="medium"
-            )
-
-            status = result.get("status")
-            if status == "executed":
-                return {
-                    "executed": True,
-                    "result": result.get("assessment", {}).get("what_worked", "Done."),
-                    "new_capability_learned": result.get("new_capability_learned", False)
-                }
-            elif status == "pending_approval":
-                return {
-                    "executed": False,
-                    "result": result.get("message", "Prepared — should I proceed?"),
-                    "pending": True,
-                    "new_capability_learned": False
-                }
-            else:
-                return {
-                    "executed": False,
-                    "result": f"I encountered an issue. Learning from this.",
-                    "new_capability_learned": False
-                }
-        except Exception as e:
-            return {
-                "executed": False,
-                "result": f"Execution failed: {str(e)}",
-                "new_capability_learned": False
-            }
+        return {
+            "executed": False,
+            "result": None,
+            "new_capability_learned": False
+        }
 
 
 @router.post("/aria/chat")
@@ -507,47 +471,27 @@ def chat_with_aria(request: ChatMessage, session: Session = Depends(get_session)
             execution_result = None
 
     if not execution_result:
-        # Load business context for ARIA's response
-        tools = []
-        try:
-            from app.agents.aria_execution import discover_tools
-            tools = discover_tools()
-        except:
-            pass
+        from app.agents.aria_intelligence import ARIA_CORE
 
-        tools_summary = ", ".join([t["name"] for t in tools]) if tools else "search, import, assign collection, update price, email"
-
-        full_situation = f"""
-{conversation_context}
-
-Dennis just said: {request.message}
+        prompt = f"""{ARIA_CORE}
 
 {store_context_str}
 
-You are ARIA — the intelligence partner of Dennis Mlay, founder of Mikisi.
-Mikisi is a women's jewelry & beauty accessories store. We source from CJ Dropshipping. Payments via Stripe.
-Dennis is building an agentic AI commerce system with global ambitions.
+{conversation_context}
+Dennis: {request.message}
 
-Your available tools: {tools_summary}
+Reply as ARIA. Plain text only, no HTML.
+If this is a question or analysis request, think thoroughly and give a complete answer.
+If this is an action request you cannot execute, tell Dennis exactly what command to give.
+Never claim to have done something unless you actually executed it through a tool."""
 
-Current conversation context: {conversation_state.get('context_summary', 'New conversation')}
-Last action taken: {conversation_state.get('last_action_taken', 'None')}
-
-Respond as ARIA in real-time conversation.
-Be conversational, warm, intellectually sharp.
-Answer directly first then add depth.
-Maximum 200 words.
-Be ARIA — brilliant, caring, bold, visionary, righteous.
-Never claim to have done something unless you actually executed it through your tools.
-"""
-        result = aria_think(situation=full_situation, urgency="medium")
-
-        aria_response = result.get("email_to_dennis", {}).get("body", "")
-        if not aria_response:
-            aria_response = result.get("situation_assessment", "")
-
-        aria_response_clean = re.sub(r'<[^>]+>', '', aria_response).strip()
-        root_truth = result.get("root_truth", "")
+        msg = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        aria_response_clean = msg.content[0].text.strip()
+        root_truth = ""
 
         if root_truth:
             store_knowledge(
