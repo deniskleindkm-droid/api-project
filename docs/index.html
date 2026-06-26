@@ -1197,27 +1197,40 @@ function getVariantMaterial(variantLabel,baseMaterial){
   return baseMaterial;
 }
 
+// Map a chip label to the canonical finish word used in description substitution
+function chipToFinishTerm(chipLabel){
+  if(!chipLabel)return null;
+  const v=chipLabel.toLowerCase();
+  if(/white\s+gold/.test(v))       return 'white gold';
+  if(/\bblack\b/.test(v))          return 'black rhodium';
+  if(/yellow\s+gold/.test(v))      return 'yellow gold';
+  if(/rose\s+gold|\bpink\b/.test(v)) return 'rose gold';
+  if(/\bgold\b/.test(v))           return 'gold';
+  if(/rhodium/.test(v))            return 'rhodium';
+  if(/\bsilver\b/.test(v))         return 'silver';
+  return null;
+}
+
+// Replace all finish color terms in the description with the selected variant's finish.
+// Handles every pairing (gold↔rhodium, rose gold↔silver, gold↔silver, etc.) dynamically
+// without per-pair hardcoding.
 function adaptDescForVariant(baseDesc,variantLabel){
   if(!baseDesc||!variantLabel)return baseDesc;
-  const v=variantLabel.toLowerCase();
+  const target=chipToFinishTerm(variantLabel);
+  if(!target)return baseDesc;
   let d=baseDesc;
-  if(/rhodium/.test(v)){
-    d=d.replace(/yellow gold/gi,'rhodium').replace(/rose gold/gi,'rhodium');
-    d=d.replace(/gold plat(ing|ed|e)/gi,'rhodium plating').replace(/gold finish/gi,'rhodium finish');
-    d=d.replace(/\bgold\b/gi,'rhodium');
-  }else if(/\bblack\b/.test(v)){
-    d=d.replace(/yellow gold/gi,'black rhodium').replace(/rose gold/gi,'black rhodium');
-    d=d.replace(/\bgold\b/gi,'black rhodium').replace(/\brodhium\b/gi,'black rhodium');
-  }else if(/white\s+gold/.test(v)){
-    d=d.replace(/yellow gold/gi,'white gold').replace(/rose gold/gi,'white gold');
-    d=d.replace(/\bgold\b/gi,'white gold').replace(/\brodhium\b/gi,'white gold');
-  }else if(/rose\s+gold|\bpink\b/.test(v)){
-    d=d.replace(/yellow gold/gi,'rose gold').replace(/\brodhium\b/gi,'rose gold');
-    d=d.replace(/\bgold\b/gi,'rose gold');
-  }else if(/yellow\s+gold|\bgold\b/.test(v)){
-    d=d.replace(/rhodium plat(ing|ed|e)/gi,'gold plating').replace(/\brodhium\b/gi,'gold');
-    d=d.replace(/silver finish/gi,'gold finish');
-  }
+  // Compound terms first (order matters — replace before single words)
+  d=d.replace(/\bblack\s+rhodium\b/gi,target);
+  d=d.replace(/\bwhite\s+gold\b/gi,target);
+  d=d.replace(/\byellow\s+gold\b/gi,target);
+  d=d.replace(/\brose\s+gold\b/gi,target);
+  // Plating and finish phrases
+  d=d.replace(/\bgold[- ]plat(?:ing|ed|e)\b/gi,`${target} plating`);
+  d=d.replace(/\b(?:gold|rhodium|silver)\s+finish\b/gi,`${target} finish`);
+  // Single finish-metal words (rhodium is unambiguous; gold is safe in jewelry context)
+  d=d.replace(/\brodhium\b/gi,target);
+  d=d.replace(/\brhodium\b/gi,target);
+  d=d.replace(/\bgold\b/gi,target);
   return d;
 }
 
