@@ -229,6 +229,31 @@ def setup_gmail():
         return {"message": "Gmail connected", "email": profile.get('emailAddress')}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/agents/email/test-imap")
+def test_imap_connection(master_key: str):
+    """Test IMAP connection to hello@mikisi.co without reading any emails."""
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    import imaplib
+    import os
+    gmail_address = os.getenv("GMAIL_ADDRESS")
+    gmail_password = os.getenv("GMAIL_APP_PASSWORD")
+    if not gmail_address:
+        return {"success": False, "error": "GMAIL_ADDRESS not set in environment"}
+    if not gmail_password:
+        return {"success": False, "error": "GMAIL_APP_PASSWORD not set in environment"}
+    try:
+        mail = imaplib.IMAP4_SSL("imap.gmail.com")
+        mail.login(gmail_address, gmail_password)
+        mail.logout()
+        return {"success": True, "connected_as": gmail_address}
+    except imaplib.IMAP4.error as e:
+        return {"success": False, "gmail_address": gmail_address, "error": str(e)}
+    except Exception as e:
+        return {"success": False, "gmail_address": gmail_address, "error": str(e)}
     
     
 class AriaThinkRequest(BaseModel):
