@@ -196,6 +196,17 @@ def run_tracking_check():
         print(f"[Scheduler] Tracking check error: {e}")
 
 
+def run_silverbene_shipping_monitor():
+    """Every 2 hours: scan hello@mikisi.co for Silverbene shipping emails and auto-notify customers."""
+    try:
+        from app.agents.silverbene_shipping_monitor import run_silverbene_shipping_monitor as _monitor
+        _monitor()
+        _heartbeat("silverbene_shipping_monitor", "inbox scan complete")
+    except Exception as e:
+        _heartbeat("silverbene_shipping_monitor", f"error: {str(e)[:80]}")
+        print(f"[Scheduler] Silverbene shipping monitor error: {e}")
+
+
 def run_tiktok_token_refresh():
     """
     Daily refresh of the TikTok access token using the stored refresh token.
@@ -530,6 +541,15 @@ def start_scheduler():
         replace_existing=True
     )
 
+    scheduler.add_job(
+        run_silverbene_shipping_monitor,
+        trigger=IntervalTrigger(hours=2),
+        id='silverbene_shipping_monitor',
+        name='Silverbene Shipping Email Monitor — Auto-notify customers',
+        next_run_time=datetime.utcnow(),
+        replace_existing=True
+    )
+
     scheduler.start()
     print("[Scheduler] ✅ ARIA scheduler started with jobs:")
     print("[Scheduler]   → Market check: every 6 hours")
@@ -546,3 +566,4 @@ def start_scheduler():
     print("[Scheduler]   → Daily digest email: every day at 08:00 UTC")
     print("[Scheduler]   → TikTok token refresh: every day at 06:00 UTC")
     print("[Scheduler]   → Order recovery agent: every 30 minutes")
+    print("[Scheduler]   → Silverbene shipping monitor: every 2 hours")
