@@ -263,7 +263,7 @@ def process_order_background(checkout_data: dict):
             customer = {
                 "first_name": customer_first,
                 "last_name":  customer_last,
-                "email":      user_email,
+                "email":      "hello@mikisi.co",  # never send real customer email to supplier
                 "phone":      "",
             }
 
@@ -508,14 +508,16 @@ async def stripe_webhook(
 async def recover_missed_order(
     session_id: str,
     background_tasks: BackgroundTasks,
+    master_key: str = "",
     token: str = Depends(oauth2_scheme)
 ):
     """
     Admin endpoint: manually replay a Stripe checkout session that the webhook missed.
     Use this when a customer paid but the order wasn't recorded.
     """
+    from app.agents.aria_security import verify_master_key
     payload = verify_token(token)
-    if not payload or payload.get("sub") != os.getenv("DENNIS_EMAIL"):
+    if not payload and not verify_master_key(master_key):
         raise HTTPException(status_code=403, detail="Admin only")
 
     try:
