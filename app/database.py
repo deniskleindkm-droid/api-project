@@ -12,6 +12,7 @@ from app.models.store_config import StoreConfig
 from app.models.aria_operational import ARIAActionLedger, ARIATool, ARIAConversationState, ARIABusinessState, ARIAPolicy
 from app.models.order import Order, OrderTracking
 from app.models.content import ProductContent
+from app.models.instagram_post import InstagramPost
 from app.models.platform_analytics import PlatformAnalytics
 import os
 

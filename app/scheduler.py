@@ -339,19 +339,26 @@ def run_balance_check():
         print(f"[Scheduler] Balance check error: {e}")
 
 
-def run_daily_content():
-    """
-    Daily content job: generate 2 videos per category for newest products.
-    Runs at 09:00 UTC — generates up to 12 videos/day.
-    Images are generated at import time, not here.
-    """
+def run_instagram_posting():
+    """Daily 16:00 UTC (10:00 AM CST): post one piece of content to Instagram."""
     try:
-        from app.agents.content_agent import run_daily_video_batch
-        run_daily_video_batch()
-        _heartbeat("content_agent", "daily video batch complete")
+        from app.agents.instagram_agent import run_instagram_agent
+        run_instagram_agent()
+        _heartbeat("instagram_agent", "posting cycle complete")
     except Exception as e:
-        _heartbeat("content_agent", f"error: {str(e)[:80]}")
-        print(f"[Scheduler] Content agent error: {e}")            
+        _heartbeat("instagram_agent", f"error: {str(e)[:80]}")
+        print(f"[Scheduler] Instagram agent error: {e}")
+
+
+def run_instagram_engagement_pull():
+    """Daily 17:00 UTC: pull engagement metrics for posts that are 24h+ old."""
+    try:
+        from app.agents.instagram_agent import pull_engagement
+        pull_engagement()
+        _heartbeat("instagram_agent", "engagement pull complete")
+    except Exception as e:
+        _heartbeat("instagram_agent", f"engagement pull error: {str(e)[:80]}")
+        print(f"[Scheduler] Instagram engagement pull error: {e}")
 
 
 def run_order_recovery():
@@ -482,11 +489,22 @@ def start_scheduler():
         replace_existing=True
     )
 
+    # fal.ai + Runway video generation disabled — Silverbene images used directly
+    # run_daily_content job removed
+
     scheduler.add_job(
-        run_daily_content,
-        trigger=IntervalTrigger(hours=24),
-        id='daily_content',
-        name='Content Agent — Daily Video Batch',
+        run_instagram_posting,
+        trigger=CronTrigger(hour=16, minute=0),
+        id='instagram_posting',
+        name='Instagram Content Agent — Daily Post (10:00 AM CST)',
+        replace_existing=True
+    )
+
+    scheduler.add_job(
+        run_instagram_engagement_pull,
+        trigger=CronTrigger(hour=17, minute=0),
+        id='instagram_engagement_pull',
+        name='Instagram Engagement Pull — 24h metrics',
         replace_existing=True
     )
 
@@ -561,7 +579,8 @@ def start_scheduler():
     print("[Scheduler]   → Bulk import: every 24 hours")
     print("[Scheduler]   → ARIA self-check: every 30 minutes")
     print("[Scheduler]   → Silverbene stock sync: every 6 hours")
-    print("[Scheduler]   → Content agent (daily videos): every 24 hours")
+    print("[Scheduler]   → Instagram posting: daily at 16:00 UTC (10:00 AM CST)")
+    print("[Scheduler]   → Instagram engagement pull: daily at 17:00 UTC")
     print("[Scheduler]   → Pinterest analytics: daily at 00:05 UTC")
     print("[Scheduler]   → Daily digest email: every day at 08:00 UTC")
     print("[Scheduler]   → TikTok token refresh: every day at 06:00 UTC")
