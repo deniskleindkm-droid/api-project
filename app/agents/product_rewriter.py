@@ -109,6 +109,11 @@ ACCEPTANCE RULES:
 - Name must be clean and elegant — no supplier language, no SEO stuffing
 - Description makes a woman feel something — not a feature list
 
+FINISH RULE — critical for multi-variant products:
+- When a product has more than one finish option (e.g. gold + rhodium, gold + white gold), ALWAYS frame them as a customer choice: "available in 18K gold or rhodium" / "your choice of gold or rhodium plating".
+- NEVER write both finishes as if simultaneously applied to one piece — never "rhodium-plated 18K gold" or "gold and rhodium finish". One physical piece has ONE finish; the customer chooses which.
+- If only one finish exists, simply state it: "rhodium-plated 925 sterling silver".
+
 Return JSON only:
 {{
     "accepted": true or false,
