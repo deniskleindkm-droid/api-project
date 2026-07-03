@@ -110,9 +110,18 @@ ACCEPTANCE RULES:
 - Description makes a woman feel something — not a feature list
 
 FINISH RULE — critical for multi-variant products:
-- When a product has more than one finish option (e.g. gold + rhodium, gold + white gold), ALWAYS frame them as a customer choice: "available in 18K gold or rhodium" / "your choice of gold or rhodium plating".
-- NEVER write both finishes as if simultaneously applied to one piece — never "rhodium-plated 18K gold" or "gold and rhodium finish". One physical piece has ONE finish; the customer chooses which.
-- If only one finish exists, simply state it: "rhodium-plated 925 sterling silver".
+- When a product has more than one finish option (e.g. gold + rhodium, gold + white gold), ALWAYS frame them as a customer choice: "in 18K gold or rhodium plating" / "your choice of gold or rhodium".
+- NEVER write "with optional gold plating" — state both options directly.
+- NEVER write both finishes as if simultaneously applied — never "rhodium-plated 18K gold". One piece has ONE finish; the customer chooses which.
+- If only one finish exists, state it directly: "rhodium-plated 925 sterling silver".
+- NEVER write "18K YellowGold" — always space it: "18K Yellow Gold".
+
+DESCRIPTION TONE RULES — strictly enforced:
+- 2-3 sentences. The description must include at least one concrete product detail (material, stone, closure, design feature, measurement).
+- One emotional note is permitted but it must be earned by the product's actual qualities.
+- BANNED phrases — never use any of these: "for the woman who", "unapologetically you", "unapologetically yours", "choose yourself", "you are the source", "permission to be", "be everything at once", "carries her own sunshine", "declare yourself", "effortlessly you", "quietly powerful" as a standalone closing, "your story", "on your terms", "knows her worth", "knows her own [noun]", "refuses to be understated", "in every hue", "writes her own story".
+- End on the piece itself — not on the customer's aspirations.
+- Concrete > abstract: "micro-set cubic zirconia" over "stones that catch light like intention".
 
 Return JSON only:
 {{
@@ -121,7 +130,7 @@ Return JSON only:
     "collection_id": the collection ID number,
     "collection_name": "collection name",
     "mikisi_name": "clean elegant product name max 8 words",
-    "mikisi_description": "emotional 2-3 sentence description in Mikisi voice",
+    "mikisi_description": "2-3 sentence description per the tone rules above",
     "confidence": 0.0 to 1.0
 }}"""
 
