@@ -253,14 +253,35 @@ def _refresh_product_sizes(sb) -> tuple:
                 if not sku:
                     continue
 
-                fresh = sb.get_by_sku(sku)
-                if not fresh or not isinstance(fresh, dict):
-                    continue
+                from app.agents.suppliers.silverbene_adapter import _parse_chain_length_from_desc
 
-                options = fresh.get("_options", [])
-                if not isinstance(options, list):
-                    continue
-                sizes_list, _ = adapter._extract_variants(options)
+                # Primary: fetch by SKU
+                fresh = sb.get_by_sku(sku)
+                sizes_list = None
+
+                if fresh and isinstance(fresh, dict):
+                    options = fresh.get("_options", [])
+                    if isinstance(options, list):
+                        sizes_list, _ = adapter._extract_variants(options)
+                    # Always also check desc for chain length (material info section)
+                    if not sizes_list:
+                        raw_desc = fresh.get("description", "")
+                        sizes_list = _parse_chain_length_from_desc(raw_desc) or None
+
+                # Fallback: search by product name via date-window endpoint
+                # (product_list by SKU returns empty options for some older listings)
+                if not sizes_list:
+                    keywords = " ".join(p.name.lower().split()[:4])
+                    results = sb.search(keyword=keywords, limit=20)
+                    for r in results:
+                        if r.get("supplier_product_id") == sku:
+                            opts = r.get("_options", [])
+                            if isinstance(opts, list):
+                                sizes_list, _ = adapter._extract_variants(opts)
+                            if not sizes_list:
+                                raw_desc = r.get("description", "")
+                                sizes_list = _parse_chain_length_from_desc(raw_desc) or None
+                            break
 
                 if sizes_list:
                     with Session(engine) as session:

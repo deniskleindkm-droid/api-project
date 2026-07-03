@@ -391,8 +391,16 @@ class SilverbeneAdapter(SupplierAdapter):
         stock = sum(int(o.get("qty", 0)) for o in options) if options else 999
 
         sizes, colors = self._extract_variants(options)
-        if not sizes:
-            sizes = _parse_chain_length_from_desc(raw.get("desc", "")) or None
+        # Chain length is always in the raw desc material-info section ("Chain Length: 45cm").
+        # Always parse it and merge — don't skip just because variants already have sizes.
+        desc_lengths = _parse_chain_length_from_desc(raw.get("desc", ""))
+        if desc_lengths:
+            if sizes:
+                for l in desc_lengths:
+                    if l not in sizes:
+                        sizes.append(l)
+            else:
+                sizes = desc_lengths
         material = self._infer_material_from_desc(raw.get("desc", ""), colors)
         specs = self._extract_specs_from_desc(raw.get("desc", ""))
 
