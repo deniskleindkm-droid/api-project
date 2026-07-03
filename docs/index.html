@@ -1197,22 +1197,12 @@ function getVariantMaterial(variantLabel,baseMaterial){
   return baseMaterial;
 }
 
-// Replace finish color terms in the description by reading the actual chip labels —
-// no hardcoded finish names. Other chips' labels become the search patterns;
-// the selected chip's label becomes the replacement.
-function adaptDescForVariant(baseDesc,variantLabel){
-  if(!baseDesc||!variantLabel)return baseDesc;
-  const otherLabels=[...document.querySelectorAll('#pp-color-chips .pp-chip')]
-    .map(b=>b.textContent.trim())
-    .filter(l=>l&&l.toLowerCase()!==variantLabel.toLowerCase());
-  if(!otherLabels.length)return baseDesc;
-  let d=baseDesc;
-  // Longer labels first so compound names (e.g. "Rose Gold") match before substrings (e.g. "Gold")
-  otherLabels.sort((a,b)=>b.length-a.length).forEach(label=>{
-    const escaped=label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    d=d.replace(new RegExp(escaped,'gi'),variantLabel);
-  });
-  return d;
+// Descriptions are written finish-neutral ("in 925 sterling silver or 18K gold plating")
+// and must never be mutated per-variant — "925 sterling silver" is the base metal, not a
+// finish label, and swapping it produces "925 sterling 18K Yellow Gold".
+// The material line (getVariantMaterial) already handles per-variant display.
+function adaptDescForVariant(baseDesc){
+  return baseDesc;
 }
 
 function findVariantImage(chipLabel){
