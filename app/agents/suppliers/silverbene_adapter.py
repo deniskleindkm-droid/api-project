@@ -603,11 +603,13 @@ def parse_necklace_length(chain_length_str: str) -> list:
     s = chain_length_str.strip()
     is_adj = bool(re.search(r'adjustabl|extender|extension', s, re.I))
 
-    # Extender pattern: "40cm+5cm" — base snaps, total (base+ext) snaps
-    ext_m = re.match(r'(\d+(?:\.\d+)?)\s*(cm|mm)\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)', s, re.I)
+    # Extender pattern: "40cm+5cm" or "40+5cm" (Silverbene omits unit on base)
+    ext_m = re.match(r'(\d+(?:\.\d+)?)\s*(cm|mm)?\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)', s, re.I)
     if ext_m:
-        b_mm = int(round(float(ext_m.group(1)) * 10)) if ext_m.group(2).lower() == 'cm' else int(float(ext_m.group(1)))
-        e_mm = int(round(float(ext_m.group(3)) * 10)) if ext_m.group(4).lower() == 'cm' else int(float(ext_m.group(3)))
+        ext_unit = ext_m.group(4).lower()  # unit on the extension is authoritative
+        base_unit = (ext_m.group(2) or ext_unit).lower()
+        b_mm = int(round(float(ext_m.group(1)) * 10)) if base_unit == 'cm' else int(float(ext_m.group(1)))
+        e_mm = int(round(float(ext_m.group(3)) * 10)) if ext_unit == 'cm' else int(float(ext_m.group(3)))
         lo, hi = _snap_inch(b_mm), _snap_inch(b_mm + e_mm)
         if lo == hi:
             return [lo]
