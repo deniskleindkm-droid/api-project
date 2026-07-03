@@ -391,6 +391,11 @@ class SilverbeneAdapter(SupplierAdapter):
         stock = sum(int(o.get("qty", 0)) for o in options) if options else 999
 
         sizes, colors = self._extract_variants(options)
+        # Normalize finish terms using Silverbene's customer-facing description language.
+        # Silverbene API option attributes use "Rhodium" internally but their product pages
+        # say "White Gold Color" — prefer the customer-facing term from desc.
+        if colors:
+            colors = self._normalize_finish_terms(colors, raw.get("desc", ""))
         # Chain length is always in the raw desc material-info section ("Chain Length: 45cm").
         # Always parse it and merge — don't skip just because variants already have sizes.
         desc_lengths = _parse_chain_length_from_desc(raw.get("desc", ""))
@@ -483,6 +488,40 @@ class SilverbeneAdapter(SupplierAdapter):
 
         return sizes or None, colors or None
 
+    def _normalize_finish_terms(self, colors: list, desc: str) -> list:
+        """
+        Silverbene's option attributes use technical names ('Rhodium') but their product
+        descriptions use customer-facing names ('White Gold Color'). Read 'Metal Color
+        Available' and 'Metal Electroplating' from the raw desc to prefer the term
+        Silverbene actually shows to customers.
+        """
+        text = re.sub(r'<[^>]+>', ' ', desc)
+
+        # Extract customer-facing finish list from desc
+        desc_finishes = []
+        for pattern in [
+            r'Metal\s+Color\s+Available\s*[:\-]\s*([^\n<]{2,100})',
+            r'Metal\s+Electroplating\s*[:\-]\s*([^\n<]{2,80})',
+        ]:
+            m = re.search(pattern, text, re.I)
+            if m:
+                desc_finishes.extend(
+                    c.strip() for c in re.split(r'[,/]', m.group(1)) if c.strip()
+                )
+
+        if not desc_finishes:
+            return colors  # no desc data — keep option attribute terms as-is
+
+        # Check if desc says "White Gold" where we stored "Rhodium"
+        desc_lower = ' '.join(f.lower() for f in desc_finishes)
+        has_white_gold_in_desc = 'white gold' in desc_lower
+
+        return [
+            # Replace "Rhodium" with "White Gold" when desc explicitly uses "White Gold"
+            re.sub(r'\bRhodium\b', 'White Gold', c) if has_white_gold_in_desc and re.search(r'\bRhodium\b', c) else c
+            for c in colors
+        ]
+
     def _extract_specs_from_desc(self, desc: str) -> dict:
         """
         Parse structured product specs from Silverbene's raw HTML description.
@@ -498,6 +537,14 @@ class SilverbeneAdapter(SupplierAdapter):
                 val = m.group(1).strip().rstrip('.,')
                 return val if val and len(val) < 80 else None
             return None
+
+        # Drop length — for Y/lariat necklaces (e.g. "Drop Length: 9cm")
+        dl = _get(r'[Dd]rop\s+[Ll]ength\s*[:\-]\s*([\d.]+\s*cm)')
+        if dl:
+            m_dl = re.search(r'([\d.]+)', dl)
+            if m_dl:
+                cm = float(m_dl.group(1))
+                specs['drop_length'] = f'{round(cm / 2.54, 1)}"'
 
         # Weight — keep in grams (industry standard even for US jewelry)
         w = _get(r'(?:total\s+)?weight\s*[:\-]\s*([\d.]+\s*g)\b')

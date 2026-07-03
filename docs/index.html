@@ -1189,11 +1189,11 @@ function getVariantMaterial(variantLabel,baseMaterial){
   if(/\bcz\b|zirconia/.test(v))return '925 Sterling Silver with Cubic Zirconia';
   if(/turquoise/.test(v))return '925 Sterling Silver with Turquoise';
   if(/opal/.test(v))return '925 Sterling Silver with Opal';
-  if(/white\s+gold/.test(v))return 'White Gold Plated 925 Sterling Silver';
+  if(/white\s+gold|rhodium|\bwhite\b/.test(v))return 'White Gold Plated 925 Sterling Silver';
   if(/\bblack\b/.test(v))return 'Black Rhodium Plated 925 Sterling Silver';
   if(/yellow\s+gold|\bgold\b/.test(v))return '18K Gold Plated 925 Sterling Silver';
   if(/rose\s+gold|\bpink\b/.test(v))return 'Rose Gold Plated 925 Sterling Silver';
-  if(/rhodium|\bsilver\b|\bwhite\b/.test(v))return 'Rhodium Plated 925 Sterling Silver';
+  if(/\bsilver\b/.test(v))return '925 Sterling Silver';
   return baseMaterial;
 }
 
@@ -1452,7 +1452,7 @@ const COLOR_LABEL = {
   'rose gold':  'Rose Gold',
   'white gold': 'White Gold',
   'silver':     'Silver',
-  'rhodium':    'Silver',      // rhodium plating = silver look to the customer
+  'rhodium':    'White Gold',  // Silverbene calls this finish "White Gold Color" on their product pages
   'tanzanite':  'Tanzanite',
   'platinum':   'Platinum',
   // Silverbene raw single-word names
@@ -1497,7 +1497,7 @@ function parseCompoundVariant(name){
   else if(/rose\s+gold/i.test(name)) r.metal='Rose Gold';
   else if(/white\s+gold/i.test(name)) r.metal='White Gold';
   else if(/yellow\s+gold/i.test(name)) r.metal='Yellow Gold';
-  else if(/rhodium/i.test(name)) r.metal='Rhodium';
+  else if(/rhodium/i.test(name)) r.metal='White Gold';
   else if(/\bgold\b/i.test(name)) r.metal='Gold';
   else if(/silver/i.test(name)) r.metal='Silver';
   // Width: "3 mm wide" or "2.2mm" — but NOT the mm from a length measurement
@@ -1525,6 +1525,7 @@ function parseSpecs(p){
   let raw;
   try{ raw=JSON.parse(p.specs); }catch{ return rows; }
 
+  if(raw.drop_length) rows.push({k:'Drop',    v:raw.drop_length});
   if(raw.stone)       rows.push({k:'Stone',   v:raw.stone});
   if(raw.accent_stone)rows.push({k:'Accent',  v:raw.accent_stone});
   if(raw.bead_shape)  rows.push({k:'Beads',   v:raw.bead_shape});
