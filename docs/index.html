@@ -1785,6 +1785,9 @@ async function openPP(id){
     const sizeLabel=CATEGORY_SIZE_LABEL[colName]||'Size';
     const ADJUSTABLE_VALS=new Set(['adjustable','one size / adjustable','one size','one size adjustable']);
     const isAdjustableOnly=sizes.length===1&&ADJUSTABLE_VALS.has(sizes[0].toLowerCase().trim());
+    // Necklace chain lengths are always meaningful — show even a single chip (e.g. "18\"")
+    const isNecklace=colName==='necklaces';
+    const showSingle=isNecklace&&!isAdjustableOnly;
     if(isAdjustableOnly&&colName==='rings'){
       // Open/adjustable ring — show a passive "Adjustable" chip + small helper note
       const nameHasOpen=(p.name||'').toLowerCase().includes('open');
@@ -1794,7 +1797,7 @@ async function openPP(id){
       document.getElementById('pp-size-chips').innerHTML=
         `<button class="pp-chip active" style="cursor:default;pointer-events:none;">Adjustable</button>`+
         `<div style="margin-top:6px;font-size:10px;color:var(--mid);font-style:italic;letter-spacing:0.5px;">${helperText}</div>`;
-    }else if(sizes.length>=2){
+    }else if(sizes.length>=2||showSingle){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
       document.getElementById('pp-size-chips').innerHTML=sizes.map((s,i)=>`<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'size')">${s}</button>`).join('');

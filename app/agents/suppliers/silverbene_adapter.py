@@ -280,7 +280,7 @@ class SilverbeneAdapter(SupplierAdapter):
         carrier_code = methods[0].get("carrier_code", "")
 
         order_option_id = option_id or product_id
-        admin_email = os.getenv("ADMIN_EMAIL") or os.getenv("DENNIS_EMAIL") or "hello@mikisi.co"
+        admin_email = "hello@mikisi.co"  # Silverbene must never have the customer's real email
 
         payload = {
             "products": [{"option_id": str(order_option_id), "qty": quantity}],
@@ -573,55 +573,67 @@ MM_TO_INCHES = {
 }
 
 
+_STD_MM = sorted(MM_TO_INCHES.keys())
+
+def _snap_inch(mm: int) -> str:
+    """Snap mm value to nearest standard necklace length, return clean inch string e.g. '16\"'."""
+    best = min(_STD_MM, key=lambda s: abs(s - mm))
+    return MM_TO_INCHES[best]  # already includes the " suffix
+
 def parse_necklace_length(chain_length_str: str) -> list:
     """
-    Convert a Silverbene chain length string into display chips.
+    Convert a Silverbene chain length string into customer-facing inch chips.
 
-    Handles mm and cm inputs:
-      "400mm - 450mm Adjustable" -> ["400mm / 16\"", "450mm / 18\"", "Adjustable"]
-      "45cm"                     -> ["450mm / 18\""]
-      "1.0mm, 40cm"              -> ["400mm / 16\""]
-      "40cm - 50cm"              -> ["400mm / 16\"", "450mm / 18\"", "500mm / 20\""]
-
-    For ranges, every standard length between lo and hi is included.
+    Inputs handled:
+      "40cm+5cm"             -> ['Adjustable 16"-18"']   extender: both ends snap to standard
+      "40cm+5cm adjustable"  -> ['Adjustable 16"-18"']
+      "400mm - 450mm Adj."   -> ['Adjustable 16"-18"']   two-value adjustable range
+      "45cm"                 -> ['18"']                   single fixed length
+      "40cm - 60cm"          -> ['16"', '18"', '20"', '22"', '24"']  multi-length range
+      "400mm"                -> ['16"']
     """
     s = chain_length_str.strip()
-    is_adjustable = "adjustable" in s.lower()
+    is_adj = bool(re.search(r'adjustabl|extender|extension', s, re.I))
 
-    # Normalise: convert any cm values to mm before extracting numbers
-    def _cm_to_mm(match):
-        val = float(match.group(1))
-        return str(int(round(val * 10))) + "mm"
+    # Extender pattern: "40cm+5cm" — base snaps, total (base+ext) snaps
+    ext_m = re.match(r'(\d+(?:\.\d+)?)\s*(cm|mm)\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)', s, re.I)
+    if ext_m:
+        b_mm = int(round(float(ext_m.group(1)) * 10)) if ext_m.group(2).lower() == 'cm' else int(float(ext_m.group(1)))
+        e_mm = int(round(float(ext_m.group(3)) * 10)) if ext_m.group(4).lower() == 'cm' else int(float(ext_m.group(3)))
+        lo, hi = _snap_inch(b_mm), _snap_inch(b_mm + e_mm)
+        if lo == hi:
+            return [lo]
+        return [f'Adjustable {lo}-{hi}']
 
-    s_mm = re.sub(r'(\d+(?:\.\d+)?)\s*cm', _cm_to_mm, s, flags=re.I)
+    # Normalise cm → mm
+    def _to_mm(m): return str(int(round(float(m.group(1)) * 10))) + 'mm'
+    s_mm = re.sub(r'(\d+(?:\.\d+)?)\s*cm', _to_mm, s, flags=re.I)
 
-    nums = [int(m) for m in re.findall(r'\d+', s_mm) if 200 <= int(m) <= 1000]
+    nums = [int(n) for n in re.findall(r'\d+', s_mm) if 200 <= int(n) <= 900]
     if not nums:
         return []
 
-    if len(nums) >= 2:
-        lo, hi = min(nums), max(nums)
-        mm_values = sorted(k for k in MM_TO_INCHES if lo <= k <= hi)
-        if not mm_values:
-            mm_values = sorted({lo, hi})
-    else:
-        mm_values = [nums[0]]
+    if len(nums) == 1:
+        c = _snap_inch(nums[0])
+        return [f'Adjustable {c}'] if is_adj else [c]
 
-    chips = []
-    seen = set()
-    for mm in mm_values:
-        if mm in MM_TO_INCHES:
-            chip = f'{mm}mm / {MM_TO_INCHES[mm]}'
-        else:
-            chip = f'{mm}mm / {round(mm / 25.4, 1)}"'
-        if chip not in seen:
-            seen.add(chip)
-            chips.append(chip)
+    lo_mm, hi_mm = min(nums), max(nums)
 
-    if is_adjustable:
-        chips.append("Adjustable")
+    # Two-value adjustable range: "400mm - 450mm Adjustable" → 'Adjustable 16"-18"'
+    if is_adj and len(nums) == 2:
+        lo_in, hi_in = _snap_inch(lo_mm), _snap_inch(hi_mm)
+        if lo_in == hi_in:
+            return [lo_in]
+        return [f'Adjustable {lo_in}-{hi_in}']
 
-    return chips
+    # Multi-length range: enumerate every standard length between lo and hi
+    chips, seen = [], set()
+    for mm in _STD_MM:
+        if lo_mm <= mm <= hi_mm:
+            c = MM_TO_INCHES[mm]
+            if c not in seen:
+                seen.add(c); chips.append(c)
+    return chips or list(dict.fromkeys(_snap_inch(n) for n in nums))
 
 
 def _clean_color_value(value: str) -> str:
