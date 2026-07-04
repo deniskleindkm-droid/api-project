@@ -150,7 +150,7 @@ nav{
 }
 .btn-ghost:hover{border-color:var(--pink);color:var(--pink);}
 .hero-banner{
-  width:100vw;margin-left:calc(-50vw + 50%);height:480px;overflow:hidden;
+  width:100vw;margin-left:calc(-50vw + 50%);height:560px;overflow:hidden;
   background:var(--ivory);display:flex;align-items:center;justify-content:center;
   position:relative;
 }
@@ -282,8 +282,12 @@ nav{
 .pcard{
   background:white;cursor:pointer;
   display:flex;flex-direction:column;
-  transition:background 0.25s;position:relative;
+  position:relative;
+  opacity:0;transform:translateY(16px);
+  transition:opacity 0.5s ease,transform 0.5s ease,background 0.25s;
 }
+.pcard.visible{opacity:1;transform:none;}
+.pcard.visible.pcard-oos{opacity:0.6;}
 .pcard:hover{background:var(--pink-mist);}
 .pcard-img{
   position:relative;overflow:hidden;background:var(--ivory);
@@ -533,6 +537,15 @@ nav{
   z-index:10;transition:all 0.2s;border-radius:50%;
 }
 .pp-close:hover{background:var(--black);color:white;border-color:var(--black);}
+.pp-cat-nav{
+  position:absolute;top:14px;
+  background:rgba(255,255,255,0.9);border:1px solid var(--border);
+  color:var(--mid);width:30px;height:30px;font-size:17px;line-height:1;
+  cursor:pointer;align-items:center;justify-content:center;
+  z-index:10;transition:all 0.2s;border-radius:50%;
+}
+.pp-cat-nav:hover{background:var(--black);color:white;border-color:var(--black);}
+.pp-cat-prev{left:54px;}.pp-cat-next{left:90px;}
 
 /* ── AUTH MODAL ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(14,14,14,0.6);z-index:300;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px);}
@@ -820,13 +833,13 @@ footer{background:var(--black);padding:52px 48px 36px;}
     <span>925 Sterling Silver</span><span class="dot">✦</span>
     <span>Timeless Elegance</span><span class="dot">✦</span>
     <span>Curated for Her</span><span class="dot">✦</span>
-    <span>Est. Delivery 8–10 Days</span><span class="dot">✦</span>
+    <span>Free Shipping · 8–10 Days</span><span class="dot">✦</span>
     <span>Tanzanite · Rose Gold · Silver</span><span class="dot">✦</span>
     <span>New Arrivals</span><span class="dot">✦</span>
     <span>925 Sterling Silver</span><span class="dot">✦</span>
     <span>Timeless Elegance</span><span class="dot">✦</span>
     <span>Curated for Her</span><span class="dot">✦</span>
-    <span>Est. Delivery 8–10 Days</span><span class="dot">✦</span>
+    <span>Free Shipping · 8–10 Days</span><span class="dot">✦</span>
     <span>Tanzanite · Rose Gold · Silver</span><span class="dot">✦</span>
     <span>New Arrivals</span><span class="dot">✦</span>
   </div>
@@ -835,7 +848,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
 <!-- TRUST -->
 <div class="trust-bar">
   <div class="trust-item"><span>✦</span>925 Sterling Silver</div>
-  <div class="trust-item"><span>⇉</span>Est. Delivery 8–10 Days</div>
+  <div class="trust-item"><span>⇉</span>Free Shipping · 8–10 Days</div>
   <div class="trust-item"><span>↺</span>30-Day Returns</div>
   <div class="trust-item"><span>◇</span>Authenticity Guaranteed</div>
   <div class="trust-item"><span>❋</span>Lifetime Care</div>
@@ -920,6 +933,8 @@ footer{background:var(--black);padding:52px 48px 36px;}
   <div class="pp-sheet">
     <div class="pp-drag"></div>
     <button class="pp-close" onclick="closePP()">×</button>
+    <button class="pp-cat-nav pp-cat-prev" id="pp-cat-prev" onclick="ppNavPrev()" style="display:none">‹</button>
+    <button class="pp-cat-nav pp-cat-next" id="pp-cat-next" onclick="ppNavNext()" style="display:none">›</button>
     <div class="pp-body">
       <div class="pp-gallery">
         <img id="pp-img" src="" alt=""/>
@@ -1152,6 +1167,8 @@ let userName = localStorage.getItem('userName');
 let authMode = 'login';
 let allProducts = [];
 let allCollections = [];
+let ppNavList = [];   // products in the currently open collection for prev/next
+let ppNavIdx  = -1;  // index of the open product within ppNavList
 let ppImages = [];
 let ppIdx = 0;
 let pendingVerifyEmail = '';
@@ -1197,12 +1214,42 @@ function getVariantMaterial(variantLabel,baseMaterial){
   return baseMaterial;
 }
 
-// Descriptions are written finish-neutral ("in 925 sterling silver or 18K gold plating")
-// and must never be mutated per-variant — "925 sterling silver" is the base metal, not a
-// finish label, and swapping it produces "925 sterling 18K Yellow Gold".
-// The material line (getVariantMaterial) already handles per-variant display.
-function adaptDescForVariant(baseDesc){
-  return baseDesc;
+function adaptDescForVariant(baseDesc, chipLabel){
+  if(!baseDesc||!chipLabel) return baseDesc;
+  const chip=chipLabel.toLowerCase().trim();
+  let newFinishPlated;
+  if(chip.includes('18k')||(chip.includes('gold')&&!chip.includes('rose')&&!chip.includes('white')&&!chip.includes('white gold'))){
+    newFinishPlated='18K gold-plated';
+  }else if(chip.includes('rose')||chip.includes('pink gold')){
+    newFinishPlated='rose gold-plated';
+  }else if(chip.includes('white gold')||chip.includes('rhodium')){
+    newFinishPlated='white gold-plated';
+  }else if(chip==='silver'){
+    newFinishPlated=null;
+  }else{
+    return baseDesc;
+  }
+  // Protect "925 sterling silver", "sterling silver", "S925 silver" from being swapped
+  const SILVER_RE=/\b(?:s?925\s+)?sterling\s+silver\b|\b925\s+silver\b/gi;
+  const PLACEHOLDER='\x00SLV\x00';
+  let desc=baseDesc.replace(SILVER_RE,PLACEHOLDER);
+  // Match any finish-plating phrase
+  const FINISH_RE=/\b(18k\s+(?:yellow\s+)?gold|yellow\s+gold|rose\s+gold|white\s+gold|rhodium|black\s+rhodium|gold)\s*[-–]?\s*plated\b/gi;
+  if(newFinishPlated===null){
+    desc=desc.replace(FINISH_RE,'silver');
+  }else{
+    desc=desc.replace(FINISH_RE,newFinishPlated);
+  }
+  // Strip filler phrases meaningful only for one finish
+  desc=desc
+    .replace(/,?\s*or choose the gold[\s-]plated version\.?/gi,'')
+    .replace(/,?\s*with optional\s+(?:18k\s+)?gold\s*plating\.?/gi,'')
+    .replace(/,?\s*for added warmth\.?/gi,'');
+  // Fix CamelCase artefacts
+  desc=desc.replace(/YellowGold/g,'Yellow Gold').replace(/RoseGold/g,'Rose Gold').replace(/WhiteGold/g,'White Gold');
+  // Restore silver placeholder
+  desc=desc.replace(/\x00SLV\x00/g,'925 sterling silver');
+  return desc.replace(/\s{2,}/g,' ').trim();
 }
 
 function findVariantImage(chipLabel){
@@ -1370,9 +1417,11 @@ async function openCollection(id, name){
 function renderCollectionProducts(prods){
   const grid = document.getElementById('cv-grid');
   if(!prods||!prods.length){grid.innerHTML='<div class="loading">No pieces in this collection yet</div>';return;}
+  ppNavList = prods; // store for prev/next product navigation
   // Assign badges based on position / stock
   grid.innerHTML = prods.map((p,i)=>{
-    const img = p.content_image_url || p.image_url || getPlaceholder();
+    const imgA = p.content_image_url || p.image_url || getPlaceholder();
+    const imgB = (p.image_url && p.content_image_url && p.image_url !== p.content_image_url) ? p.image_url : null;
     const name = trunc(cleanName(p.name),55);
     const outOfStock = !p.stock || p.stock === 0;
     let badge='';
@@ -1381,9 +1430,9 @@ function renderCollectionProducts(prods){
     else if(p.stock<=10) badge=`<div class="pcard-badge badge-limited">❋ Limited · ${p.stock} left</div>`;
     else if(p.is_new) badge=`<div class="pcard-badge badge-new">New</div>`;
     const liked = wishlist.includes(p.id);
-    return `<div class="pcard" onclick="openPP(${p.id})" style="${outOfStock?'opacity:0.6':''}">
+    return `<div class="pcard${outOfStock?' pcard-oos':''}" onclick="openPP(${p.id})">
       <div class="pcard-img">
-        <img src="${img}" alt="${name}" onerror="this.src='${getPlaceholder()}'" loading="lazy"/>
+        <img src="${imgA}" alt="${name}"${imgB?` data-hover="${imgB}"`:''}  onerror="this.src='${getPlaceholder()}'" loading="lazy"/>
         ${badge}
         <button class="pcard-wish ${liked?'liked':''}" id="wish-${p.id}" onclick="event.stopPropagation();toggleWish(${p.id})">${liked?'♥':'♡'}</button>
       </div>
@@ -1395,6 +1444,19 @@ function renderCollectionProducts(prods){
       </div>
     </div>`;
   }).join('');
+  // Scroll fade-in observer
+  const fadeObs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting){e.target.classList.add('visible');fadeObs.unobserve(e.target);} });
+  },{threshold:0.06});
+  grid.querySelectorAll('.pcard').forEach(el=>fadeObs.observe(el));
+  // Hover image swap for cards with a second image
+  grid.querySelectorAll('.pcard-img img[data-hover]').forEach(img=>{
+    const hoverSrc=img.getAttribute('data-hover');
+    const origSrc=img.src;
+    new Image().src=hoverSrc; // preload
+    img.addEventListener('mouseenter',()=>{img.style.opacity='0';setTimeout(()=>{img.src=hoverSrc;img.style.opacity='1';},120);});
+    img.addEventListener('mouseleave',()=>{img.style.opacity='0';setTimeout(()=>{img.src=origSrc;img.style.opacity='1';},120);});
+  });
 }
 
 // ── PRODUCTS ──
@@ -1607,6 +1669,13 @@ async function openPP(id){
     }catch{ppOpening=false;closePP();return;}
   }
   if(!p){ppOpening=false;return;}
+
+  // ── Product nav (prev/next within collection) ──
+  ppNavIdx = ppNavList.findIndex(x=>x.id===id);
+  const catPrev = document.getElementById('pp-cat-prev');
+  const catNext = document.getElementById('pp-cat-next');
+  if(catPrev) catPrev.style.display = (ppNavIdx > 0) ? 'inline-flex' : 'none';
+  if(catNext) catNext.style.display = (ppNavIdx >= 0 && ppNavIdx < ppNavList.length-1) ? 'inline-flex' : 'none';
 
   // ── Images ──
   try{ppImages=p.images?JSON.parse(p.images):[];}catch{ppImages=[];}
@@ -1899,6 +1968,8 @@ function ppSetImg(i){ppIdx=i;updatePPGallery();}
 function ppPrev(){ppIdx=(ppIdx-1+ppImages.length)%ppImages.length;updatePPGallery();}
 function ppNext(){ppIdx=(ppIdx+1)%ppImages.length;updatePPGallery();}
 function closePP(){document.getElementById('pp-overlay').classList.remove('open');document.body.style.overflow='';ppOpening=false;}
+function ppNavPrev(){if(ppNavIdx>0){ppOpening=false;openPP(ppNavList[ppNavIdx-1].id);}}
+function ppNavNext(){if(ppNavIdx>=0&&ppNavIdx<ppNavList.length-1){ppOpening=false;openPP(ppNavList[ppNavIdx+1].id);}}
 function selectChip(btn,type){
   btn.closest('.pp-chips').querySelectorAll('.pp-chip').forEach(b=>b.classList.remove('active','tanzanite-active'));
   btn.classList.add('active');
