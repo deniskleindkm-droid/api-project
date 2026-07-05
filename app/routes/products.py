@@ -56,10 +56,9 @@ def get_products(
     max_price: Optional[float] = None,
     session: Session = Depends(get_session)
 ):
-    # Storefront: active + published. NULL is_published treated as published (pre-migration rows)
     query = select(Product).where(
         Product.is_active == True,
-        (Product.is_published == True) | (Product.is_published == None)
+        Product.is_published == True,
     )
 
     if brand:

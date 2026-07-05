@@ -19,7 +19,7 @@ def _published_active(session: Session):
     return session.exec(
         select(Product).where(
             Product.is_active == True,
-            or_(Product.is_published == True, Product.is_published.is_(None)),
+            Product.is_published == True,
             Product.image_url.is_not(None),
         )
     ).all()
