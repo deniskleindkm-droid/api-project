@@ -2165,24 +2165,54 @@ async function addToCart(productId, name, size=null, color=null){
 
 async function loadCart(){
   if(!token){
-    const cart=getGuestCart();
-    cartItems=cart.map(i=>({cart_item_id:i.product_id,product_id:i.product_id,name:i.name,brand:'Mikisi',price:i.price,quantity:i.quantity,subtotal:i.subtotal,image_url:i.image_url,content_image_url:i.image_url,selected_size:i.selected_size,selected_color:i.selected_color}));
-    renderCart({items:cartItems,total:cart.reduce((s,i)=>s+i.subtotal,0)});
+    let cart=getGuestCart();
+    if(cart.length){
+      try{
+        const ids=cart.map(i=>i.product_id).join(',');
+        const vRes=await fetch(`${API}/cart/validate?ids=${ids}`);
+        if(vRes.ok){
+          const validity=await vRes.json();
+          const before=cart.length;
+          cart=cart.filter(i=>{
+            const v=validity[i.product_id];
+            return v&&v.available;
+          });
+          if(cart.length<before){
+            setGuestCart(cart);
+            showToast(`${before-cart.length} item${before-cart.length>1?'s':''} removed — no longer available`);
+          }
+          // Mark out-of-stock items
+          cart=cart.map(i=>({...i,out_of_stock:validity[i.product_id]?.out_of_stock||false}));
+        }
+      }catch{}
+    }
+    cartItems=cart.map(i=>({cart_item_id:i.product_id,product_id:i.product_id,name:i.name,brand:'Mikisi',price:i.price,quantity:i.quantity,subtotal:i.subtotal,image_url:i.image_url,content_image_url:i.image_url,selected_size:i.selected_size,selected_color:i.selected_color,out_of_stock:i.out_of_stock||false}));
+    renderCart({items:cartItems,total:cart.filter(i=>!i.out_of_stock).reduce((s,i)=>s+i.subtotal,0)});
     return;
   }
-  try{const res=await fetch(`${API}/cart`,{headers:{'Authorization':`Bearer ${token}`}});if(res.ok){const d=await res.json();cartItems=d.items||[];renderCart(d);}}catch{}
+  try{
+    const res=await fetch(`${API}/cart`,{headers:{'Authorization':`Bearer ${token}`}});
+    if(res.ok){
+      const d=await res.json();
+      cartItems=d.items||[];
+      renderCart(d);
+      if(d.removed_count>0) showToast(`${d.removed_count} item${d.removed_count>1?'s':''} removed — no longer available`);
+    }
+  }catch{}
 }
 
 function renderCart(data){
   const items=data.items||[];
-  document.getElementById('cart-count').textContent=items.reduce((s,i)=>s+i.quantity,0);
+  const availableItems=items.filter(i=>!i.out_of_stock);
+  document.getElementById('cart-count').textContent=availableItems.reduce((s,i)=>s+i.quantity,0);
   document.getElementById('cart-total').textContent=(data.total||0).toFixed(2);
   const body=document.getElementById('cart-body');
   if(!items.length){body.innerHTML='<div class="empty-cart"><div class="empty-icon">◇</div><p>Your cart is empty</p></div>';return;}
   body.innerHTML=items.map(item=>{
     const variant=[item.selected_color,item.selected_size].filter(Boolean).join(' · ');
+    const oos=item.out_of_stock;
     return `
-    <div class="cart-item">
+    <div class="cart-item"${oos?' style="opacity:0.55"':''}>
       <div class="ci-img" onclick="openPP(${item.product_id})" style="cursor:pointer" title="View product">
         <img src="${item.content_image_url||item.image_url||getPlaceholder()}" onerror="this.src='${getPlaceholder()}'"/>
       </div>
@@ -2190,11 +2220,12 @@ function renderCart(data){
         <div class="ci-brand" onclick="openPP(${item.product_id})" style="cursor:pointer">Mikisi</div>
         <div class="ci-name" onclick="openPP(${item.product_id})" style="cursor:pointer">${trunc(cleanName(item.name),38)}</div>
         ${variant?`<div style="font-size:9px;color:var(--gold);letter-spacing:1px;margin-bottom:2px">${variant}</div>`:''}
-        <div class="ci-price">$${item.subtotal.toFixed(2)}</div>
+        ${oos?`<div style="font-size:9px;color:#ef4444;letter-spacing:1px;margin-bottom:2px">OUT OF STOCK</div>`:''}
+        <div class="ci-price"${oos?' style="text-decoration:line-through;color:var(--light)"':''}>$${item.subtotal.toFixed(2)}</div>
         <div class="qty-row">
           <button class="qty-btn" onclick="removeFromCart(${item.cart_item_id})">−</button>
           <span class="qty-n">${item.quantity}</span>
-          <button class="qty-btn" onclick="addToCart(${item.product_id},'',${item.selected_size?`'${item.selected_size}'`:'null'},${item.selected_color?`'${item.selected_color}'`:'null'})">+</button>
+          ${oos?'':'<button class="qty-btn" onclick="addToCart('+item.product_id+',\'\','+( item.selected_size?`'${item.selected_size}'`:'null')+','+( item.selected_color?`'${item.selected_color}'`:'null')+')">+</button>'}
         </div>
       </div>
     </div>`;

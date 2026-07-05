@@ -98,8 +98,10 @@ def create_guest_checkout_session(
     items_meta = []
     for item in request.items:
         product = session.get(Product, item.product_id)
-        if not product or not product.is_active:
-            raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
+        if not product or not product.is_active or not product.is_published:
+            raise HTTPException(status_code=404, detail=f"Product {item.product_id} is no longer available")
+        if product.stock == 0:
+            raise HTTPException(status_code=400, detail=f"'{product.name[:40]}' is out of stock")
         line_items.append({
             "price_data": {
                 "currency": "usd",
