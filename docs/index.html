@@ -429,13 +429,16 @@ nav{
 .empty-icon{font-size:40px;opacity:0.25;margin-bottom:14px;}
 .empty-cart p{font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;color:var(--mid);}
 
-/* ── PRODUCT FULLSCREEN OVERLAY ── */
+/* ── PRODUCT INLINE VIEW (full-height, opens in grid flow) ── */
 .pp-inline{
-  position:fixed;inset:0;z-index:200;
-  background:white;overflow:hidden;
-  animation:ppFadeIn 0.22s ease forwards;
+  grid-column:1/-1;
+  background:white;
+  border-top:2px solid var(--charcoal);
+  border-bottom:1px solid var(--border);
+  scroll-margin-top:68px;
+  animation:ppSlideIn 0.32s cubic-bezier(0.4,0,0.2,1) forwards;
 }
-@keyframes ppFadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes ppSlideIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 .pp-inline-inner{display:grid;grid-template-columns:55% 45%;height:100vh;}
 .pp-inline-gallery{
   height:100vh;
@@ -751,11 +754,10 @@ footer{background:var(--black);padding:52px 48px 36px;}
   .pcard-badge{font-size:7px;padding:2px 6px;top:6px;left:6px;}
   .pcard-wish{width:24px;height:24px;font-size:11px;top:5px;right:5px;}
 
-  /* Product overlay — single column, gallery on top, info scrolls below */
-  .pp-inline-inner{grid-template-columns:1fr;height:auto;overflow-y:auto;}
-  .pp-inline{overflow-y:auto;}
-  .pp-inline-gallery{height:56vw;min-height:240px;max-height:380px;}
-  .pp-inline .pp-info{height:auto;padding:0 20px 40px;overflow-y:visible;}
+  /* Product inline view — single column on mobile */
+  .pp-inline-inner{grid-template-columns:1fr;height:auto;min-height:100vh;}
+  .pp-inline-gallery{height:56vw;min-height:220px;max-height:360px;}
+  .pp-inline .pp-info{height:auto;overflow-y:visible;padding:0 20px 40px;}
   .pp-inline-topbar{padding:18px 0 12px;}
   .pp-name{font-size:22px;}
   .pp-price{font-size:24px;}
@@ -1681,7 +1683,22 @@ function getMaterialLabel(p){
   return null;
 }
 
-let savedScrollY=0;
+function positionPPInline(productId){
+  const grid=document.getElementById('cv-grid');
+  const ppEl=document.getElementById('pp-inline');
+  if(!grid||!ppEl) return;
+  const card=grid.querySelector(`.pcard[data-id="${productId}"]`);
+  if(!card){grid.appendChild(ppEl);return;}
+  const cards=[...grid.querySelectorAll('.pcard')];
+  const clickedTop=card.offsetTop;
+  let lastInRow=cards.indexOf(card);
+  for(let i=lastInRow+1;i<cards.length;i++){
+    if(Math.abs(cards[i].offsetTop-clickedTop)<5) lastInRow=i;
+    else break;
+  }
+  const anchor=cards[lastInRow];
+  if(anchor.nextSibling!==ppEl) grid.insertBefore(ppEl,anchor.nextSibling);
+}
 
 async function openPP(id){
   if(ppOpening)return;  // already opening — ignore extra clicks
@@ -1691,10 +1708,10 @@ async function openPP(id){
   if(!p){
     // Not cached yet — show panel outline immediately so user knows click registered
     document.getElementById('pp-name').textContent='Loading…';
-    savedScrollY=window.scrollY;
-    document.body.style.overflow='hidden';
+    positionPPInline(id);
     const ppInlineLoadEl=document.getElementById('pp-inline');
     ppInlineLoadEl.style.display='block';
+    ppInlineLoadEl.scrollIntoView({behavior:'smooth',block:'start'});
     try{
       const res = await fetch(`${API}/products/${id}`);
       if(!res.ok){ppOpening=false;closePP();return;}
@@ -1708,8 +1725,8 @@ async function openPP(id){
   ppNavIdx=ppNavList.findIndex(x=>x.id===id);
   const catPrev=document.getElementById('pp-cat-prev');
   const catNext=document.getElementById('pp-cat-next');
-  if(catPrev) catPrev.style.display=(ppNavIdx>0)?'inline-flex':'none';
-  if(catNext) catNext.style.display=(ppNavIdx>=0&&ppNavIdx<ppNavList.length-1)?'inline-flex':'none';
+  if(catPrev) catPrev.style.display='none';
+  if(catNext) catNext.style.display='none';
 
   // ── Images ──
   try{ppImages=p.images?JSON.parse(p.images):[];}catch{ppImages=[];}
@@ -1982,13 +1999,13 @@ async function openPP(id){
   if(initChip)applyVariantUI(initChip.textContent.trim());
 
   updatePPGallery();
-  savedScrollY=window.scrollY;
-  document.body.style.overflow='hidden';
+  positionPPInline(id);
   const ppInlineEl=document.getElementById('pp-inline');
   ppInlineEl.style.display='block';
   ppInlineEl.style.animation='none';
   void ppInlineEl.offsetHeight;
   ppInlineEl.style.animation='';
+  ppInlineEl.scrollIntoView({behavior:'smooth',block:'start'});
   ppOpening=false;
   if(!atcBtn.disabled){atcBtn.style.pointerEvents='none';setTimeout(()=>{atcBtn.style.pointerEvents='';},220);}
 }
@@ -2015,8 +2032,6 @@ function ppNext(){ppIdx=(ppIdx+1)%ppImages.length;updatePPGallery();}
 function closePP(){
   const ppInlineEl=document.getElementById('pp-inline');
   if(ppInlineEl) ppInlineEl.style.display='none';
-  document.body.style.overflow='';
-  window.scrollTo({top:savedScrollY,behavior:'instant'});
   ppOpening=false;
 }
 function ppNavPrev(){if(ppNavIdx>0){ppOpening=false;openPP(ppNavList[ppNavIdx-1].id);}}
