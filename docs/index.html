@@ -757,7 +757,8 @@ footer{background:var(--black);padding:52px 48px 36px;}
 
   /* Product inline view — single column on mobile */
   .pp-inline-inner{grid-template-columns:1fr;height:auto;min-height:100vh;}
-  .pp-inline-gallery{height:56vw;min-height:220px;max-height:360px;}
+  .pp-inline-gallery{height:auto;aspect-ratio:1;min-height:unset;max-height:unset;}
+  .pp-gallery img{object-fit:contain;}
   .pp-inline .pp-info{height:auto;overflow-y:visible;padding:0 20px 40px;}
   .pp-inline-topbar{padding:18px 0 12px;}
   .pp-name{font-size:22px;}
