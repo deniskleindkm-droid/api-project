@@ -1711,7 +1711,6 @@ async function openPP(id){
     positionPPInline(id);
     const ppInlineLoadEl=document.getElementById('pp-inline');
     ppInlineLoadEl.style.display='block';
-    ppInlineLoadEl.scrollIntoView({behavior:'smooth',block:'start'});
     try{
       const res = await fetch(`${API}/products/${id}`);
       if(!res.ok){ppOpening=false;closePP();return;}
@@ -2005,7 +2004,13 @@ async function openPP(id){
   ppInlineEl.style.animation='none';
   void ppInlineEl.offsetHeight;
   ppInlineEl.style.animation='';
-  ppInlineEl.scrollIntoView({behavior:'smooth',block:'start'});
+  // Desktop: scroll panel to top of viewport. Mobile: scroll only enough to reveal panel top.
+  if(window.innerWidth>768){
+    ppInlineEl.scrollIntoView({behavior:'smooth',block:'start'});
+  }else{
+    const top=ppInlineEl.getBoundingClientRect().top+window.scrollY-12;
+    window.scrollTo({top,behavior:'smooth'});
+  }
   ppOpening=false;
   if(!atcBtn.disabled){atcBtn.style.pointerEvents='none';setTimeout(()=>{atcBtn.style.pointerEvents='';},220);}
 }
