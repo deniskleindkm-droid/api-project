@@ -2112,9 +2112,10 @@ function toggleWish(id){
   if(btn){btn.textContent=wishlist.includes(id)?'♥':'♡';btn.classList.toggle('liked',wishlist.includes(id));}
 }
 
-// ── GUEST CART (localStorage) ──
-function getGuestCart(){try{return JSON.parse(localStorage.getItem('mikisi_guest_cart')||'[]');}catch{return [];}}
-function setGuestCart(items){localStorage.setItem('mikisi_guest_cart',JSON.stringify(items));}
+// ── GUEST CART (sessionStorage — clears when browser/tab closes) ──
+localStorage.removeItem('mikisi_guest_cart'); // purge any stale persistent cart from old sessions
+function getGuestCart(){try{return JSON.parse(sessionStorage.getItem('mikisi_guest_cart')||'[]');}catch{return [];}}
+function setGuestCart(items){sessionStorage.setItem('mikisi_guest_cart',JSON.stringify(items));}
 
 // ── CART ──
 async function addToCart(productId, name, size=null, color=null){
@@ -2258,7 +2259,7 @@ async function placeOrder(){
     try{
       const res=await fetch(`${API}/payments/guest-checkout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:gCart.map(i=>({product_id:i.product_id,quantity:i.quantity})),email,first_name:fname,last_name:lname,shipping_address:address,shipping_method:shippingMethod})});
       const data=await res.json();
-      if(res.ok){localStorage.removeItem('mikisi_guest_cart');window.location.href=data.checkout_url;}
+      if(res.ok){sessionStorage.removeItem('mikisi_guest_cart');window.location.href=data.checkout_url;}
       else{showCoMsg(data.detail||'Something went wrong','error');btn.textContent='Pay Securely';btn.disabled=false;}
     }catch{showCoMsg('Connection error','error');btn.textContent='Pay Securely';btn.disabled=false;}
     return;
