@@ -1321,12 +1321,19 @@ function findVariantImage(chipLabel){
 function chipToFinishLabel(chipLabel){
   if(!chipLabel) return null;
   const c=chipLabel.toLowerCase().trim();
+  // Plain silver (no plating) — omit the finish line
   if(c==='silver'||c==='sterling silver') return null;
+  // Rose gold plating
   if(/rose\s*gold/.test(c)) return 'rose gold';
+  // Yellow / 18K gold plating
   if(/18k|yellow\s*gold/.test(c)) return '18K gold';
+  // Bare "Gold" chip — always means 18K gold on Silverbene
+  if(c==='gold') return '18K gold';
+  // Rhodium plating (raw DB value "Rhodium" or customer-facing "White Gold")
   if(/rhodium/.test(c)) return 'rhodium';
   if(/white\s*gold/.test(c)) return 'rhodium';
-  if(/gold/.test(c)) return 'gold';
+  // Any other gold-containing label → treat as 18K gold
+  if(/gold/.test(c)) return '18K gold';
   return null;
 }
 function renderMaterials(finishLabel){
@@ -1986,9 +1993,10 @@ async function openPP(id){
     }
   }else document.getElementById('pp-sizes-wrap').style.display='none';
 
-  // ── Material — chips are now built; read initial finish from first active color chip ──
-  {const ic=document.querySelector('#pp-color-chips .pp-chip.active');
-  renderMaterials(chipToFinishLabel(ic?.textContent?.trim()||null));}
+  // ── Material — derive initial finish from product's first stored color value
+  //   (never read from DOM chips — stale chips from a previous product cause wrong finish)
+  {const firstRawColor=colors.length?colors[0]:null;
+  renderMaterials(chipToFinishLabel(firstRawColor));}
 
   // ── Stock status — reflects live Silverbene sync (auto-updates every 6h) ──
   const atcBtn=document.getElementById('pp-atc');
