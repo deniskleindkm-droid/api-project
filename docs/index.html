@@ -1780,6 +1780,14 @@ async function openPP(id){
   if(!ppImages.length)ppImages=[getPlaceholder()];
   ppIdx=0;
 
+  // ── Reset accordion states for the incoming product ──
+  document.querySelectorAll('.pp-inline .pp-accordion').forEach(el=>{
+    // Shipping & Returns stays open; everything else resets to closed
+    const isShipping=el.querySelector('.pp-ship-body')!==null;
+    if(isShipping) el.setAttribute('open','');
+    else el.removeAttribute('open');
+  });
+
   // ── Variant context — store for dynamic updates on chip selection ──
   ppCurrentProduct=p;
   ppBaseDesc=trunc(stripHtml(p.description||''),320);
