@@ -281,8 +281,7 @@ nav{
 /* ── PRODUCT CARD ── */
 .pcard{
   background:white;cursor:pointer;
-  display:flex;flex-direction:column;
-  position:relative;
+  display:flex;flex-direction:column;position:relative;
   opacity:0;transform:translateY(16px);
   transition:opacity 0.5s ease,transform 0.5s ease,background 0.25s;
 }
@@ -430,32 +429,18 @@ nav{
 .empty-icon{font-size:40px;opacity:0.25;margin-bottom:14px;}
 .empty-cart p{font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;color:var(--mid);}
 
-/* ── PRODUCT PANEL (slide-up sheet) ── */
-.pp-overlay{
-  display:none;position:fixed;inset:0;
-  background:rgba(14,14,14,0.55);z-index:350;
-  align-items:flex-end;justify-content:center;
-  backdrop-filter:blur(3px);
+/* ── PRODUCT INLINE VIEW ── */
+.pp-inline{
+  background:white;border-top:2px solid var(--border);
+  animation:ppSlideIn 0.3s cubic-bezier(0.4,0,0.2,1) forwards;
 }
-.pp-overlay.open{display:flex;}
-.pp-sheet{
-  background:white;width:100%;max-width:680px;
-  max-height:92vh;border-radius:20px 20px 0 0;
-  display:flex;flex-direction:column;
-  box-shadow:0 -8px 48px rgba(0,0,0,0.12);
-  animation:slideUp 0.2s cubic-bezier(0.4,0,0.2,1) forwards;
-  overflow:hidden;
+@keyframes ppSlideIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.pp-inline-inner{display:grid;grid-template-columns:55% 45%;min-height:80vh;}
+.pp-inline-gallery{
+  position:sticky;top:0;height:100vh;
+  background:var(--ivory);overflow:hidden;
 }
-@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
-.pp-drag{
-  width:36px;height:4px;background:var(--border);
-  border-radius:2px;margin:12px auto 0;flex-shrink:0;
-}
-.pp-body{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
-.pp-gallery{
-  position:relative;background:var(--ivory);
-  height:320px;flex-shrink:0;overflow:hidden;
-}
+.pp-gallery{position:relative;height:100%;overflow:hidden;}
 .pp-gallery img{width:100%;height:100%;object-fit:cover;transition:opacity 0.15s ease;}
 .pp-gal-arrow{
   position:absolute;top:50%;transform:translateY(-50%);
@@ -473,21 +458,40 @@ nav{
 }
 .pp-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.5);cursor:pointer;transition:background 0.2s;}
 .pp-dot.active{background:white;}
-.pp-thumbs{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;border-bottom:1px solid var(--border);background:white;flex-shrink:0;}
+.pp-thumbs{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;border-top:1px solid var(--border);background:white;}
 .pp-thumbs::-webkit-scrollbar{height:0;}
 .pp-thumb{width:52px;height:52px;flex-shrink:0;cursor:pointer;border:2px solid transparent;overflow:hidden;transition:border-color 0.2s;}
 .pp-thumb img{width:100%;height:100%;object-fit:cover;}
 .pp-thumb.active{border-color:var(--pink);}
-.pp-info{padding:20px 20px 28px;display:flex;flex-direction:column;gap:14px;}
+.pp-inline .pp-info{
+  padding:36px 48px 60px;
+  display:flex;flex-direction:column;gap:14px;
+  overflow-y:auto;
+}
+.pp-inline-topbar{display:flex;align-items:center;justify-content:space-between;}
+.pp-inline-nav{display:flex;align-items:center;gap:6px;}
+.pp-inline-close{
+  background:none;border:1px solid var(--border);
+  color:var(--mid);width:30px;height:30px;font-size:18px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;border-radius:50%;
+}
+.pp-inline-close:hover{background:var(--black);color:white;border-color:var(--black);}
+.pp-cat-nav{
+  background:none;border:1px solid var(--border);
+  color:var(--mid);width:30px;height:30px;font-size:16px;line-height:1;
+  cursor:pointer;display:inline-flex;align-items:center;justify-content:center;
+  transition:all 0.2s;border-radius:50%;
+}
+.pp-cat-nav:hover{background:var(--black);color:white;border-color:var(--black);}
 .pp-brand{font-size:9px;color:var(--gold);letter-spacing:3px;text-transform:uppercase;font-weight:300;}
-.pp-name{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;line-height:1.2;color:var(--black);}
+.pp-name{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400;line-height:1.2;color:var(--black);}
 .pp-pricing{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
-.pp-price{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:400;color:var(--black);}
+.pp-price{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400;color:var(--black);}
 .pp-orig{font-size:14px;color:var(--light);text-decoration:line-through;font-weight:300;}
 .pp-save{font-size:10px;color:var(--pink);letter-spacing:1px;text-transform:uppercase;font-weight:300;}
 .pp-divider{height:1px;background:var(--border);}
 .pp-section-title{font-size:9px;font-weight:300;letter-spacing:2.5px;text-transform:uppercase;color:var(--mid);margin-bottom:8px;}
-
 /* Variant chips */
 .pp-chips{display:flex;gap:6px;flex-wrap:wrap;}
 .pp-chip{
@@ -499,13 +503,12 @@ nav{
 .pp-chip:hover{border-color:var(--gold);color:var(--gold-deep);}
 .pp-chip.active{background:var(--black);color:white;border-color:var(--black);}
 .pp-chip.tanzanite-active{background:var(--tanzanite);color:white;border-color:var(--tanzanite);}
-
 .pp-desc{font-size:13px;font-weight:300;color:var(--mid);line-height:1.9;}
 .pp-material{
-  font-size:12px;font-weight:300;color:var(--charcoal);
   font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;
+  font-weight:300;color:var(--charcoal);
 }
-.pp-meta{display:flex;gap:12px;flex-wrap:wrap;}
+.pp-meta{display:flex;gap:10px;flex-wrap:wrap;padding:6px 0;}
 .pp-meta-item{
   display:flex;align-items:center;gap:6px;
   font-size:10px;font-weight:300;color:var(--mid);letter-spacing:0.5px;
@@ -516,10 +519,6 @@ nav{
   letter-spacing:1px;text-transform:uppercase;
   display:flex;align-items:center;gap:6px;
 }
-.pp-footer{
-  padding:16px 20px 20px;border-top:1px solid var(--border);
-  background:white;flex-shrink:0;
-}
 .pp-atc{
   width:100%;padding:16px;
   background:var(--black);color:white;border:none;
@@ -529,23 +528,36 @@ nav{
   touch-action:manipulation;
 }
 .pp-atc:hover{background:var(--pink);}
-.pp-close{
-  position:absolute;top:14px;right:14px;
-  background:rgba(255,255,255,0.9);border:1px solid var(--border);
-  color:var(--mid);width:32px;height:32px;font-size:17px;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-  z-index:10;transition:all 0.2s;border-radius:50%;
+/* Collapsible detail sections */
+.pp-accordion{border-top:1px solid var(--border);}
+.pp-accordion-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 0;
+  font-size:9px;font-weight:300;letter-spacing:2.5px;
+  text-transform:uppercase;color:var(--charcoal);
+  cursor:pointer;list-style:none;user-select:none;
 }
-.pp-close:hover{background:var(--black);color:white;border-color:var(--black);}
-.pp-cat-nav{
-  position:absolute;top:14px;
-  background:rgba(255,255,255,0.9);border:1px solid var(--border);
-  color:var(--mid);width:30px;height:30px;font-size:17px;line-height:1;
-  cursor:pointer;align-items:center;justify-content:center;
-  z-index:10;transition:all 0.2s;border-radius:50%;
+.pp-accordion-head::-webkit-details-marker{display:none;}
+.pp-accordion-arr{font-size:11px;color:var(--mid);transition:transform 0.2s;display:inline-block;}
+details[open] .pp-accordion-arr{transform:rotate(180deg);}
+.pp-accordion .pp-details{border-top:none;padding-top:0;margin-top:0;padding-bottom:14px;}
+.pp-ship-body{display:flex;flex-direction:column;gap:10px;padding:0 0 14px;}
+.pp-ship-row{display:flex;gap:10px;font-size:11px;font-weight:300;color:var(--charcoal);line-height:1.7;}
+.pp-ship-row span:first-child{flex-shrink:0;color:var(--gold);}
+/* More from this collection */
+.pp-more-wrap{
+  border-top:1px solid var(--border);
+  padding:32px 48px 56px;
+  width:100%;box-sizing:border-box;
 }
-.pp-cat-nav:hover{background:var(--black);color:white;border-color:var(--black);}
-.pp-cat-prev{left:54px;}.pp-cat-next{left:90px;}
+.pp-more-title{
+  font-size:9px;font-weight:300;letter-spacing:3px;
+  text-transform:uppercase;color:var(--mid);margin-bottom:18px;
+}
+.pp-more-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:2px;background:var(--border);
+}
 
 /* ── AUTH MODAL ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(14,14,14,0.6);z-index:300;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px);}
@@ -733,14 +745,14 @@ footer{background:var(--black);padding:52px 48px 36px;}
   .pcard-badge{font-size:7px;padding:2px 6px;top:6px;left:6px;}
   .pcard-wish{width:24px;height:24px;font-size:11px;top:5px;right:5px;}
 
-  /* Product panel — full screen on mobile */
-  .pp-overlay{align-items:flex-end;}
-  .pp-sheet{max-width:100%;max-height:95vh;border-radius:16px 16px 0 0;}
-  .pp-gallery{height:260px;}
-  .pp-info{padding:16px 16px 20px;gap:12px;}
-  .pp-name{font-size:20px;}
-  .pp-price{font-size:22px;}
-  .pp-footer{padding:12px 16px 16px;}
+  /* Product inline view — full-width single column on mobile */
+  .pp-inline-inner{grid-template-columns:1fr;}
+  .pp-inline-gallery{position:static;height:320px;}
+  .pp-inline .pp-info{padding:24px 20px 40px;}
+  .pp-name{font-size:22px;}
+  .pp-price{font-size:24px;}
+  .pp-more-wrap{padding:24px 14px 36px;}
+  .pp-more-grid{grid-template-columns:repeat(2,1fr);}
 
   /* Cart */
   .cart-sidebar{width:100%;right:-100%;}
@@ -881,6 +893,86 @@ footer{background:var(--black);padding:52px 48px 36px;}
   <div class="cv-grid" id="cv-grid">
     <div class="loading">Discovering pieces…</div>
   </div>
+  <!-- Inline product view — expands below the grid on product click -->
+  <div id="pp-inline" class="pp-inline" style="display:none">
+    <div class="pp-inline-inner">
+      <!-- Left: image gallery (sticky on desktop) -->
+      <div class="pp-inline-gallery">
+        <div class="pp-gallery">
+          <img id="pp-img" src="" alt=""/>
+          <button class="pp-gal-arrow left" id="pp-prev" onclick="ppPrev()" style="display:none">‹</button>
+          <button class="pp-gal-arrow right" id="pp-next" onclick="ppNext()" style="display:none">›</button>
+          <div class="pp-dots" id="pp-dots"></div>
+        </div>
+        <div class="pp-thumbs" id="pp-thumbs" style="display:none"></div>
+      </div>
+      <!-- Right: product info -->
+      <div class="pp-info">
+        <div class="pp-inline-topbar">
+          <div class="pp-brand" id="pp-brand">Mikisi</div>
+          <div class="pp-inline-nav">
+            <button class="pp-cat-nav pp-cat-prev" id="pp-cat-prev" onclick="ppNavPrev()" style="display:none" title="Previous">‹</button>
+            <button class="pp-cat-nav pp-cat-next" id="pp-cat-next" onclick="ppNavNext()" style="display:none" title="Next">›</button>
+            <button class="pp-inline-close" onclick="closePP()" title="Close">×</button>
+          </div>
+        </div>
+        <div class="pp-name" id="pp-name"></div>
+        <div class="pp-pricing">
+          <span class="pp-price" id="pp-price"></span>
+          <span class="pp-orig" id="pp-orig"></span>
+          <span class="pp-save" id="pp-save"></span>
+        </div>
+        <div class="pp-divider"></div>
+        <div id="pp-colors-wrap" style="display:none">
+          <div class="pp-section-title">Metal Finish</div>
+          <div class="pp-chips" id="pp-color-chips"></div>
+        </div>
+        <div id="pp-stone-wrap" style="display:none">
+          <div class="pp-section-title">Stone Color</div>
+          <div class="pp-chips" id="pp-stone-chips"></div>
+        </div>
+        <div id="pp-width-wrap" style="display:none">
+          <div class="pp-section-title">Chain Width</div>
+          <div class="pp-chips" id="pp-width-chips"></div>
+        </div>
+        <div id="pp-sizes-wrap" style="display:none">
+          <div class="pp-section-title">Size</div>
+          <div class="pp-chips" id="pp-size-chips"></div>
+        </div>
+        <div class="pp-desc" id="pp-desc"></div>
+        <div id="pp-variant-note" style="display:none;font-size:11px;font-style:italic;color:var(--mid);margin-top:8px;letter-spacing:0.5px;"></div>
+        <div id="pp-stock-wrap" style="display:none">
+          <div class="pp-stock-low" id="pp-stock">❋ <span></span></div>
+        </div>
+        <button class="pp-atc" id="pp-atc">Add to Cart</button>
+        <!-- Collapsible sections -->
+        <details class="pp-accordion" id="pp-acc-details" style="display:none">
+          <summary class="pp-accordion-head">Details <span class="pp-accordion-arr">▾</span></summary>
+          <div class="pp-details" id="pp-details"></div>
+          <div class="pp-meta" id="pp-meta"></div>
+        </details>
+        <details class="pp-accordion" id="pp-acc-materials" style="display:none">
+          <summary class="pp-accordion-head">Materials <span class="pp-accordion-arr">▾</span></summary>
+          <div id="pp-material-wrap">
+            <div class="pp-material" id="pp-material"></div>
+          </div>
+        </details>
+        <details class="pp-accordion" open>
+          <summary class="pp-accordion-head">Shipping &amp; Returns <span class="pp-accordion-arr">▾</span></summary>
+          <div class="pp-ship-body">
+            <div class="pp-ship-row"><span>⇉</span><span><strong>Free shipping</strong> &nbsp;·&nbsp; USPS &nbsp;·&nbsp; 8–10 business days &nbsp;·&nbsp; fully tracked</span></div>
+            <div class="pp-ship-row"><span>↺</span><span><strong>30-day returns</strong> &nbsp;·&nbsp; hassle-free on unworn pieces</span></div>
+            <div class="pp-ship-row"><span>◇</span><span>Customs duty included &nbsp;·&nbsp; no surprise fees at delivery</span></div>
+          </div>
+        </details>
+      </div>
+    </div>
+    <!-- More from this collection -->
+    <div class="pp-more-wrap" id="pp-more-wrap" style="display:none">
+      <div class="pp-more-title">More in this collection</div>
+      <div class="pp-more-grid" id="pp-more-grid"></div>
+    </div>
+  </div>
 </div>
 
 <!-- DIVIDER -->
@@ -925,65 +1017,6 @@ footer{background:var(--black);padding:52px 48px 36px;}
     </div>
     <button class="checkout-btn" onclick="openCheckout()">Proceed to Checkout</button>
     <div class="cart-trust">✦ Secure · SSL · Stripe Protected</div>
-  </div>
-</div>
-
-<!-- PRODUCT PANEL -->
-<div class="pp-overlay" id="pp-overlay">
-  <div class="pp-sheet">
-    <div class="pp-drag"></div>
-    <button class="pp-close" onclick="closePP()">×</button>
-    <button class="pp-cat-nav pp-cat-prev" id="pp-cat-prev" onclick="ppNavPrev()" style="display:none">‹</button>
-    <button class="pp-cat-nav pp-cat-next" id="pp-cat-next" onclick="ppNavNext()" style="display:none">›</button>
-    <div class="pp-body">
-      <div class="pp-gallery">
-        <img id="pp-img" src="" alt=""/>
-        <button class="pp-gal-arrow left" id="pp-prev" onclick="ppPrev()" style="display:none">‹</button>
-        <button class="pp-gal-arrow right" id="pp-next" onclick="ppNext()" style="display:none">›</button>
-        <div class="pp-dots" id="pp-dots"></div>
-      </div>
-      <div class="pp-thumbs" id="pp-thumbs" style="display:none"></div>
-      <div class="pp-info">
-        <div class="pp-brand" id="pp-brand"></div>
-        <div class="pp-name" id="pp-name"></div>
-        <div class="pp-pricing">
-          <span class="pp-price" id="pp-price"></span>
-          <span class="pp-orig" id="pp-orig"></span>
-          <span class="pp-save" id="pp-save"></span>
-        </div>
-        <div class="pp-divider"></div>
-        <div id="pp-colors-wrap" style="display:none">
-          <div class="pp-section-title">Metal Finish</div>
-          <div class="pp-chips" id="pp-color-chips"></div>
-        </div>
-        <div id="pp-stone-wrap" style="display:none">
-          <div class="pp-section-title">Stone Color</div>
-          <div class="pp-chips" id="pp-stone-chips"></div>
-        </div>
-        <div id="pp-width-wrap" style="display:none">
-          <div class="pp-section-title">Chain Width</div>
-          <div class="pp-chips" id="pp-width-chips"></div>
-        </div>
-        <div id="pp-sizes-wrap" style="display:none">
-          <div class="pp-section-title">Size</div>
-          <div class="pp-chips" id="pp-size-chips"></div>
-        </div>
-        <div class="pp-desc" id="pp-desc"></div>
-        <div id="pp-variant-note" style="display:none;font-size:11px;font-style:italic;color:var(--mid);margin-top:8px;letter-spacing:0.5px;"></div>
-        <div id="pp-material-wrap" style="display:none">
-          <div class="pp-section-title">Material</div>
-          <div class="pp-material" id="pp-material"></div>
-        </div>
-        <div class="pp-details" id="pp-details"></div>
-        <div class="pp-meta" id="pp-meta"></div>
-        <div id="pp-stock-wrap" style="display:none">
-          <div class="pp-stock-low" id="pp-stock">❋ <span></span></div>
-        </div>
-      </div>
-    </div>
-    <div class="pp-footer">
-      <button class="pp-atc" id="pp-atc">Add to Cart</button>
-    </div>
   </div>
 </div>
 
@@ -1167,8 +1200,8 @@ let userName = localStorage.getItem('userName');
 let authMode = 'login';
 let allProducts = [];
 let allCollections = [];
-let ppNavList = [];   // products in the currently open collection for prev/next
-let ppNavIdx  = -1;  // index of the open product within ppNavList
+let ppNavList = [];
+let ppNavIdx  = -1;
 let ppImages = [];
 let ppIdx = 0;
 let pendingVerifyEmail = '';
@@ -1206,19 +1239,21 @@ function getVariantMaterial(variantLabel,baseMaterial){
   if(/\bcz\b|zirconia/.test(v))return '925 Sterling Silver with Cubic Zirconia';
   if(/turquoise/.test(v))return '925 Sterling Silver with Turquoise';
   if(/opal/.test(v))return '925 Sterling Silver with Opal';
-  if(/white\s+gold|rhodium|\bwhite\b/.test(v))return 'White Gold Plated 925 Sterling Silver';
+  if(/white\s+gold/.test(v))return 'White Gold Plated 925 Sterling Silver';
   if(/\bblack\b/.test(v))return 'Black Rhodium Plated 925 Sterling Silver';
   if(/yellow\s+gold|\bgold\b/.test(v))return '18K Gold Plated 925 Sterling Silver';
   if(/rose\s+gold|\bpink\b/.test(v))return 'Rose Gold Plated 925 Sterling Silver';
-  if(/\bsilver\b/.test(v))return '925 Sterling Silver';
+  if(/rhodium|\bsilver\b|\bwhite\b/.test(v))return 'Rhodium Plated 925 Sterling Silver';
   return baseMaterial;
 }
 
+// Descriptions are written finish-neutral ("in 925 sterling silver or 18K gold plating")
+// and must never be mutated per-variant — "925 sterling silver" is the base metal, not a
 function adaptDescForVariant(baseDesc, chipLabel){
   if(!baseDesc||!chipLabel) return baseDesc;
   const chip=chipLabel.toLowerCase().trim();
   let newFinishPlated;
-  if(chip.includes('18k')||(chip.includes('gold')&&!chip.includes('rose')&&!chip.includes('white')&&!chip.includes('white gold'))){
+  if(chip.includes('18k')||(chip.includes('gold')&&!chip.includes('rose')&&!chip.includes('white'))){
     newFinishPlated='18K gold-plated';
   }else if(chip.includes('rose')||chip.includes('pink gold')){
     newFinishPlated='rose gold-plated';
@@ -1229,27 +1264,17 @@ function adaptDescForVariant(baseDesc, chipLabel){
   }else{
     return baseDesc;
   }
-  // Protect "925 sterling silver", "sterling silver", "S925 silver" from being swapped
   const SILVER_RE=/\b(?:s?925\s+)?sterling\s+silver\b|\b925\s+silver\b/gi;
-  const PLACEHOLDER='\x00SLV\x00';
-  let desc=baseDesc.replace(SILVER_RE,PLACEHOLDER);
-  // Match any finish-plating phrase
+  const PH='\x00SLV\x00';
+  let desc=baseDesc.replace(SILVER_RE,PH);
   const FINISH_RE=/\b(18k\s+(?:yellow\s+)?gold|yellow\s+gold|rose\s+gold|white\s+gold|rhodium|black\s+rhodium|gold)\s*[-–]?\s*plated\b/gi;
-  if(newFinishPlated===null){
-    desc=desc.replace(FINISH_RE,'silver');
-  }else{
-    desc=desc.replace(FINISH_RE,newFinishPlated);
-  }
-  // Strip filler phrases meaningful only for one finish
+  desc=newFinishPlated===null?desc.replace(FINISH_RE,'silver'):desc.replace(FINISH_RE,newFinishPlated);
   desc=desc
     .replace(/,?\s*or choose the gold[\s-]plated version\.?/gi,'')
     .replace(/,?\s*with optional\s+(?:18k\s+)?gold\s*plating\.?/gi,'')
-    .replace(/,?\s*for added warmth\.?/gi,'');
-  // Fix CamelCase artefacts
-  desc=desc.replace(/YellowGold/g,'Yellow Gold').replace(/RoseGold/g,'Rose Gold').replace(/WhiteGold/g,'White Gold');
-  // Restore silver placeholder
-  desc=desc.replace(/\x00SLV\x00/g,'925 sterling silver');
-  return desc.replace(/\s{2,}/g,' ').trim();
+    .replace(/,?\s*for added warmth\.?/gi,'')
+    .replace(/YellowGold/g,'Yellow Gold').replace(/RoseGold/g,'Rose Gold').replace(/WhiteGold/g,'White Gold');
+  return desc.replace(/\x00SLV\x00/g,'925 sterling silver').replace(/\s{2,}/g,' ').trim();
 }
 
 function findVariantImage(chipLabel){
@@ -1417,8 +1442,8 @@ async function openCollection(id, name){
 function renderCollectionProducts(prods){
   const grid = document.getElementById('cv-grid');
   if(!prods||!prods.length){grid.innerHTML='<div class="loading">No pieces in this collection yet</div>';return;}
-  ppNavList = prods; // store for prev/next product navigation
-  // Assign badges based on position / stock
+  ppNavList = prods;
+  document.getElementById('pp-inline').style.display='none'; // close any open product on collection reload
   grid.innerHTML = prods.map((p,i)=>{
     const imgA = p.content_image_url || p.image_url || getPlaceholder();
     const imgB = (p.image_url && p.content_image_url && p.image_url !== p.content_image_url) ? p.image_url : null;
@@ -1439,21 +1464,21 @@ function renderCollectionProducts(prods){
       <div class="pcard-info">
         <div class="pcard-brand">Mikisi</div>
         <div class="pcard-name">${name}</div>
-        <div class="pcard-price" style="${outOfStock?'color:var(--light)':''}">$${p.final_price.toFixed(2)}</div>
+        <div class="pcard-price"${outOfStock?' style="color:var(--light)"':''}>$${p.final_price.toFixed(2)}</div>
         ${p.original_price>p.final_price?`<div class="pcard-orig">$${p.original_price.toFixed(2)}</div>`:''}
       </div>
     </div>`;
   }).join('');
-  // Scroll fade-in observer
-  const fadeObs = new IntersectionObserver(entries=>{
-    entries.forEach(e=>{ if(e.isIntersecting){e.target.classList.add('visible');fadeObs.unobserve(e.target);} });
+  // Scroll fade-in as cards enter viewport
+  const fadeObs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');fadeObs.unobserve(e.target);}});
   },{threshold:0.06});
   grid.querySelectorAll('.pcard').forEach(el=>fadeObs.observe(el));
   // Hover image swap for cards with a second image
   grid.querySelectorAll('.pcard-img img[data-hover]').forEach(img=>{
     const hoverSrc=img.getAttribute('data-hover');
     const origSrc=img.src;
-    new Image().src=hoverSrc; // preload
+    new Image().src=hoverSrc;
     img.addEventListener('mouseenter',()=>{img.style.opacity='0';setTimeout(()=>{img.src=hoverSrc;img.style.opacity='1';},120);});
     img.addEventListener('mouseleave',()=>{img.style.opacity='0';setTimeout(()=>{img.src=origSrc;img.style.opacity='1';},120);});
   });
@@ -1514,7 +1539,7 @@ const COLOR_LABEL = {
   'rose gold':  'Rose Gold',
   'white gold': 'White Gold',
   'silver':     'Silver',
-  'rhodium':    'White Gold',  // Silverbene calls this finish "White Gold Color" on their product pages
+  'rhodium':    'Silver',      // rhodium plating = silver look to the customer
   'tanzanite':  'Tanzanite',
   'platinum':   'Platinum',
   // Silverbene raw single-word names
@@ -1559,7 +1584,7 @@ function parseCompoundVariant(name){
   else if(/rose\s+gold/i.test(name)) r.metal='Rose Gold';
   else if(/white\s+gold/i.test(name)) r.metal='White Gold';
   else if(/yellow\s+gold/i.test(name)) r.metal='Yellow Gold';
-  else if(/rhodium/i.test(name)) r.metal='White Gold';
+  else if(/rhodium/i.test(name)) r.metal='Rhodium';
   else if(/\bgold\b/i.test(name)) r.metal='Gold';
   else if(/silver/i.test(name)) r.metal='Silver';
   // Width: "3 mm wide" or "2.2mm" — but NOT the mm from a length measurement
@@ -1587,7 +1612,6 @@ function parseSpecs(p){
   let raw;
   try{ raw=JSON.parse(p.specs); }catch{ return rows; }
 
-  if(raw.drop_length) rows.push({k:'Drop',    v:raw.drop_length});
   if(raw.stone)       rows.push({k:'Stone',   v:raw.stone});
   if(raw.accent_stone)rows.push({k:'Accent',  v:raw.accent_stone});
   if(raw.bead_shape)  rows.push({k:'Beads',   v:raw.bead_shape});
@@ -1659,8 +1683,9 @@ async function openPP(id){
   if(!p){
     // Not cached yet — show panel outline immediately so user knows click registered
     document.getElementById('pp-name').textContent='Loading…';
-    document.getElementById('pp-overlay').classList.add('open');
-    document.body.style.overflow='hidden';
+    const ppInlineLoadEl=document.getElementById('pp-inline');
+    ppInlineLoadEl.style.display='block';
+    ppInlineLoadEl.scrollIntoView({behavior:'smooth',block:'start'});
     try{
       const res = await fetch(`${API}/products/${id}`);
       if(!res.ok){ppOpening=false;closePP();return;}
@@ -1671,11 +1696,11 @@ async function openPP(id){
   if(!p){ppOpening=false;return;}
 
   // ── Product nav (prev/next within collection) ──
-  ppNavIdx = ppNavList.findIndex(x=>x.id===id);
-  const catPrev = document.getElementById('pp-cat-prev');
-  const catNext = document.getElementById('pp-cat-next');
-  if(catPrev) catPrev.style.display = (ppNavIdx > 0) ? 'inline-flex' : 'none';
-  if(catNext) catNext.style.display = (ppNavIdx >= 0 && ppNavIdx < ppNavList.length-1) ? 'inline-flex' : 'none';
+  ppNavIdx=ppNavList.findIndex(x=>x.id===id);
+  const catPrev=document.getElementById('pp-cat-prev');
+  const catNext=document.getElementById('pp-cat-next');
+  if(catPrev) catPrev.style.display=(ppNavIdx>0)?'inline-flex':'none';
+  if(catNext) catNext.style.display=(ppNavIdx>=0&&ppNavIdx<ppNavList.length-1)?'inline-flex':'none';
 
   // ── Images ──
   try{ppImages=p.images?JSON.parse(p.images):[];}catch{ppImages=[];}
@@ -1703,15 +1728,17 @@ async function openPP(id){
   const matLabel = getMaterialLabel(p);
   if(matLabel){document.getElementById('pp-material').textContent=matLabel;document.getElementById('pp-material-wrap').style.display='block';}
   else document.getElementById('pp-material-wrap').style.display='none';
+  const accMat=document.getElementById('pp-acc-materials');
+  if(accMat) accMat.style.display=matLabel?'':'none';
 
   // ── Specs / Details ──
   const specRows=parseSpecs(p);
-  // Metal is already shown in the MATERIAL section above — don't duplicate it here
   const detailsEl=document.getElementById('pp-details');
   if(specRows.length){
     detailsEl.innerHTML=specRows.map(s=>`<div class="pp-detail-row"><span class="pp-detail-key">${s.k}</span><span class="pp-detail-val">${s.v}</span></div>`).join('');
-    detailsEl.style.display='block';
-  }else{detailsEl.innerHTML='';detailsEl.style.display='none';}
+  }else{detailsEl.innerHTML='';}
+  const accDet=document.getElementById('pp-acc-details');
+  if(accDet) accDet.style.display=specRows.length?'':'none';
 
   // ── Stock ──
   if(p.stock&&p.stock<=15){
@@ -1942,8 +1969,13 @@ async function openPP(id){
   if(initChip)applyVariantUI(initChip.textContent.trim());
 
   updatePPGallery();
-  document.getElementById('pp-overlay').classList.add('open');
-  document.body.style.overflow='hidden';
+  const ppInlineEl=document.getElementById('pp-inline');
+  ppInlineEl.style.display='block';
+  ppInlineEl.style.animation='none';
+  void ppInlineEl.offsetHeight;
+  ppInlineEl.style.animation='';
+  ppInlineEl.scrollIntoView({behavior:'smooth',block:'start'});
+  renderMoreCollection(id);
   ppOpening=false;
   if(!atcBtn.disabled){atcBtn.style.pointerEvents='none';setTimeout(()=>{atcBtn.style.pointerEvents='';},220);}
 }
@@ -1967,9 +1999,35 @@ function updatePPGallery(){
 function ppSetImg(i){ppIdx=i;updatePPGallery();}
 function ppPrev(){ppIdx=(ppIdx-1+ppImages.length)%ppImages.length;updatePPGallery();}
 function ppNext(){ppIdx=(ppIdx+1)%ppImages.length;updatePPGallery();}
-function closePP(){document.getElementById('pp-overlay').classList.remove('open');document.body.style.overflow='';ppOpening=false;}
+function closePP(){
+  const ppInlineEl=document.getElementById('pp-inline');
+  if(ppInlineEl) ppInlineEl.style.display='none';
+  ppOpening=false;
+}
 function ppNavPrev(){if(ppNavIdx>0){ppOpening=false;openPP(ppNavList[ppNavIdx-1].id);}}
 function ppNavNext(){if(ppNavIdx>=0&&ppNavIdx<ppNavList.length-1){ppOpening=false;openPP(ppNavList[ppNavIdx+1].id);}}
+function renderMoreCollection(currentId){
+  const wrap=document.getElementById('pp-more-wrap');
+  const grid=document.getElementById('pp-more-grid');
+  if(!wrap||!grid) return;
+  const others=ppNavList.filter(p=>p.id!==currentId).slice(0,8);
+  if(!others.length){wrap.style.display='none';return;}
+  wrap.style.display='';
+  grid.innerHTML=others.map(p=>{
+    const img=p.content_image_url||p.image_url||getPlaceholder();
+    const name=trunc(cleanName(p.name),40);
+    const outOfStock=!p.stock||p.stock===0;
+    return `<div class="pcard visible${outOfStock?' pcard-oos':''}" onclick="openPP(${p.id})">
+      <div class="pcard-img">
+        <img src="${img}" alt="${name}" onerror="this.src='${getPlaceholder()}'" loading="lazy"/>
+      </div>
+      <div class="pcard-info">
+        <div class="pcard-name">${name}</div>
+        <div class="pcard-price"${outOfStock?' style="color:var(--light)"':''}>$${p.final_price.toFixed(2)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
 function selectChip(btn,type){
   btn.closest('.pp-chips').querySelectorAll('.pp-chip').forEach(b=>b.classList.remove('active','tanzanite-active'));
   btn.classList.add('active');
