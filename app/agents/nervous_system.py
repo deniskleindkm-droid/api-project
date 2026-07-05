@@ -23,10 +23,10 @@ def emit(signal_type, sender, payload=None, receiver=None, priority=5):
             session.add(signal)
             session.commit()
             session.refresh(signal)
-            print(f"[Nervous System] 📡 Signal emitted: {signal_type} from {sender} (priority {priority})")
+            print(f"[Nervous System] Signal emitted: {signal_type} from {sender} (priority {priority})")
             return signal.id
     except Exception as e:
-        print(f"[Nervous System] ❌ Failed to emit signal: {e}")
+        print(f"[Nervous System] FAILED to emit signal: {e}")
         return None
 
 
@@ -68,7 +68,7 @@ def mark_failed(signal_id, reason=""):
             signal.processed_at = datetime.utcnow()
             session.add(signal)
             session.commit()
-            print(f"[Nervous System] ❌ Signal {signal_id} failed: {reason}")
+            print(f"[Nervous System] FAILED: Signal {signal_id} error: {reason}")
 
 
 def get_signal_payload(signal):
@@ -88,7 +88,7 @@ def process_signals():
     if not signals:
         return
 
-    print(f"[Nervous System] 🔄 Processing {len(signals)} pending signals")
+    print(f"[Nervous System] Processing {len(signals)} pending signals")
 
     for signal in signals:
         try:
@@ -177,7 +177,7 @@ def process_signals():
             mark_processed(signal.id)
 
         except Exception as e:
-            print(f"[Nervous System] ❌ Error processing signal {signal.id}: {e}")
+            print(f"[Nervous System] ERROR processing signal {signal.id}: {e}")
             mark_failed(signal.id, str(e))
 
 
