@@ -71,10 +71,12 @@ def run_silverbene_stock_agent():
 
             if not isinstance(resp, dict) or resp.get("code") != 0:
                 print(f"[Silverbene Stock Agent] API error for {single_id}: {resp.get('message') if isinstance(resp, dict) else resp}")
+                _record_miss(id_map.get(single_id))
                 continue
 
             stock_data = resp.get("data", [])
             if not isinstance(stock_data, list) or not stock_data:
+                _record_miss(id_map.get(single_id))
                 continue
 
             item = stock_data[0] if stock_data else {}
@@ -114,15 +116,23 @@ def run_silverbene_stock_agent():
                 else:
                     old_qty = product.stock
                     was_oos = product.stock == 0
+                    was_missed = product.sync_miss_count > 0
                     product.stock = qty
                     product.is_active = True
+                    product.sync_miss_count = 0   # confirmed present — reset miss counter
                     # Clear the OOS flag — product moves from Out of Stock to Unpublished
-                    # (Dennis reviews and publishes from the Catalog Manager manually)
                     if was_oos and product.stock_auto_unpublished:
                         product.stock_auto_unpublished = False
-                        # is_published stays False — lands in Unpublished folder, not auto-live
                     session.add(product)
                     session.commit()
+
+                    # If this product was previously flagged as missing, hand off to discontinuation agent
+                    if was_missed:
+                        try:
+                            from app.agents.silverbene_discontinuation_agent import handle_recovery
+                            handle_recovery(product.id, {"stock": qty, "final_price": product.final_price})
+                        except Exception as e:
+                            print(f"[Silverbene Stock Agent] Recovery handoff error: {e}")
 
                     if was_oos:
                         reactivated += 1
@@ -144,7 +154,14 @@ def run_silverbene_stock_agent():
         print(f"[Silverbene Stock Agent] Stock: checked={total_checked} updated={updated} "
               f"out_of_stock={deactivated} restocked={reactivated}")
 
-        # ── Step 4: Refresh sizes for ALL categories ──────────────────────────
+        # ── Step 4: Run discontinuation agent on any products with missed syncs ──
+        try:
+            from app.agents.silverbene_discontinuation_agent import run_discontinuation_agent
+            run_discontinuation_agent()
+        except Exception as e:
+            print(f"[Silverbene Stock Agent] Discontinuation agent error: {e}")
+
+        # ── Step 5: Refresh sizes for ALL categories ──────────────────────────
         sizes_updated, sizes_detail = _refresh_product_sizes(sb)
 
         # ── Step 5: Write to AgentMemory ──────────────────────────────────────
@@ -215,6 +232,26 @@ def run_silverbene_stock_agent():
         print(f"[Silverbene Stock Agent] Error: {e}")
         traceback.print_exc()
         return {"error": str(e)}
+
+
+def _record_miss(product_id):
+    """Increment sync_miss_count and unpublish on first miss."""
+    if not product_id:
+        return
+    try:
+        with Session(engine) as session:
+            product = session.get(Product, product_id)
+            if not product:
+                return
+            product.sync_miss_count = (product.sync_miss_count or 0) + 1
+            if product.sync_miss_count == 1 and product.is_published:
+                product.is_published = False
+                product.stock_auto_unpublished = False  # discontinuation, not OOS
+                print(f"[Silverbene Stock Agent] Miss 1 — unpublished: {product.name[:50]}")
+            session.add(product)
+            session.commit()
+    except Exception as e:
+        print(f"[Silverbene Stock Agent] Miss record error: {e}")
 
 
 def _refresh_product_sizes(sb) -> tuple:

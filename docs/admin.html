@@ -153,6 +153,7 @@
         .catalog-pill.published strong { color: #22c55e; }
         .catalog-pill.staged strong { color: #eab308; }
         .catalog-pill.oos strong { color: #ef4444; }
+        .catalog-pill.disc strong { color: #a855f7; }
 
         .catalog-folder { margin-bottom: 16px; }
         .folder-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #0f0f0f; border: 1px solid #1a1a1a; cursor: pointer; user-select: none; }
@@ -1107,7 +1108,8 @@ async function loadCatalog() {
             <div class="catalog-pill total"><strong>${d.summary.total}</strong> Total</div>
             <div class="catalog-pill published"><strong>${d.summary.published}</strong> Published</div>
             <div class="catalog-pill staged"><strong>${d.summary.staged}</strong> Staged</div>
-            <div class="catalog-pill oos"><strong>${d.summary.out_of_stock||0}</strong> Out of Stock</div>`;
+            <div class="catalog-pill oos"><strong>${d.summary.out_of_stock||0}</strong> Out of Stock</div>
+            <div class="catalog-pill disc"><strong>${d.summary.discontinued||0}</strong> Discontinued</div>`;
 
         buildCatalogTabs();
         renderCatalogCollection(activeCatalogCat);
@@ -1119,8 +1121,8 @@ async function loadCatalog() {
 function buildCatalogTabs() {
     const tabs = document.getElementById('catalog-tabs');
     tabs.innerHTML = CATALOG_CATS.map(cat => {
-        const col = catalogData[cat] || { published: [], unpublished: [], out_of_stock: [] };
-        const total = col.published.length + col.unpublished.length + col.out_of_stock.length;
+        const col = catalogData[cat] || { published: [], unpublished: [], out_of_stock: [], discontinued: [] };
+        const total = col.published.length + col.unpublished.length + col.out_of_stock.length + col.discontinued.length;
         return `<button class="cat-tab${cat===activeCatalogCat?' active':''}" onclick="switchCatalogCat('${cat}')">
             ${cat} <span class="cat-count">${total}</span>
         </button>`;
@@ -1135,7 +1137,7 @@ function switchCatalogCat(cat) {
 }
 
 function renderCatalogCollection(cat) {
-    const col = catalogData[cat] || { published: [], unpublished: [], out_of_stock: [] };
+    const col = catalogData[cat] || { published: [], unpublished: [], out_of_stock: [], discontinued: [] };
     const contentEl = document.getElementById('catalog-content');
     catalogSelection.clear();
 
@@ -1193,6 +1195,22 @@ function renderCatalogCollection(cat) {
                     ? `<div class="catalog-grid">${col.out_of_stock.map(p => catalogCard(p, true)).join('')}</div>`
                     : '<div class="folder-empty">No out-of-stock products</div>'}
             </div>
+        </div>
+
+        <!-- DISCONTINUED FOLDER -->
+        <div class="catalog-folder">
+            <div class="folder-header" onclick="toggleFolder('disc-body', this)">
+                <div class="folder-label">Discontinued / Not Found <span style="color:#a855f7;margin-left:8px;">${col.discontinued.length}</span></div>
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <span style="font-size:9px;color:var(--mid);letter-spacing:1px;">AUTO-MANAGED · CHECK EMAIL</span>
+                    <span class="folder-toggle">▶</span>
+                </div>
+            </div>
+            <div class="folder-body" id="disc-body">
+                ${col.discontinued.length
+                    ? `<div class="catalog-grid">${col.discontinued.map(p => catalogCardDiscontinued(p)).join('')}</div>`
+                    : '<div class="folder-empty">No discontinued products</div>'}
+            </div>
         </div>`;
 }
 
@@ -1213,6 +1231,27 @@ function catalogCard(p, isOos=false) {
             <div class="catalog-card-price" style="${isOos?'text-decoration:line-through;color:var(--mid)':''}">$${p.final_price}</div>
             <div class="stock-badge ${stockClass}">${stockLabel}</div>
             ${isOos ? `<div style="font-size:8px;color:#ef4444;letter-spacing:1px;margin-top:2px;">AWAITING RESTOCK</div>` : ''}
+        </div>
+    </div>`;
+}
+
+function catalogCardDiscontinued(p) {
+    const thumb = p.image_url || '';
+    const misses = p.sync_miss_count || 1;
+    const checksLeft = Math.max(0, 3 - misses);
+    return `<div class="catalog-card oos-card" id="ccard-${p.id}" style="opacity:0.55;border:1px solid #a855f730;">
+        <div style="width:14px;height:14px;"></div>
+        ${thumb
+            ? `<img class="catalog-thumb" src="${thumb}" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">
+               <div class="catalog-thumb-ph" style="display:none;">◇</div>`
+            : `<div class="catalog-thumb-ph">◇</div>`}
+        <div class="catalog-card-info">
+            <div class="catalog-card-name">${p.name}</div>
+            <div class="catalog-card-price" style="text-decoration:line-through;color:var(--mid);">$${p.final_price}</div>
+            <div class="stock-badge out">Not Found at Silverbene</div>
+            <div style="font-size:8px;color:#a855f7;letter-spacing:1px;margin-top:2px;">
+                CHECK ${misses}/3${checksLeft > 0 ? ` · DELETES IN ${checksLeft} MORE` : ' · DELETING NEXT RUN'}
+            </div>
         </div>
     </div>`;
 }

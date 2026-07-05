@@ -38,6 +38,7 @@ class Product(SQLModel, table=True):
     # Product flags
     is_published: Optional[bool] = Field(default=True)   # False = staging; True = live on storefront; NULL treated as True
     stock_auto_unpublished: bool = Field(default=False)  # True = system hid this due to OOS; auto-republish on restock
+    sync_miss_count: int = Field(default=0)              # consecutive stock sync misses; 3+ = discontinued at Silverbene
     is_premium: bool = False
     needs_review: bool = False
     needs_length_review: bool = False

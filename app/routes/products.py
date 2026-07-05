@@ -255,25 +255,32 @@ def get_catalog(master_key: str, session: Session = Depends(get_session)):
                 "is_active": p.is_active,
                 "category": p.category,
                 "stock_auto_unpublished": getattr(p, "stock_auto_unpublished", False),
+                "sync_miss_count": getattr(p, "sync_miss_count", 0),
             }
 
+        def is_discontinued(p):
+            return getattr(p, "sync_miss_count", 0) >= 1
+
         catalog[col] = {
-            "published":    [card(p) for p in col_products if p.is_published is not False and p.stock > 0],
-            "unpublished":  [card(p) for p in col_products if p.is_published is False and p.stock > 0],
-            "out_of_stock": [card(p) for p in col_products if p.stock == 0],
+            "published":     [card(p) for p in col_products if p.is_published is not False and p.stock > 0 and not is_discontinued(p)],
+            "unpublished":   [card(p) for p in col_products if p.is_published is False and p.stock > 0 and not is_discontinued(p)],
+            "out_of_stock":  [card(p) for p in col_products if p.stock == 0 and not is_discontinued(p)],
+            "discontinued":  [card(p) for p in col_products if is_discontinued(p)],
         }
 
-    total = len(all_products)
-    published_count   = sum(1 for p in all_products if p.is_published and p.stock > 0)
-    unpublished_count = sum(1 for p in all_products if not p.is_published and p.stock > 0)
-    oos_count         = sum(1 for p in all_products if p.stock == 0)
+    total             = len(all_products)
+    published_count   = sum(1 for p in all_products if p.is_published and p.stock > 0 and not getattr(p, "sync_miss_count", 0))
+    unpublished_count = sum(1 for p in all_products if not p.is_published and p.stock > 0 and not getattr(p, "sync_miss_count", 0))
+    oos_count         = sum(1 for p in all_products if p.stock == 0 and not getattr(p, "sync_miss_count", 0))
+    disc_count        = sum(1 for p in all_products if getattr(p, "sync_miss_count", 0) >= 1)
 
     return {
         "summary": {
-            "total":       total,
-            "published":   published_count,
-            "staged":      unpublished_count,
+            "total":        total,
+            "published":    published_count,
+            "staged":       unpublished_count,
             "out_of_stock": oos_count,
+            "discontinued": disc_count,
         },
         "collections": catalog,
     }
