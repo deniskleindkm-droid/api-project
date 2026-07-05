@@ -1642,38 +1642,54 @@ function parseCompoundVariant(name){
 }
 
 // Build DETAILS rows from p.specs JSON (extracted from raw Silverbene desc at import time).
-// All values are real product data — nothing is shown if the field is missing.
-// US measurement standards: band widths kept in mm, weights in grams, ring face converted to US size.
+// Display labels for all known spec keys, in preferred order.
+const SPEC_LABELS={
+  stone:'Stone',accent_stone:'Accent Stone',stone_qty:'Stone Count',
+  stone_size:'Stone Size',accent_stone_size:'Accent Size',stone_weight:'Stone Weight',
+  bead_shape:'Beads',bead_size:'Bead Size',pearl_size:'Pearl Size',
+  setting:'Setting',craftsmanship:'Craftsmanship',
+  closure:'Closure',earring_backs:'Earring Backs',
+  plating:'Plating',finish:'Finish',
+  earring_size:'Earring Size',hoop_size:'Hoop Size',pendant_size:'Pendant Size',
+  pin_size:'Pin',chain_width:'Chain Width',width:'Band Width',
+  chain_length:'Chain Length',drop_length:'Drop Length',
+  bangle_size:'Bangle Size',bangle_diameter:'Bangle Diameter',
+  ring_top:'Ring Face',ring_diameter:'Ring Diameter',size:'Size',
+  weight:'Weight',purity:'Purity',
+};
+const SPEC_ORDER=Object.keys(SPEC_LABELS);
+
 function parseSpecs(p){
   const rows=[];
   if(!p||!p.specs) return rows;
   let raw;
   try{ raw=JSON.parse(p.specs); }catch{ return rows; }
 
-  if(raw.stone)       rows.push({k:'Stone',   v:raw.stone});
-  if(raw.accent_stone)rows.push({k:'Accent',  v:raw.accent_stone});
-  if(raw.bead_shape)  rows.push({k:'Beads',   v:raw.bead_shape});
-  if(raw.setting)     rows.push({k:'Setting', v:raw.setting});
-  if(raw.closure)     rows.push({k:'Closure', v:raw.closure});
-  if(raw.finish)      rows.push({k:'Finish',  v:raw.finish});
-  if(raw.color)       rows.push({k:'Color',   v:raw.color});
-  if(raw.weight)      rows.push({k:'Weight',  v:raw.weight});
-  if(raw.width)       rows.push({k:'Width',   v:raw.width});
-
-  if(raw.ring_top){
-    const m=raw.ring_top.match(/([\d.]+)\s*mm/i);
-    if(m){
-      const mm=parseFloat(m[1]);
-      const us=Math.round(((Math.PI*mm-36.5)/2.56)*2)/2;
-      const display=(us>=3&&us<=15)?`${raw.ring_top} (approx. US size ${us})`:raw.ring_top;
-      rows.push({k:'Ring Face', v:display});
+  // Iterate in preferred order, then any remaining keys not in order
+  const seen=new Set();
+  for(const key of SPEC_ORDER){
+    if(!raw[key]) continue;
+    seen.add(key);
+    if(key==='ring_top'){
+      // Ring face: add approximate US size if parseable
+      const m=raw[key].match(/([\d.]+)\s*mm/i);
+      if(m){
+        const mm=parseFloat(m[1]);
+        const us=Math.round(((Math.PI*mm-36.5)/2.56)*2)/2;
+        const display=(us>=3&&us<=15)?`${raw[key]} (≈ US ${us})`:raw[key];
+        rows.push({k:SPEC_LABELS[key],v:display});
+      }else rows.push({k:SPEC_LABELS[key],v:raw[key]});
     }else{
-      rows.push({k:'Ring Face', v:raw.ring_top});
+      rows.push({k:SPEC_LABELS[key],v:raw[key]});
     }
   }
-
-  if(raw.purity) rows.push({k:'Purity', v:raw.purity});
-
+  // Any extra keys not in the order map
+  for(const key of Object.keys(raw)){
+    if(!seen.has(key)&&raw[key]){
+      const label=key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      rows.push({k:label,v:raw[key]});
+    }
+  }
   return rows;
 }
 

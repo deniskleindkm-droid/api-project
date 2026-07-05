@@ -522,73 +522,106 @@ class SilverbeneAdapter(SupplierAdapter):
             for c in colors
         ]
 
-    def _extract_specs_from_desc(self, desc: str) -> dict:
+    def _extract_specs_from_desc(self, desc: str) -> dict:  # noqa: C901
         """
-        Parse structured product specs from Silverbene's raw HTML description.
-        Must be called BEFORE description is rewritten by ARIA — raw <li> tags only exist here.
+        Parse all product specs from Silverbene's raw HTML <li> items.
+        Must be called BEFORE description is rewritten — raw tags only exist at import time.
         Returns only fields with real data; never inserts placeholder values.
         """
         specs = {}
-        text = re.sub(r'<[^>]+>', ' ', desc)  # strip HTML tags, work on plain text
+        lis = re.findall(r'<li>(.*?)</li>', desc, re.I | re.S)
 
-        def _get(pattern):
-            m = re.search(pattern, text, re.I)
+        # Skip lines that are internal Silverbene copy, not product specs
+        SKIP_RE = re.compile(
+            r'designed by silverbene|if out of stock|restock in|minimum order|'
+            r'only \d+ pieces in stock|eligible to apply|pendant only|chain not included|'
+            r'customize', re.I
+        )
+
+        # Map Silverbene field label → internal spec key
+        FIELD_MAP = {
+            'total weight': 'weight',
+            'weight': 'weight',
+            'bracelet total weight': 'weight',
+            'anklet total weight': 'weight',
+            'metal electroplating': 'plating',
+            'earring size': 'earring_size',
+            'main stone': 'stone',
+            'accent stone': 'accent_stone',
+            'main stone quantity': 'stone_qty',
+            'stone quantity': 'stone_qty',
+            'main stone size': 'stone_size',
+            'stone size': 'stone_size',
+            'accent stone size': 'accent_stone_size',
+            'accent ston size': 'accent_stone_size',
+            'main stone weight': 'stone_weight',
+            'earring backs': 'earring_backs',
+            'chain length': 'chain_length',
+            'bracelet chain length': 'chain_length',
+            'anklet chain length': 'chain_length',
+            'single layer chain length': 'chain_length',
+            'necklace a chain length': 'chain_length',
+            'pendant size': 'pendant_size',
+            'bead size': 'bead_size',
+            'pearl size': 'pearl_size',
+            'hoop size': 'hoop_size',
+            'pin size': 'pin_size',
+            'pin thickness': 'pin_size',
+            'chain width': 'chain_width',
+            'bangle width': 'width',
+            'band width': 'width',
+            'ring width': 'width',
+            'width': 'width',
+            'bangle size': 'bangle_size',
+            'bangle diameter': 'bangle_diameter',
+            'ring top size': 'ring_top',
+            'ring diameter': 'ring_diameter',
+            'drop length': 'drop_length',
+            'setting type': 'setting',
+            'setting': 'setting',
+            'closure': 'closure',
+            'finish': 'finish',
+            'surface': 'finish',
+            'special craftsmanship': 'craftsmanship',
+            'purity': 'purity',
+            'size': 'size',
+        }
+
+        # Keys that are not useful product details for the customer
+        SKIP_KEYS = {
+            'metal material', 'metal color available', 'item type', 'gender',
+            'occasion', 'style', 'feature', 'brand', 'new', 'color',
+        }
+
+        for li in lis:
+            text = re.sub(r'<[^>]+>', '', li).strip()
+            if not text or ':' not in text:
+                continue
+            if SKIP_RE.search(text):
+                continue
+            key_raw, _, val = text.partition(':')
+            key = key_raw.strip().lower()
+            val = val.strip().rstrip('.,')
+            if not val or len(val) > 120:
+                continue
+            if key in SKIP_KEYS:
+                continue
+
+            spec_key = FIELD_MAP.get(key)
+            if not spec_key:
+                continue  # only store known, mapped fields
+
+            val = _apply_spec_conversion(spec_key, val)
+            if spec_key not in specs:   # first value wins
+                specs[spec_key] = val
+
+        # Legacy: also catch drop_length expressed as "Xg" pattern outside <li>
+        if 'drop_length' not in specs:
+            m = re.search(r'[Dd]rop\s+[Ll]ength\s*[:\-]\s*([\d.]+\s*cm)', desc)
             if m:
-                val = m.group(1).strip().rstrip('.,')
-                return val if val and len(val) < 80 else None
-            return None
-
-        # Drop length — for Y/lariat necklaces (e.g. "Drop Length: 9cm")
-        dl = _get(r'[Dd]rop\s+[Ll]ength\s*[:\-]\s*([\d.]+\s*cm)')
-        if dl:
-            m_dl = re.search(r'([\d.]+)', dl)
-            if m_dl:
-                cm = float(m_dl.group(1))
-                specs['drop_length'] = f'{round(cm / 2.54, 1)}"'
-
-        # Weight — keep in grams (industry standard even for US jewelry)
-        w = _get(r'(?:total\s+)?weight\s*[:\-]\s*([\d.]+\s*g)\b')
-        if w: specs['weight'] = w
-
-        # Main stone — e.g. "Tiger Eye Stone", "Cubic Zirconia", "Natural Pearl"
-        s = _get(r'(?:main\s+)?stone\s+(?:type|name|material)?\s*[:\-]\s*([^\n,<]{2,50})')
-        if s: specs['stone'] = s
-
-        # Accent stone — e.g. "Pearl"
-        a = _get(r'accent\s+stone\s*[:\-]\s*([^\n,<]{2,50})')
-        if a: specs['accent_stone'] = a
-
-        # Setting — e.g. "Prong", "Bezel", "Pavé"
-        st = _get(r'setting\s+(?:type|style)?\s*[:\-]\s*([^\n,<]{2,40})')
-        if st: specs['setting'] = st
-
-        # Closure — e.g. "Lobster Clasp With Extension Chain"
-        cl = _get(r'closure\s*[:\-]\s*([^\n<]{2,60})')
-        if cl: specs['closure'] = cl
-
-        # Finish — e.g. "Polished Glossy Surface"
-        fi = _get(r'finish\s*[:\-]\s*([^\n,<]{2,50})')
-        if fi: specs['finish'] = fi
-
-        # Color / color combination — e.g. "Brown, White, Gold Tone"
-        co = _get(r'color\s+(?:combination|description)?\s*[:\-]\s*([^\n<]{2,60})')
-        if co: specs['color'] = co
-
-        # Bead shape / description — e.g. "Round Tiger Eye Beads With Pearl Accents"
-        bs = _get(r'bead\s+(?:shape|type|description)?\s*[:\-]\s*([^\n<]{2,80})')
-        if bs: specs['bead_shape'] = bs
-
-        # Band / ring width
-        bw = _get(r'(?:ring|band|chain|item)?\s*width\s*[:\-]\s*([\d.]+\s*mm)')
-        if bw: specs['width'] = bw
-
-        # Ring face / top size: "Ring Top Size: 8mm*8mm"
-        rt = _get(r'ring\s+top\s+(?:size|dimension)\s*[:\-]\s*([^\n<]{2,30})')
-        if rt: specs['ring_top'] = rt
-
-        # Purity
-        pu = _get(r'purity\s*[:\-]\s*([^\n<]{2,20})')
-        if pu: specs['purity'] = pu
+                cm_m = re.search(r'([\d.]+)', m.group(1))
+                if cm_m:
+                    specs['drop_length'] = f'{round(float(cm_m.group(1)) / 2.54, 1)}"'
 
         return specs
 
@@ -721,6 +754,33 @@ def _parse_chain_length_from_desc(desc: str) -> list:
     if m:
         return parse_necklace_length(m.group(1))
     return []
+
+
+def _apply_spec_conversion(spec_key: str, val: str) -> str:
+    """
+    Apply US jewelry unit conventions to a raw spec value.
+    Chain/drop lengths → inches.  Sizes/weights → keep native units, clean whitespace.
+    """
+    # Chain-type lengths: convert mm or cm → inches using standard snap
+    if spec_key in ('chain_length', 'drop_length', 'bangle_diameter'):
+        chips = parse_necklace_length(val)
+        if chips:
+            return chips[0]
+        # Fallback: direct cm→in or mm→in
+        m = re.search(r'([\d.]+)\s*cm', val, re.I)
+        if m:
+            return f'{round(float(m.group(1)) / 2.54, 1)}"'
+        m = re.search(r'([\d.]+)\s*mm', val, re.I)
+        if m:
+            return f'{round(float(m.group(1)) / 25.4, 1)}"'
+        return val
+
+    # Weight: clean spacing ("3 g" → "3g")
+    if spec_key == 'weight':
+        return re.sub(r'\s*(g)\b', r'\1', val, flags=re.I)
+
+    # Sizes, widths, stone dimensions — keep mm but normalise spacing
+    return re.sub(r'\s+', ' ', val).strip()
 
 
 def collection_name_log(name: str) -> str:
