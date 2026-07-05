@@ -477,6 +477,14 @@ class SilverbeneAdapter(SupplierAdapter):
                             sizes.append(chip)
                 elif name in SIZE_ATTRIBUTE_NAMES:
                     value = " ".join(value.split())
+                    # Normalise any adjustable/open-ring variant to a single consistent label
+                    _vl = value.lower()
+                    if _vl in ('adjustable', 'one size', 'one size / adjustable',
+                                'one size/adjustable', 'free size', 'all size',
+                                'open ring', 'open size') or \
+                       _vl.startswith('adjustable (') or \
+                       re.match(r'^\d+\s*\(adjustable\)$', _vl):
+                        value = 'Open Size / Adjustable'
                     if value not in seen_sizes:
                         seen_sizes.add(value)
                         sizes.append(value)

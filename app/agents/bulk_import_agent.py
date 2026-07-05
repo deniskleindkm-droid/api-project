@@ -10,20 +10,20 @@ from app.agents.store_config import get_config
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-# Categories where a ring with no size variants should show "One Size / Adjustable"
+# Categories where a ring with no size variants should show "Open Size / Adjustable"
 _RING_LIKE_CATEGORIES = {"Rings", "Bracelets", "Anklets"}
 
 
 def _resolve_sizes(sizes_json: str, category: str) -> str:
     """
     Return sizes as-is if present.
-    For ring-like categories with no size data, default to One Size / Adjustable
+    For ring-like categories with no size data, default to Open Size / Adjustable
     so customers always see a size indicator on the product page.
     """
     if sizes_json:
         return sizes_json
     if category in _RING_LIKE_CATEGORIES:
-        return json.dumps(["One Size / Adjustable"])
+        return json.dumps(["Open Size / Adjustable"])
     return None
 
 
