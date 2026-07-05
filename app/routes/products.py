@@ -163,11 +163,12 @@ def publish_products(data: PublishRequest, session: Session = Depends(get_sessio
         raise HTTPException(status_code=400, detail="Provide product_ids or category")
 
     products = session.exec(query).all()
-    for p in products:
+    eligible = [p for p in products if p.stock > 0]  # never publish OOS products
+    for p in eligible:
         p.is_published = True
         session.add(p)
     session.commit()
-    return {"published": len(products), "ids": [p.id for p in products]}
+    return {"published": len(eligible), "ids": [p.id for p in eligible]}
 
 
 @router.post("/admin/products/restore")
@@ -241,6 +242,7 @@ def get_catalog(master_key: str, session: Session = Depends(get_session)):
     catalog = {}
     for col in collections:
         col_products = [p for p in all_products if p.category == col]
+
         def card(p):
             return {
                 "id": p.id,
@@ -252,23 +254,26 @@ def get_catalog(master_key: str, session: Session = Depends(get_session)):
                 "is_published": p.is_published,
                 "is_active": p.is_active,
                 "category": p.category,
+                "stock_auto_unpublished": getattr(p, "stock_auto_unpublished", False),
             }
 
-        # NULL is_published means the migration hasn't populated it yet — treat as published
         catalog[col] = {
-            "published":   [card(p) for p in col_products if p.is_published is not False],
-            "unpublished": [card(p) for p in col_products if p.is_published is False],
+            "published":    [card(p) for p in col_products if p.is_published is not False and p.stock > 0],
+            "unpublished":  [card(p) for p in col_products if p.is_published is False and p.stock > 0],
+            "out_of_stock": [card(p) for p in col_products if p.stock == 0],
         }
 
-    # Summary counts for the top-level dashboard
     total = len(all_products)
-    published_count = sum(1 for p in all_products if p.is_published)
+    published_count   = sum(1 for p in all_products if p.is_published and p.stock > 0)
+    unpublished_count = sum(1 for p in all_products if not p.is_published and p.stock > 0)
+    oos_count         = sum(1 for p in all_products if p.stock == 0)
 
     return {
         "summary": {
-            "total": total,
-            "published": published_count,
-            "staged": total - published_count,
+            "total":       total,
+            "published":   published_count,
+            "staged":      unpublished_count,
+            "out_of_stock": oos_count,
         },
         "collections": catalog,
     }

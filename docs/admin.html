@@ -152,6 +152,7 @@
         .catalog-pill.total strong { color: #888; }
         .catalog-pill.published strong { color: #22c55e; }
         .catalog-pill.staged strong { color: #eab308; }
+        .catalog-pill.oos strong { color: #ef4444; }
 
         .catalog-folder { margin-bottom: 16px; }
         .folder-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #0f0f0f; border: 1px solid #1a1a1a; cursor: pointer; user-select: none; }
@@ -1105,7 +1106,8 @@ async function loadCatalog() {
         pills.innerHTML = `
             <div class="catalog-pill total"><strong>${d.summary.total}</strong> Total</div>
             <div class="catalog-pill published"><strong>${d.summary.published}</strong> Published</div>
-            <div class="catalog-pill staged"><strong>${d.summary.staged}</strong> Staged</div>`;
+            <div class="catalog-pill staged"><strong>${d.summary.staged}</strong> Staged</div>
+            <div class="catalog-pill oos"><strong>${d.summary.out_of_stock||0}</strong> Out of Stock</div>`;
 
         buildCatalogTabs();
         renderCatalogCollection(activeCatalogCat);
@@ -1117,8 +1119,8 @@ async function loadCatalog() {
 function buildCatalogTabs() {
     const tabs = document.getElementById('catalog-tabs');
     tabs.innerHTML = CATALOG_CATS.map(cat => {
-        const col = catalogData[cat] || { published: [], unpublished: [] };
-        const total = col.published.length + col.unpublished.length;
+        const col = catalogData[cat] || { published: [], unpublished: [], out_of_stock: [] };
+        const total = col.published.length + col.unpublished.length + col.out_of_stock.length;
         return `<button class="cat-tab${cat===activeCatalogCat?' active':''}" onclick="switchCatalogCat('${cat}')">
             ${cat} <span class="cat-count">${total}</span>
         </button>`;
@@ -1133,7 +1135,7 @@ function switchCatalogCat(cat) {
 }
 
 function renderCatalogCollection(cat) {
-    const col = catalogData[cat] || { published: [], unpublished: [] };
+    const col = catalogData[cat] || { published: [], unpublished: [], out_of_stock: [] };
     const contentEl = document.getElementById('catalog-content');
     catalogSelection.clear();
 
@@ -1165,6 +1167,7 @@ function renderCatalogCollection(cat) {
             <div class="folder-header" onclick="toggleFolder('unpub-body', this)">
                 <div class="folder-label">Unpublished / Staged <span style="color:#eab308;margin-left:8px;">${col.unpublished.length}</span></div>
                 <div style="display:flex;gap:12px;align-items:center;">
+                    <button class="catalog-btn publish" style="padding:4px 12px;font-size:9px;" onclick="event.stopPropagation();publishAll('${cat}')">Publish All</button>
                     <button class="catalog-btn unpublish" style="padding:4px 12px;font-size:9px;" onclick="event.stopPropagation();unpublishAll('${cat}')">Unpublish All</button>
                     <span class="folder-toggle">▼</span>
                 </div>
@@ -1174,23 +1177,42 @@ function renderCatalogCollection(cat) {
                     ? `<div class="catalog-grid">${col.unpublished.map(p => catalogCard(p)).join('')}</div>`
                     : '<div class="folder-empty">No staged products</div>'}
             </div>
+        </div>
+
+        <!-- OUT OF STOCK FOLDER -->
+        <div class="catalog-folder">
+            <div class="folder-header" onclick="toggleFolder('oos-body', this)">
+                <div class="folder-label">Out of Stock <span style="color:#ef4444;margin-left:8px;">${col.out_of_stock.length}</span></div>
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <span style="font-size:9px;color:var(--mid);letter-spacing:1px;">AUTO-MANAGED</span>
+                    <span class="folder-toggle">▶</span>
+                </div>
+            </div>
+            <div class="folder-body" id="oos-body">
+                ${col.out_of_stock.length
+                    ? `<div class="catalog-grid">${col.out_of_stock.map(p => catalogCard(p, true)).join('')}</div>`
+                    : '<div class="folder-empty">No out-of-stock products</div>'}
+            </div>
         </div>`;
 }
 
-function catalogCard(p) {
+function catalogCard(p, isOos=false) {
     const thumb = p.image_url || '';
     const stockClass = p.in_stock ? 'in' : 'out';
     const stockLabel = p.in_stock ? 'In Stock' : 'Out of Stock';
-    return `<div class="catalog-card" id="ccard-${p.id}">
-        <input type="checkbox" id="chk-${p.id}" onchange="toggleCatalogCard(${p.id})">
+    return `<div class="catalog-card${isOos?' oos-card':''}" id="ccard-${p.id}" style="${isOos?'opacity:0.6;':''}">
+        ${isOos
+            ? `<div style="width:14px;height:14px;"></div>`
+            : `<input type="checkbox" id="chk-${p.id}" onchange="toggleCatalogCard(${p.id})">`}
         ${thumb
             ? `<img class="catalog-thumb" src="${thumb}" loading="lazy" onerror="this.style.display='none';this.nextSibling.style.display='flex'">
                <div class="catalog-thumb-ph" style="display:none;">◇</div>`
             : `<div class="catalog-thumb-ph">◇</div>`}
         <div class="catalog-card-info">
             <div class="catalog-card-name">${p.name}</div>
-            <div class="catalog-card-price">$${p.final_price}</div>
+            <div class="catalog-card-price" style="${isOos?'text-decoration:line-through;color:var(--mid)':''}">$${p.final_price}</div>
             <div class="stock-badge ${stockClass}">${stockLabel}</div>
+            ${isOos ? `<div style="font-size:8px;color:#ef4444;letter-spacing:1px;margin-top:2px;">AWAITING RESTOCK</div>` : ''}
         </div>
     </div>`;
 }

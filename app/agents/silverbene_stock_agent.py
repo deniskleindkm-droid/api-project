@@ -116,11 +116,11 @@ def run_silverbene_stock_agent():
                     was_oos = product.stock == 0
                     product.stock = qty
                     product.is_active = True
-                    # Auto-republish only if the system was the one that hid it (OOS)
-                    # Products Dennis kept in staging (stock_auto_unpublished=False) stay unpublished
+                    # Clear the OOS flag — product moves from Out of Stock to Unpublished
+                    # (Dennis reviews and publishes from the Catalog Manager manually)
                     if was_oos and product.stock_auto_unpublished:
-                        product.is_published = True
                         product.stock_auto_unpublished = False
+                        # is_published stays False — lands in Unpublished folder, not auto-live
                     session.add(product)
                     session.commit()
 
