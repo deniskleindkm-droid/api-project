@@ -440,8 +440,9 @@ nav{
 .pp-inline-gallery{
   height:100vh;
   background:var(--ivory);overflow:hidden;
+  display:flex;flex-direction:column;
 }
-.pp-gallery{position:relative;height:100%;overflow:hidden;}
+.pp-gallery{flex:1;position:relative;overflow:hidden;}
 .pp-gallery img{width:100%;height:100%;object-fit:cover;transition:opacity 0.15s ease;}
 .pp-gal-arrow{
   position:absolute;top:50%;transform:translateY(-50%);
@@ -459,7 +460,7 @@ nav{
 }
 .pp-dot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.5);cursor:pointer;transition:background 0.2s;}
 .pp-dot.active{background:white;}
-.pp-thumbs{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;border-top:1px solid var(--border);background:white;}
+.pp-thumbs{flex-shrink:0;display:flex;gap:6px;padding:10px 16px;overflow-x:auto;border-top:1px solid var(--border);background:white;}
 .pp-thumbs::-webkit-scrollbar{height:0;}
 .pp-thumb{width:52px;height:52px;flex-shrink:0;cursor:pointer;border:2px solid transparent;overflow:hidden;transition:border-color 0.2s;}
 .pp-thumb img{width:100%;height:100%;object-fit:cover;}
@@ -1714,6 +1715,7 @@ async function openPP(id){
   try{ppImages=p.images?JSON.parse(p.images):[];}catch{ppImages=[];}
   if(p.content_image_url)ppImages=[p.content_image_url,...ppImages.filter(u=>u!==p.content_image_url)];
   else if(!ppImages.length&&p.image_url)ppImages=[p.image_url];
+  ppImages=[...new Set(ppImages)];  // deduplicate identical URLs
   if(!ppImages.length)ppImages=[getPlaceholder()];
   ppIdx=0;
 
@@ -1823,6 +1825,24 @@ async function openPP(id){
         }else document.getElementById('pp-width-wrap').style.display='none';
         // Promote lengths into size section (converted to inches)
         if(uniqueLengthsCm.length>=2) sizes=uniqueLengthsCm.map(cmToInchDisplay);
+      }else if(realChips.length>=2&&realChips.every(c=>c.includes(','))&&!realChips.some(isCompoundVariant)){
+        // ── Simple comma-compound: "Style A, Black" → split into two selectors ──
+        const part1=[...new Set(realChips.map(c=>c.split(',')[0].trim()))];
+        const part2=[...new Set(realChips.map(c=>c.split(',').slice(1).join(',').trim()))];
+        document.getElementById('pp-colors-wrap').style.display='block';
+        document.querySelector('#pp-colors-wrap .pp-section-title').textContent='Style';
+        document.getElementById('pp-color-chips').innerHTML=part1.map((v,i)=>
+          `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${v}</button>`
+        ).join('');
+        document.getElementById('pp-width-wrap').style.display='none';
+        if(part2.length>=2){
+          document.getElementById('pp-stone-wrap').style.display='block';
+          document.querySelector('#pp-stone-wrap .pp-section-title').textContent='Color';
+          document.getElementById('pp-stone-chips').innerHTML=part2.map((v,i)=>
+            `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'stone')">${COLOR_LABEL[v.toLowerCase().trim()]||v}</button>`
+          ).join('');
+          stones=[];  // prevent duplicate stone section below
+        }
       }else{
         // ── Normal color / metal chips ──
         document.getElementById('pp-colors-wrap').style.display='block';
@@ -1969,7 +1989,6 @@ async function openPP(id){
   ppInlineEl.style.animation='none';
   void ppInlineEl.offsetHeight;
   ppInlineEl.style.animation='';
-  renderMoreCollection(id);
   ppOpening=false;
   if(!atcBtn.disabled){atcBtn.style.pointerEvents='none';setTimeout(()=>{atcBtn.style.pointerEvents='';},220);}
 }
