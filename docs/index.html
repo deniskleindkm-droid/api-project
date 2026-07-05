@@ -1657,7 +1657,7 @@ const SPEC_LABELS={
   pin_size:'Pin',chain_width:'Chain Width',width:'Band Width',
   chain_length:'Chain Length',drop_length:'Drop Length',
   bangle_size:'Bangle Size',bangle_diameter:'Bangle Diameter',
-  ring_top:'Ring Face',ring_diameter:'Ring Diameter',size:'Size',
+  ring_top:'Ring Face',ring_diameter:'Ring Diameter',ring_size_range:'Adjustable Range',size:'Size',
   weight:'Weight',purity:'Purity',
 };
 const SPEC_ORDER=Object.keys(SPEC_LABELS);
@@ -1968,9 +1968,11 @@ async function openPP(id){
     if(isAdjustableOnly&&colName==='rings'){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
+      let adjHelper='Fits most sizes';
+      try{const sp=p.specs?JSON.parse(p.specs):{};if(sp.ring_size_range)adjHelper=`Fits ${sp.ring_size_range}`;}catch{}
       document.getElementById('pp-size-chips').innerHTML=
         `<button class="pp-chip active" style="cursor:default;pointer-events:none;">Open Size / Adjustable</button>`+
-        `<div style="margin-top:6px;font-size:10px;color:var(--mid);font-style:italic;letter-spacing:0.5px;">Fits most sizes</div>`;
+        `<div style="margin-top:6px;font-size:10px;color:var(--mid);font-style:italic;letter-spacing:0.5px;">${adjHelper}</div>`;
     }else if(sizes.length>=2||showSingle){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;

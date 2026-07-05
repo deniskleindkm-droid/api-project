@@ -584,6 +584,8 @@ class SilverbeneAdapter(SupplierAdapter):
             'bangle diameter': 'bangle_diameter',
             'ring top size': 'ring_top',
             'ring diameter': 'ring_diameter',
+            'ring size': 'ring_size_range',
+            'ring size range': 'ring_size_range',
             'drop length': 'drop_length',
             'setting type': 'setting',
             'setting': 'setting',
@@ -764,6 +766,44 @@ def _parse_chain_length_from_desc(desc: str) -> list:
     return []
 
 
+# Hong Kong → US ring size lookup table (standard international conversion)
+_HK_TO_US = {
+    1:1, 2:1.5, 3:2, 4:2.5, 5:3, 6:3.5, 7:4, 8:4.5, 9:5, 10:5.5,
+    11:6, 12:6.5, 13:7, 14:7.5, 15:8, 16:8.5, 17:9, 18:9.5, 19:10,
+    20:10.5, 21:11, 22:11.5, 23:12, 24:12.5, 25:13,
+}
+
+def _hk_to_us(n: int) -> str:
+    us = _HK_TO_US.get(n)
+    if us is None:
+        return str(n)
+    return str(int(us)) if us == int(us) else str(us)
+
+def _convert_ring_size_to_us(val: str) -> str:
+    """
+    Convert ring size specs containing HK / Hong Kong / Asian sizes to US equivalents.
+    Examples:
+      "Hong Kong Size 13-15"  → "US 7 - 8"
+      "HK Size 12"            → "US 6.5"
+      "Asian Size 13"         → "US 7"
+      "US 7"                  → "US 7"  (already US, leave as-is)
+    """
+    v = val.strip()
+    # Already a US size — return as-is
+    if re.match(r'^US\s*[\d.]+', v, re.I):
+        return v
+    # Extract numeric range or single number
+    nums = [int(n) for n in re.findall(r'\b(\d{1,2})\b', v) if 1 <= int(n) <= 25]
+    if not nums:
+        return v  # nothing parseable — keep original
+    lo, hi = min(nums), max(nums)
+    lo_us = _hk_to_us(lo)
+    if lo == hi:
+        return f"US {lo_us}"
+    hi_us = _hk_to_us(hi)
+    return f"US {lo_us} - {hi_us}"
+
+
 def _apply_spec_conversion(spec_key: str, val: str) -> str:
     """
     Apply US jewelry unit conventions to a raw spec value.
@@ -786,6 +826,10 @@ def _apply_spec_conversion(spec_key: str, val: str) -> str:
     # Weight: clean spacing ("3 g" → "3g")
     if spec_key == 'weight':
         return re.sub(r'\s*(g)\b', r'\1', val, flags=re.I)
+
+    # Ring size range: convert Hong Kong / Asian sizes to US
+    if spec_key == 'ring_size_range':
+        return _convert_ring_size_to_us(val)
 
     # Sizes, widths, stone dimensions — keep mm but normalise spacing
     return re.sub(r'\s+', ' ', val).strip()
