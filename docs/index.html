@@ -436,9 +436,8 @@ nav{
   border-top:2px solid var(--charcoal);
   border-bottom:1px solid var(--border);
   scroll-margin-top:68px;
-  animation:ppSlideIn 0.32s cubic-bezier(0.4,0,0.2,1) forwards;
+  transition:opacity 0.35s ease;
 }
-@keyframes ppSlideIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 .pp-inline-inner{display:grid;grid-template-columns:55% 45%;height:100vh;}
 .pp-inline-gallery{
   height:100vh;
@@ -2000,17 +1999,18 @@ async function openPP(id){
   updatePPGallery();
   positionPPInline(id);
   const ppInlineEl=document.getElementById('pp-inline');
+  ppInlineEl.style.opacity='0';
   ppInlineEl.style.display='block';
-  ppInlineEl.style.animation='none';
-  void ppInlineEl.offsetHeight;
-  ppInlineEl.style.animation='';
-  // Desktop: scroll panel to top of viewport. Mobile: scroll only enough to reveal panel top.
-  if(window.innerWidth>768){
-    ppInlineEl.scrollIntoView({behavior:'smooth',block:'start'});
-  }else{
-    const top=ppInlineEl.getBoundingClientRect().top+window.scrollY-12;
-    window.scrollTo({top,behavior:'smooth'});
-  }
+  // Let layout reflow settle for one frame, then scroll + fade together
+  requestAnimationFrame(()=>{
+    if(window.innerWidth>768){
+      ppInlineEl.scrollIntoView({behavior:'smooth',block:'start'});
+    }else{
+      const top=ppInlineEl.getBoundingClientRect().top+window.scrollY-12;
+      window.scrollTo({top,behavior:'smooth'});
+    }
+    ppInlineEl.style.opacity='1';
+  });
   ppOpening=false;
   if(!atcBtn.disabled){atcBtn.style.pointerEvents='none';setTimeout(()=>{atcBtn.style.pointerEvents='';},220);}
 }
