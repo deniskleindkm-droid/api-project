@@ -37,6 +37,7 @@ class Product(SQLModel, table=True):
     last_price_sync: Optional[datetime] = None
     # Product flags
     is_published: Optional[bool] = Field(default=True)   # False = staging; True = live on storefront; NULL treated as True
+    stock_auto_unpublished: bool = Field(default=False)  # True = system hid this due to OOS; auto-republish on restock
     is_premium: bool = False
     needs_review: bool = False
     needs_length_review: bool = False

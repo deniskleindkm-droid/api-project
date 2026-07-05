@@ -62,6 +62,7 @@ def create_db():
         # is_published: default TRUE so all existing products stay live on deploy
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS is_published boolean DEFAULT true"))
         conn.execute(text("UPDATE product SET is_published = true WHERE is_published IS NULL"))
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS stock_auto_unpublished boolean NOT NULL DEFAULT false"))
         conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS guest_email varchar(200)'))
         conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS is_guest boolean DEFAULT false'))
         conn.commit()

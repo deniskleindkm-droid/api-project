@@ -96,11 +96,15 @@ def run_silverbene_stock_agent():
                     if product.stock != 0:
                         product.stock = 0
                         product.is_active = True
+                        # Auto-unpublish only if it was live — remember so we can restore on restock
+                        if product.is_published:
+                            product.is_published = False
+                            product.stock_auto_unpublished = True
                         session.add(product)
                         session.commit()
                         deactivated += 1
                         newly_outofstock.append(product.name[:60])
-                        print(f"[Silverbene Stock Agent] Out of stock: {product.name[:50]}")
+                        print(f"[Silverbene Stock Agent] Out of stock → unpublished: {product.name[:50]}")
                         if product.pinterest_pin_id:
                             try:
                                 from app.agents.pinterest_agent import update_product_availability
@@ -109,16 +113,21 @@ def run_silverbene_stock_agent():
                                 pass
                 else:
                     old_qty = product.stock
-                    was_inactive = not product.is_active
+                    was_oos = product.stock == 0
                     product.stock = qty
                     product.is_active = True
+                    # Auto-republish only if the system was the one that hid it (OOS)
+                    # Products Dennis kept in staging (stock_auto_unpublished=False) stay unpublished
+                    if was_oos and product.stock_auto_unpublished:
+                        product.is_published = True
+                        product.stock_auto_unpublished = False
                     session.add(product)
                     session.commit()
 
-                    if was_inactive:
+                    if was_oos:
                         reactivated += 1
                         newly_reactivated.append(product.name[:60])
-                        print(f"[Silverbene Stock Agent] Back in stock: {product.name[:50]}")
+                        print(f"[Silverbene Stock Agent] Back in stock → republished: {product.name[:50]}")
                         if product.pinterest_pin_id:
                             try:
                                 from app.agents.pinterest_agent import update_product_availability
