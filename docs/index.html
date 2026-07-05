@@ -512,10 +512,14 @@ nav{
 .pp-chip.active{background:var(--black);color:white;border-color:var(--black);}
 .pp-chip.tanzanite-active{background:var(--tanzanite);color:white;border-color:var(--tanzanite);}
 .pp-desc{font-size:13px;font-weight:300;color:var(--mid);line-height:1.9;}
-.pp-material{
-  font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;
-  font-weight:300;color:var(--charcoal);
-}
+.pp-mat-body{display:flex;flex-direction:column;gap:10px;padding:8px 0 14px;}
+.pp-mat-desc{font-size:13px;font-weight:300;color:var(--charcoal);line-height:1.85;}
+.pp-mat-badges{font-size:10px;font-weight:300;color:var(--mid);letter-spacing:0.5px;}
+.pp-care-body{display:flex;flex-direction:column;gap:10px;padding:8px 0 14px;}
+.pp-care-title{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px;font-weight:400;color:var(--charcoal);margin:0;}
+.pp-care-intro{font-size:13px;font-weight:300;color:var(--charcoal);line-height:1.85;margin:0;}
+.pp-care-list{font-size:13px;font-weight:300;color:var(--charcoal);line-height:1.85;padding-left:16px;margin:0;display:flex;flex-direction:column;gap:3px;}
+.pp-care-note{font-size:12px;font-weight:300;color:var(--mid);font-style:italic;line-height:1.7;margin:0;}
 .pp-meta{display:flex;gap:10px;flex-wrap:wrap;padding:6px 0;}
 .pp-meta-item{
   display:flex;align-items:center;gap:6px;
@@ -959,10 +963,25 @@ footer{background:var(--black);padding:52px 48px 36px;}
           <summary class="pp-accordion-head">Details <span class="pp-accordion-arr">▾</span></summary>
           <div class="pp-details" id="pp-details"></div>
         </details>
-        <details class="pp-accordion" id="pp-acc-materials" style="display:none">
+        <details class="pp-accordion" id="pp-acc-materials">
           <summary class="pp-accordion-head">Materials <span class="pp-accordion-arr">▾</span></summary>
-          <div id="pp-material-wrap">
-            <div class="pp-material" id="pp-material"></div>
+          <div class="pp-mat-body">
+            <p class="pp-mat-desc" id="pp-mat-desc"></p>
+            <div class="pp-mat-badges">✓ Solid 925 sterling silver &nbsp;·&nbsp; Hypoallergenic &nbsp;·&nbsp; Made to last</div>
+          </div>
+        </details>
+        <details class="pp-accordion">
+          <summary class="pp-accordion-head">Care <span class="pp-accordion-arr">▾</span></summary>
+          <div class="pp-care-body">
+            <p class="pp-care-title">Yours for years to come.</p>
+            <p class="pp-care-intro">Sterling silver is a living metal — worn often, it only gets better. A few simple things keep it beautiful:</p>
+            <ul class="pp-care-list">
+              <li>Wear it often — your skin's natural oils protect the silver.</li>
+              <li>Keep it dry — store it in your Mikisi pouch, away from moisture.</li>
+              <li>Keep it clean — remove before swimming, showering, or perfume.</li>
+              <li>Bring back the shine — a soft cloth restores its glow in seconds.</li>
+            </ul>
+            <p class="pp-care-note">Silver naturally deepens over time — never a flaw, always a sign it's real.</p>
           </div>
         </details>
         <details class="pp-accordion" open>
@@ -1299,6 +1318,23 @@ function findVariantImage(chipLabel){
   return null;
 }
 
+function chipToFinishLabel(chipLabel){
+  if(!chipLabel) return null;
+  const c=chipLabel.toLowerCase().trim();
+  if(c==='silver'||c==='sterling silver') return null;
+  if(/rose\s*gold/.test(c)) return 'rose gold';
+  if(/18k|yellow\s*gold/.test(c)) return '18K gold';
+  if(/rhodium/.test(c)) return 'rhodium';
+  if(/white\s*gold/.test(c)) return 'rhodium';
+  if(/gold/.test(c)) return 'gold';
+  return null;
+}
+function renderMaterials(finishLabel){
+  const el=document.getElementById('pp-mat-desc');
+  if(!el) return;
+  const base='Crafted in genuine 925 sterling silver — 92.5% pure, stamped and hypoallergenic. Real precious metal, made to be worn and loved for years.';
+  el.textContent=base+(finishLabel?' Finished in '+finishLabel+'.':'');
+}
 function applyVariantUI(chipLabel){
   const varImg=findVariantImage(chipLabel);
   const imgEl=document.getElementById('pp-img');
@@ -1311,12 +1347,7 @@ function applyVariantUI(chipLabel){
       imgEl.style.opacity='1';
     },150);
   }
-  const mat=getVariantMaterial(chipLabel,ppBaseMaterial);
-  const matEl=document.getElementById('pp-material');
-  const matWrap=document.getElementById('pp-material-wrap');
-  if(mat){matEl.textContent=mat;matWrap.style.display='block';}
-  else if(ppBaseMaterial){matEl.textContent=ppBaseMaterial;matWrap.style.display='block';}
-  else{matWrap.style.display='none';}
+  renderMaterials(chipToFinishLabel(chipLabel));
   document.getElementById('pp-desc').textContent=adaptDescForVariant(ppBaseDesc,chipLabel);
 }
 
@@ -1748,12 +1779,7 @@ async function openPP(id){
   document.getElementById('pp-save').textContent=p.original_price>p.final_price?`Save $${(p.original_price-p.final_price).toFixed(2)}`:'';
   document.getElementById('pp-desc').textContent=trunc(stripHtml(p.description||''),320);
 
-  // ── Material — from product data, never hardcoded ──
-  const matLabel = getMaterialLabel(p);
-  if(matLabel){document.getElementById('pp-material').textContent=matLabel;document.getElementById('pp-material-wrap').style.display='block';}
-  else document.getElementById('pp-material-wrap').style.display='none';
-  const accMat=document.getElementById('pp-acc-materials');
-  if(accMat) accMat.style.display=matLabel?'':'none';
+  // ── Material — rendered after chips are built (see below) ──
 
   // ── Specs / Details ──
   const specRows=parseSpecs(p);
@@ -1935,6 +1961,10 @@ async function openPP(id){
       document.getElementById('pp-sizes-wrap').style.display='none';
     }
   }else document.getElementById('pp-sizes-wrap').style.display='none';
+
+  // ── Material — chips are now built; read initial finish from first active color chip ──
+  {const ic=document.querySelector('#pp-color-chips .pp-chip.active');
+  renderMaterials(chipToFinishLabel(ic?.textContent?.trim()||null));}
 
   // ── Stock status — reflects live Silverbene sync (auto-updates every 6h) ──
   const atcBtn=document.getElementById('pp-atc');
