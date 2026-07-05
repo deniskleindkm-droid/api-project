@@ -100,6 +100,9 @@ nav{
 .nav-sign-btn.out{border-color:var(--light);color:var(--mid);}
 .nav-sign-btn.out:hover{border-color:var(--pink);color:var(--pink);background:none;}
 .nav-user{font-size:11px;color:var(--mid);letter-spacing:1px;font-weight:300;}
+.nav-links{display:flex;gap:22px;align-items:center;flex-shrink:0;margin-right:4px;}
+.nav-text-link{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);text-decoration:none;font-weight:300;transition:color 0.2s;}
+.nav-text-link:hover{color:var(--black);}
 
 /* ── HERO ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
@@ -706,6 +709,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
   .search-drop{left:0;right:0;top:calc(100%+10px);max-height:55vh;}
   .nav-right{gap:8px;}
   .nav-user{display:none;}
+  .nav-links{display:none;}
   .nav-icon{font-size:17px;padding:2px;}
   .nav-sign-btn{padding:6px 11px;font-size:9px;letter-spacing:1.5px;}
 
@@ -805,6 +809,10 @@ footer{background:var(--black);padding:52px 48px 36px;}
 <!-- NAV -->
 <nav>
   <div class="logo" onclick="goHome()">Mik<em>i</em>si</div>
+  <div class="nav-links">
+    <a class="nav-text-link" href="/about">About</a>
+    <a class="nav-text-link" href="/faq">FAQ</a>
+  </div>
   <div class="nav-center">
     <div class="nav-search">
       <span class="search-icon">⌕</span>
@@ -973,7 +981,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
             <p class="pp-care-intro">Sterling silver is a living metal — worn often, it only gets better. A few simple things keep it beautiful:</p>
             <ul class="pp-care-list">
               <li>Wear it often — your skin's natural oils protect the silver.</li>
-              <li>Keep it dry — store it in your Mikisi pouch, away from moisture.</li>
+              <li>Keep it dry — store it dry, away from moisture.</li>
               <li>Keep it clean — remove before swimming, showering, or perfume.</li>
               <li>Bring back the shine — a soft cloth restores its glow in seconds.</li>
             </ul>
@@ -1015,11 +1023,15 @@ footer{background:var(--black);padding:52px 48px 36px;}
 <div class="about-section" id="about">
   <div class="about-content">
     <div class="section-eyebrow">Our Story</div>
-    <div class="about-title">Beauty that<br><em>Empowers</em> You.</div>
-    <div class="about-text">Mikisi was founded on one belief — every woman deserves access to exquisite jewelry without compromise. Each piece is sourced with intention, crafted in fine sterling silver and gold, and curated for the woman who chooses herself.</div>
-    <button class="btn-ghost" onclick="showCollections()" style="width:fit-content;padding:12px 28px">Discover the Collections</button>
+    <div class="about-title">Real silver, made for<br><em>everyday women.</em></div>
+    <div class="about-text">At Mikisi, we believe beautiful jewelry should be something you reach for every day — not something you save for special occasions. Every piece is crafted from genuine 925 sterling silver: hypoallergenic, stamped, and made to be worn, loved, and last for years.</div>
+    <div class="about-text" style="margin-top:-10px;">We keep things honest — real silver, thoughtful design, and prices that make sense. Whether it's a delicate everyday ring or a piece that turns heads, you're always getting the real thing.</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;">
+      <button class="btn-ghost" onclick="window.location.href='/about'" style="width:fit-content;padding:12px 28px;">Our Full Story</button>
+      <button class="btn-ghost" onclick="showCollections()" style="width:fit-content;padding:12px 28px;">Discover the Collections</button>
+    </div>
   </div>
-  <div class="about-img"><img src="https://placehold.co/520x400/fdf9f6/d4849c?text=Mikisi" alt="Mikisi" loading="lazy"/></div>
+  <div class="about-img"><img src="https://placehold.co/520x400/fdf9f6/d4849c?text=Mikisi" alt="Mikisi sterling silver jewelry" loading="lazy"/></div>
 </div>
 
 <!-- CART -->
@@ -1200,7 +1212,8 @@ footer{background:var(--black);padding:52px 48px 36px;}
       <div class="footer-tagline">Look Elegant and Polished</div>
     </div>
     <div class="footer-links">
-      <span class="footer-link" onclick="scrollToAbout()">About Us</span>
+      <a class="footer-link" href="/about" style="color:#555;text-decoration:none;">About Us</a>
+      <a class="footer-link" href="/faq" style="color:#555;text-decoration:none;">FAQ</a>
       <span class="footer-link" onclick="openInfo('returns')">Returns</span>
       <span class="footer-link" onclick="openInfo('shipping')">Shipping</span>
       <span class="footer-link" onclick="openInfo('contact')">Contact</span>

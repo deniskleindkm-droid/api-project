@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>About Mikisi — Real silver, made for everyday women.</title>
+<meta name="description" content="Mikisi is built on one belief: real 925 sterling silver should be something every woman can wear every day. Real metal. Honest prices. Crafted to last."/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --cream:#fdf9f6;
+  --ivory:#f7f2ed;
+  --pink:#d4849c;
+  --pink-deep:#b8627a;
+  --gold:#c9a96e;
+  --gold-light:#e8d5b0;
+  --black:#0e0e0e;
+  --charcoal:#2a2a2a;
+  --mid:#6b6b6b;
+  --border:#ece5dd;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--black);overflow-x:hidden;}
+
+/* NAV */
+.page-nav{
+  background:var(--cream);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 52px;height:68px;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;
+}
+.logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:300;letter-spacing:5px;text-transform:uppercase;
+  text-decoration:none;color:var(--black);
+}
+.logo em{font-style:italic;color:var(--pink);}
+.page-nav-links{display:flex;gap:30px;align-items:center;}
+.page-nav-link{
+  font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--mid);text-decoration:none;font-weight:300;transition:color 0.2s;
+}
+.page-nav-link:hover,.page-nav-link.active{color:var(--black);}
+
+/* PAGE HERO */
+.page-hero{
+  padding:100px 52px 80px;
+  text-align:center;
+  background:white;
+  border-bottom:1px solid var(--border);
+}
+.page-eyebrow{
+  font-size:9px;font-weight:300;letter-spacing:4px;
+  text-transform:uppercase;color:var(--gold);
+  margin-bottom:20px;
+}
+.page-heading{
+  font-family:'Cormorant Garamond',serif;
+  font-size:56px;font-weight:300;line-height:1.1;
+  color:var(--black);
+}
+.page-heading em{font-style:italic;color:var(--pink);}
+.page-subhead{
+  font-size:12px;font-weight:300;color:var(--mid);
+  letter-spacing:2px;text-transform:uppercase;
+  margin-top:28px;
+}
+
+/* BODY COPY */
+.page-body{
+  max-width:660px;
+  margin:0 auto;
+  padding:88px 52px 72px;
+}
+.page-body p{
+  font-size:15px;font-weight:300;color:var(--charcoal);
+  line-height:2;margin-bottom:32px;
+}
+.page-body p:last-child{margin-bottom:0;}
+.page-divider{
+  text-align:center;padding:16px 0 8px;
+  color:var(--gold-light);font-size:18px;letter-spacing:10px;
+  margin-bottom:0;
+}
+
+/* PROMISE PULLOUT */
+.page-promise{
+  background:var(--ivory);
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  padding:76px 52px;
+  text-align:center;
+}
+.promise-mark{
+  font-size:9px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--gold);margin-bottom:28px;
+}
+.promise-text{
+  font-family:'Cormorant Garamond',serif;
+  font-size:34px;font-weight:300;line-height:1.45;
+  color:var(--charcoal);font-style:italic;
+  max-width:580px;margin:0 auto 22px;
+}
+.promise-attr{
+  font-size:9px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--mid);font-weight:300;
+}
+
+/* CTA STRIP */
+.page-cta{
+  padding:80px 52px;
+  text-align:center;
+}
+.page-cta-heading{
+  font-family:'Cormorant Garamond',serif;
+  font-size:34px;font-weight:300;margin-bottom:10px;color:var(--black);
+}
+.page-cta-sub{
+  font-size:12px;font-weight:300;color:var(--mid);
+  letter-spacing:1px;margin-bottom:34px;
+}
+.btn-black{
+  background:var(--black);color:white;border:none;
+  padding:14px 44px;font-size:10px;font-weight:400;
+  letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;
+  font-family:'Jost',sans-serif;transition:background 0.3s;
+  text-decoration:none;display:inline-block;
+}
+.btn-black:hover{background:var(--pink);}
+
+/* FOOTER */
+.page-footer{
+  background:var(--black);
+  padding:44px 52px 32px;
+}
+.page-footer-top{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  flex-wrap:wrap;gap:28px;
+  padding-bottom:28px;
+  border-bottom:1px solid #222;
+  margin-bottom:20px;
+}
+.page-footer-logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:300;color:white;letter-spacing:5px;text-transform:uppercase;
+}
+.page-footer-logo em{font-style:italic;color:var(--pink);}
+.page-footer-tagline{font-size:9px;color:#555;letter-spacing:2px;margin-top:6px;font-weight:300;text-transform:uppercase;}
+.page-footer-links{display:flex;gap:24px;flex-wrap:wrap;align-items:center;}
+.page-footer-link{
+  color:#555;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
+  text-decoration:none;transition:color 0.2s;font-weight:300;
+}
+.page-footer-link:hover{color:var(--pink);}
+.page-footer-copy{font-size:9px;color:#333;letter-spacing:1.5px;font-weight:300;}
+
+@media(max-width:768px){
+  .page-nav{padding:0 18px;height:58px;}
+  .page-hero{padding:64px 20px 52px;}
+  .page-heading{font-size:36px;}
+  .page-subhead{font-size:10px;}
+  .page-body{padding:56px 20px 48px;}
+  .page-body p{font-size:14px;line-height:1.9;}
+  .page-promise{padding:52px 20px;}
+  .promise-text{font-size:24px;}
+  .page-cta{padding:56px 20px;}
+  .page-cta-heading{font-size:26px;}
+  .page-footer{padding:36px 18px 24px;}
+}
+</style>
+</head>
+<body>
+
+<nav class="page-nav">
+  <a href="/" class="logo">Mik<em>i</em>si</a>
+  <div class="page-nav-links">
+    <a href="/" class="page-nav-link">Shop</a>
+    <a href="/faq" class="page-nav-link">FAQ</a>
+  </div>
+</nav>
+
+<section class="page-hero">
+  <div class="page-eyebrow">About Mikisi</div>
+  <h1 class="page-heading">Real silver, made for<br><em>everyday women.</em></h1>
+  <p class="page-subhead">925 sterling silver &nbsp;·&nbsp; Honest prices &nbsp;·&nbsp; Made to last</p>
+</section>
+
+<div class="page-body">
+  <p>At Mikisi, we believe beautiful jewelry should be something you reach for every day — not something you save for special occasions. That's why every piece is crafted from genuine 925 sterling silver: the real precious metal, stamped and hypoallergenic, made to be worn, loved, and last for years.</p>
+  <p>We think quality shouldn't come with a luxury markup. So we keep things honest — real silver, thoughtful design, and prices that make sense. Whether it's a delicate everyday ring or a piece that turns heads, you're always getting the real thing.</p>
+  <p>Every order is carefully packaged and fully tracked, arriving ready to wear — and ready to become yours.</p>
+  <div class="page-divider">✦ &nbsp; ✦ &nbsp; ✦</div>
+</div>
+
+<section class="page-promise">
+  <p class="promise-mark">The Mikisi Promise</p>
+  <p class="promise-text">"Simple, honest, and made to last."</p>
+  <p class="promise-attr">— Mikisi</p>
+</section>
+
+<section class="page-cta">
+  <p class="page-cta-heading">Discover the Collections</p>
+  <p class="page-cta-sub">Real silver, ready to wear.</p>
+  <a href="/" class="btn-black">Shop Now</a>
+</section>
+
+<footer class="page-footer">
+  <div class="page-footer-top">
+    <div>
+      <div class="page-footer-logo">Mik<em>i</em>si</div>
+      <div class="page-footer-tagline">Real silver, made for everyday women.</div>
+    </div>
+    <div class="page-footer-links">
+      <a href="/about" class="page-footer-link" style="color:white;">About</a>
+      <a href="/faq" class="page-footer-link">FAQ</a>
+      <a href="/returns" class="page-footer-link">Returns</a>
+      <a href="/terms" class="page-footer-link">Terms</a>
+      <a href="/privacy" class="page-footer-link">Privacy</a>
+    </div>
+  </div>
+  <div class="page-footer-copy">© 2026 Mikisi. All rights reserved. &nbsp;·&nbsp; hello@mikisi.co</div>
+</footer>
+
+</body>
+</html>

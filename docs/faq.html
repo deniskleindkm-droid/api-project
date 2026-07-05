@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FAQ — Mikisi</title>
+<meta name="description" content="Frequently asked questions about Mikisi jewelry — silver authenticity, care, shipping, returns, and sizing."/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --cream:#fdf9f6;
+  --ivory:#f7f2ed;
+  --pink:#d4849c;
+  --gold:#c9a96e;
+  --gold-light:#e8d5b0;
+  --black:#0e0e0e;
+  --charcoal:#2a2a2a;
+  --mid:#6b6b6b;
+  --border:#ece5dd;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--black);overflow-x:hidden;}
+
+/* NAV */
+.page-nav{
+  background:var(--cream);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 52px;height:68px;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;
+}
+.logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:300;letter-spacing:5px;text-transform:uppercase;
+  text-decoration:none;color:var(--black);
+}
+.logo em{font-style:italic;color:var(--pink);}
+.page-nav-links{display:flex;gap:30px;align-items:center;}
+.page-nav-link{
+  font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--mid);text-decoration:none;font-weight:300;transition:color 0.2s;
+}
+.page-nav-link:hover,.page-nav-link.active{color:var(--black);}
+
+/* HERO */
+.page-hero{
+  padding:100px 52px 80px;
+  text-align:center;
+  background:white;
+  border-bottom:1px solid var(--border);
+}
+.page-eyebrow{
+  font-size:9px;font-weight:300;letter-spacing:4px;
+  text-transform:uppercase;color:var(--gold);
+  margin-bottom:20px;
+}
+.page-heading{
+  font-family:'Cormorant Garamond',serif;
+  font-size:54px;font-weight:300;line-height:1.1;
+  color:var(--black);
+}
+.page-heading em{font-style:italic;color:var(--pink);}
+.page-subhead{
+  font-size:12px;font-weight:300;color:var(--mid);
+  letter-spacing:2px;text-transform:uppercase;
+  margin-top:24px;
+}
+
+/* FAQ MAIN */
+.faq-main{
+  max-width:740px;
+  margin:0 auto;
+  padding:80px 52px 96px;
+}
+
+/* CATEGORY */
+.faq-category{
+  font-family:'Cormorant Garamond',serif;
+  font-size:28px;font-weight:300;font-style:italic;
+  color:var(--charcoal);
+  margin-bottom:6px;
+  margin-top:64px;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--border);
+}
+.faq-category:first-child{margin-top:0;}
+.faq-category-sub{
+  font-size:9px;font-weight:300;letter-spacing:3px;text-transform:uppercase;
+  color:var(--gold);margin-bottom:0;margin-top:4px;
+}
+
+/* ACCORDION ITEMS */
+.faq-item{
+  border-bottom:1px solid var(--border);
+}
+.faq-question{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:17px 0;
+  font-size:11px;font-weight:400;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--charcoal);
+  cursor:pointer;list-style:none;user-select:none;
+  gap:16px;
+}
+.faq-question::-webkit-details-marker{display:none;}
+.faq-arr{
+  font-size:12px;color:var(--mid);
+  transition:transform 0.2s;
+  flex-shrink:0;display:inline-block;
+}
+details[open] .faq-arr{transform:rotate(180deg);}
+.faq-answer{
+  padding:2px 0 22px;
+  font-size:14px;font-weight:300;color:var(--mid);
+  line-height:1.9;
+  max-width:96%;
+}
+.faq-answer a{color:var(--pink);text-decoration:none;}
+.faq-answer a:hover{text-decoration:underline;}
+
+/* FOOTER */
+.page-footer{
+  background:var(--black);
+  padding:44px 52px 32px;
+}
+.page-footer-top{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  flex-wrap:wrap;gap:28px;
+  padding-bottom:28px;
+  border-bottom:1px solid #222;
+  margin-bottom:20px;
+}
+.page-footer-logo{
+  font-family:'Cormorant Garamond',serif;
+  font-size:22px;font-weight:300;color:white;letter-spacing:5px;text-transform:uppercase;
+}
+.page-footer-logo em{font-style:italic;color:var(--pink);}
+.page-footer-tagline{font-size:9px;color:#555;letter-spacing:2px;margin-top:6px;font-weight:300;text-transform:uppercase;}
+.page-footer-links{display:flex;gap:24px;flex-wrap:wrap;align-items:center;}
+.page-footer-link{
+  color:#555;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;
+  text-decoration:none;transition:color 0.2s;font-weight:300;
+}
+.page-footer-link:hover{color:var(--pink);}
+.page-footer-copy{font-size:9px;color:#333;letter-spacing:1.5px;font-weight:300;}
+
+@media(max-width:768px){
+  .page-nav{padding:0 18px;height:58px;}
+  .page-hero{padding:64px 20px 52px;}
+  .page-heading{font-size:36px;}
+  .faq-main{padding:52px 20px 72px;}
+  .faq-category{font-size:22px;margin-top:48px;}
+  .faq-question{font-size:10px;padding:15px 0;}
+  .faq-answer{font-size:13px;}
+  .page-footer{padding:36px 18px 24px;}
+}
+</style>
+</head>
+<body>
+
+<nav class="page-nav">
+  <a href="/" class="logo">Mik<em>i</em>si</a>
+  <div class="page-nav-links">
+    <a href="/" class="page-nav-link">Shop</a>
+    <a href="/about" class="page-nav-link">About</a>
+  </div>
+</nav>
+
+<section class="page-hero">
+  <div class="page-eyebrow">Frequently Asked Questions</div>
+  <h1 class="page-heading">Questions?<br>We have <em>answers.</em></h1>
+  <p class="page-subhead">Everything you need to know about Mikisi</p>
+</section>
+
+<main class="faq-main">
+
+  <!-- ── About Our Jewelry ── -->
+  <h2 class="faq-category">About Our Jewelry</h2>
+
+  <details class="faq-item">
+    <summary class="faq-question">Is Mikisi jewelry real silver? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">Yes. Every Mikisi piece is made from genuine 925 sterling silver — 92.5% pure silver, the real precious metal. Each piece is stamped "S925" as proof of authenticity. It's real jewelry, not plated brass or costume fashion.</div>
+  </details>
+
+  <details class="faq-item">
+    <summary class="faq-question">Why is Mikisi more affordable than other silver brands? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">We keep things honest. You're paying for real 925 sterling silver and thoughtful design — not a luxury markup. We believe quality jewelry should be something everyone can wear every day, so we price fairly and let the product speak for itself.</div>
+  </details>
+
+  <details class="faq-item">
+    <summary class="faq-question">Will it turn my skin green? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">No. Real 925 sterling silver doesn't turn your skin green — that's something that happens with cheap plated or brass jewelry. Mikisi pieces are hypoallergenic and gentle on sensitive skin.</div>
+  </details>
+
+  <details class="faq-item">
+    <summary class="faq-question">Does sterling silver tarnish? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">All real silver naturally darkens over time — it's completely normal and not a flaw. In fact, it's a sign your piece is genuine silver. A soft polishing cloth brings back its shine in seconds.</div>
+  </details>
+
+  <details class="faq-item">
+    <summary class="faq-question">What finishes do you offer? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">Depending on the piece, our jewelry comes in rhodium (silver), 18K gold, rose gold, and white gold finishes — all applied over solid 925 sterling silver.</div>
+  </details>
+
+  <!-- ── Caring for Your Piece ── -->
+  <h2 class="faq-category" style="margin-top:64px;">Caring for Your Piece</h2>
+
+  <details class="faq-item">
+    <summary class="faq-question">How do I keep my jewelry looking its best? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">Sterling silver is a living metal — worn often, it only gets better. Wear it regularly (your skin's natural oils protect it), keep it dry and stored in an airtight bag or lined jewelry box when not worn, and remove it before swimming, showering, or applying perfume. If it dulls, a soft cloth restores its glow.</div>
+  </details>
+
+  <!-- ── Shipping ── -->
+  <h2 class="faq-category" style="margin-top:64px;">Shipping</h2>
+
+  <details class="faq-item">
+    <summary class="faq-question">How long does shipping take? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">Orders arrive within 8–10 business days. Shipping is free and fully tracked, so you can follow your piece every step of the way.</div>
+  </details>
+
+  <details class="faq-item">
+    <summary class="faq-question">How much does shipping cost? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">Shipping is free on every order — no minimum, no surprise fees. Customs duties are included, so there's nothing extra to pay at delivery.</div>
+  </details>
+
+  <details class="faq-item">
+    <summary class="faq-question">Will I be able to track my order? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">Yes. Every order is fully tracked, and you'll receive tracking details so you always know where your piece is.</div>
+  </details>
+
+  <!-- ── Returns & Sizing ── -->
+  <h2 class="faq-category" style="margin-top:64px;">Returns &amp; Sizing</h2>
+
+  <details class="faq-item">
+    <summary class="faq-question">What's your return policy? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">We offer 30-day returns on unworn pieces. If something isn't right, reach out and we'll make it easy.</div>
+  </details>
+
+  <details class="faq-item">
+    <summary class="faq-question">What if my ring doesn't fit? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">Many of our rings are adjustable and designed to fit most sizes. For sized pieces, check the size details on each product page — and if you're unsure, contact us before ordering and we'll help.</div>
+  </details>
+
+  <!-- ── Orders & Contact ── -->
+  <h2 class="faq-category" style="margin-top:64px;">Orders &amp; Contact</h2>
+
+  <details class="faq-item">
+    <summary class="faq-question">Do I need an account to order? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">No. You can check out as a guest — no account required.</div>
+  </details>
+
+  <details class="faq-item">
+    <summary class="faq-question">How can I reach you? <span class="faq-arr">▾</span></summary>
+    <div class="faq-answer">We'd love to hear from you. Email us anytime at <a href="mailto:hello@mikisi.co">hello@mikisi.co</a> and we'll get back to you.</div>
+  </details>
+
+</main>
+
+<footer class="page-footer">
+  <div class="page-footer-top">
+    <div>
+      <div class="page-footer-logo">Mik<em>i</em>si</div>
+      <div class="page-footer-tagline">Real silver, made for everyday women.</div>
+    </div>
+    <div class="page-footer-links">
+      <a href="/about" class="page-footer-link">About</a>
+      <a href="/faq" class="page-footer-link" style="color:white;">FAQ</a>
+      <a href="/returns" class="page-footer-link">Returns</a>
+      <a href="/terms" class="page-footer-link">Terms</a>
+      <a href="/privacy" class="page-footer-link">Privacy</a>
+    </div>
+  </div>
+  <div class="page-footer-copy">© 2026 Mikisi. All rights reserved. &nbsp;·&nbsp; hello@mikisi.co</div>
+</footer>
+
+</body>
+</html>
