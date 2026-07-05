@@ -431,6 +431,7 @@ nav{
 
 /* ── PRODUCT INLINE VIEW ── */
 .pp-inline{
+  grid-column:1/-1;
   background:white;border-top:2px solid var(--border);
   animation:ppSlideIn 0.3s cubic-bezier(0.4,0,0.2,1) forwards;
 }
@@ -942,14 +943,13 @@ footer{background:var(--black);padding:52px 48px 36px;}
         <div class="pp-desc" id="pp-desc"></div>
         <div id="pp-variant-note" style="display:none;font-size:11px;font-style:italic;color:var(--mid);margin-top:8px;letter-spacing:0.5px;"></div>
         <div id="pp-stock-wrap" style="display:none">
-          <div class="pp-stock-low" id="pp-stock">❋ <span></span></div>
+          <div class="pp-stock-low" id="pp-stock"><span></span></div>
         </div>
         <button class="pp-atc" id="pp-atc">Add to Cart</button>
         <!-- Collapsible sections -->
         <details class="pp-accordion" id="pp-acc-details" style="display:none">
           <summary class="pp-accordion-head">Details <span class="pp-accordion-arr">▾</span></summary>
           <div class="pp-details" id="pp-details"></div>
-          <div class="pp-meta" id="pp-meta"></div>
         </details>
         <details class="pp-accordion" id="pp-acc-materials" style="display:none">
           <summary class="pp-accordion-head">Materials <span class="pp-accordion-arr">▾</span></summary>
@@ -1455,7 +1455,7 @@ function renderCollectionProducts(prods){
     else if(p.stock<=10) badge=`<div class="pcard-badge badge-limited">❋ Limited · ${p.stock} left</div>`;
     else if(p.is_new) badge=`<div class="pcard-badge badge-new">New</div>`;
     const liked = wishlist.includes(p.id);
-    return `<div class="pcard${outOfStock?' pcard-oos':''}" onclick="openPP(${p.id})">
+    return `<div class="pcard${outOfStock?' pcard-oos':''}" data-id="${p.id}" onclick="openPP(${p.id})">
       <div class="pcard-img">
         <img src="${imgA}" alt="${name}"${imgB?` data-hover="${imgB}"`:''}  onerror="this.src='${getPlaceholder()}'" loading="lazy"/>
         ${badge}
@@ -1671,8 +1671,26 @@ function getCollectionName(p){
 // Material label — returns real data only, never a hardcoded default
 function getMaterialLabel(p){
   if(p.material) return p.material;
-  // No material stored → show nothing rather than a wrong default
   return null;
+}
+
+// Move pp-inline inside cv-grid right after the row containing the clicked card
+function positionPPInline(productId){
+  const grid=document.getElementById('cv-grid');
+  const ppEl=document.getElementById('pp-inline');
+  if(!grid||!ppEl) return null;
+  const card=grid.querySelector(`.pcard[data-id="${productId}"]`);
+  if(!card){grid.appendChild(ppEl);return null;}
+  const cards=[...grid.querySelectorAll('.pcard')];
+  const clickedTop=card.offsetTop;
+  let lastInRow=cards.indexOf(card);
+  for(let i=lastInRow+1;i<cards.length;i++){
+    if(Math.abs(cards[i].offsetTop-clickedTop)<5) lastInRow=i;
+    else break;
+  }
+  const anchor=cards[lastInRow];
+  if(anchor.nextSibling!==ppEl) grid.insertBefore(ppEl,anchor.nextSibling);
+  return card;
 }
 
 async function openPP(id){
@@ -1684,8 +1702,8 @@ async function openPP(id){
     // Not cached yet — show panel outline immediately so user knows click registered
     document.getElementById('pp-name').textContent='Loading…';
     const ppInlineLoadEl=document.getElementById('pp-inline');
+    positionPPInline(id);
     ppInlineLoadEl.style.display='block';
-    ppInlineLoadEl.scrollIntoView({behavior:'smooth',block:'start'});
     try{
       const res = await fetch(`${API}/products/${id}`);
       if(!res.ok){ppOpening=false;closePP();return;}
@@ -1915,29 +1933,14 @@ async function openPP(id){
     atcBtn.style.background='';
     atcBtn.style.cursor='';
   }else{
-    stockWrap.style.display='none';
+    stockSpan.textContent='✓ In stock';
+    stockSpan.style.color='#22c55e';
+    stockWrap.style.display='block';
     atcBtn.disabled=false;
     atcBtn.textContent='Add to Cart';
     atcBtn.style.background='';
     atcBtn.style.cursor='';
   }
-
-  // ── Meta — stock status + all shipping tiers ──
-  const stockLabel = (!p.stock||p.stock===0)
-    ? '✕ Out of Stock'
-    : p.stock<=10
-      ? `❋ Only ${p.stock} left`
-      : '✓ In Stock';
-  const stockColor = (!p.stock||p.stock===0)?'var(--mid)':p.stock<=10?'var(--pink)':'#22c55e';
-
-  // Badge shows only the base metal — strip plating/finish qualifiers so it stays short
-  const badgeMetal=p.material
-    ? p.material.replace(/\s*\([^)]*\)/g,'').replace(/^S925\b/,'925').trim()
-    : null;
-  document.getElementById('pp-meta').innerHTML=`
-    <div class="pp-meta-item">⇉ Ships via USPS &nbsp;·&nbsp; 8–10 business days</div>
-    ${badgeMetal?`<div class="pp-meta-item">◇ ${badgeMetal}</div>`:''}
-    <div class="pp-meta-item" style="color:${stockColor};border-color:${stockColor}20">${stockLabel}</div>`;
 
   // ── Add to Cart — passes selected size & color ──
   atcBtn.onclick=()=>{
@@ -1970,11 +1973,12 @@ async function openPP(id){
 
   updatePPGallery();
   const ppInlineEl=document.getElementById('pp-inline');
+  const ppCard=positionPPInline(id);
   ppInlineEl.style.display='block';
   ppInlineEl.style.animation='none';
   void ppInlineEl.offsetHeight;
   ppInlineEl.style.animation='';
-  ppInlineEl.scrollIntoView({behavior:'smooth',block:'start'});
+  if(ppCard) ppCard.scrollIntoView({behavior:'smooth',block:'nearest'});
   renderMoreCollection(id);
   ppOpening=false;
   if(!atcBtn.disabled){atcBtn.style.pointerEvents='none';setTimeout(()=>{atcBtn.style.pointerEvents='';},220);}
