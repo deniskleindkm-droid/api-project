@@ -43,19 +43,53 @@ def run_silverbene_stock_agent():
             print("[Silverbene Stock Agent] No Silverbene products in store")
             return {"checked": 0, "updated": 0, "deactivated": 0, "reactivated": 0, "sizes_updated": 0}
 
-        # ── Step 2: Build option_id → product map ────────────────────────────
-        id_map = {}
-        for p in all_products:
-            if p.cj_sku:
-                id_map[str(p.cj_sku)] = p.id
+        # ── Step 2: Build option_id → product map (all variants) ────────────────
+        # option_map: option_id_str → product_id
+        # product_variants: product_id → [option_id_str, ...]
+        option_map = {}
+        product_variants = {}  # product_id → list of all option_ids
 
-        if not id_map:
+        for p in all_products:
+            ids_for_product = []
+            if p.cj_sku:
+                oid = str(p.cj_sku)
+                option_map[oid] = p.id
+                ids_for_product.append(oid)
+            # Pull every variant's option_id so we check all sizes
+            if p.variants:
+                try:
+                    for v in json.loads(p.variants):
+                        oid = str(v.get("option_id", ""))
+                        if oid and oid not in option_map:
+                            option_map[oid] = p.id
+                            ids_for_product.append(oid)
+                except Exception:
+                    pass
+            if ids_for_product:
+                product_variants[p.id] = ids_for_product
+
+        if not option_map:
             print("[Silverbene Stock Agent] No option_ids found — cannot check stock")
             return {"checked": 0, "updated": 0, "deactivated": 0, "reactivated": 0, "sizes_updated": 0}
 
-        print(f"[Silverbene Stock Agent] Checking {len(id_map)} products")
+        print(f"[Silverbene Stock Agent] Checking {len(option_map)} option_ids across {len(product_variants)} products")
 
-        # ── Step 3: Stock check in batches of 50 ─────────────────────────────
+        # ── Step 3: Query every option_id, collect results ───────────────────
+        # live_stock: option_id → qty  (only option_ids we got a response for)
+        live_stock = {}
+
+        for single_id in list(option_map.keys()):
+            resp = sb._get("/api/dropshipping/option_qty", {"option_id": single_id})
+            if not isinstance(resp, dict) or resp.get("code") != 0:
+                continue
+            stock_data = resp.get("data", [])
+            if not isinstance(stock_data, list) or not stock_data:
+                continue
+            item = stock_data[0] if isinstance(stock_data[0], dict) else {}
+            qty = int(item.get("qty", item.get("qyt", 0)) or 0)
+            live_stock[single_id] = qty
+
+        # ── Step 4: Aggregate per product and apply changes ──────────────────
         updated = 0
         deactivated = 0
         reactivated = 0
@@ -63,42 +97,39 @@ def run_silverbene_stock_agent():
         newly_reactivated = []
         stock_quantity_changes = []
 
-        all_option_ids = list(id_map.keys())
-        for single_id in all_option_ids:
-            # Query one option_id at a time — Silverbene batch queries return the
-            # full comma-joined string as option_id, breaking the lookup map.
-            resp = sb._get("/api/dropshipping/option_qty", {"option_id": single_id})
-
-            if not isinstance(resp, dict) or resp.get("code") != 0:
-                print(f"[Silverbene Stock Agent] API error for {single_id}: {resp.get('message') if isinstance(resp, dict) else resp}")
-                _record_miss(id_map.get(single_id))
+        for product_id, option_ids in product_variants.items():
+            checked = {oid: live_stock[oid] for oid in option_ids if oid in live_stock}
+            if not checked:
+                # No response at all → record miss
+                _record_miss(product_id)
                 continue
 
-            stock_data = resp.get("data", [])
-            if not isinstance(stock_data, list) or not stock_data:
-                _record_miss(id_map.get(single_id))
-                continue
-
-            item = stock_data[0] if stock_data else {}
-            if not isinstance(item, dict):
-                continue
-
-            # Silverbene uses "qyt" (not "qty") on the option_qty endpoint
-            qty = int(item.get("qty", item.get("qyt", 0)) or 0)
-            product_id = id_map.get(single_id)
-            if not product_id:
-                continue
+            total_qty = sum(checked.values())
 
             with Session(engine) as session:
                 product = session.get(Product, product_id)
                 if not product:
                     continue
 
-                if qty == 0:
+                # Update variants JSON with live stock per option_id
+                if product.variants:
+                    try:
+                        variants_data = json.loads(product.variants)
+                        changed_variants = False
+                        for v in variants_data:
+                            oid = str(v.get("option_id", ""))
+                            if oid in checked:
+                                v["qty"] = checked[oid]
+                                changed_variants = True
+                        if changed_variants:
+                            product.variants = json.dumps(variants_data)
+                    except Exception:
+                        pass
+
+                if total_qty == 0:
                     if product.stock != 0:
                         product.stock = 0
                         product.is_active = True
-                        # Auto-unpublish only if it was live — remember so we can restore on restock
                         if product.is_published:
                             product.is_published = False
                             product.stock_auto_unpublished = True
@@ -117,20 +148,18 @@ def run_silverbene_stock_agent():
                     old_qty = product.stock
                     was_oos = product.stock == 0
                     was_missed = product.sync_miss_count > 0
-                    product.stock = qty
+                    product.stock = total_qty
                     product.is_active = True
-                    product.sync_miss_count = 0   # confirmed present — reset miss counter
-                    # Clear the OOS flag — product moves from Out of Stock to Unpublished
+                    product.sync_miss_count = 0
                     if was_oos and product.stock_auto_unpublished:
                         product.stock_auto_unpublished = False
                     session.add(product)
                     session.commit()
 
-                    # If this product was previously flagged as missing, hand off to discontinuation agent
                     if was_missed:
                         try:
                             from app.agents.silverbene_discontinuation_agent import handle_recovery
-                            handle_recovery(product.id, {"stock": qty, "final_price": product.final_price})
+                            handle_recovery(product.id, {"stock": total_qty, "final_price": product.final_price})
                         except Exception as e:
                             print(f"[Silverbene Stock Agent] Recovery handoff error: {e}")
 
@@ -144,13 +173,13 @@ def run_silverbene_stock_agent():
                                 update_product_availability(product.id, True)
                             except Exception:
                                 pass
-                    elif old_qty != qty:
+                    elif old_qty != total_qty:
                         updated += 1
                         stock_quantity_changes.append(
-                            f"{product.name[:40]} ({old_qty} → {qty})"
+                            f"{product.name[:40]} ({old_qty} → {total_qty})"
                         )
 
-        total_checked = len(id_map)
+        total_checked = len(product_variants)
         print(f"[Silverbene Stock Agent] Stock: checked={total_checked} updated={updated} "
               f"out_of_stock={deactivated} restocked={reactivated}")
 
