@@ -1247,6 +1247,7 @@ let ppSelectedWidth = null;
 let ppOpening = false; // guard — prevents double-click opening two panels
 let ppCurrentProduct = null;
 let ppBaseDesc = '';
+let ppVariantPrices = []; // [{option_id,size,color,final_price,stock}]
 let ppBaseMaterial = null;
 let ppVariants = [];
 let ppBaseImages = [];
@@ -1833,11 +1834,20 @@ async function openPP(id){
   ppBaseImages=[...ppImages];
 
   // ── Basic info ──
+  ppVariantPrices=[];
   document.getElementById('pp-brand').textContent='Mikisi';
   document.getElementById('pp-name').textContent=trunc(cleanName(p.name),70);
   document.getElementById('pp-price').textContent=`$${p.final_price.toFixed(2)}`;
   document.getElementById('pp-orig').textContent=p.original_price>p.final_price?`$${p.original_price.toFixed(2)}`:'';
   document.getElementById('pp-save').textContent=p.original_price>p.final_price?`Save $${(p.original_price-p.final_price).toFixed(2)}`:'';
+  // Fetch per-variant prices — update display when customer changes size/color
+  fetch(`${API}/products/${p.id}/variant-prices`).then(r=>r.ok?r.json():null).then(vp=>{
+    if(!vp||!vp.length)return;
+    const prices=vp.map(v=>v.final_price);
+    if(prices.every(pr=>pr===prices[0]))return; // all same price — nothing to update
+    ppVariantPrices=vp;
+    updateVariantPrice();
+  }).catch(()=>{});
   document.getElementById('pp-desc').textContent=trunc(stripHtml(p.description||''),320);
 
   // ── Material — rendered after chips are built (see below) ──
@@ -2136,6 +2146,30 @@ function closePP(){
 }
 function ppNavPrev(){if(ppNavIdx>0){ppOpening=false;openPP(ppNavList[ppNavIdx-1].id);}}
 function ppNavNext(){if(ppNavIdx>=0&&ppNavIdx<ppNavList.length-1){ppOpening=false;openPP(ppNavList[ppNavIdx+1].id);}}
+function updateVariantPrice(){
+  if(!ppVariantPrices.length) return;
+  // Find best matching variant for current selection
+  const wantSize  = ppSelectedSize  || null;
+  const wantColor = ppSelectedColor || null;
+  let match = null;
+  // Pass 1: exact size + color
+  if(wantSize && wantColor) match = ppVariantPrices.find(v=>v.size===wantSize && v.color===wantColor);
+  // Pass 2: size only
+  if(!match && wantSize)    match = ppVariantPrices.find(v=>v.size===wantSize);
+  // Pass 3: color only
+  if(!match && wantColor)   match = ppVariantPrices.find(v=>v.color===wantColor);
+  // Pass 4: first variant
+  if(!match)                match = ppVariantPrices[0];
+  if(!match) return;
+  const priceEl = document.getElementById('pp-price');
+  const newPrice = `$${match.final_price.toFixed(2)}`;
+  if(priceEl.textContent !== newPrice){
+    priceEl.style.transition='opacity 0.15s';
+    priceEl.style.opacity='0';
+    setTimeout(()=>{priceEl.textContent=newPrice;priceEl.style.opacity='1';},150);
+  }
+}
+
 function selectChip(btn,type){
   btn.closest('.pp-chips').querySelectorAll('.pp-chip').forEach(b=>b.classList.remove('active','indigo-active'));
   btn.classList.add('active');
@@ -2143,6 +2177,7 @@ function selectChip(btn,type){
   if(type==='color'){ppSelectedColor=btn.textContent.trim();applyVariantUI(ppSelectedColor);}
   if(type==='stone') ppSelectedStone=btn.textContent.trim();
   if(type==='width') ppSelectedWidth=btn.textContent.trim();
+  updateVariantPrice();
 }
 
 // ── WISHLIST ──

@@ -80,6 +80,61 @@ def get_product(product_id: int, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
+
+@router.get("/products/{product_id}/variant-prices")
+def get_variant_prices(product_id: int, session: Session = Depends(get_session)):
+    """
+    Return per-variant pricing for a product.
+    Used by the frontend to update the displayed price when a customer
+    selects a size or color.
+
+    Response: list of {option_id, size, color, final_price, stock}
+    Only includes variants with a known base_price.
+    """
+    import json as _json
+    from app.agents.jewelry_pricing import calculate_mikisi_price
+    from app.agents.suppliers.silverbene_adapter import _normalize_size_for_match, COLOR_ATTRIBUTE_NAMES
+
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    try:
+        variants = _json.loads(product.variants or "[]")
+    except Exception:
+        return []
+
+    result = []
+    for v in variants:
+        bp = v.get("base_price") or v.get("price")
+        if not bp:
+            continue
+        bp = float(bp)
+        final_price = calculate_mikisi_price(bp)["final_price"]
+
+        attrs = v.get("attribute") or v.get("attributes") or []
+        size = None
+        color = None
+        for a in attrs:
+            name = (a.get("name") or "").lower().strip()
+            val  = (a.get("value") or "").strip()
+            if name in ("size", "ring size", "bracelet size", "anklet size"):
+                size = _normalize_size_for_match(val)
+            elif name in COLOR_ATTRIBUTE_NAMES:
+                from app.agents.suppliers.silverbene_adapter import _clean_color_value
+                color = _clean_color_value(val)
+
+        result.append({
+            "option_id":   v.get("option_id"),
+            "size":        size,
+            "color":       color,
+            "base_price":  round(bp, 2),
+            "final_price": final_price,
+            "stock":       v.get("qty", 0),
+        })
+
+    return result
+
 @router.post("/products")
 def create_product(product: ProductCreate, session: Session = Depends(get_session)):
     db_product = Product(**product.dict())

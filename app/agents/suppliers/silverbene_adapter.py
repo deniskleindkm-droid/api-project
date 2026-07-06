@@ -395,9 +395,31 @@ class SilverbeneAdapter(SupplierAdapter):
         gallery = raw.get("gallery", [])
         image_url = gallery[0] if gallery else ""
 
-        # Options contain price, stock, and attributes (Color / Size)
-        options = raw.get("option", [])
-        cost_price = float(options[0].get("price", 0)) if options else 0.0
+        # Prefer the richer 'options' field (has base_price per variant).
+        # Normalise to a single internal format so the rest of the pipeline
+        # works regardless of which API call populated the dict.
+        raw_options  = raw.get("options", [])   # new rich structure
+        legacy_opts  = raw.get("option",  [])   # old structure (fallback)
+
+        options = []
+        if raw_options:
+            for o in raw_options:
+                # Normalise attributes: 'attributes' → 'attribute' for compat
+                attrs = o.get("attributes") or o.get("attribute") or []
+                options.append({
+                    "option_id":  o.get("option_id"),
+                    "attribute":  attrs,
+                    "qty":        o.get("stock", o.get("qty", 0)),
+                    "price":      o.get("base_price", o.get("price", 0)),
+                    "base_price": o.get("base_price", o.get("price", 0)),
+                })
+        elif legacy_opts:
+            for o in legacy_opts:
+                attrs = o.get("attribute") or o.get("attributes") or []
+                bp = o.get("price", 0)
+                options.append({**o, "attribute": attrs, "base_price": bp})
+
+        cost_price = float(options[0].get("base_price", options[0].get("price", 0))) if options else 0.0
         stock = sum(int(o.get("qty", 0)) for o in options) if options else 999
 
         sizes, colors = self._extract_variants(options)
