@@ -1317,16 +1317,16 @@ async function openImgMgr(productId, name) {
 
     try {
         const res = await fetch(`${API}/admin/products/${productId}/images`);
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
         const data = await res.json();
         imgMgrImages = data.images || [];
-        // Prepend content_image_url if present and not already in list
         if (data.content_image_url && !imgMgrImages.includes(data.content_image_url)) {
             imgMgrImages = [data.content_image_url, ...imgMgrImages];
         }
         renderImgGrid();
-        document.getElementById('img-mgr-status').textContent = `${imgMgrImages.length} image${imgMgrImages.length!==1?'s':''} loaded`;
+        document.getElementById('img-mgr-status').textContent = `${imgMgrImages.length} image${imgMgrImages.length!==1?'s':''} — click × to remove, then Save`;
     } catch(e) {
-        document.getElementById('img-mgr-status').textContent = 'Error loading images';
+        document.getElementById('img-mgr-status').textContent = `Error: ${e.message}`;
     }
 }
 
@@ -1345,7 +1345,7 @@ function renderImgGrid() {
     grid.innerHTML = imgMgrImages.map((url, i) => {
         const isSpec = url.includes('lky_gallery');
         return `<div class="img-cell" id="imgcell-${i}">
-            <img src="${url}" onerror="this.style.display='none'" loading="lazy"/>
+            <img src="${url}" onerror="this.src='https://placehold.co/160x160/111/444?text=No+Preview'" loading="lazy"/>
             <button class="img-cell-del" onclick="removeImgAt(${i})" title="Remove this image">×</button>
             ${isSpec ? `<div class="img-cell-badge">⚑ Spec Image</div>` : ''}
         </div>`;
