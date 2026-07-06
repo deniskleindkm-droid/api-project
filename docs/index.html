@@ -1682,10 +1682,16 @@ function adjDiameterNote(val){
   // Returns whole-number US range like "US 6 – 7" — no decimals
   const nums=[...val.matchAll(/([\d.]+)/g)].map(m=>parseFloat(m[1])).filter(n=>n>=10&&n<=30);
   if(!nums.length) return '';
-  const lo=Math.floor(mmToUsRingSize(nums.length===1?nums[0]:Math.min(...nums)));
-  const hi=Math.ceil(mmToUsRingSize(nums.length===1?nums[0]:Math.max(...nums)));
+  if(nums.length===1){
+    // Single diameter — round to whole US size then ±1
+    const us=Math.round(mmToUsRingSize(nums[0]));
+    if(us<2||us>15) return '';
+    return `US ${us-1} – ${us+1}`;
+  }
+  const lo=Math.floor(mmToUsRingSize(Math.min(...nums)));
+  const hi=Math.ceil(mmToUsRingSize(Math.max(...nums)));
   if(lo<2||hi>15) return '';
-  return `US ${lo} – ${lo===hi?hi+1:hi}`;
+  return `US ${lo} – ${hi}`;
 }
 
 function parseSpecs(p){
@@ -2003,7 +2009,7 @@ async function openPP(id){
         if(!adjRange&&sp.ring_size_range){
           const m=sp.ring_size_range.match(/([\d.]+)\s*[-–]\s*([\d.]+)/);
           if(m) adjRange=`US ${Math.floor(parseFloat(m[1]))} – ${Math.ceil(parseFloat(m[2]))}`;
-          else{const n=sp.ring_size_range.match(/([\d.]+)/);if(n) adjRange=`US ${Math.round(parseFloat(n[1]))}`;}
+          else{const n=sp.ring_size_range.match(/([\d.]+)/);if(n){const us=Math.round(parseFloat(n[1]));adjRange=`US ${us-1} – ${us+1}`;}}
 
         }
       }catch{}
