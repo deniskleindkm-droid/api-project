@@ -76,6 +76,8 @@ def create_checkout_session(
 class GuestCartItem(BaseModel):
     product_id: int
     quantity: int = 1
+    selected_size: str = None
+    selected_color: str = None
 
 class GuestCheckoutRequest(BaseModel):
     items: list[GuestCartItem]
@@ -113,7 +115,12 @@ def create_guest_checkout_session(
             },
             "quantity": item.quantity,
         })
-        items_meta.append({"product_id": product.id, "quantity": item.quantity})
+        items_meta.append({
+            "product_id": product.id,
+            "quantity": item.quantity,
+            "selected_size": item.selected_size,
+            "selected_color": item.selected_color,
+        })
 
     checkout_session = stripe.checkout.Session.create(
         payment_method_types=["card"],
@@ -158,6 +165,8 @@ def process_order_background(checkout_data: dict):
                     if product:
                         subtotal = product.final_price * qty
                         total += subtotal
+                        sel_size  = item_data.get("selected_size")
+                        sel_color = item_data.get("selected_color")
                         order_details.append({
                             "name": product.name,
                             "qty": qty,
@@ -168,8 +177,11 @@ def process_order_background(checkout_data: dict):
                             "product_id": product.id,
                             "cj_sku": product.cj_sku,
                             "cj_product_id": product.cj_product_id,
+                            "variants": product.variants,
+                            "selected_size": sel_size,
+                            "selected_color": sel_color,
                         })
-                        print(f"[Payments] Guest item: {product.name} — CJ SKU: {product.cj_sku}")
+                        print(f"[Payments] Guest item: {product.name} — size={sel_size} color={sel_color}")
                         order = Order(
                             user_id=user_email,
                             guest_email=user_email,
@@ -211,8 +223,11 @@ def process_order_background(checkout_data: dict):
                             "product_id": item.product_id,
                             "cj_sku": product.cj_sku,
                             "cj_product_id": product.cj_product_id,
+                            "variants": product.variants,
+                            "selected_size": item.selected_size,
+                            "selected_color": item.selected_color,
                         })
-                        print(f"[Payments] Item: {product.name} — CJ SKU: {product.cj_sku}")
+                        print(f"[Payments] Item: {product.name} — size={item.selected_size} color={item.selected_color}")
                         order = Order(
                             user_id=user_email,
                             product_id=item.product_id,
@@ -297,10 +312,17 @@ def process_order_background(checkout_data: dict):
             print(f"[Payments] Silverbene balance: {'${:.2f}'.format(sb_balance) if sb_balance >= 0 else 'unknown'} — proceed={balance_ok}")
 
             for i, d in enumerate(order_details):
-                option_id = d.get("cj_sku")   # cj_sku stores Silverbene option_id
+                from app.agents.suppliers.silverbene_adapter import resolve_option_id
+                # Resolve the exact option_id for the customer's chosen size + color
+                resolved = resolve_option_id(
+                    d.get("variants"),
+                    d.get("selected_size"),
+                    d.get("selected_color"),
+                )
+                option_id = resolved or d.get("cj_sku")   # fallback: first variant
                 sku       = d.get("cj_product_id")
                 db_order_id = saved_orders[i].id if saved_orders and i < len(saved_orders) else (saved_orders[0].id if saved_orders else None)
-                print(f"[Payments] Forwarding to Silverbene: {d['name']} | option_id={option_id}")
+                print(f"[Payments] Forwarding to Silverbene: {d['name']} | size={d.get('selected_size')} color={d.get('selected_color')} | option_id={option_id}")
 
                 if not option_id:
                     print(f"[Payments] No Silverbene option_id for {d['name']} — manual fulfillment needed")

@@ -690,6 +690,95 @@ class SilverbeneAdapter(SupplierAdapter):
         return base
 
 
+def _normalize_size_for_match(raw: str) -> str:
+    """
+    Strip supplier prefixes from a raw size attribute value so it can be
+    compared against the customer's selected_size (which came from the DB
+    sizes array, already normalized at import time).
+
+    Examples:
+      "US 5"      → "5"
+      "US  6"     → "6"     (double space)
+      "Size 7"    → "7"
+      "Ring Size 8" → "8"
+      "No. 14"    → "14"
+      "18\""      → "18\""  (inch — already final form)
+    """
+    v = raw.strip()
+    for prefix in ("US-", "US  ", "US ", "Size ", "Ring Size ", "No. ", "No "):
+        if v.upper().startswith(prefix.upper()):
+            return v[len(prefix):].strip()
+    return v
+
+
+def resolve_option_id(variants_json: str, selected_size: str, selected_color: str) -> str:
+    """
+    Return the Silverbene option_id whose attributes best match the customer's
+    selected size and color.  Both selected_size and selected_color are the
+    display values from the DB (e.g. "7", '18"', "Yellow Gold").
+
+    Matching priority:
+      1. Exact size + exact color match
+      2. Exact size match (ignore color if color wasn't selected)
+      3. Exact color match (ignore size if size wasn't selected)
+      4. First variant (fallback — same as old cj_sku behaviour)
+    """
+    if not variants_json:
+        return None
+    try:
+        variants = json.loads(variants_json)
+    except Exception:
+        return None
+    if not variants:
+        return None
+
+    want_size  = (selected_size  or "").strip()
+    want_color = (selected_color or "").strip()
+
+    def attr_size(attrs):
+        for a in attrs:
+            if a.get("name", "").lower() in ("size", "ring size", "bracelet size", "anklet size"):
+                v = a.get("value", "").strip()
+                normalized = _normalize_size_for_match(v)
+                # Also try chain-length chips for necklace sizes
+                if re.search(r'\d+\s*(mm|cm)', v, re.I):
+                    chips = parse_necklace_length(v)
+                    if chips:
+                        normalized = chips[0]
+                return normalized
+        return None
+
+    def attr_color(attrs):
+        for a in attrs:
+            if a.get("name", "").lower() in COLOR_ATTRIBUTE_NAMES:
+                return _clean_color_value(a.get("value", "").strip())
+        return None
+
+    # Pass 1: exact size + exact color
+    if want_size and want_color:
+        for v in variants:
+            attrs = v.get("attribute", [])
+            if attr_size(attrs) == want_size and attr_color(attrs) == want_color:
+                return str(v.get("option_id", ""))
+
+    # Pass 2: exact size only
+    if want_size:
+        for v in variants:
+            attrs = v.get("attribute", [])
+            if attr_size(attrs) == want_size:
+                return str(v.get("option_id", ""))
+
+    # Pass 3: exact color only
+    if want_color:
+        for v in variants:
+            attrs = v.get("attribute", [])
+            if attr_color(attrs) == want_color:
+                return str(v.get("option_id", ""))
+
+    # Pass 4: fallback to first variant (cj_sku behaviour)
+    return str(variants[0].get("option_id", ""))
+
+
 _PENDANT_ONLY_RE = re.compile(
     r'pendant only|chain not included|without chain|no chain included|chain is not included',
     re.I,
