@@ -1242,6 +1242,7 @@ let pendingVerifyEmail = '';
 let cartItems = [];
 let ppSelectedSize = null;
 let ppSelectedColor = null;
+let ppSelectedColorRaw = null; // raw API value (before COLOR_LABEL mapping)
 let ppSelectedStone = null;
 let ppSelectedWidth = null;
 let ppOpening = false; // guard — prevents double-click opening two panels
@@ -1840,11 +1841,16 @@ async function openPP(id){
   document.getElementById('pp-price').textContent=`$${p.final_price.toFixed(2)}`;
   document.getElementById('pp-orig').textContent=p.original_price>p.final_price?`$${p.original_price.toFixed(2)}`:'';
   document.getElementById('pp-save').textContent=p.original_price>p.final_price?`Save $${(p.original_price-p.final_price).toFixed(2)}`:'';
-  // Fetch per-variant prices — update display when customer changes size/color
+  // Fetch per-variant prices — update display when customer changes size/color.
+  // Capture product ID so a stale fetch from a previously opened panel cannot
+  // overwrite prices for a different product (race condition guard).
+  const _fetchPid=p.id;
   fetch(`${API}/products/${p.id}/variant-prices`).then(r=>r.ok?r.json():null).then(vp=>{
+    if(ppCurrentProduct?.id!==_fetchPid)return; // panel moved on — discard stale result
     if(!vp||!vp.length)return;
     const prices=vp.map(v=>v.final_price);
-    if(prices.every(pr=>pr===prices[0]))return; // all same price — nothing to update
+    const minP=Math.min(...prices), maxP=Math.max(...prices);
+    if(maxP-minP<0.01)return; // all variants within $0.01 — no visible difference
     ppVariantPrices=vp;
     updateVariantPrice();
   }).catch(()=>{});
@@ -1919,7 +1925,7 @@ async function openPP(id){
           document.getElementById('pp-colors-wrap').style.display='block';
           document.querySelector('#pp-colors-wrap .pp-section-title').textContent='Metal Finish';
           document.getElementById('pp-color-chips').innerHTML=uniqueMetals.map((m,i)=>
-            `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${COLOR_LABEL[m.toLowerCase().trim()]||m}</button>`
+            `<button class="pp-chip ${i===0?'active':''}" data-raw="${m}" onclick="selectChip(this,'color')">${COLOR_LABEL[m.toLowerCase().trim()]||m}</button>`
           ).join('');
         }else document.getElementById('pp-colors-wrap').style.display='none';
         // Chain Width (only show if multiple options)
@@ -1945,7 +1951,7 @@ async function openPP(id){
           document.getElementById('pp-stone-wrap').style.display='block';
           document.querySelector('#pp-stone-wrap .pp-section-title').textContent='Color';
           document.getElementById('pp-stone-chips').innerHTML=part2.map((v,i)=>
-            `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'stone')">${COLOR_LABEL[v.toLowerCase().trim()]||v}</button>`
+            `<button class="pp-chip ${i===0?'active':''}" data-raw="${v}" onclick="selectChip(this,'stone')">${COLOR_LABEL[v.toLowerCase().trim()]||v}</button>`
           ).join('');
           stones=[];  // prevent duplicate stone section below
         }
@@ -1956,7 +1962,7 @@ async function openPP(id){
         document.querySelector('#pp-colors-wrap .pp-section-title').textContent=isAllMetal?'Metal Finish':'Color';
         document.getElementById('pp-color-chips').innerHTML=realChips.map((c,i)=>{
           const label=COLOR_LABEL[c.toLowerCase().trim()]||c;
-          return `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${label}</button>`;
+          return `<button class="pp-chip ${i===0?'active':''}" data-raw="${c}" onclick="selectChip(this,'color')">${label}</button>`;
         }).join('');
         document.getElementById('pp-width-wrap').style.display='none';
       }
@@ -2091,8 +2097,11 @@ async function openPP(id){
   // Reset variant selection for this product
   ppSelectedSize  = sizes.length ? sizes[0] : null;
   // Read display text of first chip (post-COLOR_LABEL rename) so cart receives friendly name
-  ppSelectedColor = document.getElementById('pp-colors-wrap').style.display!=='none'
-    ? (document.querySelector('#pp-color-chips .pp-chip')?.textContent?.trim()||null) : null;
+  const _firstColorChip = document.querySelector('#pp-color-chips .pp-chip');
+  ppSelectedColor    = document.getElementById('pp-colors-wrap').style.display!=='none'
+    ? (_firstColorChip?.textContent?.trim()||null) : null;
+  ppSelectedColorRaw = document.getElementById('pp-colors-wrap').style.display!=='none'
+    ? (_firstColorChip?.dataset?.raw||ppSelectedColor) : null;
   ppSelectedStone = stones.length ? stones[0] : null;
   ppSelectedWidth = document.getElementById('pp-width-wrap').style.display!=='none'
     ? (document.getElementById('pp-width-chips').querySelector('.pp-chip')?.textContent||null) : null;
@@ -2148,18 +2157,23 @@ function ppNavPrev(){if(ppNavIdx>0){ppOpening=false;openPP(ppNavList[ppNavIdx-1]
 function ppNavNext(){if(ppNavIdx>=0&&ppNavIdx<ppNavList.length-1){ppOpening=false;openPP(ppNavList[ppNavIdx+1].id);}}
 function updateVariantPrice(){
   if(!ppVariantPrices.length) return;
-  // Find best matching variant for current selection
-  const wantSize  = ppSelectedSize  || null;
-  const wantColor = ppSelectedColor || null;
+  const wantSize     = ppSelectedSize     || null;
+  // Use raw API value for color matching (display label ≠ API value for mapped colors
+  // like "pink" → "Rose Gold". data-raw stores what Silverbene actually sends.)
+  const wantColorRaw = ppSelectedColorRaw || ppSelectedColor || null;
+  const colorEq = (v) => {
+    if(!v.color || !wantColorRaw) return false;
+    return v.color.toLowerCase() === wantColorRaw.toLowerCase();
+  };
   let match = null;
   // Pass 1: exact size + color
-  if(wantSize && wantColor) match = ppVariantPrices.find(v=>v.size===wantSize && v.color===wantColor);
+  if(wantSize && wantColorRaw) match = ppVariantPrices.find(v=>v.size===wantSize && colorEq(v));
   // Pass 2: size only
-  if(!match && wantSize)    match = ppVariantPrices.find(v=>v.size===wantSize);
+  if(!match && wantSize)       match = ppVariantPrices.find(v=>v.size===wantSize);
   // Pass 3: color only
-  if(!match && wantColor)   match = ppVariantPrices.find(v=>v.color===wantColor);
+  if(!match && wantColorRaw)   match = ppVariantPrices.find(v=>colorEq(v));
   // Pass 4: first variant
-  if(!match)                match = ppVariantPrices[0];
+  if(!match)                   match = ppVariantPrices[0];
   if(!match) return;
   const priceEl = document.getElementById('pp-price');
   const newPrice = `$${match.final_price.toFixed(2)}`;
@@ -2174,7 +2188,11 @@ function selectChip(btn,type){
   btn.closest('.pp-chips').querySelectorAll('.pp-chip').forEach(b=>b.classList.remove('active','indigo-active'));
   btn.classList.add('active');
   if(type==='size')  ppSelectedSize=btn.textContent.trim();
-  if(type==='color'){ppSelectedColor=btn.textContent.trim();applyVariantUI(ppSelectedColor);}
+  if(type==='color'){
+    ppSelectedColor   =btn.textContent.trim();
+    ppSelectedColorRaw=btn.dataset.raw||btn.textContent.trim(); // raw value Silverbene sent
+    applyVariantUI(ppSelectedColor);
+  }
   if(type==='stone') ppSelectedStone=btn.textContent.trim();
   if(type==='width') ppSelectedWidth=btn.textContent.trim();
   updateVariantPrice();
