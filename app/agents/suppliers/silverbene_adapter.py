@@ -36,6 +36,19 @@ _CATEGORY_PREFIXES = {"anklet", "bracelet", "necklace", "ring", "earring", "pend
 SIZE_ATTRIBUTE_NAMES = {"size", "ring size", "length", "bracelet size", "anklet size", "chain length"}
 COLOR_ATTRIBUTE_NAMES = {"color", "colour", "metal color", "metal finish", "finish", "main stone", "stone", "stone color", "stone type", "birthstone"}
 
+# Maps frontend display labels (from COLOR_LABEL in index.html) back to the raw
+# Silverbene attribute values they could represent.  Kept in sync with COLOR_LABEL.
+# Used in resolve_option_id so display labels ("Rose Gold") match raw API values ("Pink").
+_COLOR_LABEL_REVERSE: dict[str, list[str]] = {
+    "gold":        ["gold"],
+    "yellow gold": ["yellow gold", "yellow"],
+    "rose gold":   ["rose gold", "pink"],
+    "white gold":  ["white gold", "white"],
+    "silver":      ["silver", "rhodium"],
+    "platinum":    ["platinum"],
+    "black":       ["black"],
+}
+
 
 class SilverbeneAdapter(SupplierAdapter):
     """
@@ -776,11 +789,30 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
                 return _clean_color_value(a.get("value", "").strip())
         return None
 
+    def color_matches(api_raw: str, want: str) -> bool:
+        """
+        True when api_raw (Silverbene raw value, e.g. 'Pink') equals want
+        (display label stored in cart, e.g. 'Rose Gold').
+
+        Handles three cases:
+          1. Direct match: 'Silver' == 'Silver'
+          2. Case-insensitive direct: 'gold' == 'Gold'
+          3. Reverse label map: 'Pink' matches want='Rose Gold'
+             because _COLOR_LABEL_REVERSE['rose gold'] = ['rose gold','pink']
+        """
+        if not api_raw or not want:
+            return False
+        if api_raw.lower() == want.lower():
+            return True
+        # Check if 'want' is a display label whose raw values include api_raw
+        raw_candidates = _COLOR_LABEL_REVERSE.get(want.lower(), [])
+        return api_raw.lower() in raw_candidates
+
     # Pass 1: exact size + exact color
     if want_size and want_color:
         for v in variants:
             attrs = v.get("attribute", [])
-            if attr_size(attrs) == want_size and attr_color(attrs) == want_color:
+            if attr_size(attrs) == want_size and color_matches(attr_color(attrs) or "", want_color):
                 return str(v.get("option_id", ""))
 
     # Pass 2: exact size only
@@ -794,7 +826,7 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
     if want_color:
         for v in variants:
             attrs = v.get("attribute", [])
-            if attr_color(attrs) == want_color:
+            if color_matches(attr_color(attrs) or "", want_color):
                 return str(v.get("option_id", ""))
 
     # Pass 4: fallback to first variant (cj_sku behaviour)
