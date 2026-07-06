@@ -41,6 +41,7 @@ def run_discontinuation_agent():
     """
     Main entry point — called at end of each stock sync run.
     Acts on all products with sync_miss_count >= 1.
+    Sends ONE batched report email grouped by collection, not one per product.
     """
     print(f"\n[Discontinuation Agent] Starting — {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
 
@@ -58,32 +59,40 @@ def run_discontinuation_agent():
 
     print(f"[Discontinuation Agent] {len(missed)} products with consecutive misses")
 
-    notified = []
-    deleted = []
+    # Collect all actions — no emails fired inside the loop
+    first_miss  = []   # (name, category, sku)
+    second_miss = []
+    deleted     = []
 
     for product in missed:
         count = product.sync_miss_count
+        entry = (product.name, product.category or "Uncategorised", product.cj_sku or "N/A")
 
         if count >= MISS_THRESHOLD:
-            _handle_final_miss(product)
-            deleted.append(product.name)
+            _handle_final_miss_silent(product)
+            deleted.append(entry)
 
         elif count == 2:
-            _notify_second_miss(product)
-            notified.append(product.name)
+            second_miss.append(entry)
 
         elif count == 1:
-            _notify_first_miss(product)
-            notified.append(product.name)
+            first_miss.append(entry)
+
+    # Send one batched report covering everything
+    if first_miss or second_miss or deleted:
+        _send_batched_report(first_miss, second_miss, deleted)
+
+    notified_count = len(first_miss) + len(second_miss)
+    deleted_count  = len(deleted)
 
     result = {
-        "checked":   len(missed),
-        "notified":  len(notified),
-        "deleted":   len(deleted),
+        "checked":  len(missed),
+        "notified": notified_count,
+        "deleted":  deleted_count,
     }
 
-    _write_memory(result, notified, deleted)
-    print(f"[Discontinuation Agent] Done — notified={len(notified)} deleted={len(deleted)}")
+    _write_memory(result, [n for n,_,_ in first_miss+second_miss], [n for n,_,_ in deleted])
+    print(f"[Discontinuation Agent] Done — notified={notified_count} deleted={deleted_count}")
     return result
 
 
@@ -138,11 +147,10 @@ def handle_recovery(product_id: int, fresh_data: dict):
 
 # ─── Internal handlers ────────────────────────────────────────────────────────
 
-def _handle_final_miss(product: Product):
-    """3rd miss — make one last API call to confirm, then delete if still gone."""
+def _handle_final_miss_silent(product: Product):
+    """3rd miss — confirm with API, delete if still gone. No email here; batched report handles it."""
     from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
     sb = SilverbeneAdapter()
-
     sku = product.cj_sku
     confirmed_gone = True
 
@@ -151,29 +159,12 @@ def _handle_final_miss(product: Product):
         if isinstance(resp, dict) and resp.get("code") == 0:
             data = resp.get("data", [])
             if isinstance(data, list) and data:
-                # Silverbene found it — false alarm, treat as recovery
-                item = data[0] if data else {}
-                qty = int(item.get("qty", item.get("qyt", 0)) or 0)
+                qty = int((data[0] or {}).get("qty", (data[0] or {}).get("qyt", 0)) or 0)
                 handle_recovery(product.id, {"stock": qty})
                 confirmed_gone = False
 
     if confirmed_gone:
         print(f"[Discontinuation Agent] DELETING permanently: [{product.id}] {product.name[:55]}")
-        _send_email(
-            subject=f"Mikisi — Product Permanently Removed: {product.name[:50]}",
-            lines=[
-                f"<strong>{product.name}</strong> could not be found on Silverbene "
-                f"after {MISS_THRESHOLD} consecutive sync checks (every 6 hours).",
-                "",
-                "The product has been <strong>permanently deleted</strong> from the Mikisi database.",
-                "Silverbene has discontinued this item — it will not return.",
-                "",
-                f"Category: {product.category} &nbsp;|&nbsp; SKU: {sku or 'N/A'}",
-                "",
-                "No action needed. The store has already been updated.",
-            ],
-            urgency="high",
-        )
         with Session(engine) as session:
             p = session.get(Product, product.id)
             if p:
@@ -181,54 +172,84 @@ def _handle_final_miss(product: Product):
                 session.commit()
 
 
-def _notify_first_miss(product: Product):
-    print(f"[Discontinuation Agent] Miss 1 — notifying Dennis: {product.name[:55]}")
-    _send_email(
-        subject=f"Mikisi — Product Not Found at Silverbene: {product.name[:50]}",
-        lines=[
-            f"<strong>{product.name}</strong> could not be found at Silverbene during the last stock sync.",
-            "",
-            "The product has been <strong>hidden from the storefront</strong> immediately.",
-            "It now appears in the <strong>Discontinued</strong> folder in your Catalog Manager.",
-            "",
-            "This may be temporary (Silverbene API hiccup) or the product may have been discontinued.",
-            f"The system will check again in the next sync cycle (6 hours).",
-            "",
-            f"Category: {product.category} &nbsp;|&nbsp; SKU: {product.cj_sku or 'N/A'}",
-            "",
-            "If it is found again, it will be moved to Unpublished for your review.",
-            f"If it is not found after {MISS_THRESHOLD} checks, it will be permanently deleted.",
-        ],
-        urgency="medium",
+def _send_batched_report(first_miss: list, second_miss: list, deleted: list):
+    """
+    One email covering all missed products this cycle, grouped by collection.
+    first_miss / second_miss / deleted are lists of (name, category, sku).
+    """
+    def _group_by_category(items):
+        groups = {}
+        for name, cat, sku in items:
+            groups.setdefault(cat, []).append((name, sku))
+        return groups
+
+    sections = []
+
+    if first_miss:
+        groups = _group_by_category(first_miss)
+        rows = "".join(
+            f"<tr><td style='padding:4px 12px 4px 0;color:#555'>{cat}</td>"
+            f"<td style='padding:4px 0'>"
+            + "".join(f"{name} <span style='color:#aaa;font-size:11px'>({sku})</span><br>" for name, sku in prods)
+            + "</td></tr>"
+            for cat, prods in sorted(groups.items())
+        )
+        sections.append(
+            f"<h3 style='color:#b45309;margin:20px 0 6px'>⚠ New — Hidden from storefront ({len(first_miss)})</h3>"
+            f"<p style='color:#555;margin:0 0 8px;font-size:13px'>Not found in this sync. Will be checked again in 6 hours.</p>"
+            f"<table style='border-collapse:collapse;font-size:13px'>{rows}</table>"
+        )
+
+    if second_miss:
+        groups = _group_by_category(second_miss)
+        rows = "".join(
+            f"<tr><td style='padding:4px 12px 4px 0;color:#555'>{cat}</td>"
+            f"<td style='padding:4px 0'>"
+            + "".join(f"{name} <span style='color:#aaa;font-size:11px'>({sku})</span><br>" for name, sku in prods)
+            + "</td></tr>"
+            for cat, prods in sorted(groups.items())
+        )
+        sections.append(
+            f"<h3 style='color:#dc2626;margin:20px 0 6px'>⚠ Still missing — 2nd check ({len(second_miss)})</h3>"
+            f"<p style='color:#555;margin:0 0 8px;font-size:13px'>One more miss and these will be permanently deleted.</p>"
+            f"<table style='border-collapse:collapse;font-size:13px'>{rows}</table>"
+        )
+
+    if deleted:
+        groups = _group_by_category(deleted)
+        rows = "".join(
+            f"<tr><td style='padding:4px 12px 4px 0;color:#555'>{cat}</td>"
+            f"<td style='padding:4px 0'>"
+            + "".join(f"{name} <span style='color:#aaa;font-size:11px'>({sku})</span><br>" for name, sku in prods)
+            + "</td></tr>"
+            for cat, prods in sorted(groups.items())
+        )
+        sections.append(
+            f"<h3 style='color:#7c3aed;margin:20px 0 6px'>✗ Permanently deleted ({len(deleted)})</h3>"
+            f"<p style='color:#555;margin:0 0 8px;font-size:13px'>Confirmed gone after {MISS_THRESHOLD} checks. Removed from database.</p>"
+            f"<table style='border-collapse:collapse;font-size:13px'>{rows}</table>"
+        )
+
+    total = len(first_miss) + len(second_miss) + len(deleted)
+    subject = f"Mikisi — {total} Product{'s' if total!=1 else ''} Missing at Silverbene"
+    body = (
+        "<div style='font-family:sans-serif;max-width:620px;margin:0 auto;padding:24px'>"
+        "<p style='color:#333'>Silverbene sync flagged the following products this cycle:</p>"
+        + "".join(sections)
+        + "<p style='color:#aaa;font-size:11px;margin-top:24px'>Mikisi autonomous stock system</p>"
+        "</div>"
     )
+    _send_email(subject=subject, lines=[], body=body)
 
 
-def _notify_second_miss(product: Product):
-    print(f"[Discontinuation Agent] Miss 2 — still missing: {product.name[:55]}")
-    _send_email(
-        subject=f"Mikisi — Still Missing at Silverbene (Check 2/3): {product.name[:50]}",
-        lines=[
-            f"<strong>{product.name}</strong> was not found at Silverbene again in this sync cycle.",
-            "",
-            f"This is the <strong>2nd consecutive miss</strong>. One more check remaining.",
-            "The product remains hidden from the storefront.",
-            "",
-            f"If it is not found in the next sync (in ~6 hours), it will be "
-            f"<strong>permanently deleted</strong> from the database.",
-            "",
-            f"Category: {product.category} &nbsp;|&nbsp; SKU: {product.cj_sku or 'N/A'}",
-        ],
-        urgency="medium",
-    )
-
-
-def _send_email(subject: str, lines: list, urgency: str = "medium"):
+def _send_email(subject: str, lines: list, urgency: str = "medium", body: str = ""):
     try:
         from app.agents.email_partner import send_email
         dennis_email = os.getenv("DENNIS_EMAIL")
         if not dennis_email:
             return
-        body = "<br>".join(lines)
+        if not body:
+            body = "<br>".join(lines)
         send_email(dennis_email, subject, body, is_html=True)
     except Exception as e:
         print(f"[Discontinuation Agent] Email error: {e}")
