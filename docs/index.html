@@ -1681,18 +1681,19 @@ function mmToUsRingSize(mm){
   return Math.round(((Math.PI*mm-36.5)/2.56)*2)/2;
 }
 function adjDiameterNote(val){
-  // val: "17mm" or "16-18mm" or "16–18mm"
+  // Returns clean US range string like "US 6 – 7" from mm value
   const nums=[...val.matchAll(/([\d.]+)/g)].map(m=>parseFloat(m[1])).filter(n=>n>=10&&n<=30);
-  if(!nums.length) return val;
+  if(!nums.length) return '';
   if(nums.length===1){
     const us=mmToUsRingSize(nums[0]);
-    const usStr=(us>=2&&us<=15)?` · approx. US ${us}`:'';
-    return `${val} inner diameter${usStr}`;
+    if(us<2||us>15) return '';
+    const lo=Math.floor(us);
+    const hi=Math.ceil(us);
+    return `US ${lo} – ${hi===lo?hi+1:hi}`;
   }
-  const lo=mmToUsRingSize(Math.min(...nums));
-  const hi=mmToUsRingSize(Math.max(...nums));
-  const usStr=(lo>=2&&hi<=15)?` · approx. US ${lo}–${hi}`:'';
-  return `${val} inner diameter${usStr}`;
+  const lo=Math.floor(mmToUsRingSize(Math.min(...nums)));
+  const hi=Math.ceil(mmToUsRingSize(Math.max(...nums)));
+  return `US ${lo} – ${hi}`;
 }
 
 function parseSpecs(p){
@@ -1715,7 +1716,8 @@ function parseSpecs(p){
         rows.push({k:SPEC_LABELS[key],v:display});
       }else rows.push({k:SPEC_LABELS[key],v:raw[key]});
     }else if(key==='inner_diameter'){
-      rows.push({k:SPEC_LABELS[key],v:adjDiameterNote(raw[key])});
+      const usRange=adjDiameterNote(raw[key]);
+      rows.push({k:SPEC_LABELS[key],v:usRange||raw[key]});
     }else{
       rows.push({k:SPEC_LABELS[key],v:raw[key]});
     }
@@ -2002,15 +2004,21 @@ async function openPP(id){
     if(isAdjustableOnly&&colName==='rings'){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
-      let adjNote='';
+      let adjRange='';
       try{
         const sp=p.specs?JSON.parse(p.specs):{};
-        if(sp.inner_diameter){adjNote=adjDiameterNote(sp.inner_diameter);}
-        else if(sp.ring_size_range){adjNote=`Fits ${sp.ring_size_range}`;}
+        if(sp.inner_diameter){adjRange=adjDiameterNote(sp.inner_diameter);}
+        if(!adjRange&&sp.ring_size_range){
+          // strip any leading 'US' duplicates and reformat cleanly
+          const m=sp.ring_size_range.match(/([\d.]+)\s*[-–]\s*([\d.]+)/);
+          if(m) adjRange=`US ${m[1]} – ${m[2]}`;
+          else{const n=sp.ring_size_range.match(/([\d.]+)/);if(n) adjRange=`US ${n[1]}`;}
+        }
       }catch{}
       document.getElementById('pp-size-chips').innerHTML=
-        `<button class="pp-chip active" style="cursor:default;pointer-events:none;">Open Size / Adjustable</button>`+
-        (adjNote?`<div style="margin-top:6px;font-size:10px;color:var(--mid);font-style:italic;letter-spacing:0.5px;">${adjNote}</div>`:'');
+        (adjRange?`<button class="pp-chip active" style="cursor:default;pointer-events:none;">${adjRange}</button>`+
+          `<div style="margin-top:6px;font-size:10px;color:var(--mid);letter-spacing:0.5px;">Open Size / Adjustable</div>`:
+          `<button class="pp-chip active" style="cursor:default;pointer-events:none;">Open Size / Adjustable</button>`);
     }else if(sizes.length>=2||showSingle){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
