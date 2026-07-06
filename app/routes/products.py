@@ -286,6 +286,70 @@ def get_catalog(master_key: str, session: Session = Depends(get_session)):
     }
 
 
+class ImageUpdateRequest(BaseModel):
+    master_key: str
+    images: List[str]
+
+
+@router.get("/admin/products/{product_id}/images")
+def get_product_images(product_id: int, master_key: str, session: Session = Depends(get_session)):
+    """Admin — return current image array for a product."""
+    from app.agents.aria_security import verify_master_key
+    import json
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    images = json.loads(product.images or "[]")
+    return {
+        "product_id": product_id,
+        "name": product.name,
+        "images": images,
+        "image_url": product.image_url,
+        "content_image_url": product.content_image_url,
+    }
+
+
+@router.put("/admin/products/{product_id}/images")
+def update_product_images(product_id: int, data: ImageUpdateRequest, session: Session = Depends(get_session)):
+    """Admin — overwrite the images array for a product (after manual curation)."""
+    from app.agents.aria_security import verify_master_key
+    import json
+    if not verify_master_key(data.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    product.images = json.dumps(data.images)
+    if data.images and not product.content_image_url:
+        product.image_url = data.images[0]
+    session.add(product)
+    session.commit()
+    return {"saved": len(data.images), "images": data.images}
+
+
+@router.post("/admin/products/{product_id}/images/refresh")
+def refresh_product_images(product_id: int, data: dict, session: Session = Depends(get_session)):
+    """Admin — re-fetch the full gallery from Silverbene for review."""
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(data.get("master_key", "")):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    supplier_sku = product.cj_product_id
+    if not supplier_sku:
+        raise HTTPException(status_code=400, detail="No Silverbene SKU stored for this product")
+    from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+    sb = SilverbeneAdapter()
+    raw = sb.get_by_sku(supplier_sku)
+    if not raw:
+        raise HTTPException(status_code=404, detail="Product not found at Silverbene — may be discontinued")
+    gallery = raw.get("gallery", [])
+    return {"images": gallery, "count": len(gallery)}
+
+
 @router.put("/products/{product_id}/collection")
 def assign_collection(
     product_id: int,
