@@ -893,6 +893,62 @@ def silverbene_sync_stock_now():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/silverbene/backfill-specs")
+def silverbene_backfill_specs():
+    """
+    One-shot backfill: re-fetches raw Silverbene descriptions for all products
+    and extracts inner_diameter (rings) and refreshes weight into specs JSON.
+    Safe to re-run — only overwrites inner_diameter and weight, leaves other specs untouched.
+    """
+    import json, threading
+    from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+    from app.database import engine
+    from sqlmodel import Session, select
+    from app.models.product import Product
+
+    def _run():
+        sb = SilverbeneAdapter()
+        updated = 0
+        skipped = 0
+        with Session(engine) as session:
+            products = session.exec(
+                select(Product).where(
+                    Product.supplier_name == "Silverbene",
+                    Product.cj_product_id.isnot(None),
+                )
+            ).all()
+            for p in products:
+                try:
+                    raw = sb.get_by_sku(p.cj_product_id)
+                    if not raw:
+                        skipped += 1
+                        continue
+                    desc = raw.get("description", "") or ""
+                    new_specs = sb._extract_specs_from_desc(desc)
+                    if not new_specs:
+                        skipped += 1
+                        continue
+                    existing = json.loads(p.specs or "{}")
+                    changed = False
+                    # Merge: inner_diameter and weight only
+                    for key in ("inner_diameter", "weight"):
+                        if key in new_specs and new_specs[key] != existing.get(key):
+                            existing[key] = new_specs[key]
+                            changed = True
+                    if changed:
+                        p.specs = json.dumps(existing)
+                        session.add(p)
+                        updated += 1
+                except Exception:
+                    skipped += 1
+                    continue
+            session.commit()
+        print(f"[Spec Backfill] Done — updated={updated} skipped={skipped}")
+
+    threading.Thread(target=_run).start()
+    return {"message": "Spec backfill started in background — updates inner_diameter and weight for all Silverbene products", "check": "Watch Railway logs for completion"}
+
+
 @router.get("/silverbene/ping")
 def silverbene_ping():
     """Diagnose Silverbene API connection — shows token status and raw response."""
