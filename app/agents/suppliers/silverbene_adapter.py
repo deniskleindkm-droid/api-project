@@ -705,29 +705,44 @@ def parse_necklace_length(chain_length_str: str) -> list:
     Convert a Silverbene chain length string into customer-facing inch chips.
 
     Inputs handled:
-      "40cm+5cm"             -> ['Adjustable 16"-18"']   extender: both ends snap to standard
-      "40cm+5cm adjustable"  -> ['Adjustable 16"-18"']
-      "400mm - 450mm Adj."   -> ['Adjustable 16"-18"']   two-value adjustable range
-      "45cm"                 -> ['18"']                   single fixed length
-      "40cm - 60cm"          -> ['16"', '18"', '20"', '22"', '24"']  multi-length range
-      "400mm"                -> ['16"']
+      "40cm+5cm"                           -> ['Adjustable 16"–18"']
+      "Approximately 41cm + 5cm Adjustable"-> ['Adjustable 16"–18"']
+      "400mm + 50mm Adjustable"            -> ['Adjustable 16"–18"']
+      "43cm main chain with 5cm extension" -> ['Adjustable 17"–19"']
+      "400mm - 450mm Adj."                 -> ['Adjustable 16"–18"']
+      "45cm"                               -> ['18"']
+      "40cm - 60cm"                        -> ['16"','18"','20"','22"','24"']
     """
     s = chain_length_str.strip()
     is_adj = bool(re.search(r'adjustabl|extender|extension', s, re.I))
 
-    # Extender pattern: "40cm+5cm" or "40+5cm" (Silverbene omits unit on base)
-    ext_m = re.match(r'(\d+(?:\.\d+)?)\s*(cm|mm)?\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)', s, re.I)
+    def _to_mm_val(val, unit):
+        unit = unit.lower() if unit else ''
+        return int(round(float(val) * 10)) if unit == 'cm' else int(float(val))
+
+    # Pattern 1: "X(unit) + Y(unit)" — base + extender (use re.search not re.match)
+    ext_m = re.search(r'(\d+(?:\.\d+)?)\s*(cm|mm)?\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)', s, re.I)
     if ext_m:
-        ext_unit = ext_m.group(4).lower()  # unit on the extension is authoritative
-        base_unit = (ext_m.group(2) or ext_unit).lower()
-        b_mm = int(round(float(ext_m.group(1)) * 10)) if base_unit == 'cm' else int(float(ext_m.group(1)))
-        e_mm = int(round(float(ext_m.group(3)) * 10)) if ext_unit == 'cm' else int(float(ext_m.group(3)))
+        ext_unit = ext_m.group(4).lower()
+        base_unit = ext_m.group(2) or ext_unit
+        b_mm = _to_mm_val(ext_m.group(1), base_unit)
+        e_mm = _to_mm_val(ext_m.group(3), ext_unit)
         lo, hi = _snap_inch(b_mm), _snap_inch(b_mm + e_mm)
         if lo == hi:
             return [lo]
-        return [f'Adjustable {lo}-{hi}']
+        return [f'Adjustable {lo}–{hi}']
 
-    # Normalise cm → mm
+    # Pattern 2: "Xcm main chain with Ycm" (no + sign)
+    with_m = re.search(r'(\d+(?:\.\d+)?)\s*(cm|mm)\s+(?:\w+\s+)?chain\s+with\s+(\d+(?:\.\d+)?)\s*(cm|mm)', s, re.I)
+    if with_m:
+        b_mm = _to_mm_val(with_m.group(1), with_m.group(2))
+        e_mm = _to_mm_val(with_m.group(3), with_m.group(4))
+        lo, hi = _snap_inch(b_mm), _snap_inch(b_mm + e_mm)
+        if lo == hi:
+            return [lo]
+        return [f'Adjustable {lo}–{hi}']
+
+    # Normalise cm → mm for remaining patterns
     def _to_mm(m): return str(int(round(float(m.group(1)) * 10))) + 'mm'
     s_mm = re.sub(r'(\d+(?:\.\d+)?)\s*cm', _to_mm, s, flags=re.I)
 
@@ -737,16 +752,16 @@ def parse_necklace_length(chain_length_str: str) -> list:
 
     if len(nums) == 1:
         c = _snap_inch(nums[0])
-        return [f'Adjustable {c}'] if is_adj else [c]
+        return [f'Adjustable {c}–{c}'] if is_adj else [c]
 
     lo_mm, hi_mm = min(nums), max(nums)
 
-    # Two-value adjustable range: "400mm - 450mm Adjustable" → 'Adjustable 16"-18"'
+    # Two-value adjustable range: "400mm - 450mm Adjustable"
     if is_adj and len(nums) == 2:
         lo_in, hi_in = _snap_inch(lo_mm), _snap_inch(hi_mm)
         if lo_in == hi_in:
             return [lo_in]
-        return [f'Adjustable {lo_in}-{hi_in}']
+        return [f'Adjustable {lo_in}–{hi_in}']
 
     # Multi-length range: enumerate every standard length between lo and hi
     chips, seen = [], set()
