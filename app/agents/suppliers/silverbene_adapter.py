@@ -207,6 +207,16 @@ class SilverbeneAdapter(SupplierAdapter):
                 return self._to_standard(items[0])
         return None
 
+    def get_raw_desc_by_sku(self, sku: str) -> str:
+        """Return the raw Silverbene HTML description for a SKU (for spec extraction)."""
+        resp = self._get(ENDPOINT_PRODUCT_LIST, {"sku": sku})
+        if resp.get("code") == 0:
+            data = resp.get("data", {})
+            items = data if isinstance(data, list) else data.get("data", []) if isinstance(data, dict) else []
+            if items:
+                return items[0].get("description", "") or items[0].get("desc", "") or ""
+        return ""
+
     def get_product(self, product_id: str) -> Optional[dict]:
         return self.get_by_sku(product_id)
 
@@ -395,10 +405,10 @@ class SilverbeneAdapter(SupplierAdapter):
         # Silverbene API option attributes use "Rhodium" internally but their product pages
         # say "White Gold Color" — prefer the customer-facing term from desc.
         if colors:
-            colors = self._normalize_finish_terms(colors, raw.get("desc", ""))
+            colors = self._normalize_finish_terms(colors, raw.get("description", "") or raw.get("desc", ""))
         # Chain length is always in the raw desc material-info section ("Chain Length: 45cm").
         # Always parse it and merge — don't skip just because variants already have sizes.
-        desc_lengths = _parse_chain_length_from_desc(raw.get("desc", ""))
+        desc_lengths = _parse_chain_length_from_desc(raw.get("description", "") or raw.get("desc", ""))
         if desc_lengths:
             if sizes:
                 for l in desc_lengths:
@@ -406,15 +416,15 @@ class SilverbeneAdapter(SupplierAdapter):
                         sizes.append(l)
             else:
                 sizes = desc_lengths
-        material = self._infer_material_from_desc(raw.get("desc", ""), colors)
-        specs = self._extract_specs_from_desc(raw.get("desc", ""))
+        material = self._infer_material_from_desc(raw.get("description", "") or raw.get("desc", ""), colors)
+        specs = self._extract_specs_from_desc(raw.get("description", "") or raw.get("desc", ""))
 
         return {
             **self.standard_product(
                 supplier_product_id=raw.get("sku", ""),
                 name=raw.get("title", ""),
                 category="",
-                description=raw.get("desc", ""),
+                description=raw.get("description", "") or raw.get("desc", ""),
                 cost_price=cost_price,
                 image_url=image_url,
                 stock=min(stock, 999),

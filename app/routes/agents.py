@@ -919,18 +919,16 @@ def silverbene_backfill_specs():
             ).all()
             for p in products:
                 try:
-                    raw = sb.get_by_sku(p.cj_product_id)
-                    if not raw:
+                    desc = sb.get_raw_desc_by_sku(p.cj_product_id)
+                    if not desc:
                         skipped += 1
                         continue
-                    desc = raw.get("description", "") or ""
                     new_specs = sb._extract_specs_from_desc(desc)
                     if not new_specs:
                         skipped += 1
                         continue
                     existing = json.loads(p.specs or "{}")
                     changed = False
-                    # Merge: inner_diameter and weight only
                     for key in ("inner_diameter", "weight"):
                         if key in new_specs and new_specs[key] != existing.get(key):
                             existing[key] = new_specs[key]
