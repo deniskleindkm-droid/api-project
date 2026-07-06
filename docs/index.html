@@ -1681,19 +1681,13 @@ function mmToUsRingSize(mm){
   return Math.round(((Math.PI*mm-36.5)/2.56)*2)/2;
 }
 function adjDiameterNote(val){
-  // Returns clean US range string like "US 6 – 7" from mm value
+  // Returns whole-number US range like "US 6 – 7" — no decimals
   const nums=[...val.matchAll(/([\d.]+)/g)].map(m=>parseFloat(m[1])).filter(n=>n>=10&&n<=30);
   if(!nums.length) return '';
-  if(nums.length===1){
-    const us=mmToUsRingSize(nums[0]);
-    if(us<2||us>15) return '';
-    const lo=Math.floor(us);
-    const hi=Math.ceil(us);
-    return `US ${lo} – ${hi===lo?hi+1:hi}`;
-  }
-  const lo=Math.floor(mmToUsRingSize(Math.min(...nums)));
-  const hi=Math.ceil(mmToUsRingSize(Math.max(...nums)));
-  return `US ${lo} – ${hi}`;
+  const lo=Math.floor(mmToUsRingSize(nums.length===1?nums[0]:Math.min(...nums)));
+  const hi=Math.ceil(mmToUsRingSize(nums.length===1?nums[0]:Math.max(...nums)));
+  if(lo<2||hi>15) return '';
+  return `US ${lo} – ${lo===hi?hi+1:hi}`;
 }
 
 function parseSpecs(p){
@@ -2009,10 +2003,10 @@ async function openPP(id){
         const sp=p.specs?JSON.parse(p.specs):{};
         if(sp.inner_diameter){adjRange=adjDiameterNote(sp.inner_diameter);}
         if(!adjRange&&sp.ring_size_range){
-          // strip any leading 'US' duplicates and reformat cleanly
           const m=sp.ring_size_range.match(/([\d.]+)\s*[-–]\s*([\d.]+)/);
-          if(m) adjRange=`US ${m[1]} – ${m[2]}`;
-          else{const n=sp.ring_size_range.match(/([\d.]+)/);if(n) adjRange=`US ${n[1]}`;}
+          if(m) adjRange=`US ${Math.floor(parseFloat(m[1]))} – ${Math.ceil(parseFloat(m[2]))}`;
+          else{const n=sp.ring_size_range.match(/([\d.]+)/);if(n) adjRange=`US ${Math.round(parseFloat(n[1]))}`;}
+
         }
       }catch{}
       document.getElementById('pp-size-chips').innerHTML=
