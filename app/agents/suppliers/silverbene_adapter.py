@@ -416,8 +416,12 @@ class SilverbeneAdapter(SupplierAdapter):
                         sizes.append(l)
             else:
                 sizes = desc_lengths
-        material = self._infer_material_from_desc(raw.get("description", "") or raw.get("desc", ""), colors)
-        specs = self._extract_specs_from_desc(raw.get("description", "") or raw.get("desc", ""))
+        raw_desc = raw.get("description", "") or raw.get("desc", "")
+        material = self._infer_material_from_desc(raw_desc, colors)
+        specs = self._extract_specs_from_desc(raw_desc)
+        pendant_only = _is_pendant_only(raw_desc)
+        if pendant_only and sizes:
+            sizes = ["Pendant Only"]
 
         return {
             **self.standard_product(
@@ -445,6 +449,7 @@ class SilverbeneAdapter(SupplierAdapter):
             "product_image_set_count": len(gallery),
             # Keep raw options so bulk import can extract option_ids
             "_options": options,
+            "is_pendant_only": pendant_only,
         }
 
     def _extract_variants(self, options: list) -> tuple:  # noqa: C901
@@ -683,6 +688,16 @@ class SilverbeneAdapter(SupplierAdapter):
             return f"{base} (Gold Plated available)"
 
         return base
+
+
+_PENDANT_ONLY_RE = re.compile(
+    r'pendant only|chain not included|without chain|no chain included|chain is not included',
+    re.I,
+)
+
+def _is_pendant_only(desc: str) -> bool:
+    """Return True if this is a pendant sold without a chain."""
+    return bool(_PENDANT_ONLY_RE.search(desc or ''))
 
 
 MM_TO_INCHES = {

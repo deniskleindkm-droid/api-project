@@ -303,14 +303,30 @@ def _refresh_product_sizes(sb) -> tuple:
         adapter = SilverbeneAdapter()
 
         with Session(engine) as session:
-            # Products missing sizes OR flagged for review, across all categories
-            needs_refresh = session.exec(
+            # Products missing sizes OR flagged for review, across all categories.
+            # Also include necklaces with a single plain size (e.g. ["18\""]) that
+            # may be adjustable — re-verify against live Silverbene description.
+            all_sb = session.exec(
                 select(Product).where(
                     Product.supplier_name == "Silverbene",
                     Product.is_active == True,
-                    (Product.sizes == None) | (Product.needs_length_review == True),
                 )
             ).all()
+
+        needs_refresh = []
+        for p in all_sb:
+            if p.sizes is None or p.needs_length_review:
+                needs_refresh.append(p)
+                continue
+            # Re-check necklaces with a single plain-inch size (could be wrong)
+            if p.category == "Necklaces":
+                try:
+                    import json as _json
+                    s = _json.loads(p.sizes)
+                    if len(s) == 1 and s[0] not in ("Pendant Only",) and "Adjustable" not in s[0] and '"' in s[0]:
+                        needs_refresh.append(p)
+                except Exception:
+                    pass
 
         if not needs_refresh:
             print("[Silverbene Stock Agent] All product sizes are up to date")
@@ -330,48 +346,60 @@ def _refresh_product_sizes(sb) -> tuple:
 
                 from app.agents.suppliers.silverbene_adapter import _parse_chain_length_from_desc
 
+                from app.agents.suppliers.silverbene_adapter import _is_pendant_only
+
                 # Primary: fetch by SKU
                 fresh = sb.get_by_sku(sku)
                 sizes_list = None
+                raw_desc = ""
 
                 if fresh and isinstance(fresh, dict):
-                    options = fresh.get("_options", [])
-                    if isinstance(options, list):
-                        sizes_list, _ = adapter._extract_variants(options)
-                    # Always also check desc for chain length (material info section)
-                    if not sizes_list:
-                        raw_desc = fresh.get("description", "")
-                        sizes_list = _parse_chain_length_from_desc(raw_desc) or None
+                    raw_desc = fresh.get("description", "") or ""
+                    # Pendant-only: no chain included — flag immediately
+                    if p.category == "Necklaces" and _is_pendant_only(raw_desc):
+                        sizes_list = ["Pendant Only"]
+                    else:
+                        options = fresh.get("_options", [])
+                        if isinstance(options, list):
+                            sizes_list, _ = adapter._extract_variants(options)
+                        # Chain length always comes from desc material-info section
+                        if not sizes_list:
+                            sizes_list = _parse_chain_length_from_desc(raw_desc) or None
 
                 # Fallback: search by product name via date-window endpoint
-                # (product_list by SKU returns empty options for some older listings)
                 if not sizes_list:
                     keywords = " ".join(p.name.lower().split()[:4])
                     results = sb.search(keyword=keywords, limit=20)
                     for r in results:
                         if r.get("supplier_product_id") == sku:
-                            opts = r.get("_options", [])
-                            if isinstance(opts, list):
-                                sizes_list, _ = adapter._extract_variants(opts)
-                            if not sizes_list:
-                                raw_desc = r.get("description", "")
-                                sizes_list = _parse_chain_length_from_desc(raw_desc) or None
+                            raw_desc = r.get("description", "") or ""
+                            if p.category == "Necklaces" and _is_pendant_only(raw_desc):
+                                sizes_list = ["Pendant Only"]
+                            else:
+                                opts = r.get("_options", [])
+                                if isinstance(opts, list):
+                                    sizes_list, _ = adapter._extract_variants(opts)
+                                if not sizes_list:
+                                    sizes_list = _parse_chain_length_from_desc(raw_desc) or None
                             break
 
                 if sizes_list:
-                    with Session(engine) as session:
-                        prod = session.get(Product, p.id)
-                        if prod:
-                            prod.sizes = json.dumps(sizes_list)
-                            prod.needs_length_review = False
-                            session.add(prod)
-                            session.commit()
-                    fixed += 1
-                    detail.append(
-                        f"{p.category} — {p.name[:45]}: {sizes_list}"
-                    )
-                    print(f"[Silverbene Stock Agent] Sizes updated [{p.category}] "
-                          f"{p.name[:45]} → {sizes_list}")
+                    # Only update if sizes actually changed
+                    existing = json.loads(p.sizes) if p.sizes else []
+                    if sizes_list != existing:
+                        with Session(engine) as session:
+                            prod = session.get(Product, p.id)
+                            if prod:
+                                prod.sizes = json.dumps(sizes_list)
+                                prod.needs_length_review = False
+                                session.add(prod)
+                                session.commit()
+                        fixed += 1
+                        detail.append(
+                            f"{p.category} — {p.name[:45]}: {existing} → {sizes_list}"
+                        )
+                        print(f"[Silverbene Stock Agent] Sizes updated [{p.category}] "
+                              f"{p.name[:45]} → {sizes_list}")
             except Exception as e:
                 print(f"[Silverbene Stock Agent] Size refresh skipped for {p.name[:45]}: {e}")
                 continue

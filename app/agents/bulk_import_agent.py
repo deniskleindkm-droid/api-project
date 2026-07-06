@@ -321,6 +321,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
             "material": p.get("material", ""),
             "sizes": p.get("sizes"),
             "colors": p.get("colors"),
+            "is_pendant_only": p.get("is_pendant_only", False),
         })
 
     # Deduplicate by supplier_product_id
@@ -350,6 +351,12 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
             continue
         if not product.get("images") and not product.get("image_url"):
             hard_rejected += 1
+            continue
+        # Reject pendant-only products for Necklaces — must come with chain
+        if collection_name == "Necklaces" and product.get("is_pendant_only"):
+            hard_rejected += 1
+            rejection_details.append(f"PENDANT_ONLY: {product['name'][:50]}")
+            print(f"[Bulk Import] Skipped (pendant only, no chain): {product['name'][:50]}")
             continue
 
         # Assign a standard score so pricing/tier logic works downstream
