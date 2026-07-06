@@ -533,12 +533,16 @@ class SilverbeneAdapter(SupplierAdapter):
         if pendant_only and sizes:
             sizes = ["Pendant Only"]
 
+        # Sanitize description: replace internal/technical plating terms with
+        # customer-friendly equivalents so they never appear in product copy.
+        clean_desc = _sanitize_description(raw_desc)
+
         return {
             **self.standard_product(
                 supplier_product_id=raw.get("sku", ""),
                 name=raw.get("title", ""),
                 category="",
-                description=raw.get("description", "") or raw.get("desc", ""),
+                description=clean_desc,
                 cost_price=cost_price,
                 image_url=image_url,
                 stock=min(stock, 999),
@@ -1004,6 +1008,22 @@ def parse_necklace_length(chain_length_str: str) -> list:
             if c not in seen:
                 seen.add(c); chips.append(c)
     return chips or list(dict.fromkeys(_snap_inch(n) for n in nums))
+
+
+def _sanitize_description(desc: str) -> str:
+    """
+    Replace technical plating terms in product descriptions with customer-friendly names.
+    Applied to every product on import so customers never see internal jargon.
+    """
+    if not desc:
+        return desc
+    # Rhodium → Silver (whole-word, case-preserving)
+    desc = re.sub(r'\bRhodium\b', 'Silver', desc)
+    desc = re.sub(r'\brhodium\b', 'silver', desc)
+    desc = re.sub(r'\bRHODIUM\b', 'SILVER', desc)
+    # "White Gold Color" / "Yellow Gold Color" → strip the redundant "Color" suffix
+    desc = re.sub(r'\b(White Gold|Yellow Gold|Rose Gold|Gold|Silver|Platinum)\s+Color\b', r'\1', desc, flags=re.I)
+    return desc
 
 
 def _clean_color_value(value: str) -> str:
