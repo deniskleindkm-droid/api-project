@@ -1316,7 +1316,7 @@ async function openImgMgr(productId, name) {
     document.getElementById('img-mgr-overlay').classList.add('open');
 
     try {
-        const res = await fetch(`${API}/admin/products/${productId}/images?master_key=${encodeURIComponent(MASTER_KEY)}`);
+        const res = await fetch(`${API}/admin/products/${productId}/images`);
         const data = await res.json();
         imgMgrImages = data.images || [];
         // Prepend content_image_url if present and not already in list
@@ -1368,7 +1368,7 @@ async function refreshImagesFromSilverbene() {
         const res = await fetch(`${API}/admin/products/${imgMgrProductId}/images/refresh`, {
             method: 'POST',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({master_key: MASTER_KEY})
+            body: JSON.stringify({})
         });
         if (!res.ok) { const e=await res.json(); throw new Error(e.detail||'Error'); }
         const data = await res.json();
@@ -1392,7 +1392,7 @@ async function saveImages() {
         const res = await fetch(`${API}/admin/products/${imgMgrProductId}/images`, {
             method: 'PUT',
             headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({master_key: MASTER_KEY, images: imgMgrImages})
+            body: JSON.stringify({images: imgMgrImages})
         });
         if (!res.ok) { const e=await res.json(); throw new Error(e.detail||'Error'); }
         const data = await res.json();
