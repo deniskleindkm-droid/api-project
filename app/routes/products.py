@@ -93,7 +93,10 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
     """
     import json as _json
     from app.agents.jewelry_pricing import calculate_mikisi_price
-    from app.agents.suppliers.silverbene_adapter import _normalize_size_for_match, COLOR_ATTRIBUTE_NAMES
+    from app.agents.suppliers.silverbene_adapter import (
+        _normalize_size_for_match, _normalize_color_final,
+        _clean_color_value, COLOR_ATTRIBUTE_NAMES, parse_necklace_length,
+    )
 
     product = session.get(Product, product_id)
     if not product:
@@ -120,9 +123,19 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
             val  = (a.get("value") or "").strip()
             if name in ("size", "ring size", "bracelet size", "anklet size"):
                 size = _normalize_size_for_match(val)
+                # Also parse mm/cm length values stored as size (e.g. necklace lengths)
+                if not size and val:
+                    chips = parse_necklace_length(val)
+                    size = chips[0] if chips else None
+            elif name in ("chain length", "length") and val:
+                # Necklace / bracelet chain length stored in its own attribute
+                chips = parse_necklace_length(val)
+                if chips:
+                    size = chips[0]
             elif name in COLOR_ATTRIBUTE_NAMES:
-                from app.agents.suppliers.silverbene_adapter import _clean_color_value
-                color = _clean_color_value(val)
+                # Use the same fully-normalized value that p.colors stores —
+                # _normalize_color_final turns "Rhodium"→"Silver", "Pink"→"Rose Gold", etc.
+                color = _normalize_color_final(_clean_color_value(val), name)
 
         result.append({
             "option_id":   v.get("option_id"),

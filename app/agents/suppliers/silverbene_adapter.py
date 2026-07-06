@@ -35,19 +35,57 @@ _CATEGORY_PREFIXES = {"anklet", "bracelet", "necklace", "ring", "earring", "pend
 # Attribute names Silverbene uses per category type
 SIZE_ATTRIBUTE_NAMES = {"size", "ring size", "length", "bracelet size", "anklet size", "chain length"}
 COLOR_ATTRIBUTE_NAMES = {"color", "colour", "metal color", "metal finish", "finish", "main stone", "stone", "stone color", "stone type", "birthstone"}
+_METAL_ATTR_NAMES = {"color", "colour", "metal color", "metal finish", "finish"}
 
-# Maps frontend display labels (from COLOR_LABEL in index.html) back to the raw
-# Silverbene attribute values they could represent.  Kept in sync with COLOR_LABEL.
-# Used in resolve_option_id so display labels ("Rose Gold") match raw API values ("Pink").
+# Maps Silverbene's internal/technical metal color names → customer-friendly display names.
+# Only applied to metal-context attributes (not stone names like "Yellow Sapphire").
+# "Rhodium" and "Pink" are the most common; others appear in compound variant names.
+_METAL_COLOR_NORMALIZE = {
+    "rhodium":           "Silver",
+    "pink":              "Rose Gold",
+    "yellow":            "Yellow Gold",
+    "white":             "White Gold",
+    "18k gold":          "Gold",
+    "18k rose gold":     "Rose Gold",
+    "18k white gold":    "White Gold",
+    "18k yellow gold":   "Yellow Gold",
+}
+
+# Maps frontend display labels back to the raw Silverbene values they could represent.
+# Safety net for existing DB data that was stored before _normalize_color_final existed.
+# "white gold" includes "rhodium" because _normalize_finish_terms sometimes promotes
+# "Rhodium" → "White Gold" in p.colors while p.variants still stores "Rhodium" raw.
 _COLOR_LABEL_REVERSE: dict[str, list[str]] = {
-    "gold":        ["gold"],
-    "yellow gold": ["yellow gold", "yellow"],
-    "rose gold":   ["rose gold", "pink"],
-    "white gold":  ["white gold", "white"],
+    "gold":        ["gold", "18k gold"],
+    "yellow gold": ["yellow gold", "yellow", "18k yellow gold"],
+    "rose gold":   ["rose gold", "pink", "18k rose gold"],
+    "white gold":  ["white gold", "white", "rhodium", "18k white gold"],
     "silver":      ["silver", "rhodium"],
     "platinum":    ["platinum"],
     "black":       ["black"],
 }
+
+
+def _normalize_color_final(value: str, attr_name: str = "color") -> str:
+    """
+    Convert technical Silverbene color names to customer-friendly display names.
+    Called as a final pass after _clean_color_value and _normalize_finish_terms.
+    Only normalizes metal-context attributes — stone colors (Yellow Sapphire, etc.)
+    are left as-is.
+    """
+    if not value:
+        return value
+    # Strip technical suffixes: "White Gold Color" → "White Gold", "Gold Plated" → "Gold"
+    cleaned = re.sub(r'\s+(color|plating|plated)\s*$', '', value, flags=re.I).strip()
+    v_lower = cleaned.lower()
+    if attr_name.lower() in _METAL_ATTR_NAMES:
+        normalized = _METAL_COLOR_NORMALIZE.get(v_lower)
+        if normalized:
+            return normalized
+    # Rhodium is never a gemstone name — normalize regardless of attribute type
+    if v_lower == "rhodium":
+        return "Silver"
+    return cleaned
 
 
 class SilverbeneAdapter(SupplierAdapter):
@@ -436,11 +474,48 @@ class SilverbeneAdapter(SupplierAdapter):
         stock = sum(int(o.get("qty", 0)) for o in options) if options else 999
 
         sizes, colors = self._extract_variants(options)
-        # Normalize finish terms using Silverbene's customer-facing description language.
-        # Silverbene API option attributes use "Rhodium" internally but their product pages
-        # say "White Gold Color" — prefer the customer-facing term from desc.
+        # Step 1: desc-based upgrade — replaces "Rhodium" with "White Gold" when the
+        # product description explicitly uses that term (e.g. "Metal Color: White Gold Color").
         if colors:
             colors = self._normalize_finish_terms(colors, raw.get("description", "") or raw.get("desc", ""))
+        # Step 2: final friendly-name normalization for anything still technical
+        # ("Rhodium" → "Silver", "Pink" → "Rose Gold", strip " Color"/" Plated" suffixes).
+        if colors:
+            colors = [_normalize_color_final(c) for c in colors]
+
+        # Step 3: sync the same canonical names back into the stored variant attributes
+        # so p.variants and p.colors always agree on color names.
+        # Mirror exactly the filtering _extract_variants applies (skip length-valued color
+        # attrs) so the zip index stays aligned with the colors list.
+        if colors:
+            raw_cleaned_colors: list[str] = []
+            seen_rc: set[str] = set()
+            for opt in options:
+                for attr in opt.get("attribute", []):
+                    aname = attr.get("name", "").lower().strip()
+                    aval  = attr.get("value", "").strip()
+                    if aname not in COLOR_ATTRIBUTE_NAMES:
+                        continue
+                    if re.search(r'\d+\s*cm', aval, re.I):
+                        continue  # length disguised as color — _extract_variants put it in sizes
+                    rc = _clean_color_value(aval).strip()
+                    if rc and rc not in seen_rc:
+                        seen_rc.add(rc)
+                        raw_cleaned_colors.append(rc)
+            color_remap = {rc.lower(): cc for rc, cc in zip(raw_cleaned_colors, colors)}
+            for opt in options:
+                for attr in opt.get("attribute", []):
+                    aname = attr.get("name", "").lower().strip()
+                    aval  = attr.get("value", "").strip()
+                    if aname not in COLOR_ATTRIBUTE_NAMES:
+                        continue
+                    if re.search(r'\d+\s*cm', aval, re.I):
+                        continue  # leave length-in-color attrs untouched
+                    rc = _clean_color_value(aval).strip()
+                    # Prefer the remap (desc-aware); fall back to direct normalization
+                    canonical = color_remap.get(rc.lower()) or _normalize_color_final(rc, aname)
+                    if canonical:
+                        attr["value"] = canonical
         # Chain length is always in the raw desc material-info section ("Chain Length: 45cm").
         # Always parse it and merge — don't skip just because variants already have sizes.
         desc_lengths = _parse_chain_length_from_desc(raw.get("description", "") or raw.get("desc", ""))
