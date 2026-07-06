@@ -128,7 +128,7 @@ def get_collection_products(
         select(Product).where(
             Product.collection_id == collection_id,
             Product.is_active == True,
-            (Product.is_published == True) | (Product.is_published == None)
+            Product.is_published == True
         )
     ).all()
     return products

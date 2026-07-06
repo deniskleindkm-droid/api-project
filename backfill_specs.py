@@ -38,7 +38,7 @@ STONE_PATTERNS = [
     r'\b(turquoise)\b', r'\b(opal)\b', r'\b(malachite)\b',
     r'\b(amethyst)\b', r'\b(citrine)\b', r'\b(topaz)\b',
     r'\b(garnet)\b', r'\b(peridot)\b', r'\b(aquamarine)\b',
-    r'\b(labradorite)\b', r'\b(moonstone)\b', r'\b(tanzanite)\b',
+    r'\b(labradorite)\b', r'\b(moonstone)\b',
     r'\b(tiger.?eye)\b', r'\b(lapis lazuli)\b', r'\b(malachite)\b',
     r'\b(jade)\b', r'\b(onyx)\b', r'\b(rose quartz)\b',
     r'\b(enamel)\b', r'\b(resin)\b',

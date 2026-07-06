@@ -23,8 +23,8 @@
   --gold:#c9a96e;
   --gold-light:#e8d5b0;
   --gold-deep:#a8854a;
-  --tanzanite:#4B5EA6;
-  --tanzanite-pale:#eef0f9;
+  --indigo:#4B5EA6;
+  --indigo-pale:#eef0f9;
   --black:#0e0e0e;
   --charcoal:#2a2a2a;
   --mid:#6b6b6b;
@@ -659,7 +659,7 @@ details[open] .pp-accordion-arr{transform:rotate(180deg);}
 .order-num{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;}
 .order-badge{font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:400;padding:4px 10px;border:1px solid;}
 .order-badge.pending,.order-badge.paid{color:#92400e;border-color:#fcd34d;background:#fffbeb;}
-.order-badge.processing{color:var(--tanzanite);border-color:var(--tanzanite);background:var(--tanzanite-pale);}
+.order-badge.processing{color:var(--indigo);border-color:var(--indigo);background:var(--indigo-pale);}
 .order-badge.shipped,.order-badge.delivered{color:#166534;border-color:#86efac;background:#f0fdf4;}
 .order-meta{font-size:11px;color:var(--mid);font-weight:300;margin-bottom:4px;}
 .order-tracking{margin-top:12px;padding:10px 14px;background:var(--ivory);border:1px solid var(--border);font-size:11px;display:flex;align-items:center;gap:8px;}
@@ -863,13 +863,13 @@ footer{background:var(--black);padding:52px 48px 36px;}
     <span>Timeless Elegance</span><span class="dot">✦</span>
     <span>Curated for Her</span><span class="dot">✦</span>
     <span>Free Shipping · 8–10 Days</span><span class="dot">✦</span>
-    <span>Tanzanite · Rose Gold · Silver</span><span class="dot">✦</span>
+    <span>Rose Gold · Silver · Gold</span><span class="dot">✦</span>
     <span>New Arrivals</span><span class="dot">✦</span>
     <span>925 Sterling Silver</span><span class="dot">✦</span>
     <span>Timeless Elegance</span><span class="dot">✦</span>
     <span>Curated for Her</span><span class="dot">✦</span>
     <span>Free Shipping · 8–10 Days</span><span class="dot">✦</span>
-    <span>Tanzanite · Rose Gold · Silver</span><span class="dot">✦</span>
+    <span>Rose Gold · Silver · Gold</span><span class="dot">✦</span>
     <span>New Arrivals</span><span class="dot">✦</span>
   </div>
 </div>
@@ -1121,8 +1121,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
         <select id="co-country">
           <option value="US">United States</option><option value="CA">Canada</option>
           <option value="GB">United Kingdom</option><option value="AU">Australia</option>
-          <option value="TZ">Tanzania</option><option value="KE">Kenya</option>
-          <option value="ZA">South Africa</option><option value="NG">Nigeria</option>
+          <option value="NG">Nigeria</option>
           <option value="GH">Ghana</option><option value="other">Other</option>
         </select>
       </div>
@@ -1556,7 +1555,7 @@ function doSearch(val){
   const box = document.getElementById('search-drop');
   if(!val.trim()){box.classList.remove('open');return;}
   const q = val.toLowerCase();
-  const matches = allProducts.filter(p=>cleanName(p.name).toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q)).slice(0,8);
+  const matches = allProducts.filter(p=>p.is_published!==false&&p.is_active!==false&&(cleanName(p.name).toLowerCase().includes(q)||(p.brand||'').toLowerCase().includes(q))).slice(0,8);
   if(!matches.length){box.innerHTML=`<div class="search-empty">No pieces found for "${val}"</div>`;box.classList.add('open');return;}
   box.innerHTML = matches.map(p=>`
     <div class="sri" onclick="openPP(${p.id});document.getElementById('search-drop').classList.remove('open');document.getElementById('search-input').value=''">
@@ -1594,7 +1593,6 @@ const COLOR_LABEL = {
   'white gold': 'White Gold',
   'silver':     'Silver',
   'rhodium':    'Silver',      // rhodium plating = silver look to the customer
-  'tanzanite':  'Tanzanite',
   'platinum':   'Platinum',
   // Silverbene raw single-word names
   'pink':       'Rose Gold',
@@ -2133,7 +2131,7 @@ function closePP(){
 function ppNavPrev(){if(ppNavIdx>0){ppOpening=false;openPP(ppNavList[ppNavIdx-1].id);}}
 function ppNavNext(){if(ppNavIdx>=0&&ppNavIdx<ppNavList.length-1){ppOpening=false;openPP(ppNavList[ppNavIdx+1].id);}}
 function selectChip(btn,type){
-  btn.closest('.pp-chips').querySelectorAll('.pp-chip').forEach(b=>b.classList.remove('active','tanzanite-active'));
+  btn.closest('.pp-chips').querySelectorAll('.pp-chip').forEach(b=>b.classList.remove('active','indigo-active'));
   btn.classList.add('active');
   if(type==='size')  ppSelectedSize=btn.textContent.trim();
   if(type==='color'){ppSelectedColor=btn.textContent.trim();applyVariantUI(ppSelectedColor);}
@@ -2507,7 +2505,7 @@ const INFO_CONTENT = {
       <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Customs & Duties</strong><br>
       Customs duty is included in your order — no extra charges on delivery.</p>
       <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Currently Shipping To</strong><br>
-      United States, Canada, United Kingdom, Australia, Tanzania, Kenya, South Africa, Nigeria, Ghana, and more.</p>
+      United States, Canada, United Kingdom, Australia, Nigeria, Ghana, and more.</p>
       <p style="color:#aaa;font-size:11px;margin-top:20px;">Questions about your order? <a href="mailto:hello@mikisi.co" style="color:#d4849c;">hello@mikisi.co</a></p>
     `
   },
