@@ -227,6 +227,14 @@ def run_silverbene_shipping_monitor():
                     else:
                         print(f"[ShippingMonitor] Failed to send customer email")
 
+                # Stage 2 variant confirmation — mark order as Silverbene-confirmed
+                if tracking.cj_order_id:
+                    try:
+                        from app.agents.order_variant_tracker import confirm_silverbene_shipped
+                        confirm_silverbene_shipped(tracking.cj_order_id)
+                    except Exception as vce:
+                        print(f"[ShippingMonitor] VariantTracker confirm error: {vce}")
+
                 # Mark the Silverbene email as read
                 mail.store(eid, "+FLAGS", "\\Seen")
 

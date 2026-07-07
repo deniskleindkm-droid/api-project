@@ -379,21 +379,26 @@ def process_order_background(checkout_data: dict):
                             session.commit()
 
                     # Variant tracker — Stage 1: verify size/color routing is correct
-                    vc_record = check_order_item(
-                        order_id=db_order_id,
-                        silverbene_order_id=silverbene_order_id,
-                        product_id=d.get("product_id", 0),
-                        product_name=d["name"],
-                        variants_json=d.get("variants") or "",
-                        option_id_sent=str(option_id),
-                        resolve_pass=resolve_pass or "unknown",
-                        selected_size=d.get("selected_size") or "",
-                        selected_color=d.get("selected_color") or "",
-                        customer_email=user_email,
-                        customer_name=f"{customer_first} {customer_last}",
-                    )
-                    if vc_record.match_status not in ("ok", "no_variants"):
-                        _variant_problems.append(vc_record)
+                    # send_alert=False: payments.py sends ONE batched email after the loop
+                    try:
+                        vc_record = check_order_item(
+                            order_id=db_order_id,
+                            silverbene_order_id=silverbene_order_id,
+                            product_id=d.get("product_id", 0),
+                            product_name=d["name"],
+                            variants_json=d.get("variants") or "",
+                            option_id_sent=str(option_id),
+                            resolve_pass=resolve_pass or "unknown",
+                            selected_size=d.get("selected_size") or "",
+                            selected_color=d.get("selected_color") or "",
+                            customer_email=user_email,
+                            customer_name=f"{customer_first} {customer_last}",
+                            send_alert=False,
+                        )
+                        if vc_record.match_status not in ("ok", "no_variants"):
+                            _variant_problems.append(vc_record)
+                    except Exception as ve:
+                        print(f"[Payments] VariantTracker error (non-fatal): {ve}")
 
                 elif not result.get("success"):
                     reason = result.get("reason", "unknown error")

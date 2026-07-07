@@ -54,10 +54,15 @@ def check_order_item(
     selected_color: str,
     customer_email: str,
     customer_name: str,
+    send_alert: bool = True,
 ) -> OrderVariantCheck:
     """
     Stage 1 check. Call immediately after Silverbene confirms the order.
     Returns the saved OrderVariantCheck record.
+
+    send_alert=True  — sends an individual alert email immediately (standalone use)
+    send_alert=False — record is saved but no email sent; caller handles alerting
+                       (used from payments.py, which sends one batched email per order)
     """
     record = _run_check(
         order_id=order_id,
@@ -73,16 +78,10 @@ def check_order_item(
         customer_name=customer_name,
     )
 
-    # Alert Dennis on anything that isn't a clean exact match
     needs_alert = record.match_status not in ("ok", "no_variants")
-    if needs_alert:
+    if needs_alert and send_alert:
         _send_alert(record)
-        with Session(engine) as session:
-            r = session.get(OrderVariantCheck, record.id)
-            if r:
-                r.alerted = True
-                session.add(r)
-                session.commit()
+        _mark_alerted(record)
 
     return record
 
@@ -279,6 +278,21 @@ def _save(record: OrderVariantCheck):
         print(f"[VariantTracker] DB save error: {e}")
 
 
+def _mark_alerted(record: OrderVariantCheck):
+    if not record.id:
+        return
+    try:
+        with Session(engine) as session:
+            r = session.get(OrderVariantCheck, record.id)
+            if r:
+                r.alerted = True
+                session.add(r)
+                session.commit()
+        record.alerted = True   # keep in-memory object in sync
+    except Exception as e:
+        print(f"[VariantTracker] Could not mark alerted: {e}")
+
+
 # ── Alert email ────────────────────────────────────────────────────────────────
 
 def _send_alert(record: OrderVariantCheck):
@@ -414,5 +428,7 @@ def send_batched_order_alert(order_id: int, problems: list[OrderVariantCheck]):
 
         send_email(admin, f"⚠ Variant Issues — Order #{order_id} ({len(problems)} item(s))", body, is_html=True)
         print(f"[VariantTracker] Batched alert sent for order #{order_id} — {len(problems)} problem(s)")
+        for r in problems:
+            _mark_alerted(r)
     except Exception as e:
         print(f"[VariantTracker] Batched alert error: {e}")
