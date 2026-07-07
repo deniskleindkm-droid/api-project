@@ -95,7 +95,8 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
     from app.agents.jewelry_pricing import calculate_mikisi_price
     from app.agents.suppliers.silverbene_adapter import (
         _normalize_size_for_match, _normalize_color_final,
-        _clean_color_value, COLOR_ATTRIBUTE_NAMES, parse_necklace_length,
+        _clean_color_value, COLOR_ATTRIBUTE_NAMES, BRACELET_SIZE_ATTR_NAMES,
+        parse_necklace_length, parse_bracelet_size,
     )
 
     product = session.get(Product, product_id)
@@ -121,15 +122,16 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
         for a in attrs:
             name = (a.get("name") or "").lower().strip()
             val  = (a.get("value") or "").strip()
-            if name in ("size", "ring size", "bracelet size", "anklet size"):
+            if name in BRACELET_SIZE_ATTR_NAMES:
+                chips = parse_bracelet_size(val)
+                size = chips[0] if chips else val
+            elif name in ("size", "ring size", "bracelet size", "anklet size"):
                 size = _normalize_size_for_match(val)
-                # Also parse mm/cm length values stored as size (e.g. necklace lengths)
                 if not size and val:
-                    chips = parse_necklace_length(val)
+                    chips = parse_bracelet_size(val) or parse_necklace_length(val)
                     size = chips[0] if chips else None
             elif name in ("chain length", "length") and val:
-                # Necklace / bracelet chain length stored in its own attribute
-                chips = parse_necklace_length(val)
+                chips = parse_bracelet_size(val) or parse_necklace_length(val)
                 if chips:
                     size = chips[0]
             elif name in COLOR_ATTRIBUTE_NAMES:

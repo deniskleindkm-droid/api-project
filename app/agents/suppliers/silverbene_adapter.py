@@ -34,6 +34,7 @@ _CATEGORY_PREFIXES = {"anklet", "bracelet", "necklace", "ring", "earring", "pend
 
 # Attribute names Silverbene uses per category type
 SIZE_ATTRIBUTE_NAMES = {"size", "ring size", "length", "bracelet size", "anklet size", "chain length"}
+BRACELET_SIZE_ATTR_NAMES = {"wrist size", "inner diameter", "bracelet size", "bracelet length"}
 COLOR_ATTRIBUTE_NAMES = {"color", "colour", "metal color", "metal finish", "finish", "main stone", "stone", "stone color", "stone type", "birthstone"}
 _METAL_ATTR_NAMES = {"color", "colour", "metal color", "metal finish", "finish"}
 
@@ -243,7 +244,7 @@ class SilverbeneAdapter(SupplierAdapter):
         print(f"[Silverbene] {collection_name_log(category_name)}: {len(results)} products found")
         return results[:limit]
 
-    def get_by_sku(self, sku: str) -> Optional[dict]:
+    def get_by_sku(self, sku: str, category: str = "") -> Optional[dict]:
         """Fetch a specific product by its SKU."""
         resp = self._get(ENDPOINT_PRODUCT_LIST, {"sku": sku})
         if resp.get("code") == 0:
@@ -255,7 +256,7 @@ class SilverbeneAdapter(SupplierAdapter):
             else:
                 items = []
             if items:
-                return self._to_standard(items[0])
+                return self._to_standard(items[0], category=category)
         return None
 
     def get_raw_desc_by_sku(self, sku: str) -> str:
@@ -438,10 +439,12 @@ class SilverbeneAdapter(SupplierAdapter):
 
     # ── DATA NORMALISATION ────────────────────────────────────────────────────
 
-    def _to_standard(self, raw: dict) -> dict:
+    def _to_standard(self, raw: dict, category: str = "") -> dict:
         """
         Convert a live Silverbene product into Mikisi's standard format.
         Field names confirmed from live API response.
+        Pass category="Bracelets" etc. to filter description-parsed lengths to the
+        correct physical range (bracelets are 5"–9", necklaces 12"–36").
         """
         gallery = raw.get("gallery", [])
         image_url = gallery[0] if gallery else ""
@@ -518,7 +521,13 @@ class SilverbeneAdapter(SupplierAdapter):
                         attr["value"] = canonical
         # Chain length is always in the raw desc material-info section ("Chain Length: 45cm").
         # Always parse it and merge — don't skip just because variants already have sizes.
-        desc_lengths = _parse_chain_length_from_desc(raw.get("description", "") or raw.get("desc", ""))
+        # For bracelets, ignore necklace-range lengths (>10") from the description; use
+        # parse_bracelet_size directly so only proper bracelet lengths are accepted.
+        _raw_desc_for_len = raw.get("description", "") or raw.get("desc", "")
+        if category == "Bracelets":
+            desc_lengths = _parse_chain_length_from_desc_bracelet(_raw_desc_for_len)
+        else:
+            desc_lengths = _parse_chain_length_from_desc(_raw_desc_for_len)
         if desc_lengths:
             if sizes:
                 for l in desc_lengths:
@@ -587,20 +596,47 @@ class SilverbeneAdapter(SupplierAdapter):
                 if not value:
                     continue
 
-                if name in ("chain length", "length") and re.search(r'\d+\s*(mm|cm)', value, re.I):
-                    for chip in parse_necklace_length(value):
+                if name in BRACELET_SIZE_ATTR_NAMES and re.search(r'\d+', value, re.I):
+                    # Bracelet-specific attrs (wrist size, inner diameter, etc.)
+                    for chip in parse_bracelet_size(value):
+                        if chip not in seen_sizes:
+                            seen_sizes.add(chip)
+                            sizes.append(chip)
+                elif name in ("chain length", "length") and re.search(r'\d+\s*(mm|cm)', value, re.I):
+                    # Try bracelet range first; fall through to necklace parser
+                    chips = parse_bracelet_size(value) or parse_necklace_length(value)
+                    for chip in chips:
                         if chip not in seen_sizes:
                             seen_sizes.add(chip)
                             sizes.append(chip)
                 elif name == "size" and re.search(r'\d+\s*(mm|cm)', value, re.I):
-                    # Size attribute with a length value (e.g. "45cm", "450mm")
-                    for chip in parse_necklace_length(value):
+                    chips = parse_bracelet_size(value) or parse_necklace_length(value)
+                    for chip in chips:
                         if chip not in seen_sizes:
                             seen_sizes.add(chip)
                             sizes.append(chip)
-                elif name in COLOR_ATTRIBUTE_NAMES and re.search(r'\d+\s*cm', value, re.I):
-                    # Length hidden in Color attribute (e.g. "1.0mm, 40cm")
-                    for chip in parse_necklace_length(value):
+                elif name in COLOR_ATTRIBUTE_NAMES and re.search(r'\d+\s*(mm|cm)', value, re.I):
+                    # Length hidden in Color attr (e.g. "16cm", "17+3", "160mm Bracelet",
+                    # "Pink_16+3cm", "3mm wide, length: 16.5cm, weight:2g").
+                    # Prefer explicit "length: X cm/mm" over the first dimension match,
+                    # which may be a chain width (3mm) not the wrist size.
+                    _len_m = re.search(r'\blength[:\s]+(\d+(?:\.\d+)?)\s*(cm|mm)', value, re.I)
+                    if _len_m:
+                        _dim_str = _len_m.group(1) + _len_m.group(2)
+                    else:
+                        _ext_m = re.search(
+                            r'(\d+(?:\.\d+)?)\s*(cm|mm)?\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)',
+                            value, re.I
+                        )
+                        _sing_m = re.search(r'(\d+(?:\.\d+)?)\s*(cm|mm)', value, re.I)
+                        if _ext_m:
+                            _dim_str = _ext_m.group(0).strip()
+                        elif _sing_m:
+                            _dim_str = _sing_m.group(0).strip()
+                        else:
+                            _dim_str = value
+                    chips = parse_bracelet_size(_dim_str) or parse_necklace_length(_dim_str)
+                    for chip in chips:
                         if chip not in seen_sizes:
                             seen_sizes.add(chip)
                             sizes.append(chip)
@@ -853,15 +889,22 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
 
     def attr_size(attrs):
         for a in attrs:
-            if a.get("name", "").lower() in ("size", "ring size", "bracelet size", "anklet size"):
+            aname = a.get("name", "").lower()
+            if aname in ("size", "ring size", "bracelet size", "anklet size") \
+               or aname in BRACELET_SIZE_ATTR_NAMES:
                 v = a.get("value", "").strip()
                 normalized = _normalize_size_for_match(v)
-                # Also try chain-length chips for necklace sizes
                 if re.search(r'\d+\s*(mm|cm)', v, re.I):
-                    chips = parse_necklace_length(v)
+                    # Try bracelet range first, then necklace
+                    chips = parse_bracelet_size(v) or parse_necklace_length(v)
                     if chips:
                         normalized = chips[0]
                 return normalized
+            if aname in ("chain length", "length") and re.search(r'\d+\s*(mm|cm)', a.get("value", ""), re.I):
+                v = a.get("value", "").strip()
+                chips = parse_bracelet_size(v) or parse_necklace_length(v)
+                if chips:
+                    return chips[0]
         return None
 
     def attr_color(attrs):
@@ -939,6 +982,99 @@ def _snap_inch(mm: int) -> str:
     best = min(_STD_MM, key=lambda s: abs(s - mm))
     return MM_TO_INCHES[best]  # already includes the " suffix
 
+
+def _snap_bracelet_inch(mm: float) -> str:
+    """Snap mm to nearest 0.5-inch, return display string e.g. '7\"'."""
+    inches = mm / 25.4
+    snapped = round(inches * 2) / 2
+    if snapped == int(snapped):
+        return f'{int(snapped)}"'
+    return f'{snapped}"'
+
+
+def parse_bracelet_size(length_str: str) -> list:
+    """
+    Convert a Silverbene bracelet length/wrist-size string to US customer-facing inch chips.
+    Handles cm and mm values in bracelet range (100–260mm / 10–26cm).
+    Returns [] for values outside bracelet range so caller can try parse_necklace_length.
+
+    Silverbene attribute names routed here: wrist size, inner diameter, bracelet size,
+    bracelet length, and 'length'/'size'/'color' attrs whose value is in bracelet range.
+
+    Examples:
+      "17cm"       → ['6.5"']
+      "18 cm"      → ['7"']
+      "19Cm"       → ['7.5"']
+      "17+3"       → ['Adjustable 6.5"–8"']
+      "17cm+3cm"   → ['Adjustable 6.5"–8"']
+      "16cm-20cm"  → ['6.5"', '7"', '7.5"', '8"']
+      "58mm" (ID)  → ['7"']  (inner diameter → circumference)
+    """
+    import math as _math
+    s = length_str.strip()
+    _BRACELET_RANGE_LO = 100   # mm — below this it's not a bracelet size
+    _BRACELET_RANGE_HI = 260   # mm — above this hand off to necklace parser
+
+    def _to_mm(val: str, unit: str) -> int:
+        unit = (unit or "cm").lower()
+        v = float(val)
+        return int(round(v * 10)) if unit == "cm" else int(round(v))
+
+    is_inner_diam = bool(re.search(r'inner\s*diam|i\.?d\.?', s, re.I))
+
+    # "17+3" or "17cm+3cm" — chain + adjustor
+    ext_m = re.match(
+        r'^(\d+(?:\.\d+)?)\s*(cm|mm)?\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)?$', s, re.I
+    )
+    if ext_m:
+        b_unit = ext_m.group(2) or "cm"
+        e_unit = ext_m.group(4) or b_unit
+        b_mm = _to_mm(ext_m.group(1), b_unit)
+        e_mm = _to_mm(ext_m.group(3), e_unit)
+        if _BRACELET_RANGE_LO <= b_mm <= _BRACELET_RANGE_HI:
+            lo = _snap_bracelet_inch(b_mm)
+            hi = _snap_bracelet_inch(b_mm + e_mm)
+            return [lo] if lo == hi else [f'Adjustable {lo}–{hi}']
+
+    # "16cm-20cm" or "160mm-200mm" — range
+    range_m = re.search(
+        r'(\d+(?:\.\d+)?)\s*(cm|mm)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(cm|mm)', s, re.I
+    )
+    if range_m:
+        lo_mm = _to_mm(range_m.group(1), range_m.group(2))
+        hi_mm = _to_mm(range_m.group(3), range_m.group(4))
+        if _BRACELET_RANGE_LO <= lo_mm <= _BRACELET_RANGE_HI:
+            chips, seen = [], set()
+            step = 5
+            mm = lo_mm
+            while mm <= hi_mm + step // 2:
+                c = _snap_bracelet_inch(mm)
+                if c not in seen:
+                    seen.add(c)
+                    chips.append(c)
+                mm += step
+            return chips
+
+    # Inner diameter (bangle sizing) → wrist circumference
+    if is_inner_diam:
+        m = re.search(r'(\d+(?:\.\d+)?)\s*(cm|mm)', s, re.I)
+        if m:
+            id_mm = _to_mm(m.group(1), m.group(2))
+            circ_mm = _math.pi * id_mm
+            if _BRACELET_RANGE_LO <= circ_mm <= _BRACELET_RANGE_HI:
+                return [_snap_bracelet_inch(circ_mm)]
+        return []
+
+    # Single value: "17cm", "18 CM", "180mm", "17Cm"
+    single_m = re.search(r'(\d+(?:\.\d+)?)\s*(cm|mm)', s, re.I)
+    if single_m:
+        mm = _to_mm(single_m.group(1), single_m.group(2))
+        if _BRACELET_RANGE_LO <= mm <= _BRACELET_RANGE_HI:
+            return [_snap_bracelet_inch(mm)]
+
+    return []
+
+
 def parse_necklace_length(chain_length_str: str) -> list:
     """
     Convert a Silverbene chain length string into customer-facing inch chips.
@@ -985,7 +1121,7 @@ def parse_necklace_length(chain_length_str: str) -> list:
     def _to_mm(m): return str(int(round(float(m.group(1)) * 10))) + 'mm'
     s_mm = re.sub(r'(\d+(?:\.\d+)?)\s*cm', _to_mm, s, flags=re.I)
 
-    nums = [int(n) for n in re.findall(r'\d+', s_mm) if 200 <= int(n) <= 900]
+    nums = [int(n) for n in re.findall(r'\d+', s_mm) if 350 <= int(n) <= 900]
     if not nums:
         return []
 
@@ -1055,6 +1191,33 @@ def _parse_chain_length_from_desc(desc: str) -> list:
         m = re.search(r'\bLength[:\s]+(\d{3,4}\s*mm[^<\n]{0,40})', desc)
     if m:
         return parse_necklace_length(m.group(1))
+    return []
+
+
+def _parse_chain_length_from_desc_bracelet(desc: str) -> list:
+    """
+    Like _parse_chain_length_from_desc but only returns bracelet-range sizes (5"–9").
+    Necklace-range values found in bracelet descriptions (e.g. "14 inch chain" from a
+    set description) are ignored — they don't represent the bracelet's wrist size.
+    Handles both single values and comma-separated lists ("Available Lengths: 16.5cm, 18cm").
+    """
+    # "Available Lengths: 16.5cm, 18cm, 19cm, ..." — extract all values
+    av_m = re.search(r'[Aa]vailable\s+[Ll]engths?[:\s]+([^<\n]{5,120})', desc)
+    if av_m:
+        chips, seen = [], set()
+        for v, u in re.findall(r'(\d+(?:\.\d+)?)\s*(cm|mm)', av_m.group(1), re.I):
+            for c in parse_bracelet_size(v + u):
+                if c not in seen:
+                    seen.add(c); chips.append(c)
+        if chips:
+            return chips
+    m = re.search(r'[Ww]rist\s+[Ss]ize[:\s]+([^<\n]{3,60})', desc)
+    if not m:
+        m = re.search(r'[Cc]hain\s+[Ll]ength[:\s]+([^<\n]{3,60})', desc)
+    if not m:
+        m = re.search(r'\bLength[:\s]+(\d{2,3}\s*(?:mm|cm)[^<\n]{0,40})', desc)
+    if m:
+        return parse_bracelet_size(m.group(1))
     return []
 
 

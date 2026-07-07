@@ -31,11 +31,13 @@ from app.database import engine
 from app.models.order_variant_check import OrderVariantCheck
 from app.agents.suppliers.silverbene_adapter import (
     COLOR_ATTRIBUTE_NAMES,
+    BRACELET_SIZE_ATTR_NAMES,
     _normalize_size_for_match,
     _normalize_color_final,
     _clean_color_value,
     _COLOR_LABEL_REVERSE,
     parse_necklace_length,
+    parse_bracelet_size,
 )
 
 
@@ -223,14 +225,17 @@ def _extract_size(attrs: list) -> str | None:
     for a in attrs:
         name = (a.get("name") or "").lower().strip()
         val  = (a.get("value") or "").strip()
+        if name in BRACELET_SIZE_ATTR_NAMES:
+            chips = parse_bracelet_size(val)
+            return chips[0] if chips else val
         if name in ("size", "ring size", "bracelet size", "anklet size"):
             normalized = _normalize_size_for_match(val)
             if not normalized and val:
-                chips = parse_necklace_length(val)
+                chips = parse_bracelet_size(val) or parse_necklace_length(val)
                 return chips[0] if chips else val
             return normalized
         if name in ("chain length", "length") and val:
-            chips = parse_necklace_length(val)
+            chips = parse_bracelet_size(val) or parse_necklace_length(val)
             if chips:
                 return chips[0]
     return None

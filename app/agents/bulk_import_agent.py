@@ -13,6 +13,41 @@ client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 # Categories where a ring with no size variants should show "Open Size / Adjustable"
 _RING_LIKE_CATEGORIES = {"Rings", "Bracelets", "Anklets"}
 
+# Every product name must contain one of these words (the customer must know what type of jewelry it is).
+# If ARIA strips the category word we add it back in code.
+_CATEGORY_REQUIRED_WORDS = {
+    "Necklaces":   {"necklace"},
+    "Bracelets":   {"bracelet", "bangle"},
+    "Rings":       {"ring", "band"},
+    "Earrings":    {"earring", "earrings", "stud", "studs", "hoop", "hoops", "drop", "drops"},
+    "Anklets":     {"anklet"},
+    "Ear Cuffs":   {"ear cuff", "cuff"},
+}
+_CATEGORY_APPEND_WORD = {
+    "Necklaces": "Necklace",
+    "Bracelets": "Bracelet",
+    "Rings":     "Ring",
+    "Earrings":  "Earring",
+    "Anklets":   "Anklet",
+    "Ear Cuffs": "Ear Cuff",
+}
+
+
+def _ensure_category_in_name(name: str, category: str) -> str:
+    """
+    Guarantee the category type word appears in the product name.
+    ARIA sometimes strips it during name cleaning — this is the code-level safeguard.
+    e.g. "Dolphin Heart Zircon Pendant" (Necklaces) → "Dolphin Heart Zircon Pendant Necklace"
+    """
+    if not name or not category:
+        return name
+    required = _CATEGORY_REQUIRED_WORDS.get(category, set())
+    name_lower = name.lower()
+    if any(w in name_lower for w in required):
+        return name
+    word = _CATEGORY_APPEND_WORD.get(category, "")
+    return f"{name} {word}" if word else name
+
 
 def _resolve_sizes(sizes_json: str, category: str) -> str:
     """
@@ -140,7 +175,7 @@ Products below are from Silverbene. Accept all jewelry. For each product do exac
 
 1. VERIFY COLLECTION — look at the actual product name and decide which Mikisi collection it truly belongs to: Rings, Necklaces, Bracelets, Earrings, Anklets, Ear Cuffs, or Jewelry Sets. Do not blindly use the intended collection — correct it if wrong. An earring found in a Rings search should be corrected to Earrings.
 
-2. CLEAN THE NAME — strip supplier jargon, model codes, "women", "for her", "S925", sizes. Max 6 words. Keep the essence.
+2. CLEAN THE NAME — strip supplier jargon, model codes, "women", "for her", "S925", sizes. Max 6 words. Keep the essence. ALWAYS keep the jewelry type word in the name (necklace, bracelet, ring, earring, anklet, ear cuff). If the original name has "pendant" but no "necklace", the cleaned name must end with "Pendant Necklace", not just "Pendant".
 
 3. IDENTIFY MATERIAL — read raw name and material field. Write exactly what it is: "925 Sterling Silver", "18k Gold Plated 925 Silver", "Rhodium Plated", etc. This shows on the product page — be accurate.
 
@@ -229,7 +264,11 @@ Return ONLY valid JSON array. No other text."""
                 continue
 
             product = products[i].copy()
-            product["mikisi_name"] = (result.get("mikisi_name") or product.get("name", ""))[:100]
+            raw_name = (result.get("mikisi_name") or product.get("name", ""))
+            # Guarantee the category type word is always present — ARIA sometimes strips it
+            aria_cat = (result.get("correct_collection") or "").strip() or collection_name
+            raw_name = _ensure_category_in_name(raw_name, aria_cat)
+            product["mikisi_name"] = raw_name[:100]
             product["mikisi_description"] = result.get("mikisi_description", "")
             product["material"] = result.get("mikisi_material") or product.get("material", "")
 
@@ -252,7 +291,8 @@ Return ONLY valid JSON array. No other text."""
         print(f"[Bulk Import] Batch rewrite error: {e}")
         traceback.print_exc()
         # On error — preserve products with raw names, don't lose them
-        return [{**p, "mikisi_name": p.get("name", "")[:100],
+        return [{**p,
+                 "mikisi_name": _ensure_category_in_name(p.get("name", ""), collection_name)[:100],
                  "mikisi_description": "", "accepted": True} for p in products]
 
 
