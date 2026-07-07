@@ -4,8 +4,60 @@ from app.models.product import Product, ProductCreate, ProductPublic
 from app.database import get_session
 from typing import Optional, List
 from pydantic import BaseModel
+import json as _json
 
 router = APIRouter()
+
+
+# ── Size display metadata ──────────────────────────────────────────────────────
+
+_SIZE_LABELS = {
+    "Bracelets": "Bracelet Length",
+    "Necklaces": "Chain Length",
+    "Rings":     "Ring Size",
+    "Anklets":   "Anklet Length",
+}
+
+_SIZE_HINTS = {
+    "Bracelets": 'Measure your wrist and add ½” for a standard fit. When between sizes, size up.',
+    "Necklaces": '16” rests at the base of the neck · 18” at the collarbone · 20” at the chest · 22” near the heart',
+    "Rings":     'Wrap a paper strip around your finger, mark where it meets, and measure that length in mm. Divide by 3.14 to find your inner diameter.',
+    "Anklets":   'Measure your ankle and add ½” for a relaxed fit.',
+}
+
+
+def _size_display_meta(p) -> dict:
+    category = p.category or ""
+    try:
+        sizes = _json.loads(p.sizes or "[]")
+    except Exception:
+        sizes = []
+
+    label = _SIZE_LABELS.get(category)
+
+    if not sizes or category in ("Earrings", "Ear Cuffs"):
+        return {"size_label": label, "size_hint": None, "size_display_mode": "none"}
+
+    sizes_lower = [s.lower() for s in sizes]
+
+    if category == "Rings" and any("open" in s for s in sizes_lower):
+        return {"size_label": label, "size_hint": None, "size_display_mode": "open_badge"}
+
+    if all(s.startswith("adjustable") or s == "one size" for s in sizes_lower):
+        return {"size_label": label, "size_hint": None, "size_display_mode": "adjustable_badge"}
+
+    return {
+        "size_label":        label,
+        "size_hint":         _SIZE_HINTS.get(category),
+        "size_display_mode": "selector",
+    }
+
+
+def _to_public(p) -> ProductPublic:
+    pub_keys = set(ProductPublic.model_fields) - {"size_label", "size_hint", "size_display_mode"}
+    data = {k: getattr(p, k, None) for k in pub_keys}
+    data.update(_size_display_meta(p))
+    return ProductPublic(**data)
 
 
 # ── HERO BANNER ───────────────────────────────────────────────────────────────
@@ -71,14 +123,14 @@ def get_products(
         query = query.where(Product.final_price <= max_price)
 
     products = session.exec(query).all()
-    return products
+    return [_to_public(p) for p in products]
 
 @router.get("/products/{product_id}", response_model=ProductPublic)
 def get_product(product_id: int, session: Session = Depends(get_session)):
     product = session.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    return product
+    return _to_public(product)
 
 
 @router.get("/products/{product_id}/variant-prices")

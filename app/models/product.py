@@ -89,6 +89,10 @@ class ProductPublic(SQLModel):
     content_lifestyle_url: Optional[str] = None
     video_url: Optional[str] = None
     content_generated_at: Optional[datetime] = None
+    # Computed display metadata — populated by route, never stored in DB
+    size_label: Optional[str] = None        # "Bracelet Length", "Chain Length", "Ring Size", …
+    size_hint: Optional[str] = None         # one-line measurement guidance for the customer
+    size_display_mode: Optional[str] = None # "selector" | "adjustable_badge" | "open_badge" | "none"
 
 
 class ProductCreate(SQLModel):
