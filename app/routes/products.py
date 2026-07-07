@@ -41,7 +41,13 @@ def _size_display_meta(p) -> dict:
     sizes_lower = [s.lower() for s in sizes]
 
     if category == "Rings" and any("open" in s for s in sizes_lower):
-        return {"size_label": label, "size_hint": None, "size_display_mode": "open_badge"}
+        from app.agents.suppliers.silverbene_adapter import open_ring_size_text
+        try:
+            specs = _json.loads(p.specs or "{}")
+        except Exception:
+            specs = {}
+        badge = open_ring_size_text(specs)
+        return {"size_label": label, "size_hint": badge, "size_display_mode": "open_badge"}
 
     if all(s.startswith("adjustable") or s == "one size" for s in sizes_lower):
         return {"size_label": label, "size_hint": None, "size_display_mode": "adjustable_badge"}

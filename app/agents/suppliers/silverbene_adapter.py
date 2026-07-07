@@ -1050,6 +1050,74 @@ def _snap_bracelet_inch(mm: float) -> str:
     return f'{snapped}"'
 
 
+# ── Ring size conversion (mm inner diameter → US size) ───────────────────────
+
+_MM_TO_US_RING = [
+    (14.0, 3), (14.9, 4), (15.7, 5), (16.5, 6),
+    (17.3, 7), (18.1, 8), (18.9, 9),
+]
+
+
+def _mm_to_us_ring(mm: float) -> int:
+    """Snap mm inner diameter to nearest US ring size."""
+    return min(_MM_TO_US_RING, key=lambda x: abs(x[0] - mm))[1]
+
+
+def _parse_ring_diameter_mm(text: str):
+    """Return (min_mm, max_mm) from a diameter string, or None."""
+    # Range first: "13–16.5mm", "13-16.5mm"
+    m = re.search(r'([\d.]+)\s*[-–]\s*([\d.]+)\s*(mm|cm)', text, re.I)
+    if m:
+        lo, hi, unit = float(m.group(1)), float(m.group(2)), m.group(3).lower()
+        if unit == 'cm':
+            lo, hi = lo * 10, hi * 10
+        return (lo, hi)
+    # Single value: "16.4mm", "1.7cm"
+    m = re.search(r'([\d.]+)\s*(mm|cm)', text, re.I)
+    if m:
+        val, unit = float(m.group(1)), m.group(2).lower()
+        if unit == 'cm':
+            val *= 10
+        return (val, val)
+    return None
+
+
+def open_ring_size_text(specs: dict, desc: str = "") -> str:
+    """Return the size badge text for an open/adjustable ring.
+
+    Checks specs for ring_diameter or inner_diameter first.
+    If a real mm measurement is found, converts to US range.
+    Falls back to the industry-standard open-ring range US 5–9.
+    """
+    dia_text = None
+    for key in ('ring_diameter', 'inner_diameter'):
+        val = specs.get(key, "")
+        if val and re.search(r'\d', str(val)):
+            dia_text = str(val)
+            break
+
+    # Try description if specs had nothing
+    if not dia_text and desc:
+        m = re.search(
+            r'(?:ring\s+)?(?:inner|internal)?\s*diameter[:\s]+'
+            r'([\d.]+(?:\s*[-–]\s*[\d.]+)?\s*(?:mm|cm))',
+            desc, re.I
+        )
+        if m:
+            dia_text = m.group(1)
+
+    if dia_text:
+        parsed = _parse_ring_diameter_mm(dia_text)
+        if parsed:
+            lo_us = _mm_to_us_ring(parsed[0])
+            hi_us = _mm_to_us_ring(parsed[1])
+            if lo_us == hi_us:
+                return f"Adjustable · fits US {lo_us}"
+            return f"Adjustable · fits US {min(lo_us, hi_us)}–{max(lo_us, hi_us)}"
+
+    return "Adjustable · fits US 5–9"
+
+
 def parse_bracelet_size(length_str: str) -> list:
     """
     Convert a Silverbene bracelet length/wrist-size string to US customer-facing inch chips.
