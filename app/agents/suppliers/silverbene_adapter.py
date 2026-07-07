@@ -519,13 +519,14 @@ class SilverbeneAdapter(SupplierAdapter):
                     canonical = color_remap.get(rc.lower()) or _normalize_color_final(rc, aname)
                     if canonical:
                         attr["value"] = canonical
-        # Chain length is always in the raw desc material-info section ("Chain Length: 45cm").
-        # Always parse it and merge — don't skip just because variants already have sizes.
-        # For bracelets, ignore necklace-range lengths (>10") from the description; use
-        # parse_bracelet_size directly so only proper bracelet lengths are accepted.
+        # Chain length / bracelet info from the description spec section.
+        # For bracelets, use the full intelligent extractor which also returns width.
         _raw_desc_for_len = raw.get("description", "") or raw.get("desc", "")
+        _bracelet_width = None
         if category == "Bracelets":
-            desc_lengths = _parse_chain_length_from_desc_bracelet(_raw_desc_for_len)
+            _binfo = _extract_bracelet_info_from_desc(_raw_desc_for_len)
+            desc_lengths = _binfo["sizes"]
+            _bracelet_width = _binfo.get("width")
         else:
             desc_lengths = _parse_chain_length_from_desc(_raw_desc_for_len)
         if desc_lengths:
@@ -537,7 +538,17 @@ class SilverbeneAdapter(SupplierAdapter):
                 sizes = desc_lengths
         raw_desc = raw.get("description", "") or raw.get("desc", "")
         material = self._infer_material_from_desc(raw_desc, colors)
-        specs = self._extract_specs_from_desc(raw_desc)
+        specs = self._extract_specs_from_desc(raw_desc, category=category)
+        # For bracelets: inject width, remove any necklace-range chain_length
+        if category == "Bracelets":
+            if _bracelet_width:
+                specs["width"] = specs.get("width") or _bracelet_width
+            # chain_length from specs might be wrong (necklace range) — replace with
+            # the bracelet-aware value already in `sizes`
+            if "chain_length" in specs and sizes:
+                specs["chain_length"] = sizes[0] if len(sizes) == 1 else " / ".join(sizes[:3])
+            elif "chain_length" in specs and not sizes:
+                del specs["chain_length"]
         pendant_only = _is_pendant_only(raw_desc)
         if pendant_only and sizes:
             sizes = ["Pendant Only"]
@@ -695,11 +706,12 @@ class SilverbeneAdapter(SupplierAdapter):
             for c in colors
         ]
 
-    def _extract_specs_from_desc(self, desc: str) -> dict:  # noqa: C901
+    def _extract_specs_from_desc(self, desc: str, category: str = "") -> dict:  # noqa: C901
         """
         Parse all product specs from Silverbene's raw HTML <li> items.
         Must be called BEFORE description is rewritten — raw tags only exist at import time.
         Returns only fields with real data; never inserts placeholder values.
+        Pass category to enable category-aware length parsing.
         """
         specs = {}
         lis = re.findall(r'<li>(.*?)</li>', desc, re.I | re.S)
@@ -713,16 +725,31 @@ class SilverbeneAdapter(SupplierAdapter):
 
         # Map Silverbene field label → internal spec key
         FIELD_MAP = {
+            # Weight
             'total weight': 'weight',
             'weight': 'weight',
             'bracelet total weight': 'weight',
             'anklet total weight': 'weight',
+            'approximate weight': 'weight',
+            # Plating / finish
             'metal electroplating': 'plating',
-            'earring size': 'earring_size',
+            'electroplating': 'plating',
+            'finish': 'finish',
+            'surface': 'finish',
+            'surface finish': 'finish',
+            'special craftsmanship': 'craftsmanship',
+            # Stone details
             'main stone': 'stone',
+            'main stone type': 'stone',
+            'stone type': 'stone',
+            'gemstone': 'stone',
+            'gemstone type': 'stone',
+            'crystal type': 'stone',
             'accent stone': 'accent_stone',
+            'secondary stone': 'accent_stone',
             'main stone quantity': 'stone_qty',
             'stone quantity': 'stone_qty',
+            'number of stones': 'stone_qty',
             'main stone size': 'stone_size',
             'stone size': 'stone_size',
             'gemstone size': 'stone_size',
@@ -730,29 +757,55 @@ class SilverbeneAdapter(SupplierAdapter):
             'crystal size': 'stone_size',
             'zirconia size': 'stone_size',
             'cz size': 'stone_size',
+            'moissanite size': 'stone_size',
             'stone shape': 'stone_shape',
             'main stone shape': 'stone_shape',
             'gemstone shape': 'stone_shape',
             'accent stone size': 'accent_stone_size',
             'accent ston size': 'accent_stone_size',
             'main stone weight': 'stone_weight',
+            'stone setting': 'setting',
+            'stone set': 'setting',
+            'setting type': 'setting',
+            'setting': 'setting',
+            # Earring details
+            'earring size': 'earring_size',
             'earring backs': 'earring_backs',
+            'earring back': 'earring_backs',
+            'back type': 'earring_backs',
+            'hoop size': 'hoop_size',
+            'hoop diameter': 'hoop_size',
+            'post size': 'pin_size',
+            'pin size': 'pin_size',
+            'pin thickness': 'pin_size',
+            'drop length': 'drop_length',
+            'dangle length': 'drop_length',
+            # Chain / bracelet / anklet lengths
             'chain length': 'chain_length',
             'bracelet chain length': 'chain_length',
             'anklet chain length': 'chain_length',
             'single layer chain length': 'chain_length',
             'necklace a chain length': 'chain_length',
-            'pendant size': 'pendant_size',
-            'bead size': 'bead_size',
-            'pearl size': 'pearl_size',
-            'hoop size': 'hoop_size',
-            'pin size': 'pin_size',
-            'pin thickness': 'pin_size',
+            'bracelet length': 'chain_length',
+            'anklet length': 'chain_length',
+            # Width
             'chain width': 'chain_width',
+            'bracelet width': 'width',
             'bangle width': 'width',
             'band width': 'width',
             'ring width': 'width',
             'width': 'width',
+            'width available': 'width',
+            # Pendant / bead / pearl
+            'pendant size': 'pendant_size',
+            'pendant diameter': 'pendant_size',
+            'charm size': 'pendant_size',
+            'charm diameter': 'pendant_size',
+            'bead size': 'bead_size',
+            'bead diameter': 'bead_size',
+            'pearl size': 'pearl_size',
+            'pearl diameter': 'pearl_size',
+            # Ring
             'bangle size': 'bangle_size',
             'bangle diameter': 'bangle_diameter',
             'ring top size': 'ring_top',
@@ -763,21 +816,26 @@ class SilverbeneAdapter(SupplierAdapter):
             'inner ring diameter': 'inner_diameter',
             'ring size': 'ring_size_range',
             'ring size range': 'ring_size_range',
-            'drop length': 'drop_length',
-            'setting type': 'setting',
-            'setting': 'setting',
+            # Closure
             'closure': 'closure',
-            'finish': 'finish',
-            'surface': 'finish',
-            'special craftsmanship': 'craftsmanship',
+            'closure type': 'closure',
+            'clasp type': 'closure',
+            'clasp': 'closure',
+            # Design / details (customer-facing)
+            'design detail': 'design',
+            'design': 'design',
+            'main design': 'design',
+            'bracelet type': 'bracelet_type',
+            'chain style': 'chain_style',
             'purity': 'purity',
             'size': 'size',
         }
 
         # Keys that are not useful product details for the customer
         SKIP_KEYS = {
-            'metal material', 'metal color available', 'item type', 'gender',
-            'occasion', 'style', 'feature', 'brand', 'new', 'color',
+            'metal material', 'material', 'metal color available',
+            'color available', 'item type', 'gender', 'occasion',
+            'style', 'feature', 'brand', 'new', 'color', 'category',
         }
 
         for li in lis:
@@ -798,7 +856,7 @@ class SilverbeneAdapter(SupplierAdapter):
             if not spec_key:
                 continue  # only store known, mapped fields
 
-            val = _apply_spec_conversion(spec_key, val)
+            val = _apply_spec_conversion(spec_key, val, category=category)
             if spec_key not in specs:   # first value wins
                 specs[spec_key] = val
 
@@ -1022,6 +1080,9 @@ def parse_bracelet_size(length_str: str) -> list:
 
     is_inner_diam = bool(re.search(r'inner\s*diam|i\.?d\.?', s, re.I))
 
+    # Strip trailing descriptor words (e.g. "16+2cm Adjustable", "17cm Adjustable")
+    s = re.sub(r'\s+(adjustable|adj\.?|extendable|extension)\s*$', '', s, flags=re.I).strip()
+
     # "17+3" or "17cm+3cm" — chain + adjustor
     ext_m = re.match(
         r'^(\d+(?:\.\d+)?)\s*(cm|mm)?\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)?$', s, re.I
@@ -1195,13 +1256,59 @@ def _parse_chain_length_from_desc(desc: str) -> list:
 
 
 def _parse_chain_length_from_desc_bracelet(desc: str) -> list:
+    """Thin wrapper — delegates to _extract_bracelet_info_from_desc for backward compat."""
+    return _extract_bracelet_info_from_desc(desc)["sizes"]
+
+
+def _extract_bracelet_info_from_desc(desc: str) -> dict:
     """
-    Like _parse_chain_length_from_desc but only returns bracelet-range sizes (5"–9").
-    Necklace-range values found in bracelet descriptions (e.g. "14 inch chain" from a
-    set description) are ignored — they don't represent the bracelet's wrist size.
-    Handles both single values and comma-separated lists ("Available Lengths: 16.5cm, 18cm").
+    Intelligently extract bracelet size and width from Silverbene HTML description.
+
+    Handles every spec pattern Silverbene uses:
+      • "Bracelet Length: 16+3cm Adjustable"  → Adjustable 6.5"–7.5"
+      • "Chain Length: 16+2cm Adjustable"     → Adjustable 6.5"–7"
+      • "Available Lengths: 16.5cm, 18cm, …"  → [6.5", 7", …]
+      • "Wrist Size: 17cm"                    → [6.5"]
+      • "Bracelet Length: Adjustable"         → ["Adjustable"]
+      • "Bracelet Type: Adjustable Sliding …" → ["Adjustable"]
+      • "Closure: … Extension Chain …"        → ["Adjustable"]
+      • Width: "Bracelet Width: 3mm", "Width: 3.7mm", "Chain Width: 3mm"
+
+    Returns {"sizes": [...], "width": "Xmm"}.
+    sizes == [] means no data found.
     """
-    # "Available Lengths: 16.5cm, 18cm, 19cm, ..." — extract all values
+    text = re.sub(r'<[^>]+>', ' ', desc)  # strip HTML tags for plain-text matching
+
+    # ── 1. Explicit length fields (highest confidence) ────────────────────────
+    LENGTH_KEYS = (
+        r'[Bb]racelet\s+[Ll]ength',
+        r'[Cc]hain\s+[Ll]ength',
+        r'[Ww]rist\s+[Ss]ize',
+    )
+    for key_pat in LENGTH_KEYS:
+        m = re.search(key_pat + r'[:\s]+([^<\n]{3,80})', desc, re.I)
+        if not m:
+            continue
+        val = m.group(1).strip()
+
+        # "Adjustable" with no dimension → plain label
+        if re.match(r'^[Aa]djustable\s*$', val.strip()):
+            return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text)}
+
+        # Has a cm/mm dimension → parse to inch chips
+        chips = parse_bracelet_size(val)
+        if chips:
+            return {"sizes": chips, "width": _extract_bracelet_width(text)}
+
+        # e.g. "14 inch" — explicitly in inches already, trust it only if bracelet-range
+        inch_m = re.match(r'(\d+(?:\.\d+)?)\s*(?:inch|")', val, re.I)
+        if inch_m:
+            v = float(inch_m.group(1))
+            if 5 <= v <= 10:
+                chip = f'{int(v)}"' if v == int(v) else f'{v}"'
+                return {"sizes": [chip], "width": _extract_bracelet_width(text)}
+
+    # ── 2. "Available Lengths: X, Y, Z" CSV ──────────────────────────────────
     av_m = re.search(r'[Aa]vailable\s+[Ll]engths?[:\s]+([^<\n]{5,120})', desc)
     if av_m:
         chips, seen = [], set()
@@ -1210,15 +1317,56 @@ def _parse_chain_length_from_desc_bracelet(desc: str) -> list:
                 if c not in seen:
                     seen.add(c); chips.append(c)
         if chips:
-            return chips
-    m = re.search(r'[Ww]rist\s+[Ss]ize[:\s]+([^<\n]{3,60})', desc)
-    if not m:
-        m = re.search(r'[Cc]hain\s+[Ll]ength[:\s]+([^<\n]{3,60})', desc)
-    if not m:
-        m = re.search(r'\bLength[:\s]+(\d{2,3}\s*(?:mm|cm)[^<\n]{0,40})', desc)
+            return {"sizes": chips, "width": _extract_bracelet_width(text)}
+
+    # ── 3. Adjustable by type or closure (no exact dimension) ────────────────
+    _ADJ_PATTERNS = [
+        r'[Bb]racelet\s+[Tt]ype[:\s]+[^<\n]*[Aa]djustable',
+        r'[Cc]losure[:\s]+[^<\n]*(?:[Ee]xtension\s+[Cc]hain|[Aa]djustable\s+[Ff]it)',
+        r'[Cc]lasp[:\s]+[^<\n]*[Aa]djustable',
+    ]
+    for pat in _ADJ_PATTERNS:
+        if re.search(pat, desc, re.I):
+            return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text)}
+
+    # ── 4. Plain "Length: Xcm" fallback ──────────────────────────────────────
+    m = re.search(r'\bLength[:\s]+(\d{2,3}\s*(?:mm|cm)[^<\n]{0,40})', desc, re.I)
     if m:
-        return parse_bracelet_size(m.group(1))
-    return []
+        chips = parse_bracelet_size(m.group(1))
+        if chips:
+            return {"sizes": chips, "width": _extract_bracelet_width(text)}
+
+    return {"sizes": [], "width": _extract_bracelet_width(text)}
+
+
+def _extract_bracelet_width(text: str) -> str | None:
+    """
+    Extract bracelet/chain width from plain text (HTML tags already stripped).
+    Handles: "Bracelet Width: 3mm", "Width: 3.7mm", "Chain Width: 3mm",
+             "Width Available: 2.2mm, 3.2mm"
+    Returns the first width found as a clean string e.g. "3mm", or None.
+    """
+    WIDTH_KEYS = (
+        r'[Bb]racelet\s+[Ww]idth',
+        r'[Cc]hain\s+[Ww]idth',
+        r'[Ww]idth\s+[Aa]vailable',
+        r'(?<!\w)[Ww]idth',   # standalone "Width:" — only if not part of another word
+    )
+    for key_pat in WIDTH_KEYS:
+        m = re.search(key_pat + r'[:\s]+([^<\n]{2,40})', text, re.I)
+        if not m:
+            continue
+        w_m = re.search(r'(\d+(?:\.\d+)?)\s*(mm|cm)', m.group(1), re.I)
+        if w_m:
+            val = float(w_m.group(1))
+            unit = w_m.group(2).lower()
+            # Convert cm to mm for display consistency
+            if unit == "cm":
+                val = round(val * 10, 1)
+                unit = "mm"
+            display = f"{int(val)}mm" if val == int(val) else f"{val}mm"
+            return display
+    return None
 
 
 # Hong Kong → US ring size lookup table (standard international conversion)
@@ -1259,16 +1407,21 @@ def _convert_ring_size_to_us(val: str) -> str:
     return f"US {lo_us} - {hi_us}"
 
 
-def _apply_spec_conversion(spec_key: str, val: str) -> str:
+def _apply_spec_conversion(spec_key: str, val: str, category: str = "") -> str:
     """
     Apply US jewelry unit conventions to a raw spec value.
     Chain/drop lengths → inches.  Sizes/weights → keep native units, clean whitespace.
     """
-    # Chain-type lengths: convert mm or cm → inches using standard snap
+    # Chain-type lengths: convert mm or cm → inches
     if spec_key in ('chain_length', 'drop_length', 'bangle_diameter'):
+        # Bracelets: use bracelet range parser first
+        if category == "Bracelets" or spec_key == "chain_length" and re.search(r'bracelet|wrist', val, re.I):
+            chips = parse_bracelet_size(val)
+            if chips:
+                return chips[0] if len(chips) == 1 else " / ".join(chips)
         chips = parse_necklace_length(val)
         if chips:
-            return chips[0]
+            return chips[0] if len(chips) == 1 else " / ".join(chips)
         # Fallback: direct cm→in or mm→in
         m = re.search(r'([\d.]+)\s*cm', val, re.I)
         if m:
