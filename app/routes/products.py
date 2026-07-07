@@ -75,7 +75,7 @@ def get_hero():
     return {
         "banner_url": get_config("hero_banner_url", default="") or None,
         "video_url":  get_config("hero_video_url",  default="") or None,
-        "tagline":    get_config("hero_tagline", default="Crafted with love. Worn with confidence."),
+        "tagline":    get_config("hero_tagline", default="Unique pieces you won't find everywhere — genuine 925 sterling silver, honest prices, always something new."),
     }
 
 @router.put("/store/hero")

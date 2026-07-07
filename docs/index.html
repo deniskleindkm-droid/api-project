@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="p:domain_verify" content="c1f64f6b15e635a2f8455b584182cbb3"/>
-<title>Mikisi — Look Elegant and Polished</title>
+<title>Mikisi — Real Silver, Rare Finds</title>
 <!-- Performance: preconnect to external origins so DNS+TLS is done before first request -->
 <link rel="preconnect" href="https://api-project-production-d424.up.railway.app" crossorigin/>
 <link rel="preconnect" href="https://silverbene.com"/>
@@ -206,6 +206,11 @@ nav{
 
 /* ── COLLECTIONS HOME ── */
 .collections-home{padding:72px 48px;background:var(--cream);}
+.section-discover-note{
+  font-size:11px;font-weight:300;color:var(--mid);
+  letter-spacing:1.5px;margin-bottom:36px;
+  font-style:italic;
+}
 .section-eyebrow{
   font-size:10px;font-weight:300;letter-spacing:4px;
   text-transform:uppercase;color:var(--gold);
@@ -672,6 +677,31 @@ details[open] .pp-accordion-arr{transform:rotate(180deg);}
 .orders-loading{text-align:center;padding:60px;color:var(--light);font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17px;}
 .loading{text-align:center;padding:72px;color:var(--light);font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17px;grid-column:1/-1;}
 
+/* ── BACK-TO-COLLECTIONS FLOAT ── */
+.back-to-col-btn{
+  position:fixed;
+  bottom:28px;right:24px;
+  background:var(--black);color:white;
+  border:none;
+  font-family:'Jost',sans-serif;
+  font-size:9px;font-weight:400;letter-spacing:2px;text-transform:uppercase;
+  padding:11px 20px;
+  cursor:pointer;
+  display:none;
+  align-items:center;gap:8px;
+  z-index:900;
+  transition:background 0.2s,opacity 0.3s,transform 0.3s;
+  opacity:0;transform:translateY(10px);
+  box-shadow:0 4px 20px rgba(0,0,0,0.18);
+}
+.back-to-col-btn.visible{
+  opacity:1;transform:translateY(0);
+}
+.back-to-col-btn:hover{background:var(--pink);}
+@media(max-width:768px){
+  .back-to-col-btn{bottom:18px;right:14px;font-size:8px;padding:10px 16px;}
+}
+
 /* Collection mode — hide all homepage sections, show only the collection */
 body.collection-mode .hero,
 body.collection-mode .marquee-wrap,
@@ -834,10 +864,10 @@ footer{background:var(--black);padding:52px 48px 36px;}
 <!-- HERO -->
 <div class="hero">
   <div class="hero-eyebrow fu fu1">The Mikisi Edit · 2026</div>
-  <h1 class="fu fu2">Look <em>Elegant</em> and Polished.</h1>
-  <div class="hero-tagline fu fu3" id="hero-tagline-el">Crafted with love. Worn with confidence.</div>
+  <h1 class="fu fu2">Real silver, <em>rare finds.</em></h1>
+  <div class="hero-tagline fu fu3" id="hero-tagline-el">Unique pieces you won't find everywhere — genuine 925 sterling silver, honest prices, always something new.</div>
   <div class="hero-btns fu fu4">
-    <button class="btn-black" onclick="showCollections()">Explore Collections</button>
+    <button class="btn-black" onclick="showCollections()">Discover the Collections</button>
     <button class="btn-ghost" onclick="scrollToAbout()">Our Story</button>
   </div>
   <div class="hero-banner fu" style="animation-delay:0.78s">
@@ -859,18 +889,18 @@ footer{background:var(--black);padding:52px 48px 36px;}
 <!-- MARQUEE -->
 <div class="marquee-wrap">
   <div class="marquee-track">
-    <span>925 Sterling Silver</span><span class="dot">✦</span>
-    <span>Timeless Elegance</span><span class="dot">✦</span>
-    <span>Curated for Her</span><span class="dot">✦</span>
+    <span>Genuine 925 Sterling Silver</span><span class="dot">✦</span>
+    <span>Unique Finds</span><span class="dot">✦</span>
+    <span>Real Silver · Honest Prices</span><span class="dot">✦</span>
     <span>Free Shipping · 8–10 Days</span><span class="dot">✦</span>
     <span>Rose Gold · Silver · Gold</span><span class="dot">✦</span>
-    <span>New Arrivals</span><span class="dot">✦</span>
-    <span>925 Sterling Silver</span><span class="dot">✦</span>
-    <span>Timeless Elegance</span><span class="dot">✦</span>
-    <span>Curated for Her</span><span class="dot">✦</span>
+    <span>New Finds Added Often</span><span class="dot">✦</span>
+    <span>Genuine 925 Sterling Silver</span><span class="dot">✦</span>
+    <span>Unique Finds</span><span class="dot">✦</span>
+    <span>Real Silver · Honest Prices</span><span class="dot">✦</span>
     <span>Free Shipping · 8–10 Days</span><span class="dot">✦</span>
     <span>Rose Gold · Silver · Gold</span><span class="dot">✦</span>
-    <span>New Arrivals</span><span class="dot">✦</span>
+    <span>New Finds Added Often</span><span class="dot">✦</span>
   </div>
 </div>
 
@@ -895,9 +925,10 @@ footer{background:var(--black);padding:52px 48px 36px;}
 <!-- COLLECTIONS HOME -->
 <div class="collections-home" id="collections-home">
   <div class="section-eyebrow">The Edit</div>
-  <div class="section-title" id="collections-title">Our Collections</div>
+  <div class="section-title" id="collections-title">Discover the Collections</div>
+  <div class="section-discover-note">New finds added often. Discover something unique.</div>
   <div class="collections-grid" id="collections-grid">
-    <div class="loading">Curating your experience…</div>
+    <div class="loading">Discovering collections…</div>
   </div>
 </div>
 
@@ -1007,9 +1038,9 @@ footer{background:var(--black);padding:52px 48px 36px;}
 
 <!-- DIVIDER -->
 <div class="divider-band">
-  <div class="divider-eye">The Mikisi Promise</div>
-  <div class="divider-quote">"Every piece tells a story.<br>Wear yours."</div>
-  <div class="divider-sub">925 Silver · Authentic · Timeless · Empowering</div>
+  <div class="divider-eye">Real Silver, Rare Finds</div>
+  <div class="divider-quote">"Unique pieces you won't find everywhere —<br>genuine, refined, and made to last."</div>
+  <div class="divider-sub">Genuine · Unique · Always Something New</div>
 </div>
 
 <!-- URGENCY -->
@@ -1022,10 +1053,10 @@ footer{background:var(--black);padding:52px 48px 36px;}
 <!-- ABOUT -->
 <div class="about-section" id="about">
   <div class="about-content">
-    <div class="section-eyebrow">Our Story</div>
-    <div class="about-title">Real silver, made for<br><em>everyday women.</em></div>
-    <div class="about-text">At Mikisi, we believe beautiful jewelry should be something you reach for every day — not something you save for special occasions. Every piece is crafted from genuine 925 sterling silver: hypoallergenic, stamped, and made to be worn, loved, and last for years.</div>
-    <div class="about-text" style="margin-top:-10px;">We keep things honest — real silver, thoughtful design, and prices that make sense. Whether it's a delicate everyday ring or a piece that turns heads, you're always getting the real thing.</div>
+    <div class="section-eyebrow">About Mikisi</div>
+    <div class="about-title">Real silver, <em>rare finds.</em></div>
+    <div class="about-text">Mikisi is a place to discover genuine sterling silver — unique, refined pieces you won't see everywhere, at prices that make sense. Every piece is crafted from real 925 sterling silver: the genuine precious metal, stamped and hypoallergenic, made to be worn, loved, and last for years.</div>
+    <div class="about-text" style="margin-top:-10px;">Our selection is always evolving, so there's always something new to find. No luxury markup, no fast-fashion fakes — just real silver, thoughtfully chosen.</div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;">
       <button class="btn-ghost" onclick="window.location.href='/about'" style="width:fit-content;padding:12px 28px;">Our Full Story</button>
       <button class="btn-ghost" onclick="showCollections()" style="width:fit-content;padding:12px 28px;">Discover the Collections</button>
@@ -1204,11 +1235,16 @@ footer{background:var(--black);padding:52px 48px 36px;}
 
 <div class="toast" id="toast"></div>
 
+<!-- BACK TO COLLECTIONS FLOAT -->
+<button class="back-to-col-btn" id="back-to-col-btn" onclick="scrollToCollectionTop()">
+  ↑ Back to Collections
+</button>
+
 <footer>
   <div class="footer-top">
     <div>
       <div class="footer-logo">Mik<em>i</em>si</div>
-      <div class="footer-tagline">Look Elegant and Polished</div>
+      <div class="footer-tagline">Real silver, rare finds.</div>
     </div>
     <div class="footer-links">
       <a class="footer-link" href="/about" style="color:#555;text-decoration:none;">About Us</a>
@@ -2527,13 +2563,29 @@ function goHome(){
   document.body.classList.remove('collection-mode');
   document.getElementById('breadcrumb').style.display='none';
   document.getElementById('collection-view').style.display='none';
-  document.getElementById('collections-title').textContent='Our Collections';
+  document.getElementById('collections-title').textContent='Discover the Collections';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function showCollections(){
   document.getElementById('collections-home').scrollIntoView({behavior:'smooth'});
 }
 function scrollToAbout(){const a=document.getElementById('about');a.style.display='flex';setTimeout(()=>a.scrollIntoView({behavior:'smooth'}),100);}
+
+// ── Back to Collections floating button ──
+const _backBtn = document.getElementById('back-to-col-btn');
+function scrollToCollectionTop(){
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+window.addEventListener('scroll',()=>{
+  const inCollection = document.body.classList.contains('collection-mode');
+  if(inCollection && window.scrollY > 320){
+    _backBtn.style.display='flex';
+    requestAnimationFrame(()=>_backBtn.classList.add('visible'));
+  } else {
+    _backBtn.classList.remove('visible');
+    setTimeout(()=>{if(!_backBtn.classList.contains('visible'))_backBtn.style.display='none';},300);
+  }
+},{passive:true});
 
 const INFO_CONTENT = {
   returns: {
