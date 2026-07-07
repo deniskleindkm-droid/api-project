@@ -1562,7 +1562,14 @@ function renderCollectionProducts(prods){
   const grid = document.getElementById('cv-grid');
   if(!prods||!prods.length){grid.innerHTML='<div class="loading">No pieces in this collection yet</div>';return;}
   ppNavList = prods;
-  document.getElementById('pp-inline').style.display='none'; // close any open product on collection reload
+  // Rescue pp-inline before replacing innerHTML — positionPPInline moves it inside cv-grid,
+  // and grid.innerHTML = '...' would permanently delete it from the DOM.
+  const _ppEl = document.getElementById('pp-inline');
+  const _collView = document.getElementById('collection-view');
+  if(_ppEl){
+    _ppEl.style.display='none';
+    if(_collView && _ppEl.parentElement !== _collView) _collView.appendChild(_ppEl);
+  }
   grid.innerHTML = prods.map((p,i)=>{
     const imgA = p.content_image_url || p.image_url || getPlaceholder();
     const imgB = (p.image_url && p.content_image_url && p.image_url !== p.content_image_url) ? p.image_url : null;
@@ -2597,6 +2604,13 @@ function updateAuthUI(){
 }
 
 function goHome(){
+  // Rescue pp-inline back to collection-view before hiding
+  const _ppEl = document.getElementById('pp-inline');
+  const _collView = document.getElementById('collection-view');
+  if(_ppEl){
+    _ppEl.style.display='none';
+    if(_collView && _ppEl.parentElement !== _collView) _collView.appendChild(_ppEl);
+  }
   // Exit collection mode — restores all homepage sections
   document.body.classList.remove('collection-mode');
   document.getElementById('breadcrumb').style.display='none';
@@ -2612,7 +2626,7 @@ function scrollToAbout(){const a=document.getElementById('about');a.style.displa
 // ── Back to Collections floating button ──
 const _backBtn = document.getElementById('back-to-col-btn');
 function scrollToCollectionTop(){
-  window.scrollTo({top:0,behavior:'smooth'});
+  goHome();
 }
 window.addEventListener('scroll',()=>{
   const inCollection = document.body.classList.contains('collection-mode');
