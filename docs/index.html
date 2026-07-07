@@ -1462,10 +1462,30 @@ async function loadHero(){
 }
 
 // ── COLLECTIONS ──
+const _COL_CACHE_KEY  = 'mikisi_collections_v2';
+const _PROD_CACHE_KEY = 'mikisi_products_v2';
+const _CACHE_TTL      = 5 * 60 * 1000; // 5 minutes
+
+function _cacheGet(key){
+  try{
+    const raw = localStorage.getItem(key);
+    if(!raw) return null;
+    const {data,ts} = JSON.parse(raw);
+    if(Date.now()-ts > _CACHE_TTL) return null;
+    return data;
+  }catch{return null;}
+}
+function _cacheSet(key,data){
+  try{localStorage.setItem(key,JSON.stringify({data,ts:Date.now()}));}catch{}
+}
+
 async function loadCollections(){
+  const cached = _cacheGet(_COL_CACHE_KEY);
+  if(cached&&cached.length){allCollections=cached;renderCollectionTiles(allCollections);return;}
   try{
     const res = await fetch(`${API}/collections`);
     allCollections = await res.json();
+    _cacheSet(_COL_CACHE_KEY, allCollections);
     renderCollectionTiles(allCollections);
   }catch{document.getElementById('collections-grid').innerHTML='';}
 }
@@ -1513,16 +1533,23 @@ function renderCollectionTiles(cols){
 }
 
 async function openCollection(id, name){
-  // Enter collection mode — hides hero, marquee, trust bar, etc.
   document.body.classList.add('collection-mode');
   document.getElementById('cv-title').textContent = name;
-  document.getElementById('cv-grid').innerHTML = '<div class="loading">Discovering pieces…</div>';
   showBreadcrumb(name);
   window.scrollTo({top:0,behavior:'smooth'});
+
+  // If allProducts is already loaded, filter locally — no API call needed
+  const local = allProducts.filter(p=>p.collection_id===id);
+  if(local.length){
+    renderCollectionProducts(local);
+    return;
+  }
+
+  // Fallback: fetch from API (e.g. allProducts not yet loaded)
+  document.getElementById('cv-grid').innerHTML = '<div class="loading">Discovering pieces…</div>';
   try{
     const res = await fetch(`${API}/collections/${id}/products`);
     const prods = await res.json();
-    // Merge into allProducts cache — so card clicks are instant, no extra fetch
     if(Array.isArray(prods)){
       prods.forEach(p=>{if(!allProducts.find(x=>x.id===p.id))allProducts.push(p);});
     }
@@ -1578,11 +1605,19 @@ function renderCollectionProducts(prods){
 // ── PRODUCTS ──
 
 async function loadProducts(){
+  // Serve from localStorage cache if fresh (< 5 min old)
+  const cached = _cacheGet(_PROD_CACHE_KEY);
+  if(cached&&cached.length){
+    allProducts=cached;
+    if(allCollections.length) renderCollectionTiles(allCollections);
+    return;
+  }
   try{
     const res = await fetch(`${API}/products`);
     const data = await res.json();
     if(Array.isArray(data)&&data.length>0){
       allProducts = data;
+      _cacheSet(_PROD_CACHE_KEY, data);
       if(allCollections.length) renderCollectionTiles(allCollections);
     }
   }catch{}
