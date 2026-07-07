@@ -248,9 +248,11 @@ def process_order_background(checkout_data: dict):
 
         # Auto-forward to Silverbene
         try:
-            from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+            from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter, resolve_option_id
             from app.agents.tracking_agent import create_tracking_entry
+            from app.agents.order_variant_tracker import check_order_item, send_batched_order_alert
             silverbene = SilverbeneAdapter()
+            _variant_problems: list = []
 
             print(f"[Payments] Starting Silverbene forwarding for {len(order_details)} items")
 
@@ -312,13 +314,13 @@ def process_order_background(checkout_data: dict):
             print(f"[Payments] Silverbene balance: {'${:.2f}'.format(sb_balance) if sb_balance >= 0 else 'unknown'} — proceed={balance_ok}")
 
             for i, d in enumerate(order_details):
-                from app.agents.suppliers.silverbene_adapter import resolve_option_id
                 # Resolve the exact option_id for the customer's chosen size + color
-                resolved = resolve_option_id(
+                resolved, resolve_pass = resolve_option_id(
                     d.get("variants"),
                     d.get("selected_size"),
                     d.get("selected_color"),
-                )
+                    return_meta=True,
+                ) or (None, "not_found")
                 option_id = resolved or d.get("cj_sku")   # fallback: first variant
                 sku       = d.get("cj_product_id")
                 db_order_id = saved_orders[i].id if saved_orders and i < len(saved_orders) else (saved_orders[0].id if saved_orders else None)
@@ -360,9 +362,10 @@ def process_order_background(checkout_data: dict):
                 print(f"[Payments] Silverbene order result: {result}")
 
                 if result.get("success") and db_order_id:
+                    silverbene_order_id = result.get("supplier_order_id", "")
                     create_tracking_entry(
                         order_id=db_order_id,
-                        cj_order_id=result.get("supplier_order_id", ""),
+                        cj_order_id=silverbene_order_id,
                         customer_email=user_email,
                         customer_name=f"{customer_first} {customer_last}",
                         supplier_name="Silverbene"
@@ -374,6 +377,24 @@ def process_order_background(checkout_data: dict):
                             order_rec.supplier_notified = True
                             session.add(order_rec)
                             session.commit()
+
+                    # Variant tracker — Stage 1: verify size/color routing is correct
+                    vc_record = check_order_item(
+                        order_id=db_order_id,
+                        silverbene_order_id=silverbene_order_id,
+                        product_id=d.get("product_id", 0),
+                        product_name=d["name"],
+                        variants_json=d.get("variants") or "",
+                        option_id_sent=str(option_id),
+                        resolve_pass=resolve_pass or "unknown",
+                        selected_size=d.get("selected_size") or "",
+                        selected_color=d.get("selected_color") or "",
+                        customer_email=user_email,
+                        customer_name=f"{customer_first} {customer_last}",
+                    )
+                    if vc_record.match_status not in ("ok", "no_variants"):
+                        _variant_problems.append(vc_record)
+
                 elif not result.get("success"):
                     reason = result.get("reason", "unknown error")
                     print(f"[Payments] Silverbene rejected order for {d['name']}: {reason}")
@@ -384,6 +405,11 @@ def process_order_background(checkout_data: dict):
                                 order_rec.status = "pending_credit"
                                 session.add(order_rec)
                                 session.commit()
+
+            # One batched alert per order if anything was mismatched
+            if _variant_problems and saved_orders:
+                send_batched_order_alert(saved_orders[0].id, _variant_problems)
+
         except Exception as e:
             print(f"[Payments] Silverbene forwarding failed: {e}")
 

@@ -14,6 +14,7 @@ from app.models.order import Order, OrderTracking
 from app.models.content import ProductContent
 from app.models.instagram_post import InstagramPost
 from app.models.platform_analytics import PlatformAnalytics
+from app.models.order_variant_check import OrderVariantCheck
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users.db")

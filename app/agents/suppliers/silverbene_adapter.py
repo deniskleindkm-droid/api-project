@@ -825,7 +825,8 @@ def _normalize_size_for_match(raw: str) -> str:
     return v
 
 
-def resolve_option_id(variants_json: str, selected_size: str, selected_color: str) -> str:
+def resolve_option_id(variants_json: str, selected_size: str, selected_color: str,
+                      return_meta: bool = False):
     """
     Return the Silverbene option_id whose attributes best match the customer's
     selected size and color.  Both selected_size and selected_color are the
@@ -837,14 +838,15 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
       3. Exact color match (ignore size if size wasn't selected)
       4. First variant (fallback — same as old cj_sku behaviour)
     """
+    _none = (None, "no_variants") if return_meta else None
     if not variants_json:
-        return None
+        return _none
     try:
         variants = json.loads(variants_json)
     except Exception:
-        return None
+        return _none
     if not variants:
-        return None
+        return _none
 
     want_size  = (selected_size  or "").strip()
     want_color = (selected_color or "").strip()
@@ -892,24 +894,24 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
         for v in variants:
             attrs = v.get("attribute", [])
             if attr_size(attrs) == want_size and color_matches(attr_color(attrs) or "", want_color):
-                return str(v.get("option_id", ""))
+                return (str(v.get("option_id", "")), "exact") if return_meta else str(v.get("option_id", ""))
 
     # Pass 2: exact size only
     if want_size:
         for v in variants:
             attrs = v.get("attribute", [])
             if attr_size(attrs) == want_size:
-                return str(v.get("option_id", ""))
+                return (str(v.get("option_id", "")), "size_only") if return_meta else str(v.get("option_id", ""))
 
     # Pass 3: exact color only
     if want_color:
         for v in variants:
             attrs = v.get("attribute", [])
             if color_matches(attr_color(attrs) or "", want_color):
-                return str(v.get("option_id", ""))
+                return (str(v.get("option_id", "")), "color_only") if return_meta else str(v.get("option_id", ""))
 
     # Pass 4: fallback to first variant (cj_sku behaviour)
-    return str(variants[0].get("option_id", ""))
+    return (str(variants[0].get("option_id", "")), "fallback") if return_meta else str(variants[0].get("option_id", ""))
 
 
 _PENDANT_ONLY_RE = re.compile(

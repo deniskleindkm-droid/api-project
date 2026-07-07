@@ -205,7 +205,7 @@ def send_opportunity_alert(opportunity, platform, data):
         context=f"Platform: {platform}\nOpportunity: {opportunity}\nData: {data}"
     )
     
-    dennis_email = os.getenv("DENNIS_EMAIL", "your@gmail.com")
+    dennis_email = os.getenv("DENNIS_EMAIL", "hello@mikisi.co")
     
     subject = email_data.get("subject", f"🚨 Market Opportunity Detected: {opportunity}")
     body = email_data.get("body", "")
@@ -232,7 +232,7 @@ def send_sales_alert(metric, value, context):
         context=f"Metric: {metric}\nValue: {value}\nContext: {context}"
     )
     
-    dennis_email = os.getenv("DENNIS_EMAIL", "your@gmail.com")
+    dennis_email = os.getenv("DENNIS_EMAIL", "hello@mikisi.co")
     send_email(dennis_email, email_data.get("subject"), email_data.get("body"), is_html=True)
     
     return email_data
