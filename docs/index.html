@@ -687,15 +687,15 @@ details[open] .pp-accordion-arr{transform:rotate(180deg);}
   font-size:9px;font-weight:400;letter-spacing:2px;text-transform:uppercase;
   padding:11px 20px;
   cursor:pointer;
-  display:none;
+  display:flex;
   align-items:center;gap:8px;
   z-index:900;
   transition:background 0.2s,opacity 0.3s,transform 0.3s;
-  opacity:0;transform:translateY(10px);
+  opacity:0;transform:translateY(10px);pointer-events:none;
   box-shadow:0 4px 20px rgba(0,0,0,0.18);
 }
 .back-to-col-btn.visible{
-  opacity:1;transform:translateY(0);
+  opacity:1;transform:translateY(0);pointer-events:auto;
 }
 .back-to-col-btn:hover{background:var(--pink);}
 @media(max-width:768px){
@@ -1462,8 +1462,8 @@ async function loadHero(){
 }
 
 // ── COLLECTIONS ──
-const _COL_CACHE_KEY  = 'mikisi_collections_v2';
-const _PROD_CACHE_KEY = 'mikisi_products_v2';
+const _COL_CACHE_KEY  = 'mikisi_collections_v3';
+const _PROD_CACHE_KEY = 'mikisi_products_v3';
 const _CACHE_TTL      = 5 * 60 * 1000; // 5 minutes
 
 function _cacheGet(key){
@@ -1538,8 +1538,9 @@ async function openCollection(id, name){
   showBreadcrumb(name);
   window.scrollTo({top:0,behavior:'smooth'});
 
-  // If allProducts is already loaded, filter locally — no API call needed
-  const local = allProducts.filter(p=>p.collection_id===id);
+  // Filter locally — primary: by collection_id, fallback: by category name
+  let local = allProducts.filter(p=>p.collection_id===id);
+  if(!local.length) local = allProducts.filter(p=>(p.category||'').toLowerCase()===name.toLowerCase());
   if(local.length){
     renderCollectionProducts(local);
     return;
@@ -1875,6 +1876,7 @@ async function openPP(id){
   }
   if(!p){ppOpening=false;return;}
 
+  try{
   // ── Product nav (prev/next within collection) ──
   ppNavIdx=ppNavList.findIndex(x=>x.id===id);
   const catPrev=document.getElementById('pp-cat-prev');
@@ -2198,6 +2200,7 @@ async function openPP(id){
   });
   ppOpening=false;
   if(!atcBtn.disabled){atcBtn.style.pointerEvents='none';setTimeout(()=>{atcBtn.style.pointerEvents='';},220);}
+  }catch(e){ppOpening=false;console.error('openPP render error:',e);}
 }
 
 function updatePPGallery(){
@@ -2614,11 +2617,9 @@ function scrollToCollectionTop(){
 window.addEventListener('scroll',()=>{
   const inCollection = document.body.classList.contains('collection-mode');
   if(inCollection && window.scrollY > 320){
-    _backBtn.style.display='flex';
-    requestAnimationFrame(()=>_backBtn.classList.add('visible'));
+    _backBtn.classList.add('visible');
   } else {
     _backBtn.classList.remove('visible');
-    setTimeout(()=>{if(!_backBtn.classList.contains('visible'))_backBtn.style.display='none';},300);
   }
 },{passive:true});
 

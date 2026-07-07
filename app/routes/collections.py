@@ -2,9 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
 from app.database import get_session
 from app.models.collection import Collection
-from app.models.product import Product
+from app.models.product import Product, ProductPublic
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 router = APIRouter()
@@ -115,7 +115,7 @@ def delete_collection(
     session.commit()
     return {"deleted": True}
 
-@router.get("/collections/{collection_id}/products")
+@router.get("/collections/{collection_id}/products", response_model=List[ProductPublic])
 def get_collection_products(
     collection_id: int,
     session: Session = Depends(get_session)
@@ -123,7 +123,8 @@ def get_collection_products(
     collection = session.get(Collection, collection_id)
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
-    
+
+    from app.routes.products import _to_public
     products = session.exec(
         select(Product).where(
             Product.collection_id == collection_id,
@@ -131,4 +132,4 @@ def get_collection_products(
             Product.is_published == True
         )
     ).all()
-    return products
+    return [_to_public(p) for p in products]
