@@ -29,7 +29,10 @@ _SIZE_HINTS = {
 def _size_display_meta(p) -> dict:
     category = p.category or ""
     try:
-        sizes = _json.loads(p.sizes or "[]")
+        _s = _json.loads(p.sizes or "[]")
+        if isinstance(_s, str):
+            _s = _json.loads(_s)
+        sizes = _s if isinstance(_s, list) else []
     except Exception:
         sizes = []
 

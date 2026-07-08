@@ -2075,7 +2075,7 @@ async function openPP(id){
 
   // ── Size chips — from p.sizes or extracted from variants ──
   // (sizes declared above — may already contain promoted bracelet/anklet lengths from color detection)
-  if(!sizes.length){try{sizes=p.sizes?JSON.parse(p.sizes):[];}catch{sizes=[];}}
+  if(!sizes.length){try{let _s=p.sizes?JSON.parse(p.sizes):[];if(typeof _s==='string')_s=JSON.parse(_s);sizes=Array.isArray(_s)?_s:[];}catch{sizes=[];}}
   if(!sizes.length&&p.variants){
     try{
       JSON.parse(p.variants).forEach(opt=>{
