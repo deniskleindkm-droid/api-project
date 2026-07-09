@@ -1224,8 +1224,10 @@ def parse_necklace_length(chain_length_str: str) -> list:
         unit = unit.lower() if unit else ''
         return int(round(float(val) * 10)) if unit == 'cm' else int(float(val))
 
-    # Pattern 1: "X(unit) + Y(unit)" — base + extender (use re.search not re.match)
-    ext_m = re.search(r'(\d+(?:\.\d+)?)\s*(cm|mm)?\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)', s, re.I)
+    # Pattern 1: "X(unit) + Y(unit)" — base + extender (use re.search not re.match).
+    # Optional "Length"/"Chain" word tolerated between the base measurement and the
+    # "+" sign — e.g. "45cm Length + 5cm Extension" (seen on real Silverbene copy).
+    ext_m = re.search(r'(\d+(?:\.\d+)?)\s*(cm|mm)?\s*(?:(?:length|chain)\s*)?\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)', s, re.I)
     if ext_m:
         ext_unit = ext_m.group(4).lower()
         base_unit = ext_m.group(2) or ext_unit
@@ -1313,6 +1315,7 @@ def _parse_chain_length_from_desc(desc: str) -> list:
     Looks for patterns like:
       <li>Chain Length: 400mm - 450mm Adjustable</li>
       <li>Length: 450mm</li>
+      <li>Chain Style: Bead Chain with 45cm Length + 5cm Extension</li>
     Returns parsed chips list, or empty list if nothing found.
     """
     m = re.search(r'[Cc]hain\s+[Ll]ength[:\s]+([^<\n]{3,60})', desc)
@@ -1320,6 +1323,16 @@ def _parse_chain_length_from_desc(desc: str) -> list:
         m = re.search(r'\bLength[:\s]+(\d{3,4}\s*mm[^<\n]{0,40})', desc)
     if m:
         return parse_necklace_length(m.group(1))
+    # Some Silverbene listings put real length data under "Chain Style" instead
+    # of "Chain Length" (e.g. "Bead Chain with 45cm Length + 5cm Extension").
+    # Only trust it here if the value actually contains a cm/mm measurement, so
+    # a plain style description with no dimensions ("Chain Style: Box Chain")
+    # isn't misread as a length.
+    m = re.search(r'[Cc]hain\s+[Ss]tyle[:\s]+([^<\n]{3,80})', desc)
+    if m and re.search(r'\d+\s*(cm|mm)', m.group(1), re.I):
+        chips = parse_necklace_length(m.group(1))
+        if chips:
+            return chips
     return []
 
 
