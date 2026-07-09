@@ -127,14 +127,22 @@ def run_silverbene_stock_agent():
                         pass
 
                 if total_qty == 0:
+                    # A valid response (even qty=0) proves this product/option still
+                    # exists at Silverbene — it's out of stock, not discontinued.
+                    # Reset any pending miss count so the discontinuation agent stops
+                    # re-flagging it every cycle forever; previously this only reset
+                    # when stock came back above zero, so a product that settled into
+                    # a stable "confirmed, but 0 stock" state stayed stuck at whatever
+                    # miss count it last had, notified on every sync with no resolution.
+                    was_missed = product.sync_miss_count > 0
+                    changed = False
                     if product.stock != 0:
                         product.stock = 0
                         product.is_active = True
                         if product.is_published:
                             product.is_published = False
                             product.stock_auto_unpublished = True
-                        session.add(product)
-                        session.commit()
+                        changed = True
                         deactivated += 1
                         newly_outofstock.append(product.name[:60])
                         print(f"[Silverbene Stock Agent] Out of stock → unpublished: {product.name[:50]}")
@@ -144,6 +152,13 @@ def run_silverbene_stock_agent():
                                 update_product_availability(product.id, False)
                             except Exception:
                                 pass
+                    if was_missed:
+                        product.sync_miss_count = 0
+                        changed = True
+                        print(f"[Silverbene Stock Agent] Confirmed still exists (qty=0) — miss count reset: {product.name[:50]}")
+                    if changed:
+                        session.add(product)
+                        session.commit()
                 else:
                     old_qty = product.stock
                     was_oos = product.stock == 0
