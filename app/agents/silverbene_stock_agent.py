@@ -480,7 +480,6 @@ def _aria_sync_report(total_checked, updated, deactivated, reactivated,
     try:
         from app.agents.aria_intelligence import aria_think
         from app.agents.aria_memory import store_episode
-        from app.agents.email_partner import send_email
 
         # Build a clear situation summary for ARIA
         parts = [
@@ -532,19 +531,11 @@ def _aria_sync_report(total_checked, updated, deactivated, reactivated,
             significance="medium" if deactivated > 0 else "low"
         )
 
-        dennis_email = os.getenv("DENNIS_EMAIL")
-        if dennis_email and result:
-            email_data = result.get("email_to_dennis", {})
-            subject = email_data.get(
-                "subject",
-                f"Mikisi Sync Update — {deactivated} OOS · {reactivated} restocked · {sizes_updated} sizes refreshed"
-            )
-            body = email_data.get("body", "")
-            if body:
-                send_email(dennis_email, subject, body, is_html=True)
-                print(f"[Silverbene Stock Agent] Email sent to Dennis via ARIA")
-            else:
-                print(f"[Silverbene Stock Agent] ARIA returned no email body")
+        # Email to Dennis disabled — every sync that changed anything (which is
+        # most of them) was firing a separate email, flooding the inbox. The
+        # episode is still logged above via store_episode() for the admin
+        # sync report; ARIA's summary is available there instead of by email.
+        print(f"[Silverbene Stock Agent] Sync summary logged (email suppressed)")
 
     except Exception as e:
         print(f"[Silverbene Stock Agent] ARIA report error: {e}")

@@ -243,16 +243,11 @@ def _send_batched_report(first_miss: list, second_miss: list, deleted: list):
 
 
 def _send_email(subject: str, lines: list, urgency: str = "medium", body: str = ""):
-    try:
-        from app.agents.email_partner import send_email
-        dennis_email = os.getenv("DENNIS_EMAIL")
-        if not dennis_email:
-            return
-        if not body:
-            body = "<br>".join(lines)
-        send_email(dennis_email, subject, body, is_html=True)
-    except Exception as e:
-        print(f"[Discontinuation Agent] Email error: {e}")
+    # Disabled — sync/recovery emails were firing on every miss-count flap,
+    # flooding Dennis's inbox. Results still land in AgentMemory (see
+    # _write_memory / handle_recovery) for the admin sync report instead.
+    print(f"[Discontinuation Agent] Email suppressed: {subject}")
+    return
 
 
 def _write_memory(result: dict, notified: list, deleted: list):
