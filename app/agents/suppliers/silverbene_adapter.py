@@ -476,7 +476,7 @@ class SilverbeneAdapter(SupplierAdapter):
         cost_price = float(options[0].get("base_price", options[0].get("price", 0))) if options else 0.0
         stock = sum(int(o.get("qty", 0)) for o in options) if options else 999
 
-        sizes, colors = self._extract_variants(options)
+        sizes, colors = self._extract_variants(options, category=category)
         # Step 1: desc-based upgrade — replaces "Rhodium" with "White Gold" when the
         # product description explicitly uses that term (e.g. "Metal Color: White Gold Color").
         if colors:
@@ -586,7 +586,7 @@ class SilverbeneAdapter(SupplierAdapter):
             "is_pendant_only": pendant_only,
         }
 
-    def _extract_variants(self, options: list) -> tuple:  # noqa: C901
+    def _extract_variants(self, options: list, category: str = "") -> tuple:  # noqa: C901
         """
         Extract sizes and colors from Silverbene option attributes.
         Returns (sizes_list, colors_list).
@@ -660,7 +660,11 @@ class SilverbeneAdapter(SupplierAdapter):
                                 'open ring', 'open size') or \
                        _vl.startswith('adjustable (') or \
                        re.match(r'^\d+\s*\(adjustable\)$', _vl):
-                        value = 'Open Size / Adjustable'
+                        # Bracelets always have a real physical length even when
+                        # Silverbene's attribute just says "adjustable" with no
+                        # dimension — "Open Size" would misrepresent them the way
+                        # it doesn't for a genuinely open/stretchable ring band.
+                        value = 'Adjustable' if category == 'Bracelets' else 'Open Size / Adjustable'
                     if value not in seen_sizes:
                         seen_sizes.add(value)
                         sizes.append(value)
@@ -1353,12 +1357,46 @@ def _extract_bracelet_info_from_desc(desc: str) -> dict:
       • "Bracelet Length: Adjustable"         → ["Adjustable"]
       • "Bracelet Type: Adjustable Sliding …" → ["Adjustable"]
       • "Closure: … Extension Chain …"        → ["Adjustable"]
+      • "Bangle Diameter: 60mm"               → [7"] (rigid bangle — inner diameter)
+      • "Bangle Size: Open Size/Adjustable"   → ["Adjustable"] (cuff — flexes open)
       • Width: "Bracelet Width: 3mm", "Width: 3.7mm", "Chain Width: 3mm"
 
     Returns {"sizes": [...], "width": "Xmm"}.
     sizes == [] means no data found.
     """
     text = re.sub(r'<[^>]+>', ' ', desc)  # strip HTML tags for plain-text matching
+
+    # "adjustable" phrased loosely, with no dimension attached — cuffs and
+    # sliding-clasp bracelets are described this way ("Open Size/Adjustable",
+    # "One Size", "Free Size") rather than a plain "Adjustable" label.
+    def _is_adjustable_no_dim(val: str) -> bool:
+        vl = re.sub(r'\s+', ' ', val).strip().lower()
+        return bool(re.match(
+            r'^(adjustable|one size(\s*/\s*adjustable)?|open size(\s*/\s*adjustable)?|free size|all size)$',
+            vl
+        ))
+
+    # ── 0. Rigid bangle diameter (highest confidence, distinct math) ─────────
+    # A bangle doesn't stretch — its diameter is measured across the inside of
+    # the rigid band, so it converts to wrist size via circumference (π × ID),
+    # unlike a bracelet/chain length which IS the wrist measurement directly.
+    m = re.search(r'[Bb]angle\s+[Dd]iameter[:\s]+([^<\n]{2,40})', desc, re.I)
+    if m:
+        val = m.group(1).strip()
+        if _is_adjustable_no_dim(val):
+            return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text)}
+        chips = parse_bracelet_size(val + " inner diameter")
+        if chips:
+            return {"sizes": chips, "width": _extract_bracelet_width(text)}
+
+    m = re.search(r'[Bb]angle\s+[Ss]ize[:\s]+([^<\n]{2,40})', desc, re.I)
+    if m:
+        val = m.group(1).strip()
+        if _is_adjustable_no_dim(val):
+            return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text)}
+        chips = parse_bracelet_size(val)
+        if chips:
+            return {"sizes": chips, "width": _extract_bracelet_width(text)}
 
     # ── 1. Explicit length fields (highest confidence) ────────────────────────
     LENGTH_KEYS = (
@@ -1373,7 +1411,7 @@ def _extract_bracelet_info_from_desc(desc: str) -> dict:
         val = m.group(1).strip()
 
         # "Adjustable" with no dimension → plain label
-        if re.match(r'^[Aa]djustable\s*$', val.strip()):
+        if _is_adjustable_no_dim(val):
             return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text)}
 
         # Has a cm/mm dimension → parse to inch chips

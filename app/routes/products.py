@@ -65,7 +65,7 @@ def _size_display_meta(p) -> dict:
         badge = open_ring_size_text(specs)
         return {"size_label": label, "size_hint": badge, "size_display_mode": "open_badge"}
 
-    if all(s.startswith("adjustable") or s == "one size" for s in sizes_lower):
+    if all("adjustable" in s or "one size" in s or "open size" in s or s == "free size" for s in sizes_lower):
         return {"size_label": label, "size_hint": None, "size_display_mode": "adjustable_badge"}
 
     return {

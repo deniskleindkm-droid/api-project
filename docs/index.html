@@ -1757,6 +1757,9 @@ const SPEC_ORDER=Object.keys(SPEC_LABELS);
 // Ring sizing specs feed the dedicated Ring Size chip (see isAdjustableOnly block
 // above) — never the generic Details accordion, so size info isn't shown twice.
 const RING_SIZE_SPEC_KEYS=new Set(['ring_diameter','ring_size_range','inner_diameter']);
+// Same rule for bracelets: length/diameter specs belong only in the Size chip
+// section, never buried in Details where a shopper might miss them entirely.
+const BRACELET_SIZE_SPEC_KEYS=new Set(['chain_length','size','bangle_size','bangle_diameter']);
 
 function mmToUsRingSize(mm){
   // Standard formula: US = (π × diameter_mm − 36.5) / 2.56, rounded to nearest 0.5
@@ -1787,6 +1790,7 @@ function parseSpecs(p){
   // (e.g. "US6-US8 Adjustable") — it belongs only in the Ring Size section,
   // never duplicated into Details. Other categories still show it normally.
   const isRings=(p.category||'').toLowerCase()==='rings';
+  const isBracelets=(p.category||'').toLowerCase()==='bracelets';
 
   // Iterate in preferred order, then any remaining keys not in order
   const seen=new Set();
@@ -1794,6 +1798,7 @@ function parseSpecs(p){
     if(!raw[key]) continue;
     seen.add(key);
     if(isRings&&key==='size') continue;
+    if(isBracelets&&BRACELET_SIZE_SPEC_KEYS.has(key)) continue;
     if(key==='ring_top'){
       const m=raw[key].match(/([\d.]+)\s*mm/i);
       if(m){
@@ -1806,10 +1811,10 @@ function parseSpecs(p){
       rows.push({k:SPEC_LABELS[key],v:raw[key]});
     }
   }
-  // Any extra keys not in the order map — skip ring sizing specs, they belong
-  // only in the Ring Size chip, not the Details accordion.
+  // Any extra keys not in the order map — skip ring/bracelet sizing specs,
+  // they belong only in the Size chip, not the Details accordion.
   for(const key of Object.keys(raw)){
-    if(!seen.has(key)&&raw[key]&&!RING_SIZE_SPEC_KEYS.has(key)){
+    if(!seen.has(key)&&raw[key]&&!RING_SIZE_SPEC_KEYS.has(key)&&!(isBracelets&&BRACELET_SIZE_SPEC_KEYS.has(key))){
       const label=key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
       rows.push({k:label,v:raw[key]});
     }

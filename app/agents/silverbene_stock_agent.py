@@ -360,8 +360,13 @@ def _refresh_product_sizes(sb) -> tuple:
                     continue
 
                 from app.agents.suppliers.silverbene_adapter import _parse_chain_length_from_desc
-
+                from app.agents.suppliers.silverbene_adapter import _extract_bracelet_info_from_desc
                 from app.agents.suppliers.silverbene_adapter import _is_pendant_only
+
+                def _desc_sizes(raw_desc: str, category: str):
+                    if category == "Bracelets":
+                        return _extract_bracelet_info_from_desc(raw_desc)["sizes"]
+                    return _parse_chain_length_from_desc(raw_desc)
 
                 # Primary: fetch by SKU
                 fresh = sb.get_by_sku(sku)
@@ -376,10 +381,10 @@ def _refresh_product_sizes(sb) -> tuple:
                     else:
                         options = fresh.get("_options", [])
                         if isinstance(options, list):
-                            sizes_list, _ = adapter._extract_variants(options)
+                            sizes_list, _ = adapter._extract_variants(options, category=p.category)
                         # Chain length always comes from desc material-info section
                         if not sizes_list:
-                            sizes_list = _parse_chain_length_from_desc(raw_desc) or None
+                            sizes_list = _desc_sizes(raw_desc, p.category) or None
 
                 # Fallback: search by product name via date-window endpoint
                 if not sizes_list:
@@ -393,9 +398,9 @@ def _refresh_product_sizes(sb) -> tuple:
                             else:
                                 opts = r.get("_options", [])
                                 if isinstance(opts, list):
-                                    sizes_list, _ = adapter._extract_variants(opts)
+                                    sizes_list, _ = adapter._extract_variants(opts, category=p.category)
                                 if not sizes_list:
-                                    sizes_list = _parse_chain_length_from_desc(raw_desc) or None
+                                    sizes_list = _desc_sizes(raw_desc, p.category) or None
                             break
 
                 if sizes_list:

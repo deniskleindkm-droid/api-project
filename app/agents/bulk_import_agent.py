@@ -10,8 +10,11 @@ from app.agents.store_config import get_config
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-# Categories where a ring with no size variants should show "Open Size / Adjustable"
-_RING_LIKE_CATEGORIES = {"Rings", "Bracelets", "Anklets"}
+# Categories where no size variants should show "Open Size / Adjustable" — only
+# categories where a genuinely open/stretchable design exists. Bracelets always
+# have a real physical length even when we're missing the data, so they're
+# excluded: showing "Open Size" would misrepresent the product.
+_RING_LIKE_CATEGORIES = {"Rings", "Anklets"}
 
 # Every product name must contain one of these words (the customer must know what type of jewelry it is).
 # If ARIA strips the category word we add it back in code.
