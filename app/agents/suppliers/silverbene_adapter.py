@@ -1437,11 +1437,22 @@ def _extract_bracelet_width(text: str) -> str | None:
     return None
 
 
-# Hong Kong → US ring size lookup table (standard international conversion)
+# Hong Kong → US ring size lookup table.
+# Source: Chow Sang Sang's official HK ring-size guide
+# (cdn.chowsangsang.com/hkeshop/images/web/Ring_Size_Eng.pdf), one of Hong Kong's
+# largest jewelers — cross-checked against Wills Jewellery and Diamond Collection
+# HK's published charts, which agree closely (e.g. all three put HK14 at US 6.25-6.5).
+# The previous table here was off by roughly a full US size across the board
+# (e.g. it mapped HK14 -> US7.5 instead of the correct US6.5).
+# Sizes 1-4 are below Chow Sang Sang's published range (they start at 5) and are
+# extrapolated from the same diameter progression + the mm-to-US formula used
+# elsewhere in this file — noted as approximate; adult rings rarely go this low.
 _HK_TO_US = {
-    1:1, 2:1.5, 3:2, 4:2.5, 5:3, 6:3.5, 7:4, 8:4.5, 9:5, 10:5.5,
-    11:6, 12:6.5, 13:7, 14:7.5, 15:8, 16:8.5, 17:9, 18:9.5, 19:10,
-    20:10.5, 21:11, 22:11.5, 23:12, 24:12.5, 25:13,
+    1:1, 2:1.5, 3:2, 4:2.5,
+    5:2.75, 6:3, 7:3.5, 8:3.75, 9:4.25, 10:4.75,
+    11:5.25, 12:5.5, 13:6, 14:6.5, 15:7,
+    16:7.5, 17:7.75, 18:8.25, 19:8.75, 20:9,
+    21:9.5, 22:10, 23:10.25, 24:10.75, 25:11.25,
 }
 
 def _hk_to_us(n: int) -> str:
@@ -1454,17 +1465,30 @@ def _convert_ring_size_to_us(val: str) -> str:
     """
     Convert ring size specs containing HK / Hong Kong / Asian sizes to US equivalents.
     Examples:
-      "Hong Kong Size 13-15"  → "US 7 - 8"
-      "HK Size 12"            → "US 6.5"
-      "Asian Size 13"         → "US 7"
-      "US 7"                  → "US 7"  (already US, leave as-is)
+      "Hong Kong Size 13-15"     → "US 6 - 7"
+      "HK Size 12"               → "US 5.5"
+      "Asian Size 13"            → "US 6"
+      "US 7"                     → "US 7"      (already US, leave as-is)
+      "Inner Diameter 17.5mm"    → "US 7"      (explicit mm measurement, not HK size 17)
     """
     v = val.strip()
     # Already a US size — return as-is
     if re.match(r'^US\s*[\d.]+', v, re.I):
         return v
-    # Extract numeric range or single number
-    nums = [int(n) for n in re.findall(r'\b(\d{1,2})\b', v) if 1 <= int(n) <= 25]
+    # An explicit mm/cm diameter is unambiguous — prefer it over any bare number
+    # in the same text. "Inner Diameter 17.5mm" is a measurement, not HK size 17;
+    # a phrase like "Approximately 14/16.9mm" pairs a matching HK number with its
+    # own diameter, so either interpretation agrees there anyway.
+    parsed_mm = _parse_ring_diameter_mm(v)
+    if parsed_mm:
+        lo_mm, hi_mm = parsed_mm
+        lo_us, hi_us = _mm_to_us_ring(lo_mm), _mm_to_us_ring(hi_mm)
+        return f"US {lo_us}" if lo_us == hi_us else f"US {lo_us} - {hi_us}"
+    # Extract numeric range or single number — whole numbers only. HK sizes are
+    # always whole per the official Chow Sang Sang chart, so a decimal like the
+    # "16.5" in "13 to 16.5" is never a valid HK size; excluding it here avoids
+    # splitting it into spurious extra matches ("16" and "5") that corrupt the range.
+    nums = [int(n) for n in re.findall(r'(?<![.\d])(\d{1,2})(?!\.\d)\b', v) if 1 <= int(n) <= 25]
     if not nums:
         return v  # nothing parseable — keep original
     lo, hi = min(nums), max(nums)

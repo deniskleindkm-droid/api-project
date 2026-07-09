@@ -2122,10 +2122,15 @@ async function openPP(id){
         if(sp.inner_diameter){adjRange=adjDiameterNote(sp.inner_diameter);}
         if(!adjRange&&sp.ring_diameter){adjRange=adjDiameterNote(sp.ring_diameter);}
         if(!adjRange&&sp.ring_size_range){
-          const m=sp.ring_size_range.match(/([\d.]+)\s*[-–]\s*([\d.]+)/);
-          if(m) adjRange=`US ${Math.floor(parseFloat(m[1]))} – ${Math.ceil(parseFloat(m[2]))}`;
-          else{const n=sp.ring_size_range.match(/([\d.]+)/);if(n){const us=Math.round(parseFloat(n[1]));adjRange=`US ${us-1} – ${us+1}`;}}
-
+          // ring_size_range is already normalized to "US #" or "US # - #" at import
+          // time (see _convert_ring_size_to_us in silverbene_adapter.py) — use that
+          // precise value as-is. Don't round/pad it into a fuzzy ±1 range; that
+          // turned an exact "US 7.5" into a wrong "US 7 – 9" for at least one product.
+          const rsr=sp.ring_size_range.trim();
+          const usMatch=rsr.match(/^US\s*([\d.]+)\s*(?:[-–]\s*([\d.]+))?/i);
+          if(usMatch) adjRange = usMatch[2] ? `US ${usMatch[1]} – ${usMatch[2]}` : `US ${usMatch[1]}`;
+          // else: plain text with no "US #" (e.g. "Adjustable") has no real number
+          // to show — falls through to the US5-8 default below.
         }
       }catch{}
       // No per-product diameter spec — every open/adjustable ring still gets a
