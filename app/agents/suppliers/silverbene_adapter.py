@@ -1398,6 +1398,23 @@ def _extract_bracelet_info_from_desc(desc: str) -> dict:
         if chips:
             return {"sizes": chips, "width": _extract_bracelet_width(text)}
 
+    # "Adjustable Size: Approximately 60mm" — ambiguous label Silverbene uses
+    # for both stretchy chains (a real wrist-range value) and rigid cuffs (an
+    # inner diameter too small to be a wrist circumference). Try it as a
+    # direct length first; a lone value under the bracelet range (<100mm)
+    # falls back to inner-diameter math instead of being dropped.
+    m = re.search(r'[Aa]djustable\s+[Ss]ize[:\s]+([^<\n]{2,60})', desc, re.I)
+    if m:
+        val = m.group(1).strip()
+        if _is_adjustable_no_dim(val):
+            return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text)}
+        chips = parse_bracelet_size(val)
+        if chips:
+            return {"sizes": chips, "width": _extract_bracelet_width(text)}
+        chips = parse_bracelet_size(val + " inner diameter")
+        if chips:
+            return {"sizes": chips, "width": _extract_bracelet_width(text)}
+
     # ── 1. Explicit length fields (highest confidence) ────────────────────────
     LENGTH_KEYS = (
         r'[Bb]racelet\s+[Ll]ength',
