@@ -5,6 +5,7 @@ from app.database import get_session
 from typing import Optional, List
 from pydantic import BaseModel
 import json as _json
+import re as _re
 
 router = APIRouter()
 
@@ -65,7 +66,14 @@ def _size_display_meta(p) -> dict:
         badge = open_ring_size_text(specs)
         return {"size_label": label, "size_hint": badge, "size_display_mode": "open_badge"}
 
-    if all("adjustable" in s or "one size" in s or "open size" in s or s == "free size" for s in sizes_lower):
+    # A chip like "Adjustable 6.5\" – 7\"" carries a real measurement even
+    # though the word "adjustable" appears in it — only treat the whole set
+    # as a vague label when none of them contain an actual digit.
+    _has_digit = any(_re.search(r'\d', s) for s in sizes)
+    if not _has_digit and all(
+        "adjustable" in s or "one size" in s or "open size" in s or s == "free size"
+        for s in sizes_lower
+    ):
         return {"size_label": label, "size_hint": None, "size_display_mode": "adjustable_badge"}
 
     return {
