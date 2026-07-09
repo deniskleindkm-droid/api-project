@@ -339,6 +339,7 @@ nav{
   font-weight:400;color:var(--black);margin-bottom:3px;
 }
 .pcard-orig{font-size:11px;color:var(--light);text-decoration:line-through;font-weight:300;}
+.pcard-size{font-size:10px;color:var(--mid);letter-spacing:0.3px;margin-bottom:5px;}
 
 /* ── BREADCRUMB ── */
 .breadcrumb{
@@ -1558,6 +1559,24 @@ async function openCollection(id, name){
   }catch{document.getElementById('cv-grid').innerHTML='<div class="loading">Could not load pieces</div>';}
 }
 
+// Short size text for the grid card — bracelets show their length range or
+// "Adjustable" at a glance, so a shopper doesn't have to open the product to
+// see if it fits. Other categories keep the card as-is for now.
+function pcardSizeText(p){
+  if((p.category||'').toLowerCase()!=='bracelets') return '';
+  if(p.size_display_mode==='adjustable_badge') return 'One Size · Adjustable';
+  if(p.size_display_mode!=='selector') return '';
+  let sizes=[];
+  try{
+    let s=p.sizes?JSON.parse(p.sizes):[];
+    if(typeof s==='string') s=JSON.parse(s);
+    sizes=Array.isArray(s)?s:[];
+  }catch{return '';}
+  if(!sizes.length) return '';
+  if(sizes.length===1) return sizes[0];
+  return `${sizes[0]} – ${sizes[sizes.length-1]}`;
+}
+
 function renderCollectionProducts(prods){
   const grid = document.getElementById('cv-grid');
   if(!prods||!prods.length){grid.innerHTML='<div class="loading">No pieces in this collection yet</div>';return;}
@@ -1581,6 +1600,7 @@ function renderCollectionProducts(prods){
     else if(p.stock<=10) badge=`<div class="pcard-badge badge-limited">❋ Limited · ${p.stock} left</div>`;
     else if(p.is_new) badge=`<div class="pcard-badge badge-new">New</div>`;
     const liked = wishlist.includes(p.id);
+    const sizeText = pcardSizeText(p);
     return `<div class="pcard${outOfStock?' pcard-oos':''}" data-id="${p.id}" onclick="openPP(${p.id})">
       <div class="pcard-img">
         <img src="${imgA}" alt="${name}"${imgB?` data-hover="${imgB}"`:''}  onerror="this.src='${getPlaceholder()}'" loading="lazy"/>
@@ -1590,6 +1610,7 @@ function renderCollectionProducts(prods){
       <div class="pcard-info">
         <div class="pcard-brand">Mikisi</div>
         <div class="pcard-name">${name}</div>
+        ${sizeText?`<div class="pcard-size">${sizeText}</div>`:''}
         <div class="pcard-price"${outOfStock?' style="color:var(--light)"':''}>$${p.final_price.toFixed(2)}</div>
         ${p.original_price>p.final_price?`<div class="pcard-orig">$${p.original_price.toFixed(2)}</div>`:''}
       </div>
