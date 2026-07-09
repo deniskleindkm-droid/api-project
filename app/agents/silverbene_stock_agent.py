@@ -298,10 +298,25 @@ def _record_miss(product_id):
         print(f"[Silverbene Stock Agent] Miss record error: {e}")
 
 
+def _lacks_real_length(sizes_list) -> bool:
+    """
+    True if no chip in the list carries an actual measurement — e.g. a bare
+    ["Adjustable"] or ["One Size / Adjustable"] with no inch/cm figure attached.
+    A vague label isn't a size; a bracelet or necklace always has a real
+    physical length even when we haven't captured it yet.
+    """
+    if not sizes_list:
+        return True
+    if any(s == "Pendant Only" for s in sizes_list):
+        return False
+    return not any(re.search(r'\d', s) for s in sizes_list)
+
+
 def _refresh_product_sizes(sb) -> tuple:
     """
-    Re-fetch Silverbene data for every product that is missing sizes or
-    flagged needs_length_review, across ALL categories.
+    Re-fetch Silverbene data for every product that is missing sizes,
+    has only a vague adjustable-with-no-measurement label, or is flagged
+    needs_length_review, across ALL categories.
 
     Returns (count_updated, list_of_detail_strings).
 
@@ -333,6 +348,15 @@ def _refresh_product_sizes(sb) -> tuple:
             if p.sizes is None or p.needs_length_review:
                 needs_refresh.append(p)
                 continue
+            if p.category in ("Bracelets", "Necklaces", "Anklets"):
+                try:
+                    s = json.loads(p.sizes)
+                except Exception:
+                    s = []
+                # Bare "Adjustable"/"One Size" with no digits — retry for real length.
+                if _lacks_real_length(s if isinstance(s, list) else []):
+                    needs_refresh.append(p)
+                    continue
             # Re-check necklaces with a single plain-inch size (could be wrong)
             if p.category == "Necklaces":
                 try:
@@ -403,23 +427,35 @@ def _refresh_product_sizes(sb) -> tuple:
                                     sizes_list = _desc_sizes(raw_desc, p.category) or None
                             break
 
-                if sizes_list:
-                    # Only update if sizes actually changed
-                    existing = json.loads(p.sizes) if p.sizes else []
-                    if sizes_list != existing:
-                        with Session(engine) as session:
-                            prod = session.get(Product, p.id)
-                            if prod:
-                                prod.sizes = json.dumps(sizes_list)
-                                prod.needs_length_review = False
-                                session.add(prod)
-                                session.commit()
-                        fixed += 1
-                        detail.append(
-                            f"{p.category} — {p.name[:45]}: {existing} → {sizes_list}"
-                        )
-                        print(f"[Silverbene Stock Agent] Sizes updated [{p.category}] "
-                              f"{p.name[:45]} → {sizes_list}")
+                existing = json.loads(p.sizes) if p.sizes else []
+                still_lacking = _lacks_real_length(sizes_list) if sizes_list else True
+
+                if sizes_list and sizes_list != existing:
+                    with Session(engine) as session:
+                        prod = session.get(Product, p.id)
+                        if prod:
+                            prod.sizes = json.dumps(sizes_list)
+                            prod.needs_length_review = still_lacking
+                            session.add(prod)
+                            session.commit()
+                    fixed += 1
+                    detail.append(
+                        f"{p.category} — {p.name[:45]}: {existing} → {sizes_list}"
+                        + (" [still no real length — flagged for review]" if still_lacking else "")
+                    )
+                    print(f"[Silverbene Stock Agent] Sizes updated [{p.category}] "
+                          f"{p.name[:45]} → {sizes_list}")
+                elif still_lacking and not p.needs_length_review:
+                    # Live re-fetch found nothing better — flag it so it surfaces
+                    # in Dennis's daily digest instead of silently retrying forever.
+                    with Session(engine) as session:
+                        prod = session.get(Product, p.id)
+                        if prod:
+                            prod.needs_length_review = True
+                            session.add(prod)
+                            session.commit()
+                    print(f"[Silverbene Stock Agent] No real length found [{p.category}] "
+                          f"{p.name[:45]} — flagged needs_length_review")
             except Exception as e:
                 print(f"[Silverbene Stock Agent] Size refresh skipped for {p.name[:45]}: {e}")
                 continue
