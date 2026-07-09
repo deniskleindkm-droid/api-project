@@ -1087,7 +1087,7 @@ def open_ring_size_text(specs: dict, desc: str = "") -> str:
 
     Checks specs for ring_diameter or inner_diameter first.
     If a real mm measurement is found, converts to US range.
-    Falls back to the industry-standard open-ring range US 5–9.
+    Falls back to our standard open-ring range US 5-8.
     """
     dia_text = None
     for key in ('ring_diameter', 'inner_diameter'):
@@ -1115,7 +1115,7 @@ def open_ring_size_text(specs: dict, desc: str = "") -> str:
                 return f"Adjustable · fits US {lo_us}"
             return f"Adjustable · fits US {min(lo_us, hi_us)}–{max(lo_us, hi_us)}"
 
-    return "Adjustable · fits US 5–9"
+    return "Adjustable · fits US 5-8"
 
 
 def parse_bracelet_size(length_str: str) -> list:

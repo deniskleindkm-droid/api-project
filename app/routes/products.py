@@ -38,6 +38,19 @@ def _size_display_meta(p) -> dict:
 
     label = _SIZE_LABELS.get(category)
 
+    # Rings with no size data at all are just as open/adjustable as rings whose
+    # sizes explicitly say so — Silverbene simply omits the Size attribute when
+    # there's nothing to select. Treat both the same way instead of falling
+    # through to "none" and hiding the ring size section entirely.
+    if category == "Rings" and not sizes:
+        from app.agents.suppliers.silverbene_adapter import open_ring_size_text
+        try:
+            specs = _json.loads(p.specs or "{}")
+        except Exception:
+            specs = {}
+        badge = open_ring_size_text(specs)
+        return {"size_label": label, "size_hint": badge, "size_display_mode": "open_badge"}
+
     if not sizes or category in ("Earrings", "Ear Cuffs"):
         return {"size_label": label, "size_hint": None, "size_display_mode": "none"}
 

@@ -1749,11 +1749,14 @@ const SPEC_LABELS={
   pin_size:'Pin',chain_width:'Chain Width',width:'Band Width',
   chain_length:'Chain Length',drop_length:'Drop Length',
   bangle_size:'Bangle Size',bangle_diameter:'Bangle Diameter',
-  ring_top:'Ring Face',ring_diameter:'Ring Diameter',ring_size_range:'Adjustable Range',
-  inner_diameter:'Inner Diameter',size:'Size',
+  ring_top:'Ring Face',
+  size:'Size',
   weight:'Weight',purity:'Purity',
 };
 const SPEC_ORDER=Object.keys(SPEC_LABELS);
+// Ring sizing specs feed the dedicated Ring Size chip (see isAdjustableOnly block
+// above) — never the generic Details accordion, so size info isn't shown twice.
+const RING_SIZE_SPEC_KEYS=new Set(['ring_diameter','ring_size_range','inner_diameter']);
 
 function mmToUsRingSize(mm){
   // Standard formula: US = (π × diameter_mm − 36.5) / 2.56, rounded to nearest 0.5
@@ -1780,12 +1783,17 @@ function parseSpecs(p){
   if(!p||!p.specs) return rows;
   let raw;
   try{ raw=JSON.parse(p.specs); }catch{ return rows; }
+  // For rings, the generic "size" spec key is raw supplier ring-sizing text
+  // (e.g. "US6-US8 Adjustable") — it belongs only in the Ring Size section,
+  // never duplicated into Details. Other categories still show it normally.
+  const isRings=(p.category||'').toLowerCase()==='rings';
 
   // Iterate in preferred order, then any remaining keys not in order
   const seen=new Set();
   for(const key of SPEC_ORDER){
     if(!raw[key]) continue;
     seen.add(key);
+    if(isRings&&key==='size') continue;
     if(key==='ring_top'){
       const m=raw[key].match(/([\d.]+)\s*mm/i);
       if(m){
@@ -1794,16 +1802,14 @@ function parseSpecs(p){
         const display=(us>=3&&us<=15)?`${raw[key]} (≈ US ${us})`:raw[key];
         rows.push({k:SPEC_LABELS[key],v:display});
       }else rows.push({k:SPEC_LABELS[key],v:raw[key]});
-    }else if(key==='inner_diameter'){
-      const usRange=adjDiameterNote(raw[key]);
-      rows.push({k:SPEC_LABELS[key],v:usRange||raw[key]});
     }else{
       rows.push({k:SPEC_LABELS[key],v:raw[key]});
     }
   }
-  // Any extra keys not in the order map
+  // Any extra keys not in the order map — skip ring sizing specs, they belong
+  // only in the Ring Size chip, not the Details accordion.
   for(const key of Object.keys(raw)){
-    if(!seen.has(key)&&raw[key]){
+    if(!seen.has(key)&&raw[key]&&!RING_SIZE_SPEC_KEYS.has(key)){
       const label=key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
       rows.push({k:label,v:raw[key]});
     }
@@ -1953,6 +1959,7 @@ async function openPP(id){
   let sizes=[];
   let colors=[];
   let stones=[];
+  let ringAdjustableSize=null; // set below when a ring has no real size chips — carries "US5-8" into the cart/order
   try{colors=p.colors?JSON.parse(p.colors):[];}catch{colors=[];}
   if(!colors.length&&p.variants){
     try{
@@ -2087,21 +2094,26 @@ async function openPP(id){
       });
     }catch{}
   }
-  if(sizes.length){
+  {
     const colName=getCollectionName(p);
     const sizeLabel=CATEGORY_SIZE_LABEL[colName]||'Size';
     const ADJUSTABLE_VALS=new Set(['adjustable','one size / adjustable','one size/adjustable','open size / adjustable','one size','one size adjustable','free size','all size','open size','open ring']);
     const isAdjustableOnly=sizes.length===1&&ADJUSTABLE_VALS.has(sizes[0].toLowerCase().trim());
+    // Rings with zero size chips are just as open/adjustable as ones whose sizes
+    // explicitly say so — Silverbene omits the Size attribute entirely when there's
+    // nothing to select, so "no data" and "adjustable" mean the same thing here.
+    const isRingNoSize=colName==='rings'&&sizes.length===0;
     // Necklace chain lengths are always meaningful — show even a single chip (e.g. "18\"")
     const isNecklace=colName==='necklaces';
     const showSingle=isNecklace&&!isAdjustableOnly;
-    if(isAdjustableOnly&&colName==='rings'){
+    if((isAdjustableOnly||isRingNoSize)&&colName==='rings'){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
       let adjRange='';
       try{
         const sp=p.specs?JSON.parse(p.specs):{};
         if(sp.inner_diameter){adjRange=adjDiameterNote(sp.inner_diameter);}
+        if(!adjRange&&sp.ring_diameter){adjRange=adjDiameterNote(sp.ring_diameter);}
         if(!adjRange&&sp.ring_size_range){
           const m=sp.ring_size_range.match(/([\d.]+)\s*[-–]\s*([\d.]+)/);
           if(m) adjRange=`US ${Math.floor(parseFloat(m[1]))} – ${Math.ceil(parseFloat(m[2]))}`;
@@ -2109,10 +2121,14 @@ async function openPP(id){
 
         }
       }catch{}
+      // No per-product diameter spec — every open/adjustable ring still gets a
+      // customer-facing range instead of a bare "Open Size" label with no sizing info.
+      if(!adjRange) adjRange='US 5 – 8';
+      // Compact form for the customer-facing line: "US 5 – 8" -> "US5-8"
+      const compactRange=adjRange.replace(/^US\s*/,'US').replace(/\s*[-–]\s*/,'-');
       document.getElementById('pp-size-chips').innerHTML=
-        (adjRange?`<button class="pp-chip active" style="cursor:default;pointer-events:none;">${adjRange}</button>`+
-          `<div style="margin-top:6px;font-size:10px;color:var(--mid);letter-spacing:0.5px;">Open Size / Adjustable</div>`:
-          `<button class="pp-chip active" style="cursor:default;pointer-events:none;">Open Size / Adjustable</button>`);
+        `<div class="pp-open-size-note" style="font-size:12px;color:var(--black);letter-spacing:0.3px;">Open size/adjustable fits ${compactRange}</div>`;
+      ringAdjustableSize=compactRange; // carried into ppSelectedSize below so cart/order keeps "Color · Size"
     }else if(sizes.length>=2||showSingle){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
@@ -2121,7 +2137,7 @@ async function openPP(id){
       // Single non-meaningful size chip (e.g. bracelet "One Size / Adjustable") — hide
       document.getElementById('pp-sizes-wrap').style.display='none';
     }
-  }else document.getElementById('pp-sizes-wrap').style.display='none';
+  }
 
   // ── Material — derive initial finish from product's first stored color value
   //   (never read from DOM chips — stale chips from a previous product cause wrong finish)
@@ -2175,7 +2191,9 @@ async function openPP(id){
   };
 
   // Reset variant selection for this product
-  ppSelectedSize  = sizes.length ? sizes[0] : null;
+  // Open/adjustable rings have no real size chip, but still carry a size (e.g. "US5-8")
+  // into the cart/order so the "Color · Size" pairing isn't silently dropped.
+  ppSelectedSize  = sizes.length ? sizes[0] : ringAdjustableSize;
   // Read display text of first chip (post-COLOR_LABEL rename) so cart receives friendly name
   const _firstColorChip = document.querySelector('#pp-color-chips .pp-chip');
   ppSelectedColor    = document.getElementById('pp-colors-wrap').style.display!=='none'
