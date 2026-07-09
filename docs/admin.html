@@ -275,6 +275,12 @@
             <div class="loading">Loading agents...</div>
         </div>
 
+        <!-- SYNC REPORT -->
+        <div class="section-title">Silverbene Sync Report</div>
+        <div id="sync-report">
+            <div class="loading">Loading sync report...</div>
+        </div>
+
         <!-- SIGNAL HEALTH -->
         <div class="section-title">Nervous System</div>
         <div class="signals-row" id="signals-row">
@@ -467,6 +473,7 @@ async function loadDashboard() {
     document.getElementById('last-updated').textContent = 'Updating...';
     await Promise.all([
         loadSystemHealth(),
+        loadSyncReport(),
         loadSignalHealth(),
         loadActionLedger(),
         loadBusinessSnapshot()
@@ -566,6 +573,56 @@ async function loadSystemHealth() {
 
     } catch(e) {
         grid.innerHTML = `<div class="loading">Could not load agent status — ${e.message}</div>`;
+    }
+}
+
+// ============================================================
+// SYNC REPORT — replaces the per-run emails Dennis used to get
+// ============================================================
+async function loadSyncReport() {
+    const el = document.getElementById('sync-report');
+    try {
+        const res = await fetch(`${API}/agents/sync-report`);
+        const data = await res.json();
+        const rows = [];
+
+        (data.stock_syncs || []).forEach(m => {
+            let c; try { c = JSON.parse(m.content); } catch { return; }
+            const parts = [`checked ${c.checked ?? '—'}`];
+            if (c.deactivated) parts.push(`${c.deactivated} out of stock`);
+            if (c.reactivated) parts.push(`${c.reactivated} restocked`);
+            if (c.updated) parts.push(`${c.updated} qty changed`);
+            if (c.sizes_updated) parts.push(`${c.sizes_updated} sizes refreshed`);
+            rows.push({ t: m.created_at, label: 'Stock sync', detail: parts.join(' · ') });
+        });
+
+        (data.discontinuation_checks || []).forEach(m => {
+            let c; try { c = JSON.parse(m.content); } catch { return; }
+            if (m.memory_type === 'recovery') {
+                rows.push({ t: m.created_at, label: 'Recovered', detail: `${c.name || '—'} (was ${c.was_missed} miss${c.was_missed === 1 ? '' : 'es'}) → Unpublished for review` });
+            } else {
+                if (!c.checked) return;
+                const parts = [`${c.notified || 0} notified`, `${c.deleted || 0} deleted`];
+                rows.push({ t: m.created_at, label: 'Miss check', detail: `${c.checked} flagged · ${parts.join(' · ')}` });
+            }
+        });
+
+        rows.sort((a, b) => new Date(b.t) - new Date(a.t));
+
+        if (!rows.length) {
+            el.innerHTML = '<div class="loading">No sync activity recorded yet</div>';
+            return;
+        }
+
+        el.innerHTML = `<table class="ledger-table"><tbody>${rows.slice(0, 20).map(r => `
+            <tr>
+                <td style="color:#444;font-size:11px;white-space:nowrap;">${new Date(r.t).toLocaleString()}</td>
+                <td style="font-weight:600;white-space:nowrap;">${r.label}</td>
+                <td style="color:#555;">${r.detail}</td>
+            </tr>`).join('')}</tbody></table>`;
+
+    } catch(e) {
+        el.innerHTML = `<div class="loading">Could not load sync report — ${e.message}</div>`;
     }
 }
 

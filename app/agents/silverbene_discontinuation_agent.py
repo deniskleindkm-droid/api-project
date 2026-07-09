@@ -130,6 +130,26 @@ def handle_recovery(product_id: int, fresh_data: dict):
 
         print(f"[Discontinuation Agent] Recovery: {product.name[:50]} (was {old_miss_count} misses) → Unpublished")
 
+        try:
+            from app.models.agent import AgentMemory
+            with Session(engine) as mem_session:
+                mem_session.add(AgentMemory(
+                    agent_name="silverbene_discontinuation_agent",
+                    memory_type="recovery",
+                    content=json.dumps({
+                        "timestamp": datetime.utcnow().isoformat(),
+                        "product_id": product.id,
+                        "name": product.name,
+                        "category": product.category,
+                        "sku": product.cj_sku,
+                        "was_missed": old_miss_count,
+                    }),
+                    confidence=1.0,
+                ))
+                mem_session.commit()
+        except Exception as e:
+            print(f"[Discontinuation Agent] Recovery memory write error: {e}")
+
         _send_email(
             subject=f"Mikisi — Product Recovered: {product.name[:50]}",
             lines=[

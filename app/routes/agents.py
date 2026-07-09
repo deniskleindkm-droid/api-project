@@ -71,6 +71,22 @@ def get_memories(session: Session = Depends(get_session)):
     ).all()
     return memories
 
+@router.get("/agents/sync-report")
+def get_sync_report(session: Session = Depends(get_session)):
+    """Recent Silverbene sync/discontinuation activity — replaces the emails Dennis used to get per run."""
+    stock_syncs = session.exec(
+        select(AgentMemory).where(
+            AgentMemory.agent_name == "silverbene_stock_agent",
+            AgentMemory.memory_type == "sync_run",
+        ).order_by(AgentMemory.created_at.desc()).limit(10)
+    ).all()
+    discontinuation_checks = session.exec(
+        select(AgentMemory).where(
+            AgentMemory.agent_name == "silverbene_discontinuation_agent",
+        ).order_by(AgentMemory.created_at.desc()).limit(10)
+    ).all()
+    return {"stock_syncs": stock_syncs, "discontinuation_checks": discontinuation_checks}
+
 @router.get("/agents/tasks")
 def get_tasks(session: Session = Depends(get_session)):
     tasks = session.exec(
