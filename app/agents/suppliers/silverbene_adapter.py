@@ -550,7 +550,10 @@ class SilverbeneAdapter(SupplierAdapter):
             elif "chain_length" in specs and not sizes:
                 del specs["chain_length"]
         pendant_only = _is_pendant_only(raw_desc)
-        if pendant_only and sizes:
+        if pendant_only:
+            # Unconditional — a pendant-only listing must always show "Pendant Only"
+            # regardless of whether a (possibly spurious, e.g. jump-ring wire
+            # thickness) numeric size was extracted from a variant attribute.
             sizes = ["Pendant Only"]
 
         # Sanitize description: replace internal/technical plating terms with
@@ -628,9 +631,9 @@ class SilverbeneAdapter(SupplierAdapter):
                             sizes.append(chip)
                 elif name in COLOR_ATTRIBUTE_NAMES and re.search(r'\d+\s*(mm|cm)', value, re.I):
                     # Length hidden in Color attr (e.g. "16cm", "17+3", "160mm Bracelet",
-                    # "Pink_16+3cm", "3mm wide, length: 16.5cm, weight:2g").
-                    # Prefer explicit "length: X cm/mm" over the first dimension match,
-                    # which may be a chain width (3mm) not the wrist size.
+                    # "Pink_16+3cm", "3mm wide, length: 16.5cm, weight:2g",
+                    # "1.0mm, 40cm" — width listed before length, no label at all).
+                    # Prefer explicit "length: X cm/mm" over anything else.
                     _len_m = re.search(r'\blength[:\s]+(\d+(?:\.\d+)?)\s*(cm|mm)', value, re.I)
                     if _len_m:
                         _dim_str = _len_m.group(1) + _len_m.group(2)
@@ -639,12 +642,18 @@ class SilverbeneAdapter(SupplierAdapter):
                             r'(\d+(?:\.\d+)?)\s*(cm|mm)?\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)',
                             value, re.I
                         )
-                        _sing_m = re.search(r'(\d+(?:\.\d+)?)\s*(cm|mm)', value, re.I)
                         if _ext_m:
                             _dim_str = _ext_m.group(0).strip()
-                        elif _sing_m:
-                            _dim_str = _sing_m.group(0).strip()
                         else:
+                            # No explicit "length:" label and no "+" extension pattern —
+                            # do NOT grab just the first number in the string, since an
+                            # unlabeled width often appears before the length (e.g.
+                            # "1.0mm, 40cm" — the width, not the length, would be
+                            # picked). Pass the full value through instead:
+                            # parse_bracelet_size/parse_necklace_length already filter
+                            # to their own valid mm ranges (100–260mm / 350–900mm)
+                            # internally, so they correctly pick out whichever single
+                            # number is a plausible length and ignore a width alongside it.
                             _dim_str = value
                     chips = parse_bracelet_size(_dim_str) or parse_necklace_length(_dim_str)
                     for chip in chips:
@@ -1323,8 +1332,13 @@ def parse_necklace_length(chain_length_str: str) -> list:
         return []
 
     if len(nums) == 1:
+        # Only one plausible in-range number survived (either the raw text only ever
+        # had one, or a second number got filtered out as implausible — e.g. "200mm"
+        # in "200mm - 415mm Adjustable" is below the 350mm necklace floor and likely
+        # a data-entry error upstream). Never show it as "Adjustable X–X" — a range
+        # with identical bounds isn't a range, it's confusing.
         c = _snap_inch(nums[0])
-        return [f'Adjustable {c}–{c}'] if is_adj else [c]
+        return [f'Adjustable {c}'] if is_adj else [c]
 
     lo_mm, hi_mm = min(nums), max(nums)
 
