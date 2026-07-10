@@ -1814,6 +1814,17 @@ function parseSpecs(p){
   // never duplicated into Details. Other categories still show it normally.
   const isRings=(p.category||'').toLowerCase()==='rings';
   const isBracelets=(p.category||'').toLowerCase()==='bracelets';
+  // Necklaces: chain length belongs only in the Size chip too — same reasoning
+  // as bracelets, so it reuses the same exclusion set (bangle_size/bangle_diameter
+  // just never appear on a necklace, harmless to check).
+  const isNecklace=(p.category||'').toLowerCase()==='necklaces';
+  const hideLengthSpecs=isBracelets||isNecklace;
+  // Silverbene phrases "length" a different way on nearly every product
+  // (chain_length_available, necklace_length_range, extension_chain_length, …) —
+  // rather than chase every variant with an exact-key exclusion list, hide any
+  // key that mentions length at all. Length always belongs on the product card's
+  // Size selector for these two categories, never duplicated into Details.
+  const isHiddenLengthKey=(key)=>BRACELET_SIZE_SPEC_KEYS.has(key)||key.includes('length');
 
   // Iterate in preferred order, then any remaining keys not in order
   const seen=new Set();
@@ -1821,7 +1832,7 @@ function parseSpecs(p){
     if(!raw[key]) continue;
     seen.add(key);
     if(isRings&&key==='size') continue;
-    if(isBracelets&&BRACELET_SIZE_SPEC_KEYS.has(key)) continue;
+    if(hideLengthSpecs&&isHiddenLengthKey(key)) continue;
     if(key==='ring_top'){
       const m=raw[key].match(/([\d.]+)\s*mm/i);
       if(m){
@@ -1837,7 +1848,7 @@ function parseSpecs(p){
   // Any extra keys not in the order map — skip ring/bracelet sizing specs,
   // they belong only in the Size chip, not the Details accordion.
   for(const key of Object.keys(raw)){
-    if(!seen.has(key)&&raw[key]&&!RING_SIZE_SPEC_KEYS.has(key)&&!(isBracelets&&BRACELET_SIZE_SPEC_KEYS.has(key))){
+    if(!seen.has(key)&&raw[key]&&!RING_SIZE_SPEC_KEYS.has(key)&&!(hideLengthSpecs&&isHiddenLengthKey(key))){
       const label=key.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
       rows.push({k:label,v:raw[key]});
     }

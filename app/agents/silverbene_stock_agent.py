@@ -211,6 +211,9 @@ def run_silverbene_stock_agent():
         # ── Step 5b: Correct earring naming/description and enrich specs from Silverbene ──
         names_updated, names_detail = _refresh_earring_details(sb)
 
+        # ── Step 5c: Enrich necklace specs from Silverbene ─────────────────────
+        necklace_specs_updated, necklace_specs_detail = _refresh_necklace_specs(sb)
+
         # ── Step 5: Write to AgentMemory ──────────────────────────────────────
         result = {
             "checked": total_checked,
@@ -219,6 +222,7 @@ def run_silverbene_stock_agent():
             "reactivated": reactivated,
             "sizes_updated": sizes_updated,
             "names_updated": names_updated,
+            "necklace_specs_updated": necklace_specs_updated,
             "newly_outofstock": newly_outofstock,
             "newly_reactivated": newly_reactivated,
         }
@@ -235,6 +239,7 @@ def run_silverbene_stock_agent():
                         "restocked": newly_reactivated[:5],
                         "sizes_detail": sizes_detail[:5],
                         "names_detail": names_detail[:5],
+                        "necklace_specs_detail": necklace_specs_detail[:5],
                     }),
                     confidence=0.9
                 ))
@@ -259,7 +264,7 @@ def run_silverbene_stock_agent():
         # ── Step 7: Email Dennis if ANYTHING changed ──────────────────────────
         any_change = (
             deactivated > 0 or reactivated > 0 or
-            updated > 0 or sizes_updated > 0 or names_updated > 0
+            updated > 0 or sizes_updated > 0 or names_updated > 0 or necklace_specs_updated > 0
         )
         if any_change:
             _aria_sync_report(
@@ -274,6 +279,8 @@ def run_silverbene_stock_agent():
                 sizes_detail=sizes_detail,
                 names_updated=names_updated,
                 names_detail=names_detail,
+                necklace_specs_updated=necklace_specs_updated,
+                necklace_specs_detail=necklace_specs_detail,
             )
 
         return result
@@ -593,10 +600,84 @@ def _refresh_earring_details(sb) -> tuple:
         return 0, []
 
 
+def _refresh_necklace_specs(sb) -> tuple:
+    """
+    Re-derive each live Silverbene necklace's specs from a fresh fetch of its
+    raw description, using the fuller Necklaces parser (captures fields the old
+    allowlist dropped, e.g. letter options, pendant/chain length label variants,
+    design style, "Processing" as plating). Replaces (not merges) specs on every
+    run so re-runs self-heal as the field-name mapping improves — unless the
+    fresh extraction comes back empty, in which case whatever is already stored
+    is left alone rather than being wiped by a bad or unusually sparse fetch.
+
+    Returns (count_updated, list_of_detail_strings).
+    """
+    try:
+        import json as _json
+
+        with Session(engine) as session:
+            necklaces = session.exec(
+                select(Product).where(
+                    Product.supplier_name == "Silverbene",
+                    Product.category == "Necklaces",
+                    Product.is_active == True,
+                )
+            ).all()
+
+        if not necklaces:
+            return 0, []
+
+        fixed = 0
+        detail = []
+
+        for p in necklaces:
+            sku = p.cj_product_id
+            if not sku:
+                continue
+            try:
+                fresh = sb.get_by_sku(sku, category="Necklaces")
+                fresh_specs_json = fresh.get("specs") if isinstance(fresh, dict) else None
+                if not fresh_specs_json:
+                    continue
+                try:
+                    existing_specs = _json.loads(p.specs) if p.specs else {}
+                except Exception:
+                    existing_specs = {}
+                try:
+                    fresh_specs = _json.loads(fresh_specs_json)
+                except Exception:
+                    fresh_specs = {}
+                if not fresh_specs or fresh_specs == existing_specs:
+                    continue
+
+                with Session(engine) as session:
+                    prod = session.get(Product, p.id)
+                    if prod:
+                        prod.specs = _json.dumps(fresh_specs)
+                        session.add(prod)
+                        session.commit()
+                fixed += 1
+                added = sorted(set(fresh_specs) - set(existing_specs))
+                removed = sorted(set(existing_specs) - set(fresh_specs))
+                summary = f"+{len(added)}" + (f"/-{len(removed)}" if removed else "")
+                detail.append(f"{p.name}: specs updated ({summary}) — {', '.join(added) or 'values changed'}")
+                print(f"[Silverbene Stock Agent] Necklace specs updated: {p.name} — added: {added}, removed: {removed}")
+            except Exception as e:
+                print(f"[Silverbene Stock Agent] Necklace specs check skipped for {p.name[:45]}: {e}")
+                continue
+
+        return fixed, detail
+
+    except Exception as e:
+        print(f"[Silverbene Stock Agent] Necklace specs refresh error: {e}")
+        return 0, []
+
+
 def _aria_sync_report(total_checked, updated, deactivated, reactivated,
                       sizes_updated, newly_outofstock, newly_reactivated,
                       stock_quantity_changes, sizes_detail,
-                      names_updated=0, names_detail=None):
+                      names_updated=0, names_detail=None,
+                      necklace_specs_updated=0, necklace_specs_detail=None):
     """
     ARIA reviews the full sync results and emails Dennis with everything
     that changed — stock levels, out-of-stock alerts, restocks, and size updates.
@@ -639,6 +720,12 @@ def _aria_sync_report(total_checked, updated, deactivated, reactivated,
             items = "\n".join(f"  - {d}" for d in (names_detail or [])[:10])
             parts.append(
                 f"\n{names_updated} earring(s) had naming and/or spec details corrected/enriched from Silverbene:\n{items}"
+            )
+
+        if necklace_specs_updated > 0:
+            items = "\n".join(f"  - {d}" for d in (necklace_specs_detail or [])[:10])
+            parts.append(
+                f"\n{necklace_specs_updated} necklace(s) had spec details enriched from Silverbene:\n{items}"
             )
 
         parts.append(

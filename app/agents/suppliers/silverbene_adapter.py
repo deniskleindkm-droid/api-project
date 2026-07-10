@@ -815,8 +815,10 @@ class SilverbeneAdapter(SupplierAdapter):
             'anklet chain length': 'chain_length',
             'single layer chain length': 'chain_length',
             'necklace a chain length': 'chain_length',
+            'necklace length': 'chain_length',
             'bracelet length': 'chain_length',
             'anklet length': 'chain_length',
+            'chain length visible in image': 'chain_length',
             # Width
             'chain width': 'chain_width',
             'bracelet width': 'width',
@@ -830,6 +832,8 @@ class SilverbeneAdapter(SupplierAdapter):
             'pendant diameter': 'pendant_size',
             'charm size': 'pendant_size',
             'charm diameter': 'pendant_size',
+            'pendant size visible in image': 'pendant_size',
+            'letter options': 'letter_options',
             'bead size': 'bead_size',
             'bead diameter': 'bead_size',
             'pearl size': 'pearl_size',
@@ -855,8 +859,10 @@ class SilverbeneAdapter(SupplierAdapter):
             'design': 'design',
             'main design': 'design',
             'design element': 'design',
+            'design style': 'design',
             'bracelet type': 'bracelet_type',
             'chain style': 'chain_style',
+            'processing': 'plating',
             'purity': 'purity',
             'size': 'size',
         }
@@ -868,10 +874,11 @@ class SilverbeneAdapter(SupplierAdapter):
             'style', 'feature', 'brand', 'new', 'color', 'category',
             # Redundant with the name/badges already shown on the product page
             'suitable for', 'earring type', 'earrings type', 'main material',
+            'applicable crowd', 'suitable occasion',
             # Static marketing text that can drift from the live variant selector —
             # the real color/size choices come from actual Silverbene option data,
             # never from description copy, to avoid showing a mismatch
-            'color options', 'available sizes',
+            'color options', 'available sizes', 'available length',
         }
 
         for li in lis:
@@ -890,7 +897,9 @@ class SilverbeneAdapter(SupplierAdapter):
 
             spec_key = FIELD_MAP.get(key)
             if not spec_key:
-                if category == "Earrings":
+                # Categories rolled out onto capture-everything (vs. the old fixed
+                # allowlist) — extend this set as each category gets reviewed.
+                if category in ("Earrings", "Necklaces"):
                     # Silverbene's label phrasing varies too much for a fixed allowlist
                     # to keep up with — capture it under an auto-generated key rather
                     # than silently dropping it. The frontend already renders unknown
