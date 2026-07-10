@@ -159,7 +159,7 @@ class SilverbeneAdapter(SupplierAdapter):
 
     # ── CATALOG SEARCH ────────────────────────────────────────────────────────
 
-    def search(self, keyword: str, limit: int = 20) -> list:
+    def search(self, keyword: str, limit: int = 20, category: str = "") -> list:
         """
         Search Silverbene catalog by keyword.
         Silverbene enforces a 2-month window per request, so we batch automatically
@@ -212,7 +212,7 @@ class SilverbeneAdapter(SupplierAdapter):
                 sku = item.get("sku", "")
                 if sku and sku not in seen:
                     seen.add(sku)
-                    result.append(self._to_standard(item))
+                    result.append(self._to_standard(item, category=category))
                 if len(result) >= limit:
                     break
 
@@ -232,7 +232,7 @@ class SilverbeneAdapter(SupplierAdapter):
         per_keyword = max(10, limit // len(keywords) + 5)
 
         for kw in keywords:
-            products = self.search(keyword=kw, limit=per_keyword)
+            products = self.search(keyword=kw, limit=per_keyword, category=category_name)
             for p in products:
                 sku = p.get("supplier_product_id", "")
                 if sku and sku not in seen_skus:

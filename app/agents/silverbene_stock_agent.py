@@ -427,7 +427,7 @@ def _refresh_product_sizes(sb) -> tuple:
                 # Fallback: search by product name via date-window endpoint
                 if not sizes_list:
                     keywords = " ".join(p.name.lower().split()[:4])
-                    results = sb.search(keyword=keywords, limit=20)
+                    results = sb.search(keyword=keywords, limit=20, category=p.category)
                     for r in results:
                         if r.get("supplier_product_id") == sku:
                             raw_desc = r.get("description", "") or ""
