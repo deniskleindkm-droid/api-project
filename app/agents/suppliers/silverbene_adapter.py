@@ -1291,6 +1291,7 @@ def parse_necklace_length(chain_length_str: str) -> list:
       "400mm - 450mm Adj."                 -> ['Adjustable 16"–18"']
       "45cm"                               -> ['18"']
       "40cm - 60cm"                        -> ['16"','18"','20"','22"','24"']
+      "40cm, 45cm, 50cm, 55cm, 60cm"       -> ['16"','18"','20"','22"','24"'] (exact list, not expanded)
     """
     s = chain_length_str.strip()
     is_adj = bool(re.search(r'adjustabl|extender|extension', s, re.I))
@@ -1349,6 +1350,14 @@ def parse_necklace_length(chain_length_str: str) -> list:
             return [lo_in]
         return [f'Adjustable {lo_in}–{hi_in}']
 
+    # Explicit comma-separated list of discrete lengths (e.g. "40cm, 45cm, 50cm,
+    # 55cm, 60cm") — these are exact real options listed one by one, not a
+    # continuous range to auto-expand between the min and max. Only a
+    # dash/space/"to"-separated two-endpoint span means "expand between these
+    # bounds"; anything comma-separated means "exactly these values, no more".
+    if ',' in s and len(nums) >= 2:
+        return list(dict.fromkeys(_snap_inch(n) for n in nums))
+
     # Multi-length range: enumerate every standard length between lo and hi
     chips, seen = [], set()
     for mm in _STD_MM:
@@ -1394,11 +1403,15 @@ def _parse_chain_length_from_desc(desc: str) -> list:
     Extract chain length from Silverbene HTML description.
     Looks for patterns like:
       <li>Chain Length: 400mm - 450mm Adjustable</li>
+      <li>Necklace Length Range: 41cm To 50cm</li>
+      <li>Available Length: 40cm, 45cm, 50cm</li>
       <li>Length: 450mm</li>
       <li>Chain Style: Bead Chain with 45cm Length + 5cm Extension</li>
     Returns parsed chips list, or empty list if nothing found.
     """
-    m = re.search(r'[Cc]hain\s+[Ll]ength[:\s]+([^<\n]{3,60})', desc)
+    m = re.search(r'(?:[Cc]hain|[Nn]ecklace)\s+[Ll]ength(?:\s+[Rr]ange)?[:\s]+([^<\n]{3,60})', desc)
+    if not m:
+        m = re.search(r'[Aa]vailable\s+[Ll]ength(?:\s+[Oo]ptions)?[:\s]+([^<\n]{3,60})', desc)
     if not m:
         m = re.search(r'\bLength[:\s]+(\d{3,4}\s*mm[^<\n]{0,40})', desc)
     if m:
