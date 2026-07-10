@@ -827,6 +827,8 @@ class SilverbeneAdapter(SupplierAdapter):
             'necklace a chain length': 'chain_length',
             'necklace length': 'chain_length',
             'bracelet length': 'chain_length',
+            'bracelet size': 'chain_length',
+            'wrist size': 'chain_length',
             'anklet length': 'chain_length',
             'chain length visible in image': 'chain_length',
             # Width
@@ -891,6 +893,11 @@ class SilverbeneAdapter(SupplierAdapter):
             'color options', 'available sizes', 'available length',
         }
 
+        # See usage below — Bracelets-only length-in-disguise labels.
+        _BRACELET_SIZE_AS_LENGTH_KEYS = {
+            'reference size', 'adjustable size', 'size options', 'available size options',
+        }
+
         for li in lis:
             text = re.sub(r'<[^>]+>', '', li).strip()
             if not text or ':' not in text:
@@ -905,11 +912,25 @@ class SilverbeneAdapter(SupplierAdapter):
             if key in SKIP_KEYS:
                 continue
 
+            # Bracelets: several observed labels describe the wearable length
+            # using "Size" instead of "Length" ("Reference Size", "Adjustable
+            # Size", "Size Options", "Available Size Options") — consolidate
+            # into the canonical chain_length key so the frontend's
+            # length-hiding filter (which matches on "length") still catches
+            # them. Scoped to Bracelets only — "Size Options" means something
+            # different in other categories (e.g. ring sizes).
+            if category == "Bracelets" and key in _BRACELET_SIZE_AS_LENGTH_KEYS:
+                spec_key = "chain_length"
+                val = _apply_spec_conversion(spec_key, val, category=category)
+                if spec_key not in specs:
+                    specs[spec_key] = val
+                continue
+
             spec_key = FIELD_MAP.get(key)
             if not spec_key:
                 # Categories rolled out onto capture-everything (vs. the old fixed
                 # allowlist) — extend this set as each category gets reviewed.
-                if category in ("Earrings", "Necklaces"):
+                if category in ("Earrings", "Necklaces", "Bracelets"):
                     # Silverbene's label phrasing varies too much for a fixed allowlist
                     # to keep up with — capture it under an auto-generated key rather
                     # than silently dropping it. The frontend already renders unknown
@@ -918,11 +939,16 @@ class SilverbeneAdapter(SupplierAdapter):
                     # bullets like "<li><strong>7 Selectable Stone Shapes:</strong>
                     # Choose from...</li>") that isn't real "field: value" data — a
                     # genuine spec label is short and doesn't start with a digit.
+                    # Also guard against multi-design bundle listings that prefix
+                    # labels with an internal product code (e.g. "DY110322 Size:",
+                    # "DY150326 Chain Length:") — a real label's first word is never
+                    # a mix of letters and digits like that.
                     key_words = key.split()
                     looks_like_marketing = (
                         (key_words and key_words[0][0].isdigit()) or
                         len(key_words) > 5 or
-                        len(val) > 70
+                        len(val) > 70 or
+                        (key_words and re.search(r'[a-z]\d|\d[a-z]', key_words[0]))
                     )
                     if looks_like_marketing:
                         continue

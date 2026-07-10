@@ -214,6 +214,9 @@ def run_silverbene_stock_agent():
         # ── Step 5c: Enrich necklace specs from Silverbene ─────────────────────
         necklace_specs_updated, necklace_specs_detail = _refresh_necklace_specs(sb)
 
+        # ── Step 5d: Enrich bracelet specs and sizes from Silverbene ───────────
+        bracelet_specs_updated, bracelet_specs_detail = _refresh_bracelet_specs(sb)
+
         # ── Step 5: Write to AgentMemory ──────────────────────────────────────
         result = {
             "checked": total_checked,
@@ -223,6 +226,7 @@ def run_silverbene_stock_agent():
             "sizes_updated": sizes_updated,
             "names_updated": names_updated,
             "necklace_specs_updated": necklace_specs_updated,
+            "bracelet_specs_updated": bracelet_specs_updated,
             "newly_outofstock": newly_outofstock,
             "newly_reactivated": newly_reactivated,
         }
@@ -240,6 +244,7 @@ def run_silverbene_stock_agent():
                         "sizes_detail": sizes_detail[:5],
                         "names_detail": names_detail[:5],
                         "necklace_specs_detail": necklace_specs_detail[:5],
+                        "bracelet_specs_detail": bracelet_specs_detail[:5],
                     }),
                     confidence=0.9
                 ))
@@ -264,7 +269,8 @@ def run_silverbene_stock_agent():
         # ── Step 7: Email Dennis if ANYTHING changed ──────────────────────────
         any_change = (
             deactivated > 0 or reactivated > 0 or
-            updated > 0 or sizes_updated > 0 or names_updated > 0 or necklace_specs_updated > 0
+            updated > 0 or sizes_updated > 0 or names_updated > 0 or
+            necklace_specs_updated > 0 or bracelet_specs_updated > 0
         )
         if any_change:
             _aria_sync_report(
@@ -281,6 +287,8 @@ def run_silverbene_stock_agent():
                 names_detail=names_detail,
                 necklace_specs_updated=necklace_specs_updated,
                 necklace_specs_detail=necklace_specs_detail,
+                bracelet_specs_updated=bracelet_specs_updated,
+                bracelet_specs_detail=bracelet_specs_detail,
             )
 
         return result
@@ -673,11 +681,107 @@ def _refresh_necklace_specs(sb) -> tuple:
         return 0, []
 
 
+def _refresh_bracelet_specs(sb) -> tuple:
+    """
+    Re-derive each live Silverbene bracelet's specs AND sizes from a fresh
+    fetch, using the fuller Bracelets spec parser (captures fields the old
+    allowlist dropped — post material, box/cube chain width, design, etc. —
+    while guarding against multi-design bundle listings that prefix labels
+    with an internal product code). Sizes are refreshed too since the same
+    fetch already surfaces them and the length-parsing fix (never fabricate
+    a discrete chip without real price backing) applies here just as much as
+    necklaces. Both replace (not merge) on every run so re-runs self-heal —
+    unless the fresh fetch comes back empty, in which case whatever is
+    already stored is left alone rather than wiped by a bad fetch.
+
+    Returns (count_updated, list_of_detail_strings).
+    """
+    try:
+        import json as _json
+
+        with Session(engine) as session:
+            bracelets = session.exec(
+                select(Product).where(
+                    Product.supplier_name == "Silverbene",
+                    Product.category == "Bracelets",
+                    Product.is_active == True,
+                )
+            ).all()
+
+        if not bracelets:
+            return 0, []
+
+        fixed = 0
+        detail = []
+
+        for p in bracelets:
+            sku = p.cj_product_id
+            if not sku:
+                continue
+            try:
+                fresh = sb.get_by_sku(sku, category="Bracelets")
+                if not isinstance(fresh, dict):
+                    continue
+
+                fresh_specs_json = fresh.get("specs")
+                try:
+                    existing_specs = _json.loads(p.specs) if p.specs else {}
+                except Exception:
+                    existing_specs = {}
+                try:
+                    fresh_specs = _json.loads(fresh_specs_json) if fresh_specs_json else {}
+                except Exception:
+                    fresh_specs = {}
+                specs_changed = bool(fresh_specs) and fresh_specs != existing_specs
+
+                fresh_sizes_json = fresh.get("sizes")
+                try:
+                    existing_sizes = _json.loads(p.sizes) if p.sizes else None
+                except Exception:
+                    existing_sizes = None
+                try:
+                    fresh_sizes = _json.loads(fresh_sizes_json) if fresh_sizes_json else None
+                except Exception:
+                    fresh_sizes = None
+                sizes_changed = (set(fresh_sizes) if fresh_sizes else None) != (set(existing_sizes) if existing_sizes else None)
+
+                if not specs_changed and not sizes_changed:
+                    continue
+
+                with Session(engine) as session:
+                    prod = session.get(Product, p.id)
+                    if prod:
+                        if specs_changed:
+                            prod.specs = _json.dumps(fresh_specs)
+                        if sizes_changed:
+                            prod.sizes = _json.dumps(fresh_sizes) if fresh_sizes else None
+                        session.add(prod)
+                        session.commit()
+                fixed += 1
+                if specs_changed:
+                    added = sorted(set(fresh_specs) - set(existing_specs))
+                    detail.append(f"{p.name}: specs updated — {', '.join(added) or 'values changed'}")
+                    print(f"[Silverbene Stock Agent] Bracelet specs updated: {p.name} — added: {added}")
+                if sizes_changed:
+                    detail.append(f"{p.name}: sizes {existing_sizes} -> {fresh_sizes}")
+                    print(f"[Silverbene Stock Agent] Bracelet sizes updated: {p.name}: {existing_sizes} -> {fresh_sizes}")
+            except Exception as e:
+                print(f"[Silverbene Stock Agent] Bracelet detail check skipped for {p.name[:45]}: {e}")
+                continue
+
+        return fixed, detail
+
+    except Exception as e:
+        print(f"[Silverbene Stock Agent] Bracelet detail refresh error: {e}")
+        return 0, []
+
+
 def _aria_sync_report(total_checked, updated, deactivated, reactivated,
                       sizes_updated, newly_outofstock, newly_reactivated,
                       stock_quantity_changes, sizes_detail,
                       names_updated=0, names_detail=None,
-                      necklace_specs_updated=0, necklace_specs_detail=None):
+                      necklace_specs_updated=0, necklace_specs_detail=None,
+                      bracelet_specs_updated=0, bracelet_specs_detail=None):
     """
     ARIA reviews the full sync results and emails Dennis with everything
     that changed — stock levels, out-of-stock alerts, restocks, and size updates.
@@ -726,6 +830,12 @@ def _aria_sync_report(total_checked, updated, deactivated, reactivated,
             items = "\n".join(f"  - {d}" for d in (necklace_specs_detail or [])[:10])
             parts.append(
                 f"\n{necklace_specs_updated} necklace(s) had spec details enriched from Silverbene:\n{items}"
+            )
+
+        if bracelet_specs_updated > 0:
+            items = "\n".join(f"  - {d}" for d in (bracelet_specs_detail or [])[:10])
+            parts.append(
+                f"\n{bracelet_specs_updated} bracelet(s) had spec/size details enriched or corrected from Silverbene:\n{items}"
             )
 
         parts.append(
