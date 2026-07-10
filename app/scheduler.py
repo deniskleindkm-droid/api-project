@@ -457,9 +457,17 @@ def start_scheduler():
 
     scheduler.add_job(
     run_bulk_import,
-    trigger=IntervalTrigger(hours=24),
+    # IntervalTrigger(hours=24) computed "24h from whenever this job was last
+    # (re)registered" — since the in-memory job store has no persistence across
+    # restarts, every app restart reset the countdown back to a full 24h out.
+    # On a host that redeploys/restarts more often than once a day, the job
+    # could perpetually get reset and never actually fire. CronTrigger anchors
+    # to a fixed wall-clock time instead, so it survives restarts — same
+    # pattern already used for every other daily job in this file.
+    trigger=CronTrigger(hour=4, minute=0),
     id='bulk_import',
-    name='Bulk Product Import Agent',
+    name='Bulk Product Import Agent — Daily 4:00 AM UTC',
+    next_run_time=datetime.utcnow(),   # catch up the current backlog immediately on this deploy
     replace_existing=True
     )
 
