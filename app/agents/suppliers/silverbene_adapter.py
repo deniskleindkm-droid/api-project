@@ -779,11 +779,36 @@ class SilverbeneAdapter(SupplierAdapter):
             'back type': 'earring_backs',
             'hoop size': 'hoop_size',
             'hoop diameter': 'hoop_size',
+            'hoop outer size': 'hoop_outer_size',
+            'hoop inner diameter': 'hoop_inner_diameter',
+            'hoop width': 'hoop_width',
             'post size': 'pin_size',
             'pin size': 'pin_size',
             'pin thickness': 'pin_size',
+            'ear post material': 'post_material',
+            'ear pin material': 'post_material',
+            'post material': 'post_material',
+            'earring post material': 'post_material',
+            'ear needle material': 'post_material',
             'drop length': 'drop_length',
             'dangle length': 'drop_length',
+            'total drop length': 'drop_length',
+            'structure': 'structure',
+            'pearl type': 'pearl_type',
+            'stone width': 'stone_width',
+            'craftsmanship': 'craftsmanship',
+            'sold as': 'sold_as',
+            'sales unit': 'sold_as',
+            'back disc size': 'back_disc_size',
+            'flat back disc size': 'back_disc_size',
+            'stone color': 'stone_color_options',
+            'stone color options': 'stone_color_options',
+            'stone color available': 'stone_color_options',
+            'main stone color': 'stone_color_options',
+            'main stone colors': 'stone_color_options',
+            'visible stone colors': 'stone_color_options',
+            'available stone colors': 'stone_color_options',
+            'design elements': 'design',
             # Chain / bracelet / anklet lengths
             'chain length': 'chain_length',
             'bracelet chain length': 'chain_length',
@@ -829,6 +854,7 @@ class SilverbeneAdapter(SupplierAdapter):
             'design detail': 'design',
             'design': 'design',
             'main design': 'design',
+            'design element': 'design',
             'bracelet type': 'bracelet_type',
             'chain style': 'chain_style',
             'purity': 'purity',
@@ -840,6 +866,12 @@ class SilverbeneAdapter(SupplierAdapter):
             'metal material', 'material', 'metal color available',
             'color available', 'item type', 'gender', 'occasion',
             'style', 'feature', 'brand', 'new', 'color', 'category',
+            # Redundant with the name/badges already shown on the product page
+            'suitable for', 'earring type', 'earrings type', 'main material',
+            # Static marketing text that can drift from the live variant selector —
+            # the real color/size choices come from actual Silverbene option data,
+            # never from description copy, to avoid showing a mismatch
+            'color options', 'available sizes',
         }
 
         for li in lis:
@@ -858,7 +890,28 @@ class SilverbeneAdapter(SupplierAdapter):
 
             spec_key = FIELD_MAP.get(key)
             if not spec_key:
-                continue  # only store known, mapped fields
+                if category == "Earrings":
+                    # Silverbene's label phrasing varies too much for a fixed allowlist
+                    # to keep up with — capture it under an auto-generated key rather
+                    # than silently dropping it. The frontend already renders unknown
+                    # spec keys fine (auto-titled from the key name).
+                    # Guard against a rarer rich-HTML description template (marketing
+                    # bullets like "<li><strong>7 Selectable Stone Shapes:</strong>
+                    # Choose from...</li>") that isn't real "field: value" data — a
+                    # genuine spec label is short and doesn't start with a digit.
+                    key_words = key.split()
+                    looks_like_marketing = (
+                        (key_words and key_words[0][0].isdigit()) or
+                        len(key_words) > 5 or
+                        len(val) > 70
+                    )
+                    if looks_like_marketing:
+                        continue
+                    spec_key = re.sub(r'[^a-z0-9]+', '_', key).strip('_')
+                    if not spec_key:
+                        continue
+                else:
+                    continue  # other categories: only store known, mapped fields for now
 
             val = _apply_spec_conversion(spec_key, val, category=category)
             if spec_key not in specs:   # first value wins

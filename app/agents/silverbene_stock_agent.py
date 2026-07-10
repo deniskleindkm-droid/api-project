@@ -208,8 +208,8 @@ def run_silverbene_stock_agent():
         # ── Step 5: Refresh sizes for ALL categories ──────────────────────────
         sizes_updated, sizes_detail = _refresh_product_sizes(sb)
 
-        # ── Step 5b: Correct earring stud/hoop naming against Silverbene's raw title ──
-        names_updated, names_detail = _refresh_earring_names(sb)
+        # ── Step 5b: Correct earring naming/description and enrich specs from Silverbene ──
+        names_updated, names_detail = _refresh_earring_details(sb)
 
         # ── Step 5: Write to AgentMemory ──────────────────────────────────────
         result = {
@@ -477,21 +477,29 @@ def _refresh_product_sizes(sb) -> tuple:
         return 0, []
 
 
-def _refresh_earring_names(sb) -> tuple:
+def _refresh_earring_details(sb) -> tuple:
     """
-    Re-check every live Silverbene earring's name AND Mikisi description against
-    Silverbene's raw title, falling back to its raw description when the title
-    is silent on style (many Silverbene titles omit stud/hoop but the
-    description's "Category:"/"Style:"/"Earring Type:" fields state it
-    explicitly). Corrects stud/hoop mislabeling wherever it appears and
-    guarantees the word "Earring" appears in the name — Silverbene's own text
-    is the ground truth, never guessed. Only that one word is ever swapped in
-    the description; everything else ARIA wrote (tone, material, structure) —
-    and is_published — is left untouched.
+    Re-check every live Silverbene earring's name, Mikisi description, and specs
+    against fresh Silverbene data — one fetch per product, three things checked:
+
+    1. Name — stud/hoop corrected against the raw title, falling back to the
+       raw description when the title is silent (many Silverbene titles omit
+       stud/hoop but the description's "Category:"/"Style:"/"Earring Type:"
+       fields state it explicitly). "Earring" is guaranteed to appear.
+    2. Description — the same stud/hoop word is kept in sync if ARIA echoed it
+       into the copy; nothing else in the description is touched.
+    3. Specs — re-extracted from the raw description with the fuller Earrings
+       parser (captures fields the old allowlist dropped, e.g. hoop outer/inner
+       size, post material, craftsmanship) and merged in, adding/refreshing
+       keys without discarding anything already stored.
+
+    Silverbene's own text is always the ground truth — nothing is guessed.
+    is_published and everything else on the row is left untouched.
 
     Returns (count_updated, list_of_detail_strings).
     """
     try:
+        import json as _json
         from app.agents.bulk_import_agent import (
             _enforce_earring_style,
             _enforce_earring_description_style,
@@ -528,16 +536,37 @@ def _refresh_earring_names(sb) -> tuple:
                 corrected_name = _ensure_category_in_name(corrected_name, "Earrings")[:100]
                 corrected_desc = _enforce_earring_description_style(p.description, raw_name, "Earrings", raw_desc)
 
+                fresh_specs_json = fresh.get("specs") if isinstance(fresh, dict) else None
+                try:
+                    existing_specs = _json.loads(p.specs) if p.specs else {}
+                except Exception:
+                    existing_specs = {}
+                try:
+                    fresh_specs = _json.loads(fresh_specs_json) if fresh_specs_json else {}
+                except Exception:
+                    fresh_specs = {}
+                # Fresh extraction is re-derived from the same raw description every run,
+                # so once the field-name mapping improves it should fully supersede the
+                # old set — replacing (not merging) lets a re-run self-heal previously
+                # fragmented/inconsistent auto-generated keys instead of piling up both
+                # the old and new name for the same concept forever. Only replace when
+                # the fresh extraction actually produced something, so a transient empty
+                # fetch can never wipe out previously captured specs.
+                merged_specs = fresh_specs if fresh_specs else existing_specs
+
                 name_changed = corrected_name != p.name
                 desc_changed = corrected_desc != p.description
+                specs_changed = merged_specs != existing_specs
 
-                if name_changed or desc_changed:
+                if name_changed or desc_changed or specs_changed:
                     old_name = p.name
                     with Session(engine) as session:
                         prod = session.get(Product, p.id)
                         if prod:
                             prod.name = corrected_name
                             prod.description = corrected_desc
+                            if specs_changed:
+                                prod.specs = _json.dumps(merged_specs)
                             session.add(prod)
                             session.commit()
                     fixed += 1
@@ -547,14 +576,20 @@ def _refresh_earring_names(sb) -> tuple:
                     if desc_changed:
                         detail.append(f"{old_name}: description stud/hoop wording corrected")
                         print(f"[Silverbene Stock Agent] Earring description wording corrected: {old_name}")
+                    if specs_changed:
+                        added = sorted(set(merged_specs) - set(existing_specs))
+                        removed = sorted(set(existing_specs) - set(merged_specs))
+                        summary = f"+{len(added)}" + (f"/-{len(removed)}" if removed else "")
+                        detail.append(f"{old_name}: specs updated ({summary}) — {', '.join(added) or 'values changed'}")
+                        print(f"[Silverbene Stock Agent] Earring specs updated: {old_name} — added: {added}, removed: {removed}")
             except Exception as e:
-                print(f"[Silverbene Stock Agent] Earring name check skipped for {p.name[:45]}: {e}")
+                print(f"[Silverbene Stock Agent] Earring detail check skipped for {p.name[:45]}: {e}")
                 continue
 
         return fixed, detail
 
     except Exception as e:
-        print(f"[Silverbene Stock Agent] Earring name refresh error: {e}")
+        print(f"[Silverbene Stock Agent] Earring detail refresh error: {e}")
         return 0, []
 
 
@@ -603,7 +638,7 @@ def _aria_sync_report(total_checked, updated, deactivated, reactivated,
         if names_updated > 0:
             items = "\n".join(f"  - {d}" for d in (names_detail or [])[:10])
             parts.append(
-                f"\n{names_updated} earring name(s) corrected to match Silverbene's stud/hoop naming:\n{items}"
+                f"\n{names_updated} earring(s) had naming and/or spec details corrected/enriched from Silverbene:\n{items}"
             )
 
         parts.append(

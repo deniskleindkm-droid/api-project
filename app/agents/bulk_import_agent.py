@@ -447,6 +447,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
             "material": p.get("material", ""),
             "sizes": p.get("sizes"),
             "colors": p.get("colors"),
+            "specs": p.get("specs"),
             "is_pendant_only": p.get("is_pendant_only", False),
         })
 
