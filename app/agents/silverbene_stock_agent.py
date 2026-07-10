@@ -208,6 +208,9 @@ def run_silverbene_stock_agent():
         # ── Step 5: Refresh sizes for ALL categories ──────────────────────────
         sizes_updated, sizes_detail = _refresh_product_sizes(sb)
 
+        # ── Step 5b: Correct earring stud/hoop naming against Silverbene's raw title ──
+        names_updated, names_detail = _refresh_earring_names(sb)
+
         # ── Step 5: Write to AgentMemory ──────────────────────────────────────
         result = {
             "checked": total_checked,
@@ -215,6 +218,7 @@ def run_silverbene_stock_agent():
             "deactivated": deactivated,
             "reactivated": reactivated,
             "sizes_updated": sizes_updated,
+            "names_updated": names_updated,
             "newly_outofstock": newly_outofstock,
             "newly_reactivated": newly_reactivated,
         }
@@ -230,6 +234,7 @@ def run_silverbene_stock_agent():
                         "out_of_stock": newly_outofstock[:5],
                         "restocked": newly_reactivated[:5],
                         "sizes_detail": sizes_detail[:5],
+                        "names_detail": names_detail[:5],
                     }),
                     confidence=0.9
                 ))
@@ -254,7 +259,7 @@ def run_silverbene_stock_agent():
         # ── Step 7: Email Dennis if ANYTHING changed ──────────────────────────
         any_change = (
             deactivated > 0 or reactivated > 0 or
-            updated > 0 or sizes_updated > 0
+            updated > 0 or sizes_updated > 0 or names_updated > 0
         )
         if any_change:
             _aria_sync_report(
@@ -267,6 +272,8 @@ def run_silverbene_stock_agent():
                 newly_reactivated=newly_reactivated,
                 stock_quantity_changes=stock_quantity_changes,
                 sizes_detail=sizes_detail,
+                names_updated=names_updated,
+                names_detail=names_detail,
             )
 
         return result
@@ -470,9 +477,72 @@ def _refresh_product_sizes(sb) -> tuple:
         return 0, []
 
 
+def _refresh_earring_names(sb) -> tuple:
+    """
+    Re-check every live Silverbene earring's name against Silverbene's raw title.
+    Corrects stud/hoop mislabeling and guarantees the word "Earring" appears —
+    Silverbene's raw title is the ground truth, never guessed. Only the `name`
+    field is touched; description, is_published, and everything else is left alone.
+
+    Returns (count_updated, list_of_detail_strings).
+    """
+    try:
+        from app.agents.bulk_import_agent import _enforce_earring_style, _ensure_category_in_name
+
+        with Session(engine) as session:
+            earrings = session.exec(
+                select(Product).where(
+                    Product.supplier_name == "Silverbene",
+                    Product.category == "Earrings",
+                    Product.is_active == True,
+                )
+            ).all()
+
+        if not earrings:
+            return 0, []
+
+        fixed = 0
+        detail = []
+
+        for p in earrings:
+            sku = p.cj_product_id
+            if not sku:
+                continue
+            try:
+                fresh = sb.get_by_sku(sku, category="Earrings")
+                raw_name = fresh.get("name", "") if isinstance(fresh, dict) else ""
+                if not raw_name:
+                    continue
+
+                corrected = _enforce_earring_style(p.name, raw_name, "Earrings")
+                corrected = _ensure_category_in_name(corrected, "Earrings")[:100]
+
+                if corrected != p.name:
+                    old_name = p.name
+                    with Session(engine) as session:
+                        prod = session.get(Product, p.id)
+                        if prod:
+                            prod.name = corrected
+                            session.add(prod)
+                            session.commit()
+                    fixed += 1
+                    detail.append(f"{old_name} -> {corrected}")
+                    print(f"[Silverbene Stock Agent] Earring name corrected: {old_name} -> {corrected}")
+            except Exception as e:
+                print(f"[Silverbene Stock Agent] Earring name check skipped for {p.name[:45]}: {e}")
+                continue
+
+        return fixed, detail
+
+    except Exception as e:
+        print(f"[Silverbene Stock Agent] Earring name refresh error: {e}")
+        return 0, []
+
+
 def _aria_sync_report(total_checked, updated, deactivated, reactivated,
                       sizes_updated, newly_outofstock, newly_reactivated,
-                      stock_quantity_changes, sizes_detail):
+                      stock_quantity_changes, sizes_detail,
+                      names_updated=0, names_detail=None):
     """
     ARIA reviews the full sync results and emails Dennis with everything
     that changed — stock levels, out-of-stock alerts, restocks, and size updates.
@@ -509,6 +579,12 @@ def _aria_sync_report(total_checked, updated, deactivated, reactivated,
             items = "\n".join(f"  - {d}" for d in sizes_detail[:10])
             parts.append(
                 f"\n{sizes_updated} product(s) had size/length data refreshed from Silverbene:\n{items}"
+            )
+
+        if names_updated > 0:
+            items = "\n".join(f"  - {d}" for d in (names_detail or [])[:10])
+            parts.append(
+                f"\n{names_updated} earring name(s) corrected to match Silverbene's stud/hoop naming:\n{items}"
             )
 
         parts.append(

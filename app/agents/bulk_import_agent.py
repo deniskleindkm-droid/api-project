@@ -3,6 +3,7 @@ load_dotenv()
 
 import os
 import json
+import re
 import time
 import anthropic
 from datetime import datetime
@@ -18,11 +19,13 @@ _RING_LIKE_CATEGORIES = {"Rings", "Anklets"}
 
 # Every product name must contain one of these words (the customer must know what type of jewelry it is).
 # If ARIA strips the category word we add it back in code.
+# Earrings intentionally only accepts "earring(s)" — "stud"/"hoop"/"drop" describe
+# style, not category, and must never excuse "Earring" from being missing.
 _CATEGORY_REQUIRED_WORDS = {
     "Necklaces":   {"necklace"},
     "Bracelets":   {"bracelet", "bangle"},
     "Rings":       {"ring", "band"},
-    "Earrings":    {"earring", "earrings", "stud", "studs", "hoop", "hoops", "drop", "drops"},
+    "Earrings":    {"earring", "earrings"},
     "Anklets":     {"anklet"},
     "Ear Cuffs":   {"ear cuff", "cuff"},
 }
@@ -50,6 +53,46 @@ def _ensure_category_in_name(name: str, category: str) -> str:
         return name
     word = _CATEGORY_APPEND_WORD.get(category, "")
     return f"{name} {word}" if word else name
+
+
+def _raw_style_word(raw_name: str) -> str:
+    """
+    Return "stud" or "hoop" if Silverbene's raw title explicitly and
+    unambiguously says so, else None. Silverbene's title is the ground truth —
+    we never guess a style word it doesn't use.
+    """
+    raw_lower = (raw_name or "").lower()
+    has_stud = bool(re.search(r'\bstuds?\b', raw_lower))
+    has_hoop = bool(re.search(r'\bhoops?\b', raw_lower))
+    if has_stud and not has_hoop:
+        return "stud"
+    if has_hoop and not has_stud:
+        return "hoop"
+    return None  # neither, or both (ambiguous) — leave whatever ARIA wrote alone
+
+
+def _enforce_earring_style(name: str, raw_name: str, category: str) -> str:
+    """
+    ARIA must not invent or swap stud vs hoop — Silverbene's raw title decides.
+    If the raw title clearly says one and ARIA's rewritten name says the other,
+    correct the word in place. If the raw title is silent (e.g. "drop earring"
+    or no style word at all), leave ARIA's name exactly as written.
+    """
+    if category != "Earrings":
+        return name
+    raw_style = _raw_style_word(raw_name)
+    if raw_style is None:
+        return name
+    wrong_style = "hoop" if raw_style == "stud" else "stud"
+
+    def _replace(match):
+        word = match.group(0)
+        replacement = raw_style + ("s" if word.lower().endswith("s") else "")
+        return replacement.capitalize() if word[0].isupper() else replacement
+
+    if re.search(rf'\b{wrong_style}s?\b', name, flags=re.IGNORECASE):
+        name = re.sub(rf'\b{wrong_style}s?\b', _replace, name, flags=re.IGNORECASE)
+    return name
 
 
 def _resolve_sizes(sizes_json: str, category: str) -> str:
@@ -178,7 +221,7 @@ Products below are from Silverbene. Accept all jewelry. For each product do exac
 
 1. VERIFY COLLECTION — look at the actual product name and decide which Mikisi collection it truly belongs to: Rings, Necklaces, Bracelets, Earrings, Anklets, Ear Cuffs, or Jewelry Sets. Do not blindly use the intended collection — correct it if wrong. An earring found in a Rings search should be corrected to Earrings.
 
-2. CLEAN THE NAME — strip supplier jargon, model codes, "women", "for her", "S925", sizes. Max 6 words. Keep the essence. ALWAYS keep the jewelry type word in the name (necklace, bracelet, ring, earring, anklet, ear cuff). If the original name has "pendant" but no "necklace", the cleaned name must end with "Pendant Necklace", not just "Pendant".
+2. CLEAN THE NAME — strip supplier jargon, model codes, "women", "for her", "S925", sizes. Max 6 words. Keep the essence. ALWAYS keep the jewelry type word in the name (necklace, bracelet, ring, earring, anklet, ear cuff). If the original name has "pendant" but no "necklace", the cleaned name must end with "Pendant Necklace", not just "Pendant". For earrings — NEVER decide or swap between "stud" and "hoop" yourself: keep whichever word (if any) the raw name already uses. If the raw name says neither, don't invent one.
 
 3. IDENTIFY MATERIAL — read raw name and material field. Write exactly what it is: "925 Sterling Silver", "18k Gold Plated 925 Silver", "Rhodium Plated", etc. This shows on the product page — be accurate.
 
@@ -260,7 +303,7 @@ Return ONLY valid JSON array. No other text."""
             if not isinstance(result, dict):
                 # null or unexpected — fall back to raw for this item
                 product = products[i].copy()
-                product["mikisi_name"] = product.get("name", "")[:100]
+                product["mikisi_name"] = _ensure_category_in_name(product.get("name", ""), collection_name)[:100]
                 product["mikisi_description"] = ""
                 product["accepted"] = True
                 rewritten.append(product)
@@ -270,6 +313,9 @@ Return ONLY valid JSON array. No other text."""
             raw_name = (result.get("mikisi_name") or product.get("name", ""))
             # Guarantee the category type word is always present — ARIA sometimes strips it
             aria_cat = (result.get("correct_collection") or "").strip() or collection_name
+            # Silverbene's raw title is the source of truth for stud vs hoop — never let
+            # ARIA's rewrite invent or swap it
+            raw_name = _enforce_earring_style(raw_name, product.get("name", ""), aria_cat)
             raw_name = _ensure_category_in_name(raw_name, aria_cat)
             product["mikisi_name"] = raw_name[:100]
             product["mikisi_description"] = result.get("mikisi_description", "")
