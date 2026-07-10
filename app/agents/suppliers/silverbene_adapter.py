@@ -529,13 +529,14 @@ class SilverbeneAdapter(SupplierAdapter):
             _bracelet_width = _binfo.get("width")
         else:
             desc_lengths = _parse_chain_length_from_desc(_raw_desc_for_len)
-        if desc_lengths:
-            if sizes:
-                for l in desc_lengths:
-                    if l not in sizes:
-                        sizes.append(l)
-            else:
-                sizes = desc_lengths
+        # Only use the description-derived length as a fallback when variant
+        # options gave us nothing at all. Real per-option data always wins and
+        # is never topped up with extra description-parsed values — Silverbene
+        # only prices one option per real size, so if the description mentions
+        # a length that isn't backed by an actual priced variant, it has no
+        # business becoming a selectable size (it can still show in specs/details).
+        if desc_lengths and not sizes:
+            sizes = desc_lengths
         raw_desc = raw.get("description", "") or raw.get("desc", "")
         material = self._infer_material_from_desc(raw_desc, colors)
         specs = self._extract_specs_from_desc(raw_desc, category=category)
@@ -1208,7 +1209,7 @@ def parse_bracelet_size(length_str: str) -> list:
       "19Cm"       → ['7.5"']
       "17+3"       → ['Adjustable 6.5"–8"']
       "17cm+3cm"   → ['Adjustable 6.5"–8"']
-      "16cm-20cm"  → ['6.5"', '7"', '7.5"', '8"']
+      "16cm-20cm"  → ['Adjustable 6.5"–8"']  (one item's span, not 4 separate sizes)
       "58mm" (ID)  → ['7"']  (inner diameter → circumference)
     """
     import math as _math
@@ -1240,7 +1241,12 @@ def parse_bracelet_size(length_str: str) -> list:
             hi = _snap_bracelet_inch(b_mm + e_mm)
             return [lo] if lo == hi else [f'Adjustable {lo}–{hi}']
 
-    # "16cm-20cm" or "160mm-200mm" — range
+    # "16cm-20cm" or "160mm-200mm" — a range named in a single text field never
+    # justifies multiple selectable sizes: Silverbene only prices one option per
+    # real size, so genuinely distinct sizes always show up as separate priced
+    # variants (parsed one number at a time elsewhere). A range reaching here has
+    # no per-length price behind it — it can only describe one adjustable item's
+    # wearable span.
     range_m = re.search(
         r'(\d+(?:\.\d+)?)\s*(cm|mm)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(cm|mm)', s, re.I
     )
@@ -1248,16 +1254,8 @@ def parse_bracelet_size(length_str: str) -> list:
         lo_mm = _to_mm(range_m.group(1), range_m.group(2))
         hi_mm = _to_mm(range_m.group(3), range_m.group(4))
         if _BRACELET_RANGE_LO <= lo_mm <= _BRACELET_RANGE_HI:
-            chips, seen = [], set()
-            step = 5
-            mm = lo_mm
-            while mm <= hi_mm + step // 2:
-                c = _snap_bracelet_inch(mm)
-                if c not in seen:
-                    seen.add(c)
-                    chips.append(c)
-                mm += step
-            return chips
+            lo, hi = _snap_bracelet_inch(lo_mm), _snap_bracelet_inch(hi_mm)
+            return [lo] if lo == hi else [f'Adjustable {lo}–{hi}']
 
     # Inner diameter (bangle sizing) → wrist circumference
     if is_inner_diam:
@@ -1343,29 +1341,18 @@ def parse_necklace_length(chain_length_str: str) -> list:
 
     lo_mm, hi_mm = min(nums), max(nums)
 
-    # Two-value adjustable range: "400mm - 450mm Adjustable"
-    if is_adj and len(nums) == 2:
-        lo_in, hi_in = _snap_inch(lo_mm), _snap_inch(hi_mm)
-        if lo_in == hi_in:
-            return [lo_in]
-        return [f'Adjustable {lo_in}–{hi_in}']
-
-    # Explicit comma-separated list of discrete lengths (e.g. "40cm, 45cm, 50cm,
-    # 55cm, 60cm") — these are exact real options listed one by one, not a
-    # continuous range to auto-expand between the min and max. Only a
-    # dash/space/"to"-separated two-endpoint span means "expand between these
-    # bounds"; anything comma-separated means "exactly these values, no more".
-    if ',' in s and len(nums) >= 2:
-        return list(dict.fromkeys(_snap_inch(n) for n in nums))
-
-    # Multi-length range: enumerate every standard length between lo and hi
-    chips, seen = [], set()
-    for mm in _STD_MM:
-        if lo_mm <= mm <= hi_mm:
-            c = MM_TO_INCHES[mm]
-            if c not in seen:
-                seen.add(c); chips.append(c)
-    return chips or list(dict.fromkeys(_snap_inch(n) for n in nums))
+    # A single text field naming 2+ plausible lengths (dash-range, "to"-range, or
+    # comma-list — separator doesn't matter) never justifies claiming multiple
+    # separately-purchasable sizes: Silverbene only ever prices one option per
+    # real size, so genuinely distinct sizes always show up as separate priced
+    # variants (each parsed individually, one number at a time, by the caller in
+    # _extract_variants — never reaching this multi-number branch at all). A
+    # multi-number string reaching this point has no per-length price behind it,
+    # so it can only describe one adjustable item's wearable span.
+    lo_in, hi_in = _snap_inch(lo_mm), _snap_inch(hi_mm)
+    if lo_in == hi_in:
+        return [lo_in]
+    return [f'Adjustable {lo_in}–{hi_in}']
 
 
 def _sanitize_description(desc: str) -> str:
@@ -1507,6 +1494,7 @@ def _extract_bracelet_info_from_desc(desc: str) -> dict:
     # ── 1. Explicit length fields (highest confidence) ────────────────────────
     LENGTH_KEYS = (
         r'[Bb]racelet\s+[Ll]ength',
+        r'[Bb]racelet\s+[Ss]ize',
         r'[Cc]hain\s+[Ll]ength',
         r'[Ww]rist\s+[Ss]ize',
     )
