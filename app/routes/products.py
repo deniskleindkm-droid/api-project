@@ -318,6 +318,7 @@ def publish_products(data: PublishRequest, session: Session = Depends(get_sessio
     eligible = [p for p in products if p.stock > 0]  # never publish OOS products
     for p in eligible:
         p.is_published = True
+        p.is_reviewed = True  # a deliberate decision was just made — no longer "New"
         session.add(p)
     session.commit()
     return {"published": len(eligible), "ids": [p.id for p in eligible]}
@@ -366,6 +367,7 @@ def unpublish_products(data: PublishRequest, session: Session = Depends(get_sess
     products = session.exec(query).all()
     for p in products:
         p.is_published = False
+        p.is_reviewed = True  # a deliberate decision was just made — no longer "New"
         session.add(p)
     session.commit()
     return {"unpublished": len(products), "ids": [p.id for p in products]}
@@ -404,6 +406,7 @@ def get_catalog(master_key: str, session: Session = Depends(get_session)):
                 "stock": p.stock,
                 "in_stock": p.stock > 0,
                 "is_published": p.is_published,
+                "is_reviewed": getattr(p, "is_reviewed", False),
                 "is_active": p.is_active,
                 "category": p.category,
                 "stock_auto_unpublished": getattr(p, "stock_auto_unpublished", False),
@@ -413,22 +416,31 @@ def get_catalog(master_key: str, session: Session = Depends(get_session)):
         def is_discontinued(p):
             return getattr(p, "sync_miss_count", 0) >= 1
 
+        def is_new(p):
+            # Fresh import, no publish/unpublish decision made yet — distinct from
+            # "Unpublished / Staged", which means Dennis looked at it and deliberately
+            # held it back. Publishing OR unpublishing a product marks it reviewed.
+            return p.is_published is False and not getattr(p, "is_reviewed", False)
+
         catalog[col] = {
+            "new":           [card(p) for p in col_products if is_new(p) and p.stock > 0 and not is_discontinued(p)],
             "published":     [card(p) for p in col_products if p.is_published is not False and p.stock > 0 and not is_discontinued(p)],
-            "unpublished":   [card(p) for p in col_products if p.is_published is False and p.stock > 0 and not is_discontinued(p)],
+            "unpublished":   [card(p) for p in col_products if p.is_published is False and not is_new(p) and p.stock > 0 and not is_discontinued(p)],
             "out_of_stock":  [card(p) for p in col_products if p.stock == 0 and not is_discontinued(p)],
             "discontinued":  [card(p) for p in col_products if is_discontinued(p)],
         }
 
     total             = len(all_products)
     published_count   = sum(1 for p in all_products if p.is_published and p.stock > 0 and not getattr(p, "sync_miss_count", 0))
-    unpublished_count = sum(1 for p in all_products if not p.is_published and p.stock > 0 and not getattr(p, "sync_miss_count", 0))
+    new_count         = sum(1 for p in all_products if p.is_published is False and not getattr(p, "is_reviewed", False) and p.stock > 0 and not getattr(p, "sync_miss_count", 0))
+    unpublished_count = sum(1 for p in all_products if not p.is_published and getattr(p, "is_reviewed", False) and p.stock > 0 and not getattr(p, "sync_miss_count", 0))
     oos_count         = sum(1 for p in all_products if p.stock == 0 and not getattr(p, "sync_miss_count", 0))
     disc_count        = sum(1 for p in all_products if getattr(p, "sync_miss_count", 0) >= 1)
 
     return {
         "summary": {
             "total":        total,
+            "new":          new_count,
             "published":    published_count,
             "staged":       unpublished_count,
             "out_of_stock": oos_count,

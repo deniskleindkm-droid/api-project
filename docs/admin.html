@@ -150,6 +150,7 @@
         .catalog-pill { padding: 6px 16px; background: #0f0f0f; border: 1px solid #1a1a1a; font-size: 11px; letter-spacing: 1px; color: #555; }
         .catalog-pill strong { margin-right: 4px; }
         .catalog-pill.total strong { color: #888; }
+        .catalog-pill.new strong { color: #38bdf8; }
         .catalog-pill.published strong { color: #22c55e; }
         .catalog-pill.staged strong { color: #eab308; }
         .catalog-pill.oos strong { color: #ef4444; }
@@ -1209,6 +1210,7 @@ async function loadCatalog() {
         const pills = document.getElementById('catalog-pills');
         pills.innerHTML = `
             <div class="catalog-pill total"><strong>${d.summary.total}</strong> Total</div>
+            <div class="catalog-pill new"><strong>${d.summary.new||0}</strong> New</div>
             <div class="catalog-pill published"><strong>${d.summary.published}</strong> Published</div>
             <div class="catalog-pill staged"><strong>${d.summary.staged}</strong> Staged</div>
             <div class="catalog-pill oos"><strong>${d.summary.out_of_stock||0}</strong> Out of Stock</div>
@@ -1224,8 +1226,8 @@ async function loadCatalog() {
 function buildCatalogTabs() {
     const tabs = document.getElementById('catalog-tabs');
     tabs.innerHTML = CATALOG_CATS.map(cat => {
-        const col = catalogData[cat] || { published: [], unpublished: [], out_of_stock: [], discontinued: [] };
-        const total = col.published.length + col.unpublished.length + col.out_of_stock.length + col.discontinued.length;
+        const col = catalogData[cat] || { new: [], published: [], unpublished: [], out_of_stock: [], discontinued: [] };
+        const total = (col.new||[]).length + col.published.length + col.unpublished.length + col.out_of_stock.length + col.discontinued.length;
         return `<button class="cat-tab${cat===activeCatalogCat?' active':''}" onclick="switchCatalogCat('${cat}')">
             ${cat} <span class="cat-count">${total}</span>
         </button>`;
@@ -1240,7 +1242,8 @@ function switchCatalogCat(cat) {
 }
 
 function renderCatalogCollection(cat) {
-    const col = catalogData[cat] || { published: [], unpublished: [], out_of_stock: [], discontinued: [] };
+    const col = catalogData[cat] || { new: [], published: [], unpublished: [], out_of_stock: [], discontinued: [] };
+    const newItems = col.new || [];
     const contentEl = document.getElementById('catalog-content');
     catalogSelection.clear();
 
@@ -1249,6 +1252,23 @@ function renderCatalogCollection(cat) {
             <button class="catalog-btn publish" onclick="bulkPublish()">Publish Selected</button>
             <button class="catalog-btn unpublish" onclick="bulkUnpublish()">Unpublish Selected</button>
             <span class="catalog-sel-count" id="sel-count"></span>
+        </div>
+
+        <!-- NEW FOLDER — fresh imports, no publish/unpublish decision made yet -->
+        <div class="catalog-folder">
+            <div class="folder-header" onclick="toggleFolder('new-body', this)">
+                <div class="folder-label">New <span style="color:#38bdf8;margin-left:8px;">${newItems.length}</span></div>
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <button class="catalog-btn publish" style="padding:4px 12px;font-size:9px;" onclick="event.stopPropagation();publishNewInCat('${cat}')">Publish All New</button>
+                    <button class="catalog-btn unpublish" style="padding:4px 12px;font-size:9px;" onclick="event.stopPropagation();markNewReviewed('${cat}')">Mark Reviewed (Keep Staged)</button>
+                    <span class="folder-toggle">▼</span>
+                </div>
+            </div>
+            <div class="folder-body open" id="new-body">
+                ${newItems.length
+                    ? `<div class="catalog-grid">${newItems.map(p => catalogCard(p)).join('')}</div>`
+                    : '<div class="folder-empty">No new imports awaiting review</div>'}
+            </div>
         </div>
 
         <!-- PUBLISHED FOLDER -->
@@ -1501,6 +1521,23 @@ async function publishAll(cat) {
 async function unpublishAll(cat) {
     if (!confirm(`Unpublish all ${cat}? They will be hidden from the storefront.`)) return;
     await catalogAction('unpublish', { category: cat }, `All ${cat} unpublished`);
+}
+
+// New-folder actions are scoped to just that folder's product_ids — unlike
+// publishAll/unpublishAll above, which act on the whole category regardless
+// of current bucket, these must never touch products already reviewed.
+async function publishNewInCat(cat) {
+    const ids = (catalogData[cat]?.new || []).map(p => p.id);
+    if (!ids.length) return setCatalogStatus('No new imports to publish', '#eab308');
+    if (!confirm(`Publish all ${ids.length} new ${cat} import(s)?`)) return;
+    await catalogAction('publish', { product_ids: ids }, `${ids.length} new ${cat} product(s) published`);
+}
+
+async function markNewReviewed(cat) {
+    const ids = (catalogData[cat]?.new || []).map(p => p.id);
+    if (!ids.length) return setCatalogStatus('No new imports to mark reviewed', '#eab308');
+    if (!confirm(`Mark all ${ids.length} new ${cat} import(s) as reviewed? They'll move to Unpublished / Staged, still hidden from the storefront.`)) return;
+    await catalogAction('unpublish', { product_ids: ids }, `${ids.length} new ${cat} product(s) marked reviewed`);
 }
 
 async function catalogAction(action, payload, successMsg) {

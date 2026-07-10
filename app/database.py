@@ -63,6 +63,14 @@ def create_db():
         # is_published: default TRUE so all existing products stay live on deploy
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS is_published boolean DEFAULT true"))
         conn.execute(text("UPDATE product SET is_published = true WHERE is_published IS NULL"))
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS is_reviewed boolean NOT NULL DEFAULT false"))
+        # One-time backfill only — everything that existed before this migration shipped
+        # counts as already "reviewed" (the admin "New" folder should only ever surface
+        # genuinely fresh imports going forward). Must use a fixed hardcoded cutoff, not
+        # NOW()/CURRENT_TIMESTAMP — this runs on every app startup (create_db() fires on
+        # every boot), and a live NOW() comparison would re-mark every future new import
+        # as "reviewed" on the very next restart, defeating the whole feature.
+        conn.execute(text("UPDATE product SET is_reviewed = true WHERE created_at < '2026-07-10 22:36:03' AND is_reviewed = false"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS stock_auto_unpublished boolean NOT NULL DEFAULT false"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS sync_miss_count integer NOT NULL DEFAULT 0"))
         conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS guest_email varchar(200)'))

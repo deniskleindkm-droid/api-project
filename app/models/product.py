@@ -37,6 +37,7 @@ class Product(SQLModel, table=True):
     last_price_sync: Optional[datetime] = None
     # Product flags
     is_published: Optional[bool] = Field(default=True)   # False = staging; True = live on storefront; NULL treated as True
+    is_reviewed: bool = Field(default=False)              # False = fresh import, no publish/unpublish decision made yet ("New" in admin)
     stock_auto_unpublished: bool = Field(default=False)  # True = system hid this due to OOS; auto-republish on restock
     sync_miss_count: int = Field(default=0)              # consecutive stock sync misses; 3+ = discontinued at Silverbene
     is_premium: bool = False
