@@ -55,34 +55,37 @@ def _ensure_category_in_name(name: str, category: str) -> str:
     return f"{name} {word}" if word else name
 
 
-def _raw_style_word(raw_name: str) -> str:
+def _raw_style_word(raw_name: str, raw_desc: str = "") -> str:
     """
-    Return "stud" or "hoop" if Silverbene's raw title explicitly and
-    unambiguously says so, else None. Silverbene's title is the ground truth —
-    we never guess a style word it doesn't use.
+    Return "stud" or "hoop" if Silverbene explicitly and unambiguously says so,
+    else None. Checks the raw title first; Silverbene's title is frequently
+    silent on style, so if the title says neither, falls back to the raw
+    description (its "Category:"/"Style:"/"Earring Type:" fields reliably state
+    it). Silverbene's own text is the ground truth — we never guess a style
+    word it doesn't use anywhere.
     """
-    raw_lower = (raw_name or "").lower()
-    has_stud = bool(re.search(r'\bstuds?\b', raw_lower))
-    has_hoop = bool(re.search(r'\bhoops?\b', raw_lower))
-    if has_stud and not has_hoop:
-        return "stud"
-    if has_hoop and not has_stud:
-        return "hoop"
-    return None  # neither, or both (ambiguous) — leave whatever ARIA wrote alone
+    for text in (raw_name or "", raw_desc or ""):
+        text_lower = text.lower()
+        has_stud = bool(re.search(r'\bstuds?\b', text_lower))
+        has_hoop = bool(re.search(r'\bhoops?\b', text_lower))
+        if has_stud and has_hoop:
+            return None  # ambiguous within this field (e.g. a hoop-and-stud set) — stop, don't guess
+        if has_stud:
+            return "stud"
+        if has_hoop:
+            return "hoop"
+    return None  # silent in both title and description — leave whatever ARIA wrote alone
 
 
-def _enforce_earring_style(name: str, raw_name: str, category: str) -> str:
+def _swap_style_word(text: str, raw_style: str) -> str:
     """
-    ARIA must not invent or swap stud vs hoop — Silverbene's raw title decides.
-    If the raw title clearly says one and ARIA's rewritten name says the other,
-    correct the word in place. If the raw title is silent (e.g. "drop earring"
-    or no style word at all), leave ARIA's name exactly as written.
+    Replace any occurrence of the wrong stud/hoop word in `text` with
+    `raw_style`, preserving case and plurality. Leaves text untouched if the
+    wrong word isn't present. Used to keep the name and description in sync
+    with Silverbene's ground truth without rewriting anything else in the text.
     """
-    if category != "Earrings":
-        return name
-    raw_style = _raw_style_word(raw_name)
-    if raw_style is None:
-        return name
+    if not text or not raw_style:
+        return text
     wrong_style = "hoop" if raw_style == "stud" else "stud"
 
     def _replace(match):
@@ -90,9 +93,41 @@ def _enforce_earring_style(name: str, raw_name: str, category: str) -> str:
         replacement = raw_style + ("s" if word.lower().endswith("s") else "")
         return replacement.capitalize() if word[0].isupper() else replacement
 
-    if re.search(rf'\b{wrong_style}s?\b', name, flags=re.IGNORECASE):
-        name = re.sub(rf'\b{wrong_style}s?\b', _replace, name, flags=re.IGNORECASE)
-    return name
+    if re.search(rf'\b{wrong_style}s?\b', text, flags=re.IGNORECASE):
+        text = re.sub(rf'\b{wrong_style}s?\b', _replace, text, flags=re.IGNORECASE)
+    return text
+
+
+def _enforce_earring_style(name: str, raw_name: str, category: str, raw_desc: str = "") -> str:
+    """
+    ARIA must not invent or swap stud vs hoop — Silverbene's raw title (or,
+    failing that, its raw description) decides. If Silverbene clearly says one
+    and ARIA's rewritten name says the other, correct the word in place. If
+    Silverbene is silent everywhere (e.g. "drop earring" or no style word at
+    all), leave ARIA's name exactly as written.
+    """
+    if category != "Earrings":
+        return name
+    raw_style = _raw_style_word(raw_name, raw_desc)
+    if raw_style is None:
+        return name
+    return _swap_style_word(name, raw_style)
+
+
+def _enforce_earring_description_style(description: str, raw_name: str, category: str, raw_desc: str = "") -> str:
+    """
+    ARIA's Mikisi description sometimes echoes the raw title's stud/hoop word
+    verbatim. When Silverbene's ground truth disagrees, swap that one word in
+    the description too — same rule, same source of truth as the name — so the
+    product page never contradicts itself (name says "Hoop", copy says "stud").
+    Everything else in the description is left exactly as ARIA wrote it.
+    """
+    if category != "Earrings":
+        return description
+    raw_style = _raw_style_word(raw_name, raw_desc)
+    if raw_style is None:
+        return description
+    return _swap_style_word(description, raw_style)
 
 
 def _resolve_sizes(sizes_json: str, category: str) -> str:
@@ -225,7 +260,7 @@ Products below are from Silverbene. Accept all jewelry. For each product do exac
 
 3. IDENTIFY MATERIAL — read raw name and material field. Write exactly what it is: "925 Sterling Silver", "18k Gold Plated 925 Silver", "Rhodium Plated", etc. This shows on the product page — be accurate.
 
-4. WRITE MIKISI DESCRIPTION — exactly 2 sentences. Intimate, empowering, elegant. Mention the actual material in the first sentence.
+4. WRITE MIKISI DESCRIPTION — exactly 2 sentences. Intimate, empowering, elegant. Mention the actual material in the first sentence. If it mentions "stud" or "hoop", it must match the SAME style word you used in the cleaned name — never the other one.
 
 FINISH RULE — critical for multi-variant products:
 - When a product has more than one finish option (e.g. gold + rhodium, gold + white gold), ALWAYS frame them as a customer choice: "available in 18K gold or rhodium" / "your choice of gold or rhodium plating".
@@ -313,12 +348,14 @@ Return ONLY valid JSON array. No other text."""
             raw_name = (result.get("mikisi_name") or product.get("name", ""))
             # Guarantee the category type word is always present — ARIA sometimes strips it
             aria_cat = (result.get("correct_collection") or "").strip() or collection_name
-            # Silverbene's raw title is the source of truth for stud vs hoop — never let
-            # ARIA's rewrite invent or swap it
-            raw_name = _enforce_earring_style(raw_name, product.get("name", ""), aria_cat)
+            # Silverbene's raw title (falling back to its raw description) is the
+            # source of truth for stud vs hoop — never let ARIA's rewrite invent or swap it
+            raw_name = _enforce_earring_style(raw_name, product.get("name", ""), aria_cat, product.get("description", ""))
             raw_name = _ensure_category_in_name(raw_name, aria_cat)
             product["mikisi_name"] = raw_name[:100]
-            product["mikisi_description"] = result.get("mikisi_description", "")
+            product["mikisi_description"] = _enforce_earring_description_style(
+                result.get("mikisi_description", ""), product.get("name", ""), aria_cat, product.get("description", "")
+            )
             product["material"] = result.get("mikisi_material") or product.get("material", "")
 
             # If ARIA identified a different collection, look up its ID

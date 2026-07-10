@@ -479,15 +479,24 @@ def _refresh_product_sizes(sb) -> tuple:
 
 def _refresh_earring_names(sb) -> tuple:
     """
-    Re-check every live Silverbene earring's name against Silverbene's raw title.
-    Corrects stud/hoop mislabeling and guarantees the word "Earring" appears —
-    Silverbene's raw title is the ground truth, never guessed. Only the `name`
-    field is touched; description, is_published, and everything else is left alone.
+    Re-check every live Silverbene earring's name AND Mikisi description against
+    Silverbene's raw title, falling back to its raw description when the title
+    is silent on style (many Silverbene titles omit stud/hoop but the
+    description's "Category:"/"Style:"/"Earring Type:" fields state it
+    explicitly). Corrects stud/hoop mislabeling wherever it appears and
+    guarantees the word "Earring" appears in the name — Silverbene's own text
+    is the ground truth, never guessed. Only that one word is ever swapped in
+    the description; everything else ARIA wrote (tone, material, structure) —
+    and is_published — is left untouched.
 
     Returns (count_updated, list_of_detail_strings).
     """
     try:
-        from app.agents.bulk_import_agent import _enforce_earring_style, _ensure_category_in_name
+        from app.agents.bulk_import_agent import (
+            _enforce_earring_style,
+            _enforce_earring_description_style,
+            _ensure_category_in_name,
+        )
 
         with Session(engine) as session:
             earrings = session.exec(
@@ -511,23 +520,33 @@ def _refresh_earring_names(sb) -> tuple:
             try:
                 fresh = sb.get_by_sku(sku, category="Earrings")
                 raw_name = fresh.get("name", "") if isinstance(fresh, dict) else ""
+                raw_desc = fresh.get("description", "") if isinstance(fresh, dict) else ""
                 if not raw_name:
                     continue
 
-                corrected = _enforce_earring_style(p.name, raw_name, "Earrings")
-                corrected = _ensure_category_in_name(corrected, "Earrings")[:100]
+                corrected_name = _enforce_earring_style(p.name, raw_name, "Earrings", raw_desc)
+                corrected_name = _ensure_category_in_name(corrected_name, "Earrings")[:100]
+                corrected_desc = _enforce_earring_description_style(p.description, raw_name, "Earrings", raw_desc)
 
-                if corrected != p.name:
+                name_changed = corrected_name != p.name
+                desc_changed = corrected_desc != p.description
+
+                if name_changed or desc_changed:
                     old_name = p.name
                     with Session(engine) as session:
                         prod = session.get(Product, p.id)
                         if prod:
-                            prod.name = corrected
+                            prod.name = corrected_name
+                            prod.description = corrected_desc
                             session.add(prod)
                             session.commit()
                     fixed += 1
-                    detail.append(f"{old_name} -> {corrected}")
-                    print(f"[Silverbene Stock Agent] Earring name corrected: {old_name} -> {corrected}")
+                    if name_changed:
+                        detail.append(f"{old_name} -> {corrected_name}")
+                        print(f"[Silverbene Stock Agent] Earring name corrected: {old_name} -> {corrected_name}")
+                    if desc_changed:
+                        detail.append(f"{old_name}: description stud/hoop wording corrected")
+                        print(f"[Silverbene Stock Agent] Earring description wording corrected: {old_name}")
             except Exception as e:
                 print(f"[Silverbene Stock Agent] Earring name check skipped for {p.name[:45]}: {e}")
                 continue
