@@ -223,6 +223,9 @@ def run_silverbene_stock_agent():
         # ── Step 5f: Enrich anklet specs and sizes from Silverbene ─────────────
         anklet_specs_updated, anklet_specs_detail = _refresh_anklet_specs(sb)
 
+        # ── Step 5g: Enrich ear cuff specs from Silverbene ─────────────────────
+        ear_cuff_specs_updated, ear_cuff_specs_detail = _refresh_ear_cuffs_specs(sb)
+
         # ── Step 5: Write to AgentMemory ──────────────────────────────────────
         result = {
             "checked": total_checked,
@@ -235,6 +238,7 @@ def run_silverbene_stock_agent():
             "bracelet_specs_updated": bracelet_specs_updated,
             "ring_specs_updated": ring_specs_updated,
             "anklet_specs_updated": anklet_specs_updated,
+            "ear_cuff_specs_updated": ear_cuff_specs_updated,
             "newly_outofstock": newly_outofstock,
             "newly_reactivated": newly_reactivated,
         }
@@ -255,6 +259,7 @@ def run_silverbene_stock_agent():
                         "bracelet_specs_detail": bracelet_specs_detail[:5],
                         "ring_specs_detail": ring_specs_detail[:5],
                         "anklet_specs_detail": anklet_specs_detail[:5],
+                        "ear_cuff_specs_detail": ear_cuff_specs_detail[:5],
                     }),
                     confidence=0.9
                 ))
@@ -281,7 +286,7 @@ def run_silverbene_stock_agent():
             deactivated > 0 or reactivated > 0 or
             updated > 0 or sizes_updated > 0 or names_updated > 0 or
             necklace_specs_updated > 0 or bracelet_specs_updated > 0 or
-            ring_specs_updated > 0 or anklet_specs_updated > 0
+            ring_specs_updated > 0 or anklet_specs_updated > 0 or ear_cuff_specs_updated > 0
         )
         if any_change:
             _aria_sync_report(
@@ -304,6 +309,8 @@ def run_silverbene_stock_agent():
                 ring_specs_detail=ring_specs_detail,
                 anklet_specs_updated=anklet_specs_updated,
                 anklet_specs_detail=anklet_specs_detail,
+                ear_cuff_specs_updated=ear_cuff_specs_updated,
+                ear_cuff_specs_detail=ear_cuff_specs_detail,
             )
 
         return result
@@ -696,6 +703,83 @@ def _refresh_necklace_specs(sb) -> tuple:
         return 0, []
 
 
+def _refresh_ear_cuffs_specs(sb) -> tuple:
+    """
+    Re-derive each live Silverbene ear cuff's specs from a fresh fetch, using
+    the fuller Ear Cuffs parser (captures fields the old allowlist dropped —
+    dimensions, wearing style, craftsmanship, etc.). Unlike Rings/Bracelets/
+    Necklaces/Anklets, ear cuffs have no dedicated Size selector badge on the
+    frontend (they're single-piece items with no size choice — `sizes` is
+    consistently null across the whole category), so no length/size-hiding
+    logic is needed here; dimension specs are purely informational and safe
+    to show directly in Details. Replaces (not merges) specs on every run so
+    re-runs self-heal — unless the fresh extraction comes back empty, in
+    which case whatever is already stored is left alone rather than being
+    wiped by a bad or unusually sparse fetch.
+
+    Returns (count_updated, list_of_detail_strings).
+    """
+    try:
+        import json as _json
+
+        with Session(engine) as session:
+            cuffs = session.exec(
+                select(Product).where(
+                    Product.supplier_name == "Silverbene",
+                    Product.category == "Ear Cuffs",
+                    Product.is_active == True,
+                )
+            ).all()
+
+        if not cuffs:
+            return 0, []
+
+        fixed = 0
+        detail = []
+
+        for p in cuffs:
+            sku = p.cj_product_id
+            if not sku:
+                continue
+            try:
+                fresh = sb.get_by_sku(sku, category="Ear Cuffs")
+                fresh_specs_json = fresh.get("specs") if isinstance(fresh, dict) else None
+                if not fresh_specs_json:
+                    continue
+                try:
+                    existing_specs = _json.loads(p.specs) if p.specs else {}
+                except Exception:
+                    existing_specs = {}
+                try:
+                    fresh_specs = _json.loads(fresh_specs_json)
+                except Exception:
+                    fresh_specs = {}
+                if not fresh_specs or fresh_specs == existing_specs:
+                    continue
+
+                with Session(engine) as session:
+                    prod = session.get(Product, p.id)
+                    if prod:
+                        prod.specs = _json.dumps(fresh_specs)
+                        session.add(prod)
+                        session.commit()
+                fixed += 1
+                added = sorted(set(fresh_specs) - set(existing_specs))
+                removed = sorted(set(existing_specs) - set(fresh_specs))
+                summary = f"+{len(added)}" + (f"/-{len(removed)}" if removed else "")
+                detail.append(f"{p.name}: specs updated ({summary}) — {', '.join(added) or 'values changed'}")
+                print(f"[Silverbene Stock Agent] Ear Cuff specs updated: {p.name} — added: {added}, removed: {removed}")
+            except Exception as e:
+                print(f"[Silverbene Stock Agent] Ear Cuff specs check skipped for {p.name[:45]}: {e}")
+                continue
+
+        return fixed, detail
+
+    except Exception as e:
+        print(f"[Silverbene Stock Agent] Ear Cuff specs refresh error: {e}")
+        return 0, []
+
+
 def _refresh_ring_specs(sb) -> tuple:
     """
     Re-derive each live Silverbene ring's specs from a fresh fetch, using the
@@ -973,7 +1057,8 @@ def _aria_sync_report(total_checked, updated, deactivated, reactivated,
                       necklace_specs_updated=0, necklace_specs_detail=None,
                       bracelet_specs_updated=0, bracelet_specs_detail=None,
                       ring_specs_updated=0, ring_specs_detail=None,
-                      anklet_specs_updated=0, anklet_specs_detail=None):
+                      anklet_specs_updated=0, anklet_specs_detail=None,
+                      ear_cuff_specs_updated=0, ear_cuff_specs_detail=None):
     """
     ARIA reviews the full sync results and emails Dennis with everything
     that changed — stock levels, out-of-stock alerts, restocks, and size updates.
@@ -1040,6 +1125,12 @@ def _aria_sync_report(total_checked, updated, deactivated, reactivated,
             items = "\n".join(f"  - {d}" for d in (anklet_specs_detail or [])[:10])
             parts.append(
                 f"\n{anklet_specs_updated} anklet(s) had spec/size details enriched or corrected from Silverbene:\n{items}"
+            )
+
+        if ear_cuff_specs_updated > 0:
+            items = "\n".join(f"  - {d}" for d in (ear_cuff_specs_detail or [])[:10])
+            parts.append(
+                f"\n{ear_cuff_specs_updated} ear cuff(s) had spec details enriched from Silverbene:\n{items}"
             )
 
         parts.append(

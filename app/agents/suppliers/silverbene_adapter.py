@@ -745,6 +745,7 @@ class SilverbeneAdapter(SupplierAdapter):
             'bracelet total weight': 'weight',
             'anklet total weight': 'weight',
             'approximate weight': 'weight',
+            'reference weight': 'weight',
             # Plating / finish
             'metal electroplating': 'plating',
             'electroplating': 'plating',
@@ -966,7 +967,7 @@ class SilverbeneAdapter(SupplierAdapter):
             if not spec_key:
                 # Categories rolled out onto capture-everything (vs. the old fixed
                 # allowlist) — extend this set as each category gets reviewed.
-                if category in ("Earrings", "Necklaces", "Bracelets", "Rings", "Anklets"):
+                if category in ("Earrings", "Necklaces", "Bracelets", "Rings", "Anklets", "Ear Cuffs"):
                     # Silverbene's label phrasing varies too much for a fixed allowlist
                     # to keep up with — capture it under an auto-generated key rather
                     # than silently dropping it. The frontend already renders unknown
