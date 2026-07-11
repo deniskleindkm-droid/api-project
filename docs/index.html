@@ -1818,7 +1818,8 @@ function parseSpecs(p){
   // as bracelets, so it reuses the same exclusion set (bangle_size/bangle_diameter
   // just never appear on a necklace, harmless to check).
   const isNecklace=(p.category||'').toLowerCase()==='necklaces';
-  const hideLengthSpecs=isBracelets||isNecklace;
+  const isAnklet=(p.category||'').toLowerCase()==='anklets';
+  const hideLengthSpecs=isBracelets||isNecklace||isAnklet;
   // Silverbene phrases "length" a different way on nearly every product
   // (chain_length_available, necklace_length_range, extension_chain_length, …) —
   // rather than chase every variant with an exact-key exclusion list, hide any

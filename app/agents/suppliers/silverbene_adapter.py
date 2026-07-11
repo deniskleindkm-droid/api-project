@@ -528,7 +528,7 @@ class SilverbeneAdapter(SupplierAdapter):
             desc_lengths = _binfo["sizes"]
             _bracelet_width = _binfo.get("width")
         else:
-            desc_lengths = _parse_chain_length_from_desc(_raw_desc_for_len)
+            desc_lengths = _parse_chain_length_from_desc(_raw_desc_for_len, category=category)
         # Only use the description-derived length as a fallback when variant
         # options gave us nothing at all. Real per-option data always wins and
         # is never topped up with extra description-parsed values — Silverbene
@@ -966,7 +966,7 @@ class SilverbeneAdapter(SupplierAdapter):
             if not spec_key:
                 # Categories rolled out onto capture-everything (vs. the old fixed
                 # allowlist) — extend this set as each category gets reviewed.
-                if category in ("Earrings", "Necklaces", "Bracelets", "Rings"):
+                if category in ("Earrings", "Necklaces", "Bracelets", "Rings", "Anklets"):
                     # Silverbene's label phrasing varies too much for a fixed allowlist
                     # to keep up with — capture it under an auto-generated key rather
                     # than silently dropping it. The frontend already renders unknown
@@ -999,7 +999,16 @@ class SilverbeneAdapter(SupplierAdapter):
                     continue  # other categories: only store known, mapped fields for now
 
             val = _apply_spec_conversion(spec_key, val, category=category)
-            if spec_key not in specs:   # first value wins
+            # Dual-purpose listings (sold as either a bracelet or an anklet) state
+            # both "Bracelet Chain Length" and "Anklet Chain Length" separately —
+            # both map to chain_length, but whichever appears first in the raw
+            # HTML would otherwise win by default. When processing as an Anklet,
+            # the anklet-specific label is always the right one, even if the
+            # bracelet-labeled line appeared earlier in the same description.
+            is_anklet_override = (
+                category == "Anklets" and spec_key == "chain_length" and key.startswith("anklet")
+            )
+            if spec_key not in specs or is_anklet_override:   # first value wins, except the override above
                 specs[spec_key] = val
 
         # Legacy: also catch drop_length expressed as "Xg" pattern outside <li>
@@ -1451,7 +1460,7 @@ def _clean_color_value(value: str) -> str:
     return value
 
 
-def _parse_chain_length_from_desc(desc: str) -> list:
+def _parse_chain_length_from_desc(desc: str, category: str = "") -> list:
     """
     Extract chain length from Silverbene HTML description.
     Looks for patterns like:
@@ -1460,15 +1469,35 @@ def _parse_chain_length_from_desc(desc: str) -> list:
       <li>Available Length: 40cm, 45cm, 50cm</li>
       <li>Length: 450mm</li>
       <li>Chain Style: Bead Chain with 45cm Length + 5cm Extension</li>
+
+    For Anklets: ankle circumference is bracelet-scale (roughly 200-280mm),
+    not necklace-scale — parse_necklace_length()'s snap table has no entry
+    below 350mm, so every anklet-scale value was silently flooring to the
+    same wrong "14 inch" regardless of its real length. Try the
+    bracelet-scale parser first, matching the per-variant path in
+    _extract_variants() which already does this correctly. Also prefer an
+    explicit "Anklet Chain Length"/"Anklet Length" label over a generic
+    "Chain Length" one — some listings are dual-purpose (sold as either a
+    bracelet or an anklet) and state both lengths separately.
     Returns parsed chips list, or empty list if nothing found.
     """
+    def _parse_len(text: str) -> list:
+        if category == "Anklets":
+            return parse_bracelet_size(text) or parse_necklace_length(text)
+        return parse_necklace_length(text)
+
+    if category == "Anklets":
+        m = re.search(r'[Aa]nklet\s+(?:[Cc]hain\s+)?[Ll]ength(?:\s+[Rr]ange)?[:\s]+([^<\n]{3,60})', desc)
+        if m:
+            return _parse_len(m.group(1))
+
     m = re.search(r'(?:[Cc]hain|[Nn]ecklace)\s+[Ll]ength(?:\s+[Rr]ange)?[:\s]+([^<\n]{3,60})', desc)
     if not m:
         m = re.search(r'[Aa]vailable\s+[Ll]ength(?:\s+[Oo]ptions)?[:\s]+([^<\n]{3,60})', desc)
     if not m:
         m = re.search(r'\bLength[:\s]+(\d{3,4}\s*mm[^<\n]{0,40})', desc)
     if m:
-        return parse_necklace_length(m.group(1))
+        return _parse_len(m.group(1))
     # Some Silverbene listings put real length data under "Chain Style" instead
     # of "Chain Length" (e.g. "Bead Chain with 45cm Length + 5cm Extension").
     # Only trust it here if the value actually contains a cm/mm measurement, so
@@ -1476,7 +1505,7 @@ def _parse_chain_length_from_desc(desc: str) -> list:
     # isn't misread as a length.
     m = re.search(r'[Cc]hain\s+[Ss]tyle[:\s]+([^<\n]{3,80})', desc)
     if m and re.search(r'\d+\s*(cm|mm)', m.group(1), re.I):
-        chips = parse_necklace_length(m.group(1))
+        chips = _parse_len(m.group(1))
         if chips:
             return chips
     return []
@@ -1717,8 +1746,11 @@ def _apply_spec_conversion(spec_key: str, val: str, category: str = "") -> str:
     """
     # Chain-type lengths: convert mm or cm → inches
     if spec_key in ('chain_length', 'drop_length', 'bangle_diameter'):
-        # Bracelets: use bracelet range parser first
-        if category == "Bracelets" or spec_key == "chain_length" and re.search(r'bracelet|wrist', val, re.I):
+        # Bracelets and Anklets: ankle circumference is bracelet-scale
+        # (roughly 200-280mm), not necklace-scale — parse_necklace_length()'s
+        # snap table has no entry below 350mm, so anklet values were silently
+        # flooring to the same wrong "14 inch" regardless of their real length.
+        if category in ("Bracelets", "Anklets") or spec_key == "chain_length" and re.search(r'bracelet|wrist', val, re.I):
             chips = parse_bracelet_size(val)
             if chips:
                 return chips[0] if len(chips) == 1 else " / ".join(chips)
