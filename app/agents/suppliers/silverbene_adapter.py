@@ -854,6 +854,7 @@ class SilverbeneAdapter(SupplierAdapter):
             'bangle size': 'bangle_size',
             'bangle diameter': 'bangle_diameter',
             'ring top size': 'ring_top',
+            'top width shown': 'ring_top',
             'ring diameter': 'ring_diameter',
             'ring inner diameter': 'inner_diameter',
             'inner diameter': 'inner_diameter',
@@ -897,6 +898,35 @@ class SilverbeneAdapter(SupplierAdapter):
         _BRACELET_SIZE_AS_LENGTH_KEYS = {
             'reference size', 'adjustable size', 'size options', 'available size options',
         }
+        # See usage below — Rings-only size-in-disguise labels ("Reference Size:
+        # US Size 6", "Adjustable Range: About 13-17", "Size Reference: US Size
+        # 7", "Finger Circumference Reference: 54mm, 55mm, 56mm", "Inner Diameter
+        # Reference: 17mm To 17.5mm") — consolidate into the existing
+        # ring_size_range/inner_diameter keys rather than becoming their own
+        # auto-keys, since "reference size" etc. mean something different for
+        # other categories (already handled separately above for Bracelets).
+        _RING_SIZE_AS_RANGE_KEYS = {
+            'reference size': 'ring_size_range',
+            'adjustable range': 'ring_size_range',
+            'size reference': 'ring_size_range',
+            'finger circumference reference': 'ring_size_range',
+            'inner diameter reference': 'inner_diameter',
+            'ring size options': 'ring_size_range',
+            'sizes available': 'ring_size_range',
+            'reference ring size': 'ring_size_range',
+            'size type': 'ring_size_range',
+            'referenced size option': 'ring_size_range',
+            'available us sizes': 'ring_size_range',
+            'available ring us sizes': 'ring_size_range',
+            'available size': 'ring_size_range',
+            'adjustable ring size': 'ring_size_range',
+            'available inner diameter': 'inner_diameter',
+            'ring inner diameter shown': 'inner_diameter',
+            'inner diameter shown in image': 'inner_diameter',
+            'available ring sizes': 'ring_size_range',
+            'ring sizes available': 'ring_size_range',
+            'size feature': 'ring_size_range',
+        }
 
         for li in lis:
             text = re.sub(r'<[^>]+>', '', li).strip()
@@ -926,11 +956,17 @@ class SilverbeneAdapter(SupplierAdapter):
                     specs[spec_key] = val
                 continue
 
+            if category == "Rings" and key in _RING_SIZE_AS_RANGE_KEYS:
+                spec_key = _RING_SIZE_AS_RANGE_KEYS[key]
+                if spec_key not in specs:
+                    specs[spec_key] = val
+                continue
+
             spec_key = FIELD_MAP.get(key)
             if not spec_key:
                 # Categories rolled out onto capture-everything (vs. the old fixed
                 # allowlist) — extend this set as each category gets reviewed.
-                if category in ("Earrings", "Necklaces", "Bracelets"):
+                if category in ("Earrings", "Necklaces", "Bracelets", "Rings"):
                     # Silverbene's label phrasing varies too much for a fixed allowlist
                     # to keep up with — capture it under an auto-generated key rather
                     # than silently dropping it. The frontend already renders unknown
@@ -952,7 +988,11 @@ class SilverbeneAdapter(SupplierAdapter):
                     )
                     if looks_like_marketing:
                         continue
-                    spec_key = re.sub(r'[^a-z0-9]+', '_', key).strip('_')
+                    # Strip possessive apostrophes before the alnum cleanup, else
+                    # "Women's Ring Width" becomes the confusing "women_s_ring_width"
+                    # instead of the readable "womens_ring_width".
+                    spec_key = re.sub(r"'s\b", "s", key)
+                    spec_key = re.sub(r'[^a-z0-9]+', '_', spec_key).strip('_')
                     if not spec_key:
                         continue
                 else:
