@@ -365,6 +365,10 @@ Return ONLY valid JSON array. No other text."""
                 corrected_id = int(_gc(_collection_map[aria_collection], default="0") or 0)
                 if corrected_id:
                     product["_corrected_collection_id"] = corrected_id
+                    # category (string) must move with collection_id (numeric FK) — every
+                    # category-gated code path (spec extraction, size parsing, admin
+                    # catalog grouping) filters on this string field, not collection_id.
+                    product["category"] = aria_collection
                     print(f"[Bulk Import] ARIA corrected '{product['mikisi_name'][:40]}' -> {aria_collection} (ID {corrected_id})")
 
             product["accepted"] = True
