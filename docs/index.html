@@ -2712,18 +2712,45 @@ function showCollections(){
 function scrollToAbout(){const a=document.getElementById('about');a.style.display='flex';setTimeout(()=>a.scrollIntoView({behavior:'smooth'}),100);}
 
 // ── Back to Collections floating button ──
+// Only ever relevant while actively browsing products inside an open
+// collection — never on checkout/cart/auth/orders, and clicking it returns
+// to the collections picker, not the homepage hero.
 const _backBtn = document.getElementById('back-to-col-btn');
-function scrollToCollectionTop(){
-  goHome();
+function _anyOverlayOpen(){
+  return !!document.querySelector('.modal-overlay.open, .cart-sidebar.open');
 }
-window.addEventListener('scroll',()=>{
+function _updateBackToColVisibility(){
   const inCollection = document.body.classList.contains('collection-mode');
-  if(inCollection && window.scrollY > 320){
+  if(inCollection && window.scrollY > 320 && !_anyOverlayOpen()){
     _backBtn.classList.add('visible');
   } else {
     _backBtn.classList.remove('visible');
   }
-},{passive:true});
+}
+function scrollToCollectionTop(){
+  // Rescue pp-inline back to collection-view before hiding (same as goHome())
+  const _ppEl = document.getElementById('pp-inline');
+  const _collView = document.getElementById('collection-view');
+  if(_ppEl){
+    _ppEl.style.display='none';
+    if(_collView && _ppEl.parentElement !== _collView) _collView.appendChild(_ppEl);
+  }
+  document.body.classList.remove('collection-mode');
+  document.getElementById('breadcrumb').style.display='none';
+  document.getElementById('collection-view').style.display='none';
+  document.getElementById('collections-title').textContent='Discover the Collections';
+  // Unlike goHome() (used by the logo/"Home" breadcrumb, which should reset
+  // all the way to the hero), this button's job is to return to the
+  // collections picker specifically — not the top of the page.
+  document.getElementById('collections-home').scrollIntoView({behavior:'smooth'});
+}
+window.addEventListener('scroll',_updateBackToColVisibility,{passive:true});
+// Modals/cart open via a plain class toggle with no dedicated event of their
+// own — a MutationObserver catches every open/close (present and future)
+// without needing to instrument each individual open/close function.
+new MutationObserver(_updateBackToColVisibility).observe(document.body,{
+  attributes:true,attributeFilter:['class'],subtree:true
+});
 
 const INFO_CONTENT = {
   returns: {
