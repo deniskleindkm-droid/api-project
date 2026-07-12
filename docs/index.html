@@ -2746,10 +2746,13 @@ function scrollToCollectionTop(){
 }
 window.addEventListener('scroll',_updateBackToColVisibility,{passive:true});
 // Modals/cart open via a plain class toggle with no dedicated event of their
-// own — a MutationObserver catches every open/close (present and future)
-// without needing to instrument each individual open/close function.
-new MutationObserver(_updateBackToColVisibility).observe(document.body,{
-  attributes:true,attributeFilter:['class'],subtree:true
+// own. Watch only the specific overlay elements this button cares about —
+// NOT the whole body subtree, which would re-fire on every unrelated class
+// change anywhere on the page (fade-in animations, card selections, etc.)
+// on a page that toggles classes this often.
+['checkout-modal','checkout-entry-modal','auth-modal','guest-confirm-modal','orders-modal','cart-sidebar'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) new MutationObserver(_updateBackToColVisibility).observe(el,{attributes:true,attributeFilter:['class']});
 });
 
 const INFO_CONTENT = {
