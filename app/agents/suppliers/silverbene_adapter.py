@@ -499,7 +499,7 @@ class SilverbeneAdapter(SupplierAdapter):
                     aval  = attr.get("value", "").strip()
                     if aname not in COLOR_ATTRIBUTE_NAMES:
                         continue
-                    if re.search(r'\d+\s*cm', aval, re.I):
+                    if re.search(r'\d+\s*(mm|cm)', aval, re.I):
                         continue  # length disguised as color — _extract_variants put it in sizes
                     rc = _clean_color_value(aval).strip()
                     if rc and rc not in seen_rc:
@@ -512,7 +512,7 @@ class SilverbeneAdapter(SupplierAdapter):
                     aval  = attr.get("value", "").strip()
                     if aname not in COLOR_ATTRIBUTE_NAMES:
                         continue
-                    if re.search(r'\d+\s*cm', aval, re.I):
+                    if re.search(r'\d+\s*(mm|cm)', aval, re.I):
                         continue  # leave length-in-color attrs untouched
                     rc = _clean_color_value(aval).strip()
                     # Prefer the remap (desc-aware); fall back to direct normalization
@@ -631,36 +631,22 @@ class SilverbeneAdapter(SupplierAdapter):
                             seen_sizes.add(chip)
                             sizes.append(chip)
                 elif name in COLOR_ATTRIBUTE_NAMES and re.search(r'\d+\s*(mm|cm)', value, re.I):
-                    # Length hidden in Color attr (e.g. "16cm", "17+3", "160mm Bracelet",
-                    # "Pink_16+3cm", "3mm wide, length: 16.5cm, weight:2g",
-                    # "1.0mm, 40cm" — width listed before length, no label at all).
-                    # Prefer explicit "length: X cm/mm" over anything else.
-                    _len_m = re.search(r'\blength[:\s]+(\d+(?:\.\d+)?)\s*(cm|mm)', value, re.I)
-                    if _len_m:
-                        _dim_str = _len_m.group(1) + _len_m.group(2)
-                    else:
-                        _ext_m = re.search(
-                            r'(\d+(?:\.\d+)?)\s*(cm|mm)?\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)',
-                            value, re.I
-                        )
-                        if _ext_m:
-                            _dim_str = _ext_m.group(0).strip()
-                        else:
-                            # No explicit "length:" label and no "+" extension pattern —
-                            # do NOT grab just the first number in the string, since an
-                            # unlabeled width often appears before the length (e.g.
-                            # "1.0mm, 40cm" — the width, not the length, would be
-                            # picked). Pass the full value through instead:
-                            # parse_bracelet_size/parse_necklace_length already filter
-                            # to their own valid mm ranges (100–260mm / 350–900mm)
-                            # internally, so they correctly pick out whichever single
-                            # number is a plausible length and ignore a width alongside it.
-                            _dim_str = value
-                    chips = parse_bracelet_size(_dim_str) or parse_necklace_length(_dim_str)
-                    for chip in chips:
-                        if chip not in seen_sizes:
-                            seen_sizes.add(chip)
-                            sizes.append(chip)
+                    # Measurement bundled into the Color attr (e.g. "16cm", "17+3",
+                    # "Pink_16+3cm", "18K Yellow Gold 6mm" hoop diameter,
+                    # "3mm wide, length: 16.5cm, weight:2g"). Split it into a clean
+                    # color/finish name AND a size chip — a genuine chain-length range
+                    # becomes the usual inch chip; anything else (hoop diameter, tube
+                    # width) is kept as its own real, price-differentiating size chip
+                    # rather than being discarded. Never drop the color half: Silverbene
+                    # still prices color separately even when it shares an attribute
+                    # with the size text.
+                    _color_part, _size_chip = _split_color_and_size(value, category)
+                    if _size_chip and _size_chip not in seen_sizes:
+                        seen_sizes.add(_size_chip)
+                        sizes.append(_size_chip)
+                    if _color_part and _color_part not in seen_colors:
+                        seen_colors.add(_color_part)
+                        colors.append(_color_part)
                 elif name in SIZE_ATTRIBUTE_NAMES:
                     value = " ".join(value.split())
                     # Normalise any adjustable/open-ring variant to a single consistent label
@@ -1115,12 +1101,27 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
                 chips = parse_bracelet_size(v) or parse_necklace_length(v)
                 if chips:
                     return chips[0]
+        # No dedicated size attribute — Silverbene sometimes bundles the real
+        # size measurement into the Color attribute instead (hoop diameter,
+        # tube width, bracelet extension). Mirror _extract_variants() exactly
+        # so this matches whatever chip the customer actually saw and clicked.
+        for a in attrs:
+            if a.get("name", "").lower() in COLOR_ATTRIBUTE_NAMES:
+                v = a.get("value", "").strip()
+                if re.search(r'\d+\s*(mm|cm)', v, re.I):
+                    _, size_chip = _split_color_and_size(v)
+                    if size_chip:
+                        return size_chip
         return None
 
     def attr_color(attrs):
         for a in attrs:
             if a.get("name", "").lower() in COLOR_ATTRIBUTE_NAMES:
-                return _clean_color_value(a.get("value", "").strip())
+                v = a.get("value", "").strip()
+                if re.search(r'\d+\s*(mm|cm)', v, re.I):
+                    color_part, _ = _split_color_and_size(v)
+                    return color_part
+                return _clean_color_value(v)
         return None
 
     def color_matches(api_raw: str, want: str) -> bool:
@@ -1459,6 +1460,105 @@ def _clean_color_value(value: str) -> str:
         if lower.startswith(prefix + " "):
             return value[len(prefix):].strip()
     return value
+
+
+_LABELED_LEN_RE = re.compile(r'\blength\s*[:\s]+(\d+(?:\.\d+)?)\s*(cm|mm)', re.I)
+_EXT_LEN_RE = re.compile(r'(\d+(?:\.\d+)?)\s*(cm|mm)?\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)', re.I)
+_TUBE_DIM_RE = re.compile(r'(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)\s*(mm|cm)\b')
+_BARE_DIM_RE = re.compile(r'(\d+(?:\.\d+)?)\s*(mm|cm)\b', re.I)
+_WEIGHT_FRAG_RE = re.compile(r'weight\s*[:\-]?\s*(approximately\s*)?[\d.]+\s*g\b', re.I)
+_BARE_WEIGHT_RE = re.compile(r'\b[\d.]+\s*g\b', re.I)
+_WIDE_DIM_RE = re.compile(r'\d+(?:\.\d+)?\s*(mm|cm)\s*wide\b', re.I)
+_SINGLE_PAIR_RE = re.compile(r'\b(single(\s+piece)?|pair)\b', re.I)
+# Known Silverbene typos seen in raw Color attribute text — corrected so they
+# canonicalize to the same color bucket as the properly-spelled variants of
+# the same product (otherwise a typo'd option silently becomes its own,
+# unmatched color group).
+_COLOR_TYPO_FIXES = [
+    (re.compile(r'(?<!1)\b8K\b', re.I), '18K'),
+    (re.compile(r'\bgolde\b', re.I), 'Gold'),
+]
+
+
+def _split_color_and_size(value: str, category: str = ""):
+    """
+    Split a Silverbene Color-attribute value that bundles a finish/metal name
+    together with a measurement into a clean color name and a size chip.
+
+    Silverbene sometimes puts the real, price-differentiating measurement
+    inside the "Color" attribute instead of its own attribute, in all sorts of
+    shapes: "18K Yellow Gold 6mm" (hoop diameter), "Pink_16+3cm" (bracelet
+    extension), "3 mm wide, 18K gold, length: 16.5 cm, weight: 2 g" (chain),
+    "1.0mm, 40cm" (width + length, no color/finish at all).
+
+    Chain-length-range numbers (bracelet/necklace scale) are converted to the
+    usual inch chip via parse_bracelet_size/parse_necklace_length — same as
+    every other per-variant length. Anything else with a real measurement
+    (hoop diameter, tube width, ring width) that doesn't fall in either range
+    is kept as its own plain size chip (e.g. "6mm", "2.0x15mm") instead of
+    being silently discarded — Silverbene still prices it as a distinct,
+    selectable option even though it isn't a "length" in the bracelet/necklace
+    sense. When a value bundles two measurements (a width alongside a length),
+    every matched measurement token is stripped before what's left is treated
+    as a color name — so a stray leftover number never becomes a fake "color".
+
+    Returns (color_part: str, size_chip: str | None).
+    """
+    v = value.strip()
+    size_chip = None
+    remainder = v
+
+    m = _LABELED_LEN_RE.search(v)
+    if m:
+        dim_str = f"{m.group(1)}{m.group(2)}"
+        chips = parse_bracelet_size(dim_str) or parse_necklace_length(dim_str)
+        size_chip = chips[0] if chips else None
+        remainder = v[:m.start()] + v[m.end():]
+    else:
+        m = _EXT_LEN_RE.search(v)
+        if m:
+            dim_str = m.group(0).strip()
+            chips = parse_bracelet_size(dim_str) or parse_necklace_length(dim_str)
+            size_chip = chips[0] if chips else None
+            remainder = v[:m.start()] + v[m.end():]
+        else:
+            m = _TUBE_DIM_RE.search(v)
+            if m:
+                size_chip = f"{m.group(1)}x{m.group(2)}{m.group(3).lower()}"
+                remainder = v[:m.start()] + v[m.end():]
+            else:
+                matches = list(_BARE_DIM_RE.finditer(v))
+                if matches:
+                    chosen_chip = None
+                    for cand in matches:
+                        chips = parse_bracelet_size(cand.group(0)) or parse_necklace_length(cand.group(0))
+                        if chips:
+                            chosen_chip = chips[0]
+                            break
+                    first = matches[0]
+                    size_chip = chosen_chip or f"{first.group(1)}{first.group(2).lower()}"
+                    # Strip every matched token (not just the one used for the
+                    # chip) — a second, unrelated measurement (e.g. a width
+                    # alongside the length) must never leak into the color name.
+                    for cand in reversed(matches):
+                        remainder = remainder[:cand.start()] + remainder[cand.end():]
+
+    color_part = remainder
+    color_part = _WIDE_DIM_RE.sub('', color_part)
+    color_part = _WEIGHT_FRAG_RE.sub('', color_part)
+    color_part = _BARE_WEIGHT_RE.sub('', color_part)
+    color_part = _BARE_DIM_RE.sub('', color_part)  # any other leftover measurement token
+    color_part = re.sub(r'\bwide\b', '', color_part, flags=re.I)
+    color_part = _SINGLE_PAIR_RE.sub('', color_part)
+    for _typo_re, _fix in _COLOR_TYPO_FIXES:
+        color_part = _typo_re.sub(_fix, color_part)
+    color_part = re.sub(r'[,_&]+', ' ', color_part)
+    color_part = re.sub(r'\s+', ' ', color_part).strip(' ,-')
+    color_part = _clean_color_value(color_part)
+    # A leftover with no letters at all isn't a real color/finish name.
+    if color_part and not re.search(r'[A-Za-z]', color_part):
+        color_part = ''
+    return color_part, size_chip
 
 
 def _parse_chain_length_from_desc(desc: str, category: str = "") -> list:

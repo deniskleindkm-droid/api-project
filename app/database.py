@@ -75,6 +75,7 @@ def create_db():
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS sync_miss_count integer NOT NULL DEFAULT 0"))
         conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS guest_email varchar(200)'))
         conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS is_guest boolean DEFAULT false'))
+        conn.execute(text("ALTER TABLE cartitem ADD COLUMN IF NOT EXISTS selected_option_id varchar(100)"))
         conn.commit()
 
     _setup_defaults()

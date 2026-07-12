@@ -17,6 +17,8 @@ _SIZE_LABELS = {
     "Necklaces": "Chain Length",
     "Rings":     "Ring Size",
     "Anklets":   "Anklet Length",
+    "Earrings":  "Size",
+    "Ear Cuffs": "Size",
 }
 
 _SIZE_HINTS = {
@@ -38,6 +40,11 @@ def _size_display_meta(p) -> dict:
         sizes = []
 
     label = _SIZE_LABELS.get(category)
+    # Most earring/ear cuff sizes are hoop diameters — use the specific label
+    # the customer actually understands. Studs/tubes/other shapes keep the
+    # generic "Size" default since a diameter-style label wouldn't fit them.
+    if category in ("Earrings", "Ear Cuffs") and "hoop" in (p.name or "").lower():
+        label = "Hoop Size"
 
     # Rings with no size data at all are just as open/adjustable as rings whose
     # sizes explicitly say so — Silverbene simply omits the Size attribute when
@@ -52,7 +59,10 @@ def _size_display_meta(p) -> dict:
         badge = open_ring_size_text(specs)
         return {"size_label": label, "size_hint": badge, "size_display_mode": "open_badge"}
 
-    if not sizes or category in ("Earrings", "Ear Cuffs"):
+    # Most earrings/ear cuffs are sold as a fixed pair with no real size choice —
+    # only show a selector for the minority that do have genuine, price-backed
+    # size options (e.g. hoop diameter, stud size).
+    if not sizes:
         return {"size_label": label, "size_hint": None, "size_display_mode": "none"}
 
     sizes_lower = [s.lower() for s in sizes]
@@ -173,11 +183,13 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
     Response: list of {option_id, size, color, final_price, stock}
     Only includes variants with a known base_price.
     """
+    import re as _re
     import json as _json
     from app.agents.jewelry_pricing import calculate_mikisi_price
     from app.agents.suppliers.silverbene_adapter import (
         _normalize_size_for_match, _normalize_color_final,
-        _clean_color_value, COLOR_ATTRIBUTE_NAMES, BRACELET_SIZE_ATTR_NAMES,
+        _clean_color_value, _split_color_and_size,
+        COLOR_ATTRIBUTE_NAMES, BRACELET_SIZE_ATTR_NAMES,
         parse_necklace_length, parse_bracelet_size,
     )
 
@@ -217,9 +229,19 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
                 if chips:
                     size = chips[0]
             elif name in COLOR_ATTRIBUTE_NAMES:
-                # Use the same fully-normalized value that p.colors stores —
-                # _normalize_color_final turns "Rhodium"→"Silver", "Pink"→"Rose Gold", etc.
-                color = _normalize_color_final(_clean_color_value(val), name)
+                if _re.search(r'\d+\s*(mm|cm)', val, _re.I):
+                    # Measurement bundled into the Color attr (hoop diameter, tube
+                    # width, bracelet extension) — split it the same way
+                    # _extract_variants() does so size/color here always agree
+                    # with what p.sizes/p.colors and the frontend chips show.
+                    color_part, size_chip = _split_color_and_size(val)
+                    color = _normalize_color_final(color_part, name)
+                    if size_chip and not size:
+                        size = size_chip
+                else:
+                    # Use the same fully-normalized value that p.colors stores —
+                    # _normalize_color_final turns "Rhodium"→"Silver", "Pink"→"Rose Gold", etc.
+                    color = _normalize_color_final(_clean_color_value(val), name)
 
         result.append({
             "option_id":   v.get("option_id"),

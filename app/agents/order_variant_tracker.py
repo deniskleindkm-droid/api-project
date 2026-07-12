@@ -25,6 +25,7 @@ Gap addressed:
 
 import json
 import os
+import re
 from datetime import datetime
 from sqlmodel import Session, select
 from app.database import engine
@@ -35,6 +36,7 @@ from app.agents.suppliers.silverbene_adapter import (
     _normalize_size_for_match,
     _normalize_color_final,
     _clean_color_value,
+    _split_color_and_size,
     _COLOR_LABEL_REVERSE,
     parse_necklace_length,
     parse_bracelet_size,
@@ -238,6 +240,15 @@ def _extract_size(attrs: list) -> str | None:
             chips = parse_bracelet_size(val) or parse_necklace_length(val)
             if chips:
                 return chips[0]
+    # Mirror _extract_variants(): Silverbene sometimes bundles the real size
+    # measurement into the Color attribute instead of its own attribute.
+    for a in attrs:
+        name = (a.get("name") or "").lower().strip()
+        val  = (a.get("value") or "").strip()
+        if name in COLOR_ATTRIBUTE_NAMES and re.search(r'\d+\s*(mm|cm)', val, re.I):
+            _, size_chip = _split_color_and_size(val)
+            if size_chip:
+                return size_chip
     return None
 
 
@@ -246,6 +257,9 @@ def _extract_color(attrs: list) -> str | None:
         name = (a.get("name") or "").lower().strip()
         val  = (a.get("value") or "").strip()
         if name in COLOR_ATTRIBUTE_NAMES:
+            if re.search(r'\d+\s*(mm|cm)', val, re.I):
+                color_part, _ = _split_color_and_size(val)
+                return _normalize_color_final(color_part, name) or None
             cleaned = _clean_color_value(val)
             return _normalize_color_final(cleaned, name) or None
     return None

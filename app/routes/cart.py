@@ -15,6 +15,7 @@ class CartRequest(BaseModel):
     quantity: int = 1
     selected_size: Optional[str] = None
     selected_color: Optional[str] = None
+    selected_option_id: Optional[str] = None
 
 @router.post("/cart")
 def add_to_cart(
@@ -42,6 +43,10 @@ def add_to_cart(
 
     if existing:
         existing.quantity += item.quantity
+        # A newer add-to-cart always carries a freshly-resolved option_id (or a
+        # more current one) — prefer it over whatever an older click stored.
+        if item.selected_option_id:
+            existing.selected_option_id = item.selected_option_id
         session.add(existing)
     else:
         session.add(CartItem(
@@ -50,6 +55,7 @@ def add_to_cart(
             quantity=item.quantity,
             selected_size=item.selected_size,
             selected_color=item.selected_color,
+            selected_option_id=item.selected_option_id,
         ))
 
     session.commit()
@@ -98,6 +104,7 @@ def get_cart(
             "content_image_url": product.content_image_url,
             "selected_size": item.selected_size,
             "selected_color": item.selected_color,
+            "selected_option_id": item.selected_option_id,
             "out_of_stock": out_of_stock,
         })
 

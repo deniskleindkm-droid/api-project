@@ -78,6 +78,7 @@ class GuestCartItem(BaseModel):
     quantity: int = 1
     selected_size: str = None
     selected_color: str = None
+    selected_option_id: str = None
 
 class GuestCheckoutRequest(BaseModel):
     items: list[GuestCartItem]
@@ -120,6 +121,7 @@ def create_guest_checkout_session(
             "quantity": item.quantity,
             "selected_size": item.selected_size,
             "selected_color": item.selected_color,
+            "selected_option_id": item.selected_option_id,
         })
 
     checkout_session = stripe.checkout.Session.create(
@@ -167,6 +169,7 @@ def process_order_background(checkout_data: dict):
                         total += subtotal
                         sel_size  = item_data.get("selected_size")
                         sel_color = item_data.get("selected_color")
+                        sel_option_id = item_data.get("selected_option_id")
                         order_details.append({
                             "name": product.name,
                             "qty": qty,
@@ -180,6 +183,7 @@ def process_order_background(checkout_data: dict):
                             "variants": product.variants,
                             "selected_size": sel_size,
                             "selected_color": sel_color,
+                            "selected_option_id": sel_option_id,
                         })
                         print(f"[Payments] Guest item: {product.name} — size={sel_size} color={sel_color}")
                         order = Order(
@@ -226,6 +230,7 @@ def process_order_background(checkout_data: dict):
                             "variants": product.variants,
                             "selected_size": item.selected_size,
                             "selected_color": item.selected_color,
+                            "selected_option_id": item.selected_option_id,
                         })
                         print(f"[Payments] Item: {product.name} — size={item.selected_size} color={item.selected_color}")
                         order = Order(
@@ -314,14 +319,22 @@ def process_order_background(checkout_data: dict):
             print(f"[Payments] Silverbene balance: {'${:.2f}'.format(sb_balance) if sb_balance >= 0 else 'unknown'} — proceed={balance_ok}")
 
             for i, d in enumerate(order_details):
-                # Resolve the exact option_id for the customer's chosen size + color
-                resolved, resolve_pass = resolve_option_id(
-                    d.get("variants"),
-                    d.get("selected_size"),
-                    d.get("selected_color"),
-                    return_meta=True,
-                ) or (None, "not_found")
-                option_id = resolved or d.get("cj_sku")   # fallback: first variant
+                # The frontend already resolved the exact option_id when the customer
+                # made their selection (from /variant-prices — real priced Silverbene
+                # options, not guessed text). Trust that id directly; only fall back to
+                # re-deriving it from size/color text for the rare cart item that
+                # somehow arrived without one (older client, direct API call, etc.).
+                option_id_from_cart = d.get("selected_option_id")
+                if option_id_from_cart:
+                    option_id, resolve_pass = option_id_from_cart, "client_selected"
+                else:
+                    resolved, resolve_pass = resolve_option_id(
+                        d.get("variants"),
+                        d.get("selected_size"),
+                        d.get("selected_color"),
+                        return_meta=True,
+                    ) or (None, "not_found")
+                    option_id = resolved or d.get("cj_sku")   # fallback: first variant
                 sku       = d.get("cj_product_id")
                 db_order_id = saved_orders[i].id if saved_orders and i < len(saved_orders) else (saved_orders[0].id if saved_orders else None)
                 print(f"[Payments] Forwarding to Silverbene: {d['name']} | size={d.get('selected_size')} color={d.get('selected_color')} | option_id={option_id}")
