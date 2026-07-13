@@ -38,11 +38,23 @@ BRACELET_SIZE_ATTR_NAMES = {"wrist size", "inner diameter", "bracelet size", "br
 COLOR_ATTRIBUTE_NAMES = {"color", "colour", "metal color", "metal finish", "finish", "main stone", "stone", "stone color", "stone type", "birthstone"}
 _METAL_ATTR_NAMES = {"color", "colour", "metal color", "metal finish", "finish"}
 
+# Matches "Rhodium" wherever it appears, including Silverbene's typo'd raw-data
+# variants that glue extra characters directly onto the word with no separator
+# ("Rhodiumm Tone", "Rhodiumne") — \w* consumes those, stopping at the next
+# real word boundary (space/punctuation), so "Rhodiumm Tone" -> "<target> Tone"
+# and "Rhodiumne" -> "<target>". The single source of truth for every place
+# that needs to detect-and-replace a Rhodium mention (see _normalize_color_final,
+# _normalize_finish_terms, and _to_standard's Step 3 write-back) — they must all
+# agree, or a customer's displayed chip stops matching the raw data at order time.
+_RHODIUM_TOKEN_RE = re.compile(r'\bRhodium\w*', re.I)
+
 # Maps Silverbene's internal/technical metal color names → customer-friendly display names.
 # Only applied to metal-context attributes (not stone names like "Yellow Sapphire").
-# "Rhodium" and "Pink" are the most common; others appear in compound variant names.
+# "Pink" is the most common; others appear in compound variant names. Rhodium is
+# deliberately NOT here — it's handled separately via _RHODIUM_TOKEN_RE in
+# _normalize_color_final, since (unlike these) it needs a per-product, desc-aware
+# decision between "Silver" and "White Gold" (see _rhodium_display_name).
 _METAL_COLOR_NORMALIZE = {
-    "rhodium":           "Silver",
     "pink":              "Rose Gold",
     "yellow":            "Yellow Gold",
     "white":             "White Gold",
@@ -67,12 +79,19 @@ _COLOR_LABEL_REVERSE: dict[str, list[str]] = {
 }
 
 
-def _normalize_color_final(value: str, attr_name: str = "color") -> str:
+def _normalize_color_final(value: str, attr_name: str = "color", normalize_rhodium: bool = True) -> str:
     """
     Convert technical Silverbene color names to customer-friendly display names.
     Called as a final pass after _clean_color_value and _normalize_finish_terms.
     Only normalizes metal-context attributes — stone colors (Yellow Sapphire, etc.)
     are left as-is.
+
+    normalize_rhodium=False skips the Rhodium->Silver step (see _RHODIUM_TOKEN_RE)
+    for callers upstream of _to_standard()'s Step 1 (_normalize_finish_terms), which
+    needs the literal word "Rhodium" still present in the value to correctly decide,
+    per-product, whether it should become "Silver" (default) or "White Gold" (when
+    the product description explicitly advertises that finish name). Collapsing it
+    to "Silver" here first would erase that information before Step 1 ever runs.
     """
     if not value:
         return value
@@ -83,9 +102,10 @@ def _normalize_color_final(value: str, attr_name: str = "color") -> str:
         normalized = _METAL_COLOR_NORMALIZE.get(v_lower)
         if normalized:
             return normalized
-    # Rhodium is never a gemstone name — normalize regardless of attribute type
-    if v_lower == "rhodium":
-        return "Silver"
+    # Rhodium is never a gemstone name — normalize wherever it appears in the
+    # value, regardless of attribute type, position, or typo (see _RHODIUM_TOKEN_RE).
+    if normalize_rhodium and _RHODIUM_TOKEN_RE.search(cleaned):
+        return _RHODIUM_TOKEN_RE.sub("Silver", cleaned)
     return cleaned
 
 
@@ -477,22 +497,35 @@ class SilverbeneAdapter(SupplierAdapter):
         stock = sum(int(o.get("qty", 0)) for o in options) if options else 999
 
         sizes, colors = self._extract_variants(options, category=category)
+        _desc_for_finish = raw.get("description", "") or raw.get("desc", "")
+        # Rhodium plating normally displays as "Silver" (_normalize_color_final's
+        # default), but some product descriptions explicitly advertise the same
+        # plating as "White Gold" instead. Compute this once and apply it
+        # everywhere Rhodium gets normalized below — the display colors list
+        # (Step 1) AND the raw variant attributes (Step 3) — so a product's
+        # customer-facing chip and its order-time raw-data lookup never
+        # disagree on what "Rhodium" is called for this specific product.
+        _rhodium_display = self._rhodium_display_name(_desc_for_finish)
         # Step 1: desc-based upgrade — replaces "Rhodium" with "White Gold" when the
         # product description explicitly uses that term (e.g. "Metal Color: White Gold Color").
         if colors:
-            colors = self._normalize_finish_terms(colors, raw.get("description", "") or raw.get("desc", ""))
+            colors = self._normalize_finish_terms(colors, _rhodium_display)
         # Step 2: final friendly-name normalization for anything still technical
         # ("Rhodium" → "Silver", "Pink" → "Rose Gold", strip " Color"/" Plated" suffixes).
         if colors:
             colors = [_normalize_color_final(c) for c in colors]
 
-        # Step 3: sync the same canonical names back into the stored variant attributes
-        # so p.variants and p.colors always agree on color names.
-        # Mirror exactly the filtering _extract_variants applies (skip length-valued color
-        # attrs) so the zip index stays aligned with the colors list.
+        # Step 3: sync the same canonical metal name back into the stored variant
+        # attributes so p.variants and p.colors always agree on plain color names
+        # (e.g. "Rhodium" -> "Silver", or -> _rhodium_display when this product's
+        # description overrides it). Only ever rewrites the metal/color part of
+        # a raw attribute value — never the combined " · "-joined DISPLAY chip that
+        # `colors` may contain (compound descriptors and/or a suffix folded in from
+        # a *different* sibling attribute, e.g. "Silver · Pendant Only"). Writing
+        # that combined chip into a single raw attribute would duplicate data that
+        # still lives in the sibling attribute, and get detected and appended a
+        # second time on the next read (see _detect_option_suffix).
         if colors:
-            raw_cleaned_colors: list[str] = []
-            seen_rc: set[str] = set()
             for opt in options:
                 for attr in opt.get("attribute", []):
                     aname = attr.get("name", "").lower().strip()
@@ -501,24 +534,25 @@ class SilverbeneAdapter(SupplierAdapter):
                         continue
                     if re.search(r'\d+\s*(mm|cm)', aval, re.I):
                         continue  # length disguised as color — _extract_variants put it in sizes
-                    rc = _clean_color_value(aval).strip()
-                    if rc and rc not in seen_rc:
-                        seen_rc.add(rc)
-                        raw_cleaned_colors.append(rc)
-            color_remap = {rc.lower(): cc for rc, cc in zip(raw_cleaned_colors, colors)}
-            for opt in options:
-                for attr in opt.get("attribute", []):
-                    aname = attr.get("name", "").lower().strip()
-                    aval  = attr.get("value", "").strip()
-                    if aname not in COLOR_ATTRIBUTE_NAMES:
-                        continue
-                    if re.search(r'\d+\s*(mm|cm)', aval, re.I):
-                        continue  # leave length-in-color attrs untouched
-                    rc = _clean_color_value(aval).strip()
-                    # Prefer the remap (desc-aware); fall back to direct normalization
-                    canonical = color_remap.get(rc.lower()) or _normalize_color_final(rc, aname)
-                    if canonical:
-                        attr["value"] = canonical
+                    if _is_compound_color_candidate(aval):
+                        parts = [p.strip() for p in aval.split(',') if p.strip()]
+                        new_parts = []
+                        for i, part in enumerate(parts):
+                            if _RHODIUM_TOKEN_RE.search(part):
+                                part = _RHODIUM_TOKEN_RE.sub(_rhodium_display, part)
+                            elif i == 0:
+                                part = _normalize_color_final(_clean_color_value(part), aname) or part
+                            new_parts.append(part)
+                        if new_parts:
+                            attr["value"] = ', '.join(new_parts)
+                    else:
+                        cleaned = _clean_plain_color(aval)
+                        if _RHODIUM_TOKEN_RE.search(cleaned):
+                            canonical = _RHODIUM_TOKEN_RE.sub(_rhodium_display, cleaned)
+                        else:
+                            canonical = _normalize_color_final(cleaned, aname)
+                        if canonical:
+                            attr["value"] = canonical
         # Chain length / bracelet info from the description spec section.
         # For bracelets, use the full intelligent extractor which also returns width.
         _raw_desc_for_len = raw.get("description", "") or raw.get("desc", "")
@@ -602,9 +636,31 @@ class SilverbeneAdapter(SupplierAdapter):
         colors = []
         seen_sizes = set()
         seen_colors = set()
+        # Normally half-inch chips; escalates to quarter-inch only when two
+        # genuinely different real sizes for THIS product would otherwise
+        # collide into the same chip (see _bracelet_size_denom).
+        _denom = _bracelet_size_denom(options)
+        # A Color value that's an exact category word ("Anklet", "Necklace")
+        # is usually just a redundant leftover tag — _clean_color_value()
+        # discards it to "". But occasionally it's the ONLY thing that varies
+        # between options and IS the real, differently-priced choice (e.g. a
+        # chain sold configured either as a necklace or as an anklet). Track
+        # what got discarded so it can be rescued below if nothing else was
+        # ever captured as a color for this product.
+        _bare_category_values = []
+        _seen_bare = set()
 
         for opt in options:
             attrs = opt.get("attribute", [])
+            _chain_style_suffix = _detect_option_suffix(attrs)
+            # Some options carry TWO separate real color-type attributes at once
+            # (e.g. "Color": "Silver" for the metal + "Main Stone": "Black" for the
+            # gem — both names are in COLOR_ATTRIBUTE_NAMES). Silverbene prices
+            # every metal+stone pairing as one distinct option, never as two
+            # independent selectors, so collect every color-type attribute this
+            # option carries and combine them into ONE chip below — never let a
+            # later color-type attribute silently overwrite an earlier one.
+            _color_parts_this_option: list = []
             for attr in attrs:
                 name = attr.get("name", "").lower().strip()
                 value = attr.get("value", "").strip()
@@ -613,19 +669,19 @@ class SilverbeneAdapter(SupplierAdapter):
 
                 if name in BRACELET_SIZE_ATTR_NAMES and re.search(r'\d+', value, re.I):
                     # Bracelet-specific attrs (wrist size, inner diameter, etc.)
-                    for chip in parse_bracelet_size(value):
+                    for chip in parse_bracelet_size(value, _denom):
                         if chip not in seen_sizes:
                             seen_sizes.add(chip)
                             sizes.append(chip)
                 elif name in ("chain length", "length") and re.search(r'\d+\s*(mm|cm)', value, re.I):
                     # Try bracelet range first; fall through to necklace parser
-                    chips = parse_bracelet_size(value) or parse_necklace_length(value)
+                    chips = parse_bracelet_size(value, _denom) or parse_necklace_length(value)
                     for chip in chips:
                         if chip not in seen_sizes:
                             seen_sizes.add(chip)
                             sizes.append(chip)
                 elif name == "size" and re.search(r'\d+\s*(mm|cm)', value, re.I):
-                    chips = parse_bracelet_size(value) or parse_necklace_length(value)
+                    chips = parse_bracelet_size(value, _denom) or parse_necklace_length(value)
                     for chip in chips:
                         if chip not in seen_sizes:
                             seen_sizes.add(chip)
@@ -644,9 +700,8 @@ class SilverbeneAdapter(SupplierAdapter):
                     if _size_chip and _size_chip not in seen_sizes:
                         seen_sizes.add(_size_chip)
                         sizes.append(_size_chip)
-                    if _color_part and _color_part not in seen_colors:
-                        seen_colors.add(_color_part)
-                        colors.append(_color_part)
+                    if _color_part:
+                        _color_parts_this_option.append(_color_part)
                 elif name in SIZE_ATTRIBUTE_NAMES:
                     value = " ".join(value.split())
                     # Normalise any adjustable/open-ring variant to a single consistent label
@@ -665,23 +720,63 @@ class SilverbeneAdapter(SupplierAdapter):
                         seen_sizes.add(value)
                         sizes.append(value)
                 elif name in COLOR_ATTRIBUTE_NAMES:
-                    display = _clean_color_value(value)
-                    if display and display not in seen_colors:
-                        seen_colors.add(display)
-                        colors.append(display)
+                    # A comma-separated value with no measurement bundles a metal
+                    # with a real second descriptor (stone color, grade, etc.) or
+                    # pure noise ("Single Piece") — combine into one unique,
+                    # matchable chip rather than a raw, unsplit compound string.
+                    # A comma inside parentheses ("Rhodium (Pendant Only,)") is
+                    # punctuation, not a second attribute — stays on the plain path.
+                    # normalize_rhodium=False: leave a literal "Rhodium" as-is here
+                    # so _to_standard()'s Step 1 (_normalize_finish_terms) can still
+                    # see it and decide, per-product from the description, whether
+                    # it becomes "Silver" or "White Gold" — collapsing it here first
+                    # would erase that choice before Step 1 ever runs.
+                    part = (_clean_compound_color(value) if _is_compound_color_candidate(value)
+                            else _normalize_color_final(_clean_plain_color(value), name, normalize_rhodium=False))
+                    if part:
+                        _color_parts_this_option.append(part)
+                    elif value.lower().strip() in _CATEGORY_PREFIXES and value not in _seen_bare:
+                        _seen_bare.add(value)
+                        _bare_category_values.append(value)
+
+            # Combine every real color-type attribute this option carries (e.g. a
+            # separate metal "Color" + gem "Main Stone") into ONE display chip —
+            # Silverbene prices the pairing as a single choice, never as two
+            # independent selectors, so two options that differ only in stone must
+            # never collapse into the same metal-only chip.
+            # A suffix (post/gauge spec, pendant-style) only ever means anything
+            # attached to a real color — an option with NO real color-type
+            # attribute at all (e.g. a chain priced only by width/finish under a
+            # nonstandard attribute name) must stay uncaptured here, exactly as
+            # before _detect_option_suffix existed, not have the suffix text
+            # itself masquerade as a fake color.
+            display = ' · '.join(_color_parts_this_option)
+            if _chain_style_suffix and display:
+                display = f'{display} · {_chain_style_suffix}'
+            if display and display not in seen_colors:
+                seen_colors.add(display)
+                colors.append(display)
+
+        # Rescue: nothing else ever counted as a color, but this product's
+        # Color attribute genuinely varies between real category words — that
+        # variation IS the choice (see comment above), not noise to discard.
+        if not colors and len(_bare_category_values) >= 2:
+            colors = _bare_category_values
 
         return sizes or None, colors or None
 
-    def _normalize_finish_terms(self, colors: list, desc: str) -> list:
+    def _rhodium_display_name(self, desc: str) -> str:
         """
-        Silverbene's option attributes use technical names ('Rhodium') but their product
-        descriptions use customer-facing names ('White Gold Color'). Read 'Metal Color
-        Available' and 'Metal Electroplating' from the raw desc to prefer the term
-        Silverbene actually shows to customers.
+        Rhodium plating normally displays as "Silver" (_normalize_color_final's
+        default), but Silverbene's product descriptions sometimes explicitly
+        advertise the same plating as "White Gold" instead (via 'Metal Color
+        Available' / 'Metal Electroplating'). Returns "White Gold" when this
+        product's description says so, else "Silver" — the caller applies this
+        consistently everywhere Rhodium gets normalized for this product (both
+        the customer-facing colors list and the raw variant attributes), so
+        display and order-time raw-data matching never disagree.
         """
-        text = re.sub(r'<[^>]+>', ' ', desc)
-
-        # Extract customer-facing finish list from desc
+        text = re.sub(r'<[^>]+>', ' ', desc or '')
         desc_finishes = []
         for pattern in [
             r'Metal\s+Color\s+Available\s*[:\-]\s*([^\n<]{2,100})',
@@ -692,17 +787,24 @@ class SilverbeneAdapter(SupplierAdapter):
                 desc_finishes.extend(
                     c.strip() for c in re.split(r'[,/]', m.group(1)) if c.strip()
                 )
-
-        if not desc_finishes:
-            return colors  # no desc data — keep option attribute terms as-is
-
-        # Check if desc says "White Gold" where we stored "Rhodium"
         desc_lower = ' '.join(f.lower() for f in desc_finishes)
-        has_white_gold_in_desc = 'white gold' in desc_lower
+        return "White Gold" if 'white gold' in desc_lower else "Silver"
 
+    def _normalize_finish_terms(self, colors: list, rhodium_display: str) -> list:
+        """
+        Silverbene's option attributes use the technical name 'Rhodium'; replace it
+        with rhodium_display (see _rhodium_display_name) wherever it appears in the
+        customer-facing colors list. Must run even when rhodium_display is the
+        default "Silver" — _normalize_color_final only normalizes a color value
+        that IS "Rhodium" outright, never a "Rhodium" buried as the 2nd+ part of a
+        compound value (e.g. "Green Stone · Rhodium"; _clean_compound_color only
+        normalizes the 1st part). Skipping this for the "Silver" case left compound
+        colors permanently un-normalized in the display list while Step 3 below
+        normalizes the exact same text in the raw attributes, so the two diverged
+        and a customer's displayed chip stopped matching anything at order time.
+        """
         return [
-            # Replace "Rhodium" with "White Gold" when desc explicitly uses "White Gold"
-            re.sub(r'\bRhodium\b', 'White Gold', c) if has_white_gold_in_desc and re.search(r'\bRhodium\b', c) else c
+            _RHODIUM_TOKEN_RE.sub(rhodium_display, c) if _RHODIUM_TOKEN_RE.search(c) else c
             for c in colors
         ]
 
@@ -1082,6 +1184,10 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
 
     want_size  = (selected_size  or "").strip()
     want_color = (selected_color or "").strip()
+    # Mirror _extract_variants(): normally half-inch chips, escalating to
+    # quarter-inch only when this product's own real sizes would otherwise
+    # collide into the same chip.
+    _denom = _bracelet_size_denom(variants)
 
     def attr_size(attrs):
         for a in attrs:
@@ -1092,13 +1198,13 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
                 normalized = _normalize_size_for_match(v)
                 if re.search(r'\d+\s*(mm|cm)', v, re.I):
                     # Try bracelet range first, then necklace
-                    chips = parse_bracelet_size(v) or parse_necklace_length(v)
+                    chips = parse_bracelet_size(v, _denom) or parse_necklace_length(v)
                     if chips:
                         normalized = chips[0]
                 return normalized
             if aname in ("chain length", "length") and re.search(r'\d+\s*(mm|cm)', a.get("value", ""), re.I):
                 v = a.get("value", "").strip()
-                chips = parse_bracelet_size(v) or parse_necklace_length(v)
+                chips = parse_bracelet_size(v, _denom) or parse_necklace_length(v)
                 if chips:
                     return chips[0]
         # No dedicated size attribute — Silverbene sometimes bundles the real
@@ -1115,14 +1221,37 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
         return None
 
     def attr_color(attrs):
+        _suffix = _detect_option_suffix(attrs)
+        parts = []
         for a in attrs:
-            if a.get("name", "").lower() in COLOR_ATTRIBUTE_NAMES:
-                v = a.get("value", "").strip()
-                if re.search(r'\d+\s*(mm|cm)', v, re.I):
-                    color_part, _ = _split_color_and_size(v)
-                    return color_part
-                return _clean_color_value(v)
-        return None
+            if a.get("name", "").lower() not in COLOR_ATTRIBUTE_NAMES:
+                continue
+            v = a.get("value", "").strip()
+            if not v:
+                continue
+            if re.search(r'\d+\s*(mm|cm)', v, re.I):
+                color_part, _ = _split_color_and_size(v)
+            elif _is_compound_color_candidate(v):
+                color_part = _clean_compound_color(v)
+            else:
+                cleaned = _clean_plain_color(v)
+                # An exact category word ("Anklet", "Necklace") normally
+                # cleans to "" as noise, but _extract_variants() rescues it
+                # as the real color when it's the only thing that varies —
+                # fall back to the raw word so this stays consistent with
+                # whatever the customer actually selected in that case.
+                color_part = cleaned or v
+            if color_part:
+                parts.append(color_part)
+        # Combine every real color-type attribute this option carries (e.g. a
+        # separate metal "Color" + gem "Main Stone") into ONE string, mirroring
+        # _extract_variants() so a customer's exact selection always resolves.
+        # A suffix only ever means anything attached to a real color — see
+        # _extract_variants() for why a bare suffix must never stand in alone.
+        display = ' · '.join(parts)
+        if _suffix and display:
+            display = f'{display} · {_suffix}'
+        return display or None
 
     def color_matches(api_raw: str, want: str) -> bool:
         """
@@ -1194,13 +1323,59 @@ def _snap_inch(mm: int) -> str:
     return MM_TO_INCHES[best]  # already includes the " suffix
 
 
-def _snap_bracelet_inch(mm: float) -> str:
-    """Snap mm to nearest 0.5-inch, return display string e.g. '7\"'."""
+def _snap_bracelet_inch(mm: float, denom: int = 2) -> str:
+    """
+    Snap mm to the nearest 1/denom inch, return display string e.g. '7"'.
+    denom=2 (default, half-inch) is the normal customer-facing granularity.
+    denom=4 (quarter-inch) is used only when two genuinely different real
+    Silverbene sizes for the same product would otherwise collide into the
+    same half-inch label (see _bracelet_size_denom).
+    """
     inches = mm / 25.4
-    snapped = round(inches * 2) / 2
-    if snapped == int(snapped):
-        return f'{int(snapped)}"'
-    return f'{snapped}"'
+    snapped = round(inches * denom) / denom
+    whole = int(snapped)
+    if denom <= 2:
+        if snapped == whole:
+            return f'{whole}"'
+        return f'{snapped}"'
+    quarters = round((snapped - whole) * 4) % 4
+    if quarters == 0:
+        return f'{whole}"'
+    _QUARTER_SYMBOLS = {1: '¼', 2: '½', 3: '¾'}
+    return f'{whole}{_QUARTER_SYMBOLS[quarters]}"'
+
+
+def _bracelet_size_denom(variants: list) -> int:
+    """
+    Determine the finest 1/denom-inch granularity actually needed to keep every
+    real, distinct Silverbene bracelet/anklet size value visually unique for
+    this product. Defaults to the usual half-inch (denom=2); only escalates to
+    quarter-inch (denom=4) when two genuinely different real sizes would
+    otherwise collide into the same customer-facing chip (e.g. 160mm and
+    170mm both round to "6.5\"" at half-inch precision but are two separate,
+    differently-priced Silverbene options — confirmed against live Silverbene
+    data for "Diamond Wheat Sheaf Bracelet", SKU SPZB_636352691391).
+    Rare in practice (1 of 52 bracelet/anklet products in the catalog as of
+    2026-07-12) — every other product keeps its normal half-inch chips.
+    """
+    mm_values = set()
+    for v in variants or []:
+        for a in v.get("attribute", []):
+            name = a.get("name", "").lower().strip()
+            val = a.get("value", "").strip()
+            if name in BRACELET_SIZE_ATTR_NAMES or name in ("size", "chain length", "length"):
+                m = re.search(r'(\d+(?:\.\d+)?)\s*(mm|cm)', val, re.I)
+                if m:
+                    num, unit = float(m.group(1)), m.group(2).lower()
+                    mm = num * 10 if unit == "cm" else num
+                    if 100 <= mm <= 260:
+                        mm_values.add(round(mm, 1))
+    if len(mm_values) < 2:
+        return 2
+    for denom in (2, 4):
+        if len({_snap_bracelet_inch(mm, denom) for mm in mm_values}) == len(mm_values):
+            return denom
+    return 4
 
 
 # ── Ring size conversion (mm inner diameter → US size) ───────────────────────
@@ -1271,7 +1446,7 @@ def open_ring_size_text(specs: dict, desc: str = "") -> str:
     return "Adjustable · fits US 5-8"
 
 
-def parse_bracelet_size(length_str: str) -> list:
+def parse_bracelet_size(length_str: str, denom: int = 2) -> list:
     """
     Convert a Silverbene bracelet length/wrist-size string to US customer-facing inch chips.
     Handles cm and mm values in bracelet range (100–260mm / 10–26cm).
@@ -1279,6 +1454,10 @@ def parse_bracelet_size(length_str: str) -> list:
 
     Silverbene attribute names routed here: wrist size, inner diameter, bracelet size,
     bracelet length, and 'length'/'size'/'color' attrs whose value is in bracelet range.
+
+    denom controls snapping granularity (2 = half-inch, the default; 4 = quarter-inch,
+    only used when _bracelet_size_denom() detects that half-inch would collide two
+    real, differently-priced sizes for the same product).
 
     Examples:
       "17cm"       → ['6.5"']
@@ -1314,8 +1493,8 @@ def parse_bracelet_size(length_str: str) -> list:
         b_mm = _to_mm(ext_m.group(1), b_unit)
         e_mm = _to_mm(ext_m.group(3), e_unit)
         if _BRACELET_RANGE_LO <= b_mm <= _BRACELET_RANGE_HI:
-            lo = _snap_bracelet_inch(b_mm)
-            hi = _snap_bracelet_inch(b_mm + e_mm)
+            lo = _snap_bracelet_inch(b_mm, denom)
+            hi = _snap_bracelet_inch(b_mm + e_mm, denom)
             return [lo] if lo == hi else [f'Adjustable {lo}–{hi}']
 
     # "16cm-20cm" or "160mm-200mm" — a range named in a single text field never
@@ -1331,7 +1510,7 @@ def parse_bracelet_size(length_str: str) -> list:
         lo_mm = _to_mm(range_m.group(1), range_m.group(2))
         hi_mm = _to_mm(range_m.group(3), range_m.group(4))
         if _BRACELET_RANGE_LO <= lo_mm <= _BRACELET_RANGE_HI:
-            lo, hi = _snap_bracelet_inch(lo_mm), _snap_bracelet_inch(hi_mm)
+            lo, hi = _snap_bracelet_inch(lo_mm, denom), _snap_bracelet_inch(hi_mm, denom)
             return [lo] if lo == hi else [f'Adjustable {lo}–{hi}']
 
     # Inner diameter (bangle sizing) → wrist circumference
@@ -1341,7 +1520,7 @@ def parse_bracelet_size(length_str: str) -> list:
             id_mm = _to_mm(m.group(1), m.group(2))
             circ_mm = _math.pi * id_mm
             if _BRACELET_RANGE_LO <= circ_mm <= _BRACELET_RANGE_HI:
-                return [_snap_bracelet_inch(circ_mm)]
+                return [_snap_bracelet_inch(circ_mm, denom)]
         return []
 
     # Single value: "17cm", "18 CM", "180mm", "17Cm"
@@ -1349,7 +1528,7 @@ def parse_bracelet_size(length_str: str) -> list:
     if single_m:
         mm = _to_mm(single_m.group(1), single_m.group(2))
         if _BRACELET_RANGE_LO <= mm <= _BRACELET_RANGE_HI:
-            return [_snap_bracelet_inch(mm)]
+            return [_snap_bracelet_inch(mm, denom)]
 
     return []
 
@@ -1559,6 +1738,108 @@ def _split_color_and_size(value: str, category: str = ""):
     if color_part and not re.search(r'[A-Za-z]', color_part):
         color_part = ''
     return color_part, size_chip
+
+
+_COLOR_NOISE_RE = re.compile(r'^(single(\s+piece)?|pair)$', re.I)
+_TRAILING_NOISE_RE = re.compile(r'\s*\b(single(\s+piece)?|pair)\s*$', re.I)
+
+
+def _is_compound_color_candidate(value: str) -> bool:
+    """
+    True when a comma in a Color value is a genuine separator between two
+    distinct descriptors (e.g. "18K Yellow Gold, White Stone") rather than
+    punctuation inside a parenthetical annotation (e.g. "Rhodium (Pendant
+    Only,)"), which must stay on the plain single-color cleaning path.
+    """
+    return ',' in value and '(' not in value and ')' not in value
+
+
+def _clean_compound_color(value: str) -> str:
+    """
+    Clean a Color attribute value that bundles multiple comma-separated
+    descriptors with no measurement in it — e.g. "18K Yellow Gold, White
+    Stone" (metal + stone color), "Rhodium, Single Piece" (metal + noise),
+    "Platinum Color, D Color Moissanite, 0.5 Carat" (metal + grade + carat).
+
+    Every real, non-noise part is kept and joined with " · " into ONE
+    combined, display-ready color string — rather than trying to split it
+    into two independent selectors (metal + stone) that can drift out of
+    sync with which combinations Silverbene actually priced. This way each
+    distinct priced option maps to exactly one unique, matchable chip.
+    Pure noise words that never represent a real choice ("Single Piece")
+    are dropped entirely.
+    """
+    parts = [p.strip() for p in value.split(',') if p.strip()]
+    if not parts:
+        return _clean_color_value(value)
+    cleaned_parts = []
+    for i, part in enumerate(parts):
+        if i == 0:
+            # Normalize the metal part the same way a plain (non-compound) value
+            # would be ("18K Yellow Gold" -> "Yellow Gold" etc). normalize_rhodium=
+            # False: a literal "Rhodium" here must survive uncollapsed so
+            # _to_standard()'s Step 1 (_normalize_finish_terms) can still see it and
+            # decide, per-product from the description, "Silver" vs "White Gold" —
+            # by the time any other caller reads this (checkout, order tracker),
+            # raw variants have already had Step 3's write-back applied, so a
+            # literal "Rhodium" should never reach here again after that.
+            part = _normalize_color_final(_clean_color_value(part), "color", normalize_rhodium=False)
+        if not part or _COLOR_NOISE_RE.match(part):
+            continue
+        cleaned_parts.append(part)
+    return ' · '.join(cleaned_parts)
+
+
+def _clean_plain_color(value: str) -> str:
+    """
+    Clean a non-compound Color value — strips a trailing noise word Silverbene
+    sometimes appends with no comma at all (e.g. "Rhodium Single" — the same
+    "Single Piece" noise _clean_compound_color drops, just missing its comma)
+    before the usual category-prefix strip. Friendly-name normalization
+    ("Rhodium" -> "Silver") happens at the same outer layer as every other
+    plain color value, not here.
+    """
+    return _clean_color_value(_TRAILING_NOISE_RE.sub('', value).strip())
+
+
+_CHAIN_STYLE_ONLY_RE = re.compile(r'pendant\s+only|no\s+chain|without\s+chain', re.I)
+_CHAIN_STYLE_WITH_RE = re.compile(
+    r'pendant\s*[,+]?\s*(and\s+|\+\s*)?necklace|with\s+chain|includes?\s+chain|chain\s+included',
+    re.I,
+)
+_SPEC_VALUE_RE = re.compile(r'\d+(\.\d+)?\s*mm', re.I)
+_OPTION_SUFFIX_SKIP_NAMES = COLOR_ATTRIBUTE_NAMES | SIZE_ATTRIBUTE_NAMES | BRACELET_SIZE_ATTR_NAMES
+
+
+def _detect_option_suffix(attrs: list) -> str | None:
+    """
+    Some options carry a second, real price-differentiating choice under an
+    attribute name Silverbene never standardizes (never Color or Size):
+      - necklaces: "pendant only, no chain" vs "pendant + full necklace"
+        (e.g. under "Purity", "Style")
+      - earrings/studs: a post or bar spec — gauge, post length, bar length —
+        shared across options that otherwise have an identical Color value
+        (e.g. "Post Size": "1.2mm x 6mm Post" vs "1.2mm x 8mm Post"; "Gauge
+        And Length": "1.0mm Gauge, 6mm Bar" vs "1.0mm Gauge, 8mm Bar" —
+        confirmed against live Silverbene data for products 1000, 1002, 1016,
+        which otherwise collide two differently-priced options into one
+        indistinguishable chip and silently resolve to the wrong option_id)
+    Scan an option's other attributes for either and return a label to fold
+    into the color chip so the options stay unique — or None if this option
+    carries neither.
+    """
+    for a in attrs:
+        name = (a.get("name") or "").lower().strip()
+        val = (a.get("value") or "").strip()
+        if not val or name in _OPTION_SUFFIX_SKIP_NAMES:
+            continue
+        if _CHAIN_STYLE_ONLY_RE.search(val):
+            return "Pendant Only"
+        if _CHAIN_STYLE_WITH_RE.search(val):
+            return "With Necklace"
+        if _SPEC_VALUE_RE.search(val):
+            return ' · '.join(p.strip() for p in val.split(',') if p.strip())
+    return None
 
 
 def _parse_chain_length_from_desc(desc: str, category: str = "") -> list:

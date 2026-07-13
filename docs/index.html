@@ -2019,7 +2019,13 @@ async function openPP(id){
   const colorChips=colors.filter(c=>typeof c==='string');
   if(colorChips.length){
     const processed=colorChips.map(c=>processVariant(c));
-    const variantNote=processed.map(p=>p.note).find(n=>n)||null;
+    // Only show this disclaimer when it applies to EVERY option (e.g. every chip
+    // is genuinely pendant-only, no chain-included alternative exists at all) —
+    // a mix (some "Pendant Only", some "With Necklace") means the customer has a
+    // real choice, and the per-chip label already says which is which; a blanket
+    // note in that case would wrongly suggest none of them include the chain.
+    const notes=processed.map(p=>p.note);
+    const variantNote=(notes.length&&notes[0]&&notes.every(n=>n===notes[0]))?notes[0]:null;
     if(variantNote){noteEl.textContent=variantNote;noteEl.style.display='block';}
     const allSku=processed.every(p=>p.isSku);
     const realChips=processed.filter(p=>!p.isSku).map(p=>p.display);
@@ -2252,7 +2258,7 @@ async function openPP(id){
     atcBtn.disabled=true;
     atcBtn.textContent='Added to Cart ✓';
     atcBtn.style.background='#22c55e';
-    const effectiveColor=ppSelectedColor&&ppSelectedStone?`${ppSelectedColor} · ${ppSelectedStone}`:ppSelectedColor||ppSelectedStone||null;
+    const effectiveColor=[ppSelectedColor,ppSelectedStone,ppSelectedWidth].filter(Boolean).join(' · ')||null;
     addToCart(p.id, cleanName(p.name), ppSelectedSize, effectiveColor, ppSelectedOptionId);
     setTimeout(()=>{
       if(!p.stock||p.stock===0)return;
@@ -2331,23 +2337,43 @@ function ppNavPrev(){if(ppNavIdx>0){ppOpening=false;openPP(ppNavList[ppNavIdx-1]
 function ppNavNext(){if(ppNavIdx>=0&&ppNavIdx<ppNavList.length-1){ppOpening=false;openPP(ppNavList[ppNavIdx+1].id);}}
 function updateVariantPrice(){
   if(!ppVariantPrices.length){ ppSelectedOptionId=null; return; }
-  const wantSize     = ppSelectedSize     || null;
-  // Use raw API value for color matching (display label ≠ API value for mapped colors
-  // like "pink" → "Rose Gold". data-raw stores what Silverbene actually sends.)
-  const wantColorRaw = ppSelectedColorRaw || ppSelectedColor || null;
+  const wantSize = ppSelectedSize || null;
+  // Every non-size selector the customer has currently made. The product panel
+  // can show up to three independent selector groups beyond size — Color
+  // (ppSelectedColor/Raw), a second dimension like gemstone or style
+  // (ppSelectedStone), and chain width (ppSelectedWidth) — depending on which
+  // chip layout this product's data triggered. Collect whichever are actually
+  // active; never assume a fixed number of dimensions per product.
+  // Use raw API values where available (data-raw = what Silverbene actually
+  // sends) so this matches v.color's real text, not a display-mapped label
+  // like "pink" → "Rose Gold". Each of these three can itself already BE a
+  // full "·"-joined combined string (e.g. a product whose chips render as one
+  // flat chip per full option, like "White Gold · D Color Moissanite · With
+  // Necklace") rather than a single bare value — split every one of them on
+  // "·" too, so a whole flat chip's text still matches piece-by-piece against
+  // v.color's own split parts instead of never matching at all.
+  const wantParts = [ppSelectedColorRaw||ppSelectedColor, ppSelectedStone, ppSelectedWidth]
+    .filter(Boolean).flatMap(s=>s.split('·')).map(s=>s.toLowerCase().trim()).filter(Boolean);
+  // The backend (/variant-prices) joins every real attribute an option carries
+  // into one "·"-separated string (see silverbene_adapter.py's _extract_variants /
+  // resolve_option_id — same separator, same idea). Split it back into parts and
+  // require every one of the customer's active selections to appear among them,
+  // order-independent — so it doesn't matter which chip group (color/stone/width)
+  // a given selection came from, or in what order this product's data joins them.
   const colorEq = (v) => {
-    if(!v.color || !wantColorRaw) return false;
-    return v.color.toLowerCase() === wantColorRaw.toLowerCase();
+    if(!v.color) return wantParts.length===0;
+    const vParts = v.color.toLowerCase().split('·').map(s=>s.trim());
+    return wantParts.every(want=>vParts.includes(want));
   };
   let match = null;
-  // Pass 1: exact size + color
-  if(wantSize && wantColorRaw) match = ppVariantPrices.find(v=>v.size===wantSize && colorEq(v));
+  // Pass 1: exact size + every active selector
+  if(wantSize && wantParts.length) match = ppVariantPrices.find(v=>v.size===wantSize && colorEq(v));
   // Pass 2: size only
-  if(!match && wantSize)       match = ppVariantPrices.find(v=>v.size===wantSize);
-  // Pass 3: color only
-  if(!match && wantColorRaw)   match = ppVariantPrices.find(v=>colorEq(v));
+  if(!match && wantSize)           match = ppVariantPrices.find(v=>v.size===wantSize);
+  // Pass 3: every active selector, any size
+  if(!match && wantParts.length)   match = ppVariantPrices.find(v=>colorEq(v));
   // Pass 4: first variant
-  if(!match)                   match = ppVariantPrices[0];
+  if(!match)                       match = ppVariantPrices[0];
   if(!match){ ppSelectedOptionId=null; return; }
   // This is the exact Silverbene option_id for the customer's current selection —
   // carried straight through to cart/checkout so the backend never has to re-guess

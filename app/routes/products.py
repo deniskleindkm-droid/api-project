@@ -189,6 +189,8 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
     from app.agents.suppliers.silverbene_adapter import (
         _normalize_size_for_match, _normalize_color_final,
         _clean_color_value, _split_color_and_size,
+        _clean_compound_color, _clean_plain_color, _is_compound_color_candidate,
+        _detect_option_suffix,
         COLOR_ATTRIBUTE_NAMES, BRACELET_SIZE_ATTR_NAMES,
         parse_necklace_length, parse_bracelet_size,
     )
@@ -202,6 +204,9 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
     except Exception:
         return []
 
+    from app.agents.suppliers.silverbene_adapter import _bracelet_size_denom
+    _denom = _bracelet_size_denom(variants)
+
     result = []
     for v in variants:
         bp = v.get("base_price") or v.get("price")
@@ -212,36 +217,57 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
 
         attrs = v.get("attribute") or v.get("attributes") or []
         size = None
-        color = None
+        _chain_suffix = _detect_option_suffix(attrs)
+        _color_parts = []
         for a in attrs:
             name = (a.get("name") or "").lower().strip()
             val  = (a.get("value") or "").strip()
             if name in BRACELET_SIZE_ATTR_NAMES:
-                chips = parse_bracelet_size(val)
+                chips = parse_bracelet_size(val, _denom)
                 size = chips[0] if chips else val
             elif name in ("size", "ring size", "bracelet size", "anklet size"):
                 size = _normalize_size_for_match(val)
                 if not size and val:
-                    chips = parse_bracelet_size(val) or parse_necklace_length(val)
+                    chips = parse_bracelet_size(val, _denom) or parse_necklace_length(val)
                     size = chips[0] if chips else None
             elif name in ("chain length", "length") and val:
-                chips = parse_bracelet_size(val) or parse_necklace_length(val)
+                chips = parse_bracelet_size(val, _denom) or parse_necklace_length(val)
                 if chips:
                     size = chips[0]
-            elif name in COLOR_ATTRIBUTE_NAMES:
+            elif name in COLOR_ATTRIBUTE_NAMES and val:
                 if _re.search(r'\d+\s*(mm|cm)', val, _re.I):
                     # Measurement bundled into the Color attr (hoop diameter, tube
                     # width, bracelet extension) — split it the same way
                     # _extract_variants() does so size/color here always agree
                     # with what p.sizes/p.colors and the frontend chips show.
                     color_part, size_chip = _split_color_and_size(val)
-                    color = _normalize_color_final(color_part, name)
+                    part = _normalize_color_final(color_part, name)
                     if size_chip and not size:
                         size = size_chip
+                elif _is_compound_color_candidate(val):
+                    # Comma-compound with no measurement (metal + stone color, metal +
+                    # grade, etc.) — combine into one unique chip the same way
+                    # _extract_variants() does, so this always agrees with p.colors.
+                    part = _clean_compound_color(val)
                 else:
                     # Use the same fully-normalized value that p.colors stores —
                     # _normalize_color_final turns "Rhodium"→"Silver", "Pink"→"Rose Gold", etc.
-                    color = _normalize_color_final(_clean_color_value(val), name)
+                    # An exact category word ("Anklet","Necklace") normally cleans to ""
+                    # as noise, but _extract_variants() rescues it as the real color
+                    # when it's the only thing that varies — fall back to the raw word
+                    # so this endpoint stays consistent with p.colors in that case.
+                    part = _normalize_color_final(_clean_plain_color(val), name) or val
+                if part:
+                    _color_parts.append(part)
+        # Combine every real color-type attribute this option carries (e.g. a
+        # separate metal "Color" + gem "Main Stone") into ONE chip, mirroring
+        # _extract_variants() so this endpoint always agrees with p.colors. A
+        # suffix only ever means anything attached to a real color — see
+        # _extract_variants() for why a bare suffix must never stand in alone.
+        color = ' · '.join(_color_parts)
+        if _chain_suffix and color:
+            color = f'{color} · {_chain_suffix}'
+        color = color or None
 
         result.append({
             "option_id":   v.get("option_id"),

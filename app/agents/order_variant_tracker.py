@@ -37,6 +37,11 @@ from app.agents.suppliers.silverbene_adapter import (
     _normalize_color_final,
     _clean_color_value,
     _split_color_and_size,
+    _clean_compound_color,
+    _clean_plain_color,
+    _is_compound_color_candidate,
+    _bracelet_size_denom,
+    _detect_option_suffix,
     _COLOR_LABEL_REVERSE,
     parse_necklace_length,
     parse_bracelet_size,
@@ -167,7 +172,7 @@ def _run_check(*, order_id, silverbene_order_id, product_id, product_name,
 
     # Extract what the sent variant actually is
     attrs = sent_variant.get("attribute") or sent_variant.get("attributes") or []
-    actual_size  = _extract_size(attrs)
+    actual_size  = _extract_size(attrs, variants)
     actual_color = _extract_color(attrs)
 
     record.variant_size  = actual_size
@@ -223,21 +228,25 @@ def _run_check(*, order_id, silverbene_order_id, product_id, product_name,
 
 # ── Attribute extraction ───────────────────────────────────────────────────────
 
-def _extract_size(attrs: list) -> str | None:
+def _extract_size(attrs: list, variants: list | None = None) -> str | None:
+    # Mirror _extract_variants(): normally half-inch chips, escalating to
+    # quarter-inch only when this product's own real sizes would otherwise
+    # collide into the same chip.
+    denom = _bracelet_size_denom(variants) if variants else 2
     for a in attrs:
         name = (a.get("name") or "").lower().strip()
         val  = (a.get("value") or "").strip()
         if name in BRACELET_SIZE_ATTR_NAMES:
-            chips = parse_bracelet_size(val)
+            chips = parse_bracelet_size(val, denom)
             return chips[0] if chips else val
         if name in ("size", "ring size", "bracelet size", "anklet size"):
             normalized = _normalize_size_for_match(val)
             if not normalized and val:
-                chips = parse_bracelet_size(val) or parse_necklace_length(val)
+                chips = parse_bracelet_size(val, denom) or parse_necklace_length(val)
                 return chips[0] if chips else val
             return normalized
         if name in ("chain length", "length") and val:
-            chips = parse_bracelet_size(val) or parse_necklace_length(val)
+            chips = parse_bracelet_size(val, denom) or parse_necklace_length(val)
             if chips:
                 return chips[0]
     # Mirror _extract_variants(): Silverbene sometimes bundles the real size
@@ -253,16 +262,36 @@ def _extract_size(attrs: list) -> str | None:
 
 
 def _extract_color(attrs: list) -> str | None:
+    suffix = _detect_option_suffix(attrs)
+    parts = []
     for a in attrs:
         name = (a.get("name") or "").lower().strip()
         val  = (a.get("value") or "").strip()
-        if name in COLOR_ATTRIBUTE_NAMES:
-            if re.search(r'\d+\s*(mm|cm)', val, re.I):
-                color_part, _ = _split_color_and_size(val)
-                return _normalize_color_final(color_part, name) or None
-            cleaned = _clean_color_value(val)
-            return _normalize_color_final(cleaned, name) or None
-    return None
+        if name not in COLOR_ATTRIBUTE_NAMES or not val:
+            continue
+        if re.search(r'\d+\s*(mm|cm)', val, re.I):
+            color_part = _normalize_color_final(_split_color_and_size(val)[0], name)
+        elif _is_compound_color_candidate(val):
+            color_part = _clean_compound_color(val)
+        else:
+            cleaned = _clean_plain_color(val)
+            # An exact category word ("Anklet","Necklace") normally cleans to ""
+            # as noise, but _extract_variants() rescues it as the real color when
+            # it's the only thing that varies — fall back to the raw word so this
+            # safety check stays consistent with what was actually sent.
+            color_part = _normalize_color_final(cleaned, name) or val
+        if color_part:
+            parts.append(color_part)
+    # Combine every real color-type attribute this option carries (e.g. a
+    # separate metal "Color" + gem "Main Stone") into ONE string, mirroring
+    # _extract_variants() so this safety check always agrees with the chip
+    # the customer actually clicked. A suffix only ever means anything attached
+    # to a real color — see _extract_variants() for why a bare suffix must
+    # never stand in alone.
+    display = ' · '.join(parts)
+    if suffix and display:
+        display = f'{display} · {suffix}'
+    return display or None
 
 
 # ── Match helpers ──────────────────────────────────────────────────────────────
