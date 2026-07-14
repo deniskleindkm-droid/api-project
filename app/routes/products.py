@@ -59,6 +59,20 @@ def _size_display_meta(p) -> dict:
         badge = open_ring_size_text(specs)
         return {"size_label": label, "size_hint": badge, "size_display_mode": "open_badge"}
 
+    # Bangles are sized by inner diameter, not wrist length — a rigid band's
+    # diameter and a chain's wrist circumference are different measurements
+    # (see silverbene_adapter._extract_bracelet_info_from_desc), so bangles
+    # never get a "Bracelet Length" selector. Surface the real diameter as its
+    # own badge instead of silently hiding the size section.
+    if category == "Bracelets" and not sizes:
+        try:
+            specs = _json.loads(p.specs or "{}")
+        except Exception:
+            specs = {}
+        inner_diameter = specs.get("inner_diameter")
+        if inner_diameter:
+            return {"size_label": "Inner Diameter", "size_hint": inner_diameter, "size_display_mode": "open_badge"}
+
     # Most earrings/ear cuffs are sold as a fixed pair with no real size choice —
     # only show a selector for the minority that do have genuine, price-backed
     # size options (e.g. hoop diameter, stud size).
@@ -227,9 +241,17 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
                 size = chips[0] if chips else val
             elif name in ("size", "ring size", "bracelet size", "anklet size"):
                 size = _normalize_size_for_match(val)
-                if not size and val:
+                # A raw "15cm"/"16Cm" value has no US/Size/No. prefix, so
+                # _normalize_size_for_match() returns it unchanged (truthy) —
+                # never skip the mm/cm→inch conversion just because that
+                # returned something. Mirrors attr_size() in
+                # resolve_option_id(), which this endpoint must always agree
+                # with (same size chip shown in the selector must resolve to
+                # the same variant here for the price to actually update).
+                if val and _re.search(r'\d+\s*(mm|cm)', val, _re.I):
                     chips = parse_bracelet_size(val, _denom) or parse_necklace_length(val)
-                    size = chips[0] if chips else None
+                    if chips:
+                        size = chips[0]
             elif name in ("chain length", "length") and val:
                 chips = parse_bracelet_size(val, _denom) or parse_necklace_length(val)
                 if chips:

@@ -22,7 +22,8 @@ CATEGORY_KEYWORDS = {
     "Rings":     ["ring", "925 ring", "adjustable ring", "silver statement ring",
                   "sterling silver band ring", "925 silver gemstone ring", "women ring size"],
     "Necklaces": ["necklace", "pendant", "chain", "lariat", "choker", "collar"],
-    "Bracelets": ["bracelet", "chain bracelet", "link bracelet", "tennis bracelet"],
+    "Bracelets": ["bracelet", "chain bracelet", "link bracelet", "tennis bracelet",
+                  "bangle", "bangle bracelet", "open bangle"],
     "Earrings":  ["earring", "stud earring", "drop earring"],
     "Anklets":   ["anklet"],
     "Ear Cuffs": ["ear cuff", "cartilage earring", "no piercing ear"],
@@ -31,6 +32,41 @@ CATEGORY_KEYWORDS = {
 # Values Silverbene puts in the Color attribute that are actually product-type descriptors.
 # Strip these prefixes before storing as a display color.
 _CATEGORY_PREFIXES = {"anklet", "bracelet", "necklace", "ring", "earring", "pendant", "chain"}
+
+# A bangle is a rigid (or semi-rigid, cast-open) band — sized by inner diameter,
+# not by a flexible wrist-length measurement. Silverbene's own title/description
+# always says "bangle" outright when a bracelet is this style; never inferred
+# from shape/material, since a wrong guess would apply the wrong size math
+# (circumference-from-diameter vs. a direct wrist length) to a real chain bracelet.
+_BANGLE_WORD_RE = re.compile(r'\bbangle\b', re.I)
+_BRACELET_WORD_RE = re.compile(r'\bbracelet\b', re.I)
+
+
+def is_bangle_product(title: str, desc: str = "") -> bool:
+    """True if Silverbene's own title or raw description identifies this bracelet
+    as a bangle. Ground truth only — never guessed from shape/material words."""
+    return bool(_BANGLE_WORD_RE.search(title or "") or _BANGLE_WORD_RE.search(desc or ""))
+
+
+def ensure_bangle_bracelet_naming(name: str, category: str, is_bangle: bool) -> str:
+    """
+    A bangle's display name must contain BOTH "Bangle" and "Bracelet" — the shape
+    and the storefront category — never just one. Silverbene's raw titles and our
+    own shortened names are inconsistent about including either word, so this is
+    the single place that guarantees "... Bangle Bracelet" for every bangle,
+    regardless of what ARIA's rewrite or the raw title happened to keep.
+    """
+    if category != "Bracelets" or not is_bangle or not name:
+        return name
+    has_bangle = bool(_BANGLE_WORD_RE.search(name))
+    has_bracelet = bool(_BRACELET_WORD_RE.search(name))
+    if has_bangle and has_bracelet:
+        return name
+    if has_bracelet:
+        return _BRACELET_WORD_RE.sub("Bangle Bracelet", name, count=1)
+    if has_bangle:
+        return _BANGLE_WORD_RE.sub("Bangle Bracelet", name, count=1)
+    return f"{name} Bangle Bracelet"
 
 # Attribute names Silverbene uses per category type
 SIZE_ATTRIBUTE_NAMES = {"size", "ring size", "length", "bracelet size", "anklet size", "chain length"}
@@ -557,10 +593,13 @@ class SilverbeneAdapter(SupplierAdapter):
         # For bracelets, use the full intelligent extractor which also returns width.
         _raw_desc_for_len = raw.get("description", "") or raw.get("desc", "")
         _bracelet_width = None
+        _bangle_inner_diameter = None
+        _is_bangle = category == "Bracelets" and is_bangle_product(raw.get("title", ""), _raw_desc_for_len)
         if category == "Bracelets":
-            _binfo = _extract_bracelet_info_from_desc(_raw_desc_for_len)
+            _binfo = _extract_bracelet_info_from_desc(_raw_desc_for_len, is_bangle=_is_bangle)
             desc_lengths = _binfo["sizes"]
             _bracelet_width = _binfo.get("width")
+            _bangle_inner_diameter = _binfo.get("inner_diameter")
         else:
             desc_lengths = _parse_chain_length_from_desc(_raw_desc_for_len, category=category)
         # Only use the description-derived length as a fallback when variant
@@ -584,6 +623,13 @@ class SilverbeneAdapter(SupplierAdapter):
                 specs["chain_length"] = sizes[0] if len(sizes) == 1 else " / ".join(sizes[:3])
             elif "chain_length" in specs and not sizes:
                 del specs["chain_length"]
+            # Bangles: show the real inner diameter as its own spec, never a
+            # derived "Bracelet Length" — a rigid band's diameter and a chain's
+            # wrist length are different measurements (see
+            # _extract_bracelet_info_from_desc's docstring).
+            if _bangle_inner_diameter:
+                specs["inner_diameter"] = _bangle_inner_diameter
+                specs.pop("chain_length", None)
         pendant_only = _is_pendant_only(raw_desc)
         if pendant_only:
             # Unconditional — a pendant-only listing must always show "Pendant Only"
@@ -1483,18 +1529,25 @@ def parse_bracelet_size(length_str: str, denom: int = 2) -> list:
     # Strip trailing descriptor words (e.g. "16+2cm Adjustable", "17cm Adjustable")
     s = re.sub(r'\s+(adjustable|adj\.?|extendable|extension)\s*$', '', s, flags=re.I).strip()
 
-    # "17+3" or "17cm+3cm" — chain + adjustor
+    # "17+3" or "17cm+3cm" — chain + one adjustor. Also handles Silverbene's
+    # double-extension format "150mm + 15mm + 15mm" (two "+"-joined segments,
+    # e.g. an extender chain on each side) — every segment after the base gets
+    # summed into one total extension rather than only the first being read
+    # and the rest silently dropped.
     ext_m = re.match(
-        r'^(\d+(?:\.\d+)?)\s*(cm|mm)?\s*\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)?$', s, re.I
+        r'^(\d+(?:\.\d+)?)\s*(cm|mm)?((?:\s*\+\s*\d+(?:\.\d+)?\s*(?:cm|mm)?)+)$', s, re.I
     )
     if ext_m:
         b_unit = ext_m.group(2) or "cm"
-        e_unit = ext_m.group(4) or b_unit
         b_mm = _to_mm(ext_m.group(1), b_unit)
-        e_mm = _to_mm(ext_m.group(3), e_unit)
+        ext_total_mm = 0
+        last_unit = b_unit
+        for num, unit in re.findall(r'\+\s*(\d+(?:\.\d+)?)\s*(cm|mm)?', ext_m.group(3), re.I):
+            last_unit = unit or last_unit
+            ext_total_mm += _to_mm(num, last_unit)
         if _BRACELET_RANGE_LO <= b_mm <= _BRACELET_RANGE_HI:
             lo = _snap_bracelet_inch(b_mm, denom)
-            hi = _snap_bracelet_inch(b_mm + e_mm, denom)
+            hi = _snap_bracelet_inch(b_mm + ext_total_mm, denom)
             return [lo] if lo == hi else [f'Adjustable {lo}–{hi}']
 
     # "16cm-20cm" or "160mm-200mm" — a range named in a single text field never
@@ -1918,7 +1971,18 @@ def _parse_chain_length_from_desc_bracelet(desc: str) -> list:
     return _extract_bracelet_info_from_desc(desc)["sizes"]
 
 
-def _extract_bracelet_info_from_desc(desc: str) -> dict:
+def _raw_mm_text(val: str):
+    """Extract a clean 'Xmm' string from a raw cm/mm value, converting cm→mm.
+    Returns None if no measurement is found."""
+    m = re.search(r'(\d+(?:\.\d+)?)\s*(mm|cm)', val, re.I)
+    if not m:
+        return None
+    num, unit = float(m.group(1)), m.group(2).lower()
+    mm = num * 10 if unit == "cm" else num
+    return f'{int(mm)}mm' if mm == int(mm) else f'{mm}mm'
+
+
+def _extract_bracelet_info_from_desc(desc: str, is_bangle: bool = False) -> dict:
     """
     Intelligently extract bracelet size and width from Silverbene HTML description.
 
@@ -1930,12 +1994,17 @@ def _extract_bracelet_info_from_desc(desc: str) -> dict:
       • "Bracelet Length: Adjustable"         → ["Adjustable"]
       • "Bracelet Type: Adjustable Sliding …" → ["Adjustable"]
       • "Closure: … Extension Chain …"        → ["Adjustable"]
-      • "Bangle Diameter: 60mm"               → [7"] (rigid bangle — inner diameter)
+      • "Bangle Diameter: 60mm"               → inner_diameter="60mm" (never a
+        wrist-length chip — see rationale below)
       • "Bangle Size: Open Size/Adjustable"   → ["Adjustable"] (cuff — flexes open)
       • Width: "Bracelet Width: 3mm", "Width: 3.7mm", "Chain Width: 3mm"
 
-    Returns {"sizes": [...], "width": "Xmm"}.
-    sizes == [] means no data found.
+    Returns {"sizes": [...], "width": "Xmm", "inner_diameter": "Xmm"|None}.
+    sizes == [] means no wrist-length data found. A rigid bangle's diameter is a
+    fundamentally different measurement from a bracelet's wrist length (across
+    the inside of a rigid band vs. around the wrist) — converting it to a
+    derived "Bracelet Length" circumference misrepresents the product, so it's
+    surfaced separately as inner_diameter and never mixed into sizes.
     """
     text = re.sub(r'<[^>]+>', ' ', desc)  # strip HTML tags for plain-text matching
 
@@ -1951,42 +2020,48 @@ def _extract_bracelet_info_from_desc(desc: str) -> dict:
 
     # ── 0. Rigid bangle diameter (highest confidence, distinct math) ─────────
     # A bangle doesn't stretch — its diameter is measured across the inside of
-    # the rigid band, so it converts to wrist size via circumference (π × ID),
-    # unlike a bracelet/chain length which IS the wrist measurement directly.
+    # the rigid band. Surfaced as its own inner_diameter spec, never converted
+    # into a "Bracelet Length" wrist-circumference chip (see docstring).
     m = re.search(r'[Bb]angle\s+[Dd]iameter[:\s]+([^<\n]{2,40})', desc, re.I)
     if m:
         val = m.group(1).strip()
         if _is_adjustable_no_dim(val):
-            return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text)}
-        chips = parse_bracelet_size(val + " inner diameter")
-        if chips:
-            return {"sizes": chips, "width": _extract_bracelet_width(text)}
+            return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text), "inner_diameter": None}
+        dia_mm = _raw_mm_text(val)
+        if dia_mm:
+            return {"sizes": [], "width": _extract_bracelet_width(text), "inner_diameter": dia_mm}
 
     m = re.search(r'[Bb]angle\s+[Ss]ize[:\s]+([^<\n]{2,40})', desc, re.I)
     if m:
         val = m.group(1).strip()
         if _is_adjustable_no_dim(val):
-            return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text)}
-        chips = parse_bracelet_size(val)
-        if chips:
-            return {"sizes": chips, "width": _extract_bracelet_width(text)}
+            return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text), "inner_diameter": None}
+        dia_mm = _raw_mm_text(val)
+        if dia_mm:
+            return {"sizes": [], "width": _extract_bracelet_width(text), "inner_diameter": dia_mm}
 
     # "Adjustable Size: Approximately 60mm" — ambiguous label Silverbene uses
-    # for both stretchy chains (a real wrist-range value) and rigid cuffs (an
-    # inner diameter too small to be a wrist circumference). Try it as a
-    # direct length first; a lone value under the bracelet range (<100mm)
-    # falls back to inner-diameter math instead of being dropped.
+    # for both stretchy chains (a real wrist-range value) and rigid bangles (an
+    # inner diameter too small to be a wrist circumference). A real wrist-range
+    # value (>= bracelet range) is trusted directly. Below that range: when this
+    # product's title/description says "bangle" elsewhere, treat it as an inner
+    # diameter (its own spec, not a derived length); otherwise fall back to the
+    # old circumference conversion for genuinely adjustable non-bangle cuffs.
     m = re.search(r'[Aa]djustable\s+[Ss]ize[:\s]+([^<\n]{2,60})', desc, re.I)
     if m:
         val = m.group(1).strip()
         if _is_adjustable_no_dim(val):
-            return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text)}
+            return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text), "inner_diameter": None}
         chips = parse_bracelet_size(val)
         if chips:
-            return {"sizes": chips, "width": _extract_bracelet_width(text)}
+            return {"sizes": chips, "width": _extract_bracelet_width(text), "inner_diameter": None}
+        if is_bangle:
+            dia_mm = _raw_mm_text(val)
+            if dia_mm:
+                return {"sizes": [], "width": _extract_bracelet_width(text), "inner_diameter": dia_mm}
         chips = parse_bracelet_size(val + " inner diameter")
         if chips:
-            return {"sizes": chips, "width": _extract_bracelet_width(text)}
+            return {"sizes": chips, "width": _extract_bracelet_width(text), "inner_diameter": None}
 
     # ── 1. Explicit length fields (highest confidence) ────────────────────────
     LENGTH_KEYS = (
@@ -2040,7 +2115,10 @@ def _extract_bracelet_info_from_desc(desc: str) -> dict:
             return {"sizes": ["Adjustable"], "width": _extract_bracelet_width(text)}
 
     # ── 4. Plain "Length: Xcm" fallback ──────────────────────────────────────
-    m = re.search(r'\bLength[:\s]+(\d{2,3}\s*(?:mm|cm)[^<\n]{0,40})', desc, re.I)
+    # Tolerate a leading "Approx."/"Approximately" hedge word before the number
+    # (e.g. "Length: Approx. 16cm + 3cm Extension") — without this, the digit
+    # requirement right after "Length:" fails to match and the length is lost.
+    m = re.search(r'\bLength[:\s]+(?:[Aa]pprox(?:imately)?\.?\s*)?(\d{2,3}\s*(?:mm|cm)[^<\n]{0,40})', desc, re.I)
     if m:
         chips = parse_bracelet_size(m.group(1))
         if chips:

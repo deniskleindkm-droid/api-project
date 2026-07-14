@@ -2185,7 +2185,16 @@ async function openPP(id){
     // come in one length (e.g. "6.5\""), and that single chip was previously
     // being silently hidden by the catch-all "single non-meaningful" case below.
     const isBraceletOrAnklet=colName==='bracelets'||colName==='anklets';
-    const showSingle=(isNecklace||isBraceletOrAnklet)&&!isAdjustableOnly;
+    // Must require at least one real chip — without this, a bracelet with a
+    // completely empty sizes array (e.g. a bangle, sized by inner diameter
+    // instead) still fell into the sizes.length>=2||showSingle branch below
+    // and rendered an empty "Bracelet Length" box with no chips in it.
+    const showSingle=(isNecklace||isBraceletOrAnklet)&&sizes.length>=1&&!isAdjustableOnly;
+    // Bangles: backend flags these via size_label="Inner Diameter" (see
+    // _size_display_meta in routes/products.py) and precomputes the diameter
+    // text into size_hint — a rigid band's diameter isn't a "Bracelet Length"
+    // selector, so show it as its own badge instead.
+    const isBangleDiameter=isBraceletOrAnklet&&sizes.length===0&&sizeLabel==='Inner Diameter';
     if((isAdjustableOnly||isRingNoSize)&&colName==='rings'){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
@@ -2220,6 +2229,11 @@ async function openPP(id){
       document.getElementById('pp-size-chips').innerHTML=
         `<div class="pp-open-size-note" style="font-size:12px;color:var(--black);letter-spacing:0.3px;">${sizes[0]}</div>`;
       ringAdjustableSize=sizes[0]; // carried into ppSelectedSize below so cart/order keeps "Color · Size"
+    }else if(isBangleDiameter){
+      document.getElementById('pp-sizes-wrap').style.display='block';
+      document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
+      document.getElementById('pp-size-chips').innerHTML=
+        `<div class="pp-open-size-note" style="font-size:12px;color:var(--black);letter-spacing:0.3px;">${p.size_hint||''}</div>`;
     }else if(isAdjustableOnly&&isBraceletOrAnklet){
       // Bare "Adjustable"/"One Size" with no real measurement — same gap the
       // backend now flags for review (needs_length_review). Say so honestly

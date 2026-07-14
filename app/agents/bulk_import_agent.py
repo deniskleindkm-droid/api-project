@@ -55,6 +55,23 @@ def _ensure_category_in_name(name: str, category: str) -> str:
     return f"{name} {word}" if word else name
 
 
+def _ensure_bangle_naming(name: str, category: str, raw_name: str, raw_desc: str = "") -> str:
+    """
+    Bangles must read as "... Bangle Bracelet" — both the shape and the
+    storefront category — never just one word alone. Delegates the ground-truth
+    bangle check to Silverbene's raw title/description (never guessed from
+    shape/material) and the actual naming fix to the adapter's single source of
+    truth for this rule, so a future name-cleaning pass can't silently drop
+    "Bangle" again without this catching it.
+    """
+    if category != "Bracelets" or not name:
+        return name
+    from app.agents.suppliers.silverbene_adapter import is_bangle_product, ensure_bangle_bracelet_naming
+    if not is_bangle_product(raw_name, raw_desc):
+        return name
+    return ensure_bangle_bracelet_naming(name, category, is_bangle=True)
+
+
 def _raw_style_word(raw_name: str, raw_desc: str = "") -> str:
     """
     Return "stud" or "hoop" if Silverbene explicitly and unambiguously says so,
@@ -338,7 +355,9 @@ Return ONLY valid JSON array. No other text."""
             if not isinstance(result, dict):
                 # null or unexpected — fall back to raw for this item
                 product = products[i].copy()
-                product["mikisi_name"] = _ensure_category_in_name(product.get("name", ""), collection_name)[:100]
+                _name = _ensure_category_in_name(product.get("name", ""), collection_name)
+                _name = _ensure_bangle_naming(_name, collection_name, product.get("name", ""), product.get("description", ""))
+                product["mikisi_name"] = _name[:100]
                 product["mikisi_description"] = ""
                 product["accepted"] = True
                 rewritten.append(product)
@@ -352,6 +371,7 @@ Return ONLY valid JSON array. No other text."""
             # source of truth for stud vs hoop — never let ARIA's rewrite invent or swap it
             raw_name = _enforce_earring_style(raw_name, product.get("name", ""), aria_cat, product.get("description", ""))
             raw_name = _ensure_category_in_name(raw_name, aria_cat)
+            raw_name = _ensure_bangle_naming(raw_name, aria_cat, product.get("name", ""), product.get("description", ""))
             product["mikisi_name"] = raw_name[:100]
             product["mikisi_description"] = _enforce_earring_description_style(
                 result.get("mikisi_description", ""), product.get("name", ""), aria_cat, product.get("description", "")
@@ -382,7 +402,10 @@ Return ONLY valid JSON array. No other text."""
         traceback.print_exc()
         # On error — preserve products with raw names, don't lose them
         return [{**p,
-                 "mikisi_name": _ensure_category_in_name(p.get("name", ""), collection_name)[:100],
+                 "mikisi_name": _ensure_bangle_naming(
+                     _ensure_category_in_name(p.get("name", ""), collection_name),
+                     collection_name, p.get("name", ""), p.get("description", ""),
+                 )[:100],
                  "mikisi_description": "", "accepted": True} for p in products]
 
 
