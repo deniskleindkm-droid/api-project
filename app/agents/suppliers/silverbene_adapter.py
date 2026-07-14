@@ -1627,20 +1627,31 @@ def _sanitize_description(desc: str) -> str:
     return desc
 
 
-_SKU_PREFIX_RE = re.compile(r'^[A-Za-z]{1,4}\d+[-_]')
+_SKU_PREFIX_RE = re.compile(r'^[A-Za-z]{1,4}\d+[-_\s]')
+# Trailing catalog-reference remnants Silverbene sometimes leaves on a Color
+# value after its own internal numbering: "Dark Blue Spinel 113#" (number+hash),
+# "Rose Red#" (lone hash with nothing before it). Order matters — the numbered
+# form must run first, or its own trailing "#" would already be gone by the
+# time the lone-hash pattern runs, silently leaving the number behind instead.
+_TRAILING_CATALOG_NUM_RE = re.compile(r'\s+\d+#?\s*$')
+_TRAILING_HASH_RE = re.compile(r'#\s*$')
 
 
 def _clean_color_value(value: str) -> str:
     """
-    Strip Silverbene's own internal catalog-code prefixes and category-word
-    prefixes from a Color attribute value.
+    Strip Silverbene's own internal catalog-code prefixes, trailing catalog
+    reference numbers, and category-word prefixes from a Color attribute value.
     e.g. "JZ210-Silver" → "Silver", "L874-Waterdrop CZ Bracelet" → "Waterdrop
-    CZ Bracelet", "Anklet Silver" → "Silver", "Anklet" → "" (discard).
-    The SKU pattern requires a dash/underscore right after the digits (never a
-    space) — that's what distinguishes a catalog code ("JZ210-") from a
-    legitimate material descriptor like "S925 Silver", which never matches.
+    CZ Bracelet", "JZ1567 Silver" → "Silver", "Dark Blue Spinel 113#" → "Dark
+    Blue Spinel", "Anklet Silver" → "Silver", "Anklet" → "" (discard).
+    The SKU-prefix pattern requires a dash/underscore/space right after the
+    digits, so it only ever matches a real letter+number catalog code, never a
+    stone or color name that happens to start with a number-bearing word.
     """
     value = _SKU_PREFIX_RE.sub('', value)
+    value = _TRAILING_CATALOG_NUM_RE.sub('', value)
+    value = _TRAILING_HASH_RE.sub('', value)
+    value = re.sub(r'\s{2,}', ' ', value).strip()
     lower = value.lower()
     for prefix in _CATEGORY_PREFIXES:
         if lower == prefix:
