@@ -740,7 +740,17 @@ footer{background:var(--black);padding:52px 48px 36px;}
   .search-drop{left:0;right:0;top:calc(100%+10px);max-height:55vh;}
   .nav-right{gap:8px;}
   .nav-user{display:none;}
-  .nav-links{display:none;}
+  /* About/FAQ move out of the nav row (no room next to the full-width
+     search bar) into a floating pair at the bottom of the screen — same
+     .nav-text-link styling as desktop, just repositioned, so it reads as
+     the identical link, not a new UI element. Hidden while a modal/cart
+     overlay is open (see .nl-hidden, toggled in _updateBackToColVisibility). */
+  .nav-links{
+    display:flex;position:fixed;bottom:16px;left:14px;
+    gap:16px;margin:0;z-index:150;
+    transition:opacity 0.25s;
+  }
+  .nav-links.nl-hidden{opacity:0;pointer-events:none;}
   .nav-icon{font-size:17px;padding:2px;}
   .nav-sign-btn{padding:6px 11px;font-size:9px;letter-spacing:1.5px;}
 
@@ -2752,16 +2762,24 @@ function scrollToAbout(){const a=document.getElementById('about');a.style.displa
 // collection — never on checkout/cart/auth/orders, and clicking it returns
 // to the collections picker, not the homepage hero.
 const _backBtn = document.getElementById('back-to-col-btn');
+const _navLinksEl = document.querySelector('.nav-links');
 function _anyOverlayOpen(){
   return !!document.querySelector('.modal-overlay.open, .cart-sidebar.open');
 }
 function _updateBackToColVisibility(){
   const inCollection = document.body.classList.contains('collection-mode');
-  if(inCollection && window.scrollY > 320 && !_anyOverlayOpen()){
+  const overlayOpen = _anyOverlayOpen();
+  if(inCollection && window.scrollY > 320 && !overlayOpen){
     _backBtn.classList.add('visible');
   } else {
     _backBtn.classList.remove('visible');
   }
+  // Mobile floating About/FAQ links (see .nav-links in the mobile media
+  // query) — hide only while a modal/cart overlay is open. Unlike the
+  // collections button these aren't scroll- or collection-gated: they're
+  // meant to stay reachable everywhere on mobile, since they were dropped
+  // from the top nav entirely on small screens to make room for search.
+  if(_navLinksEl) _navLinksEl.classList.toggle('nl-hidden', overlayOpen);
 }
 function scrollToCollectionTop(){
   // Rescue pp-inline back to collection-view before hiding (same as goHome())
