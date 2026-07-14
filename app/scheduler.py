@@ -287,6 +287,17 @@ def run_specs_backfill():
         print(f"[Scheduler] Specs backfill error: {e}")
 
 
+def run_hero_rotation_refresh():
+    """Every 2 days: refresh the homepage hero rotation from currently live product photos."""
+    try:
+        from app.agents.hero_rotation_agent import run_hero_rotation_refresh as _refresh
+        _refresh()
+        _heartbeat("hero_rotation_agent", "hero rotation refreshed")
+    except Exception as e:
+        _heartbeat("hero_rotation_agent", f"error: {str(e)[:80]}")
+        print(f"[Scheduler] Hero rotation refresh error: {e}")
+
+
 def run_db_cleanup():
     try:
         from app.agents.db_cleanup_agent import run_db_cleanup as _cleanup
@@ -576,6 +587,15 @@ def start_scheduler():
         replace_existing=True
     )
 
+    scheduler.add_job(
+        run_hero_rotation_refresh,
+        trigger=IntervalTrigger(days=2),
+        id='hero_rotation_refresh',
+        name='Hero Rotation Refresh — 2 real photos per category (no Ear Cuffs), every 2 days',
+        next_run_time=datetime.utcnow(),   # populate the rotation immediately on this deploy
+        replace_existing=True
+    )
+
     scheduler.start()
     print("[Scheduler] ✅ ARIA scheduler started with jobs:")
     print("[Scheduler]   → Market check: every 6 hours")
@@ -594,3 +614,4 @@ def start_scheduler():
     print("[Scheduler]   → TikTok token refresh: every day at 06:00 UTC")
     print("[Scheduler]   → Order recovery agent: every 30 minutes")
     print("[Scheduler]   → Silverbene shipping monitor: every 2 hours")
+    print("[Scheduler]   → Hero rotation refresh: every 2 days")

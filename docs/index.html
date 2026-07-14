@@ -177,6 +177,13 @@ nav{
   align-items:center;gap:10px;color:var(--light);
 }
 .hero-banner-ph p{font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;}
+/* Hero rotation — two stacked images crossfade via opacity (display:none
+   can't transition, so these are separate from the single #hero-img). */
+.hero-rot-img{
+  position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;transition:opacity 1s ease;display:none;
+}
+.hero-rot-img.active{opacity:1;}
 
 /* ── MARQUEE ── */
 .marquee-wrap{background:var(--black);overflow:hidden;padding:13px 0;white-space:nowrap;}
@@ -905,6 +912,11 @@ footer{background:var(--black);padding:52px 48px 36px;}
     <!-- Fallback static image if no video -->
     <img id="hero-img" src="" alt="Mikisi" style="display:none"
       onerror="this.style.display='none';document.getElementById('hero-ph').style.display='flex'"/>
+    <!-- Rotating hero images — 2 real product photos per category, refreshed
+         every 2 days by hero_rotation_agent. Takes priority over the single
+         banner_url/video_url above when populated. -->
+    <img class="hero-rot-img" id="hero-rot-a" alt="Mikisi"/>
+    <img class="hero-rot-img" id="hero-rot-b" alt="Mikisi"/>
   </div>
 </div>
 
@@ -1451,6 +1463,37 @@ function startTimer(){
   setInterval(()=>{s--;if(s<0){s=59;m--;}if(m<0){m=59;h--;}if(h<0)h=23;document.getElementById('timer').textContent=`${pad(h)}:${pad(m)}:${pad(s)}`;},1000);
 }
 
+let heroRotation=[];
+let heroRotIndex=0;
+let heroRotTimer=null;
+let heroRotActiveEl='a'; // which of the two stacked <img> is currently visible
+
+function startHeroRotation(images){
+  if(!images||!images.length)return;
+  heroRotation=images;
+  heroRotIndex=0;
+  document.getElementById('hero-ph').style.display='none';
+  document.getElementById('hero-video').style.display='none';
+  document.getElementById('hero-img').style.display='none';
+  const a=document.getElementById('hero-rot-a'), b=document.getElementById('hero-rot-b');
+  a.style.display='block'; b.style.display='block';
+  a.src=heroRotation[0].url;
+  a.classList.add('active');
+  b.classList.remove('active');
+  heroRotActiveEl='a';
+  if(heroRotTimer) clearInterval(heroRotTimer);
+  if(heroRotation.length<2) return; // nothing to rotate to
+  heroRotTimer=setInterval(()=>{
+    heroRotIndex=(heroRotIndex+1)%heroRotation.length;
+    const showEl=heroRotActiveEl==='a'?b:a;
+    const hideEl=heroRotActiveEl==='a'?a:b;
+    showEl.src=heroRotation[heroRotIndex].url;
+    showEl.classList.add('active');
+    hideEl.classList.remove('active');
+    heroRotActiveEl=(heroRotActiveEl==='a')?'b':'a';
+  },3000);
+}
+
 async function loadHero(){
   try{
     const res=await fetch(`${API}/store/hero`);
@@ -1458,7 +1501,9 @@ async function loadHero(){
     const d=await res.json();
     const ph=document.getElementById('hero-ph');
 
-    if(d.video_url){
+    if(d.rotation&&d.rotation.length){
+      startHeroRotation(d.rotation);
+    } else if(d.video_url){
       // Video-first — slow cinematic loop, muted, autoplay
       const vid=document.getElementById('hero-video');
       vid.src=d.video_url;

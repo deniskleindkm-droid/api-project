@@ -87,3 +87,57 @@ def store_hero_video(video_url: str) -> str:
     except Exception as e:
         print(f"[Cloudinary] Hero video upload failed: {e}")
         return ""
+
+
+def store_hero_image(image_source: str) -> str:
+    """image_source: a URL or a local file path — Cloudinary's SDK accepts either."""
+    try:
+        result = cloudinary.uploader.upload(
+            image_source,
+            public_id="mikisi/hero/banner_image",
+            overwrite=True,
+            resource_type="image",
+            quality="auto:good",
+            fetch_format="auto",
+            width=1920, crop="limit",
+            tags=["mikisi", "hero"],
+        )
+        return result.get("secure_url", "")
+    except Exception as e:
+        print(f"[Cloudinary] Hero image upload failed: {e}")
+        return ""
+
+
+def store_hero_rotation_image(slot: int, image_source: str, retries: int = 3) -> str:
+    """
+    One of a fixed set of hero rotation slots (0-based). Re-uses the same
+    public_id every refresh so the URL a slot resolves to stays stable even
+    as which product occupies it changes — no URL churn for caching/CDN.
+
+    Silverbene's media CDN intermittently 503s on individual requests (seen
+    directly while sourcing hero photos), so a fetch-by-URL upload gets a
+    few retries before this slot is given up on for this run — the scheduled
+    refresh runs unattended every 2 days, so a single transient failure
+    shouldn't leave a slot empty until the next cycle.
+    """
+    import time
+    last_err = None
+    for attempt in range(retries):
+        try:
+            result = cloudinary.uploader.upload(
+                image_source,
+                public_id=f"mikisi/hero/rotation_{slot}",
+                overwrite=True,
+                resource_type="image",
+                quality="auto:good",
+                fetch_format="auto",
+                width=1920, crop="limit",
+                tags=["mikisi", "hero", "hero_rotation"],
+            )
+            return result.get("secure_url", "")
+        except Exception as e:
+            last_err = e
+            if attempt < retries - 1:
+                time.sleep(2)
+    print(f"[Cloudinary] Hero rotation image upload failed (slot {slot}) after {retries} attempts: {last_err}")
+    return ""

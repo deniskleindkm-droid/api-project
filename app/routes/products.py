@@ -124,12 +124,23 @@ class HeroUpdate(BaseModel):
 
 @router.get("/store/hero")
 def get_hero():
-    """Public — returns hero banner image, video, and tagline for the storefront."""
+    """
+    Public — returns hero banner image, video, tagline, and the rotating hero
+    image set for the storefront. `rotation` (2 real photos per category,
+    refreshed every 2 days by hero_rotation_agent) takes priority on the
+    frontend when present; banner_url/video_url remain as a fallback for
+    when the rotation hasn't populated yet.
+    """
     from app.agents.store_config import get_config
+    try:
+        rotation = _json.loads(get_config("hero_rotation", default="[]") or "[]")
+    except Exception:
+        rotation = []
     return {
         "banner_url": get_config("hero_banner_url", default="") or None,
         "video_url":  get_config("hero_video_url",  default="") or None,
         "tagline":    get_config("hero_tagline", default="Unique pieces you won't find everywhere — genuine 925 sterling silver, honest prices, always something new."),
+        "rotation":   rotation,
     }
 
 @router.put("/store/hero")
