@@ -745,21 +745,22 @@ footer{background:var(--black);padding:52px 48px 36px;}
      neighborhood as the desktop top nav, without permanently growing the
      sticky bar's height or losing reachability while scrolled (a fixed
      second nav row would do either one or the other — see commit history).
-     A light frosted backing + darker text (vs desktop's plain --mid) keeps
-     it legible over whatever page content happens to sit underneath, since
-     unlike desktop this isn't sitting on a flat, consistent nav background.
+     A solid brand-pink backing + white text (vs desktop's plain --mid on
+     the flat cream nav) keeps it legible over whatever page content
+     happens to sit underneath — a translucent/cream backing all but
+     disappeared against this site's mostly white/cream background, so a
+     solid, clearly-differentiated color was needed instead.
      Hidden while a modal/cart overlay is open (see .nl-hidden, toggled in
      _updateBackToColVisibility). */
   .nav-links{
     display:flex;position:fixed;top:66px;left:14px;
     gap:14px;margin:0;z-index:150;
-    background:rgba(253,249,246,0.94);
-    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    background:var(--pink);
     padding:7px 12px;border-radius:3px;
-    box-shadow:0 4px 16px rgba(0,0,0,0.07);
+    box-shadow:0 4px 16px rgba(0,0,0,0.1);
     transition:opacity 0.25s;
   }
-  .nav-links .nav-text-link{color:var(--black);}
+  .nav-links .nav-text-link{color:#fff;}
   .nav-links.nl-hidden{opacity:0;pointer-events:none;}
   .nav-icon{font-size:17px;padding:2px;}
   .nav-sign-btn{padding:6px 11px;font-size:9px;letter-spacing:1.5px;}
