@@ -1627,11 +1627,20 @@ def _sanitize_description(desc: str) -> str:
     return desc
 
 
+_SKU_PREFIX_RE = re.compile(r'^[A-Za-z]{1,4}\d+[-_]')
+
+
 def _clean_color_value(value: str) -> str:
     """
-    Strip category-word prefixes Silverbene puts in Color attribute values.
-    e.g. "Anklet Silver" → "Silver", "Anklet" → "" (discard), "Gold" → "Gold"
+    Strip Silverbene's own internal catalog-code prefixes and category-word
+    prefixes from a Color attribute value.
+    e.g. "JZ210-Silver" → "Silver", "L874-Waterdrop CZ Bracelet" → "Waterdrop
+    CZ Bracelet", "Anklet Silver" → "Silver", "Anklet" → "" (discard).
+    The SKU pattern requires a dash/underscore right after the digits (never a
+    space) — that's what distinguishes a catalog code ("JZ210-") from a
+    legitimate material descriptor like "S925 Silver", which never matches.
     """
+    value = _SKU_PREFIX_RE.sub('', value)
     lower = value.lower()
     for prefix in _CATEGORY_PREFIXES:
         if lower == prefix:
