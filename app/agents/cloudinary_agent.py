@@ -110,15 +110,14 @@ def store_hero_image(image_source: str) -> str:
 
 def store_hero_rotation_image(slot: int, image_source: str, retries: int = 3) -> str:
     """
-    One of a fixed set of hero rotation slots (0-based). Re-uses the same
-    public_id every refresh so the URL a slot resolves to stays stable even
-    as which product occupies it changes — no URL churn for caching/CDN.
+    One of a fixed set of hero rotation slots (0-based) — Dennis picks which
+    product photo goes in each slot. Re-uses the same public_id every time a
+    slot is (re)populated so the URL a slot resolves to stays stable even as
+    which product occupies it changes — no URL churn for caching/CDN.
 
     Silverbene's media CDN intermittently 503s on individual requests (seen
     directly while sourcing hero photos), so a fetch-by-URL upload gets a
-    few retries before this slot is given up on for this run — the scheduled
-    refresh runs unattended every 2 days, so a single transient failure
-    shouldn't leave a slot empty until the next cycle.
+    few retries before giving up on this slot.
     """
     import time
     last_err = None

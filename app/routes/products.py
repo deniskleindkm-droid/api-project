@@ -126,10 +126,10 @@ class HeroUpdate(BaseModel):
 def get_hero():
     """
     Public — returns hero banner image, video, tagline, and the rotating hero
-    image set for the storefront. `rotation` (2 real photos per category,
-    refreshed every 2 days by hero_rotation_agent) takes priority on the
-    frontend when present; banner_url/video_url remain as a fallback for
-    when the rotation hasn't populated yet.
+    image set for the storefront. `rotation` (real product photos, hand-picked
+    and stored via hero_rotation config) takes priority on the frontend when
+    present; banner_url/video_url remain as a fallback for when the rotation
+    hasn't been populated yet.
     """
     from app.agents.store_config import get_config
     try:

@@ -179,9 +179,22 @@ nav{
 .hero-banner-ph p{font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;}
 /* Hero rotation — two stacked images crossfade via opacity (display:none
    can't transition, so these are separate from the single #hero-img). */
-.hero-rot-img{
+/* Blurred full-bleed backdrop — cropping this layer is fine, it's just a
+   soft glow of the same photo's colors, never the actual subject. Scaled up
+   slightly so the blur's own edge softness never shows the container edge. */
+.hero-rot-bg{
   position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;
-  opacity:0;transition:opacity 1s ease;display:none;
+  opacity:0;transition:opacity 1.3s ease;display:none;
+  filter:blur(45px) brightness(0.88) saturate(1.15);
+  transform:scale(1.2);
+}
+.hero-rot-bg.active{opacity:1;}
+/* Sharp foreground — object-fit:contain guarantees the whole photo is
+   visible on every screen size, no cropping, regardless of the photo's own
+   aspect ratio or background color. */
+.hero-rot-img{
+  position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;
+  opacity:0;transition:opacity 1.3s ease;display:none;
 }
 .hero-rot-img.active{opacity:1;}
 
@@ -912,11 +925,17 @@ footer{background:var(--black);padding:52px 48px 36px;}
     <!-- Fallback static image if no video -->
     <img id="hero-img" src="" alt="Mikisi" style="display:none"
       onerror="this.style.display='none';document.getElementById('hero-ph').style.display='flex'"/>
-    <!-- Rotating hero images — 2 real product photos per category, refreshed
-         every 2 days by hero_rotation_agent. Takes priority over the single
-         banner_url/video_url above when populated. -->
-    <img class="hero-rot-img" id="hero-rot-a" alt="Mikisi"/>
-    <img class="hero-rot-img" id="hero-rot-b" alt="Mikisi"/>
+    <!-- Rotating hero images — real product photos, curated by Dennis. Takes
+         priority over the single banner_url/video_url above when populated.
+         Two layers per photo: a blurred, full-bleed backdrop (crops fine —
+         it's just a soft color glow, not the subject) behind a sharp
+         foreground copy that's never cropped, since photo backgrounds vary
+         wildly (black slate, white studio, grey pedestal) and a single fixed
+         page-background color can't blend seamlessly with all of them.
+         Fades fully out, swaps src while invisible, fades back in — never
+         overlaps two different photos at once. -->
+    <img class="hero-rot-bg" id="hero-rot-bg" alt=""/>
+    <img class="hero-rot-img" id="hero-rot-img" alt="Mikisi"/>
   </div>
 </div>
 
@@ -1466,7 +1485,6 @@ function startTimer(){
 let heroRotation=[];
 let heroRotIndex=0;
 let heroRotTimer=null;
-let heroRotActiveEl='a'; // which of the two stacked <img> is currently visible
 
 function startHeroRotation(images){
   if(!images||!images.length)return;
@@ -1475,23 +1493,24 @@ function startHeroRotation(images){
   document.getElementById('hero-ph').style.display='none';
   document.getElementById('hero-video').style.display='none';
   document.getElementById('hero-img').style.display='none';
-  const a=document.getElementById('hero-rot-a'), b=document.getElementById('hero-rot-b');
-  a.style.display='block'; b.style.display='block';
-  a.src=heroRotation[0].url;
-  a.classList.add('active');
-  b.classList.remove('active');
-  heroRotActiveEl='a';
+  const bg=document.getElementById('hero-rot-bg'), fg=document.getElementById('hero-rot-img');
+  bg.style.display='block'; fg.style.display='block';
+  bg.src=heroRotation[0].url; fg.src=heroRotation[0].url;
+  requestAnimationFrame(()=>{ bg.classList.add('active'); fg.classList.add('active'); }); // fade the first photo in
   if(heroRotTimer) clearInterval(heroRotTimer);
   if(heroRotation.length<2) return; // nothing to rotate to
   heroRotTimer=setInterval(()=>{
-    heroRotIndex=(heroRotIndex+1)%heroRotation.length;
-    const showEl=heroRotActiveEl==='a'?b:a;
-    const hideEl=heroRotActiveEl==='a'?a:b;
-    showEl.src=heroRotation[heroRotIndex].url;
-    showEl.classList.add('active');
-    hideEl.classList.remove('active');
-    heroRotActiveEl=(heroRotActiveEl==='a')?'b':'a';
-  },3000);
+    // Fade fully out first, then swap src while invisible, then fade the next
+    // photo in — two different photos are never on screen at the same time
+    // (a simultaneous crossfade looked like a messy double-exposure instead
+    // of a clean transition between two different jewelry pieces).
+    bg.classList.remove('active'); fg.classList.remove('active');
+    setTimeout(()=>{
+      heroRotIndex=(heroRotIndex+1)%heroRotation.length;
+      bg.src=heroRotation[heroRotIndex].url; fg.src=heroRotation[heroRotIndex].url;
+      bg.classList.add('active'); fg.classList.add('active');
+    },1300); // must match the .hero-rot-img/.hero-rot-bg opacity transition duration
+  },10000);
 }
 
 async function loadHero(){
