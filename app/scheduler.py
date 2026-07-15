@@ -287,6 +287,14 @@ def run_specs_backfill():
         print(f"[Scheduler] Specs backfill error: {e}")
 
 
+def run_catalog_audit():
+    try:
+        from app.agents.catalog_audit_agent import run_catalog_audit as _audit
+        _audit()
+    except Exception as e:
+        print(f"[Scheduler] Catalog audit error: {e}")
+
+
 def run_db_cleanup():
     try:
         from app.agents.db_cleanup_agent import run_db_cleanup as _cleanup
@@ -476,6 +484,15 @@ def start_scheduler():
         trigger=IntervalTrigger(hours=24),
         id='specs_backfill',
         name='Specs Backfill — populate product details from Silverbene',
+        next_run_time=datetime.utcnow(),
+        replace_existing=True
+    )
+
+    scheduler.add_job(
+        run_catalog_audit,
+        trigger=IntervalTrigger(hours=24),
+        id='catalog_audit',
+        name='Catalog Audit — flag unrecognized attributes, suspicious chips, stale size/color data',
         next_run_time=datetime.utcnow(),
         replace_existing=True
     )
