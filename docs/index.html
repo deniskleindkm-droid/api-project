@@ -424,13 +424,17 @@ nav{
 .cart-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:200;backdrop-filter:blur(2px);}
 .cart-overlay.open{display:block;}
 .cart-sidebar{
-  position:fixed;top:0;right:-500px;width:460px;height:100%;
+  position:fixed;top:0;right:0;width:460px;height:100%;
   background:white;z-index:201;
-  transition:right 0.25s cubic-bezier(0.4,0,0.2,1);
+  /* transform, not right — animating an offset/layout property forces a
+     reflow on every frame; translateX is compositor-only (GPU), the
+     difference mobile actually notices as lag vs. smooth. */
+  transform:translateX(500px);
+  transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);
   display:flex;flex-direction:column;
   box-shadow:-4px 0 40px rgba(0,0,0,0.08);border-left:1px solid var(--border);
 }
-.cart-sidebar.open{right:0;}
+.cart-sidebar.open{transform:translateX(0);}
 .cart-header{padding:26px 30px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
 .cart-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;letter-spacing:1px;}
 .close-btn{background:none;border:none;color:var(--mid);font-size:20px;cursor:pointer;transition:color 0.2s;}
@@ -849,10 +853,20 @@ footer{background:var(--black);padding:52px 48px 36px;}
   .pp-more-grid{grid-template-columns:repeat(2,1fr);}
 
   /* Cart */
-  .cart-sidebar{width:100%;right:-100%;}
+  .cart-sidebar{width:100%;transform:translateX(100%);}
   .cart-header{padding:18px 18px;}
   .cart-body{padding:14px 18px;}
   .cart-footer{padding:14px 18px;}
+
+  /* backdrop-filter:blur() forces the GPU to continuously sample and blur
+     everything behind the overlay across the full viewport — cheap on
+     desktop, a real source of jank on mobile GPUs, especially layered with
+     the cart-sidebar's own transition running at the same moment (opening
+     checkout closes the cart). Solid overlays (slightly darker than
+     desktop's blurred versions, to keep roughly the same visual weight
+     without the compositing cost) read close enough to the eye. */
+  .modal-overlay{backdrop-filter:none;background:rgba(14,14,14,0.72);}
+  .cart-overlay{backdrop-filter:none;background:rgba(0,0,0,0.42);}
 
   /* Auth + Checkout modals — bottom sheet on mobile */
   .modal-overlay{align-items:flex-end;padding:0;}
