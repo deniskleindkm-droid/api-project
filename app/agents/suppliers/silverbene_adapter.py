@@ -696,6 +696,43 @@ class SilverbeneAdapter(SupplierAdapter):
         _bare_category_values = []
         _seen_bare = set()
 
+        # A measurement bundled into a Color-type value (e.g. the "2mm" in
+        # "Moissanite 1*2mm + 75 stones, with GRA certificate") is only a
+        # real, price-differentiating size when this product has no OTHER,
+        # dedicated size attribute already covering it — and even then, only
+        # when the bundled measurement actually varies between options.
+        # Silverbene sometimes repeats the exact same stone-size text
+        # identically across every option of a ring that ALSO carries a real
+        # "Size" attribute (US 5–9) — there the bundled text describes the
+        # gem, not a second selectable dimension, so it must never sit
+        # alongside the real sizes as a fake, unpriced chip (see
+        # [[feedback_silverbene_price_backed_sizes]]). But some bracelets
+        # carry NO dedicated size attribute at all — the chain length lives
+        # only inside Color (e.g. "Pink_16+3cm") and is identical across
+        # every color option simply because there's one length per product;
+        # that's the ONLY size information available and must still be kept
+        # even though it doesn't vary. Pre-scan every option first so both
+        # checks can be decided once, before the per-option loop below ever
+        # adds a chip.
+        _measurement_chips_seen = set()
+        _has_dedicated_size_attr = False
+        for _opt in options:
+            for _attr in _opt.get("attribute", []):
+                _name = _attr.get("name", "").lower().strip()
+                _value = _attr.get("value", "").strip()
+                if not _value:
+                    continue
+                if _name in SIZE_ATTRIBUTE_NAMES or _name in BRACELET_SIZE_ATTR_NAMES:
+                    _has_dedicated_size_attr = True
+                elif _name in COLOR_ATTRIBUTE_NAMES and re.search(r'\d+\s*(mm|cm)', _value, re.I):
+                    _, _chip = _split_color_and_size(_value, category)
+                    if _chip:
+                        _measurement_chips_seen.add(_chip)
+        _measurement_chip_is_real = (
+            len(_measurement_chips_seen) > 1 or
+            (len(_measurement_chips_seen) == 1 and not _has_dedicated_size_attr)
+        )
+
         for opt in options:
             attrs = opt.get("attribute", [])
             _chain_style_suffix = _detect_option_suffix(attrs)
@@ -743,15 +780,29 @@ class SilverbeneAdapter(SupplierAdapter):
                     # still prices color separately even when it shares an attribute
                     # with the size text.
                     _color_part, _size_chip = _split_color_and_size(value, category)
-                    if _size_chip and _size_chip not in seen_sizes:
+                    if _size_chip and _measurement_chip_is_real and _size_chip not in seen_sizes:
                         seen_sizes.add(_size_chip)
                         sizes.append(_size_chip)
                     if _color_part:
                         _color_parts_this_option.append(_color_part)
                 elif name in SIZE_ATTRIBUTE_NAMES:
                     value = " ".join(value.split())
+                    # A trailing comma is stray Silverbene data noise (e.g. "US 8,"),
+                    # never a meaningful part of the size — strip it before it ends
+                    # up as a customer-facing chip label.
+                    value = value.rstrip(',').strip()
                     # Normalise any adjustable/open-ring variant to a single consistent label
                     _vl = value.lower()
+                    # Silverbene sometimes puts an unrelated spec under the generic
+                    # "Size" attribute name instead of a real physical dimension —
+                    # seen with a stone's carat weight (e.g. "0.5 CT", "0.5CT/1CT").
+                    # A carat value is never a length/diameter regardless of which
+                    # attribute name it arrived under, and the real spec is already
+                    # captured separately (_extract_specs_from_desc's stone_size) —
+                    # trusting it here would mislabel it as the product's physical
+                    # size (e.g. "Bracelet Length: 0.5 CT").
+                    if re.search(r'\d\s*c\.?t\.?\b|\bcarat\b', _vl):
+                        continue
                     if _vl in ('adjustable', 'one size', 'one size / adjustable',
                                 'one size/adjustable', 'free size', 'all size',
                                 'open ring', 'open size') or \
@@ -1199,6 +1250,9 @@ def _normalize_size_for_match(raw: str) -> str:
       "18\""      → "18\""  (inch — already final form)
     """
     v = raw.strip()
+    # Trailing comma is stray Silverbene data noise (e.g. "US 8,"), never a
+    # meaningful part of a size value — strip it before matching.
+    v = v.rstrip(',').strip()
     for prefix in ("US-", "US  ", "US ", "Size ", "Ring Size ", "No. ", "No "):
         if v.upper().startswith(prefix.upper()):
             return v[len(prefix):].strip()
@@ -1801,6 +1855,13 @@ def _split_color_and_size(value: str, category: str = ""):
     color_part = _BARE_WEIGHT_RE.sub('', color_part)
     color_part = _BARE_DIM_RE.sub('', color_part)  # any other leftover measurement token
     color_part = re.sub(r'\bwide\b', '', color_part, flags=re.I)
+    # A measurement's own label word ("12mm Outer Diameter", "8mm Inner
+    # Diameter") describes what the number means, not the color — the number
+    # itself is already stripped above, but the label word that follows it
+    # is a separate token and survives unless removed here too (e.g. "18K
+    # Gold, 12mm Outer Diameter" would otherwise clean to "18K Gold Outer
+    # Diameter" instead of "18K Gold").
+    color_part = re.sub(r'\b(outer|inner)?\s*diameter\b', '', color_part, flags=re.I)
     color_part = _SINGLE_PAIR_RE.sub('', color_part)
     for _typo_re, _fix in _COLOR_TYPO_FIXES:
         color_part = _typo_re.sub(_fix, color_part)
@@ -1950,7 +2011,10 @@ def _parse_chain_length_from_desc(desc: str, category: str = "") -> list:
     if not m:
         m = re.search(r'[Aa]vailable\s+[Ll]ength(?:\s+[Oo]ptions)?[:\s]+([^<\n]{3,60})', desc)
     if not m:
-        m = re.search(r'\bLength[:\s]+(\d{3,4}\s*mm[^<\n]{0,40})', desc)
+        # Bare "Length:" with no "Chain"/"Necklace"/"Available" prefix — Silverbene
+        # writes this in both mm ("450mm") and cm ("40cm + 5cm Adjustable") forms,
+        # so require a real cm/mm unit rather than assuming mm and a fixed digit count.
+        m = re.search(r'\bLength[:\s]+(\d+(?:\.\d+)?\s*(?:mm|cm)[^<\n]{0,40})', desc)
     if m:
         return _parse_len(m.group(1))
     # Some Silverbene listings put real length data under "Chain Style" instead
