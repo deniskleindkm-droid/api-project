@@ -26,11 +26,15 @@ class CollectionUpdate(BaseModel):
 
 @router.get("/collections")
 def get_collections(session: Session = Depends(get_session)):
+    from app.agents.store_config import get_hidden_categories
+    hidden = get_hidden_categories()
     collections = session.exec(
         select(Collection).where(Collection.is_active == True)
         .order_by(Collection.sort_order)
     ).all()
-    
+    if hidden:
+        collections = [c for c in collections if c.name not in hidden]
+
     def build_tree(parent_id=None):
         children = [c for c in collections if c.parent_id == parent_id]
         result = []
@@ -122,6 +126,10 @@ def get_collection_products(
 ):
     collection = session.get(Collection, collection_id)
     if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    from app.agents.store_config import get_hidden_categories
+    if collection.name in get_hidden_categories():
         raise HTTPException(status_code=404, detail="Collection not found")
 
     from app.routes.products import _to_public

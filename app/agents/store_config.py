@@ -48,3 +48,26 @@ def get_all_configs():
     """Get all store configs — for dashboard display."""
     with Session(engine) as session:
         return session.exec(select(StoreConfig)).all()
+
+
+def get_hidden_categories() -> set:
+    """
+    Categories fully disconnected from every customer-facing listing
+    (/products, /collections, /collections/{id}/products) — a toggle for
+    "not vetted yet, hide it while I review products slowly" without
+    unpublishing every product in the category one by one. Toggle back on
+    by clearing/editing the "hidden_categories" StoreConfig row — no code
+    change needed either way.
+    """
+    import json
+    raw = get_config("hidden_categories", default="[]")
+    try:
+        cats = json.loads(raw) if isinstance(raw, str) else []
+        return set(cats) if isinstance(cats, list) else set()
+    except Exception:
+        return set()
+
+
+def set_hidden_categories(categories: list):
+    import json
+    set_config("hidden_categories", json.dumps(categories), "Categories hidden from every customer-facing listing")

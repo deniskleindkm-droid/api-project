@@ -200,6 +200,8 @@ def _pick_product_post() -> Optional[Product]:
         recent_ids = []
 
     last_category = get_config("instagram_last_category", default="")
+    from app.agents.store_config import get_hidden_categories
+    hidden = get_hidden_categories()
 
     with Session(engine) as session:
         candidates = session.exec(
@@ -210,6 +212,7 @@ def _pick_product_post() -> Optional[Product]:
                 Product.image_url != None,
             ).order_by(Product.created_at.desc()).limit(80)
         ).all()
+    candidates = [p for p in candidates if p.category not in hidden]
 
     candidates = [p for p in candidates if p.id not in recent_ids]
 
@@ -224,6 +227,7 @@ def _pick_product_post() -> Optional[Product]:
                     Product.image_url != None,
                 ).order_by(Product.created_at.desc()).limit(10)
             ).all()
+        candidates = [p for p in candidates if p.category not in hidden]
 
     if not candidates:
         return None
@@ -241,6 +245,8 @@ def _pick_campaign_product() -> Optional[Product]:
     Only published, in-stock products qualify.
     """
     last_id = int(get_config("instagram_last_campaign_product_id", default="0") or 0)
+    from app.agents.store_config import get_hidden_categories
+    hidden = get_hidden_categories()
 
     with Session(engine) as session:
         candidates = session.exec(
@@ -251,6 +257,7 @@ def _pick_campaign_product() -> Optional[Product]:
                 Product.image_url != None,
             ).limit(300)
         ).all()
+    candidates = [p for p in candidates if p.category not in hidden]
 
     if not candidates:
         return None

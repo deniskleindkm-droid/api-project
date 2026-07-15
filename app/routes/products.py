@@ -178,6 +178,11 @@ def get_products(
         Product.is_published == True,
     )
 
+    from app.agents.store_config import get_hidden_categories
+    hidden = get_hidden_categories()
+    if hidden:
+        query = query.where(Product.category.notin_(hidden))
+
     if brand:
         query = query.where(Product.brand == brand)
     if category:
@@ -480,6 +485,38 @@ def unpublish_products(data: PublishRequest, session: Session = Depends(get_sess
         session.add(p)
     session.commit()
     return {"unpublished": len(products), "ids": [p.id for p in products]}
+
+
+class HiddenCategoriesUpdate(BaseModel):
+    master_key: str
+    categories: List[str]
+
+
+@router.get("/admin/hidden-categories")
+def get_hidden_categories_admin(master_key: str):
+    """Admin — categories currently disconnected from every customer-facing listing."""
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    from app.agents.store_config import get_hidden_categories
+    return {"hidden_categories": sorted(get_hidden_categories())}
+
+
+@router.put("/admin/hidden-categories")
+def set_hidden_categories_admin(data: HiddenCategoriesUpdate):
+    """
+    Admin — set the full list of categories hidden from /products,
+    /collections, /collections/{id}/products, and Instagram posting.
+    Products themselves are untouched (still is_published as before) —
+    this only disconnects the category from customer-facing discovery, so
+    it can be reviewed slowly and re-enabled later with no code change.
+    """
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(data.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    from app.agents.store_config import set_hidden_categories
+    set_hidden_categories(data.categories)
+    return {"hidden_categories": data.categories}
 
 
 @router.get("/admin/catalog")
