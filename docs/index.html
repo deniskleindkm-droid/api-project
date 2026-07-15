@@ -1349,6 +1349,7 @@ let ppHasSizeChips = false;
 let ppSelectedColor = null;
 let ppSelectedColorRaw = null; // raw API value (before COLOR_LABEL mapping)
 let ppSelectedOptionId = null; // real Silverbene option_id resolved from /variant-prices — carried to checkout as-is
+let previewKey = null; // set from ?key= when opened via an admin preview link — lets an unpublished product's panel load exactly like a customer would see it once published
 let ppInvalidSelection = false; // true when the active chip(s) match no priced option — blocks Add to Cart instead of silently substituting a different variant
 let ppSelectedStone = null;
 let ppSelectedWidth = null;
@@ -1488,6 +1489,11 @@ window.onload = async()=>{
   }
   const prodMatch = window.location.pathname.match(/^\/products\/(\d+)$/);
   if(prodMatch) openPP(Number(prodMatch[1]));
+  // Admin preview link: /?preview=123&key=... — works with this static
+  // hosting (no server-side routing needed, unlike the path form above,
+  // which 404s here since there's no fallback for arbitrary paths).
+  const previewId = p.get('preview');
+  if(previewId){ previewKey = p.get('key') || null; openPP(Number(previewId)); }
   const addParam = p.get('add');
   if(addParam) addParam.split(',').forEach(pair=>{const[id,qty]=pair.split(':');if(id)addToCart(Number(id),'',null,null);});
 };
@@ -2046,7 +2052,8 @@ async function openPP(id){
     const ppInlineLoadEl=document.getElementById('pp-inline');
     ppInlineLoadEl.style.display='block';
     try{
-      const res = await fetch(`${API}/products/${id}`);
+      const _previewQS = previewKey ? `?preview_key=${encodeURIComponent(previewKey)}` : '';
+      const res = await fetch(`${API}/products/${id}${_previewQS}`);
       if(!res.ok){ppOpening=false;closePP();return;}
       p = await res.json();
       allProducts.push(p);
@@ -2096,7 +2103,8 @@ async function openPP(id){
   // Capture product ID so a stale fetch from a previously opened panel cannot
   // overwrite prices for a different product (race condition guard).
   const _fetchPid=p.id;
-  fetch(`${API}/products/${p.id}/variant-prices`).then(r=>r.ok?r.json():null).then(vp=>{
+  const _vpPreviewQS = previewKey ? `?preview_key=${encodeURIComponent(previewKey)}` : '';
+  fetch(`${API}/products/${p.id}/variant-prices${_vpPreviewQS}`).then(r=>r.ok?r.json():null).then(vp=>{
     if(ppCurrentProduct?.id!==_fetchPid)return; // panel moved on — discard stale result
     if(!vp||!vp.length)return;
     // Always keep the real per-option list, even when prices don't visibly differ —

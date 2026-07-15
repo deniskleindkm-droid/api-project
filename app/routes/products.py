@@ -195,16 +195,34 @@ def get_products(
     products = session.exec(query).all()
     return [_to_public(p) for p in products]
 
+def _require_published_or_preview(product: Product, preview_key: Optional[str]):
+    """
+    Published products are always public — this is how the storefront shows
+    any product to any customer, no change there. An unpublished/staged
+    product used to be fetchable by anyone who knew or guessed its ID; now
+    it 404s (not 403 — never confirm a staged product's existence to a
+    stranger) unless a valid preview_key is supplied, letting the admin
+    dashboard's Preview link show the exact live-site view without
+    publishing first.
+    """
+    if product.is_published:
+        return
+    from app.agents.aria_security import verify_master_key
+    if not preview_key or not verify_master_key(preview_key):
+        raise HTTPException(status_code=404, detail="Product not found")
+
+
 @router.get("/products/{product_id}", response_model=ProductPublic)
-def get_product(product_id: int, session: Session = Depends(get_session)):
+def get_product(product_id: int, preview_key: Optional[str] = None, session: Session = Depends(get_session)):
     product = session.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    _require_published_or_preview(product, preview_key)
     return _to_public(product)
 
 
 @router.get("/products/{product_id}/variant-prices")
-def get_variant_prices(product_id: int, session: Session = Depends(get_session)):
+def get_variant_prices(product_id: int, preview_key: Optional[str] = None, session: Session = Depends(get_session)):
     """
     Return per-variant pricing for a product.
     Used by the frontend to update the displayed price when a customer
@@ -228,6 +246,7 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
     product = session.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    _require_published_or_preview(product, preview_key)
 
     try:
         variants = _json.loads(product.variants or "[]")

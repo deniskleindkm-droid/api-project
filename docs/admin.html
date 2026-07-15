@@ -454,7 +454,21 @@
 
 <script>
 const API = "https://api-project-production-d424.up.railway.app";
+const SITE_URL = "https://mikisi.co";
 let masterKey = '';
+
+// Opens the exact live product panel a customer would see — works for
+// published products with no key needed (they're already public) and for
+// unpublished/staged ones via the key, which GET /products/{id} requires
+// once a product isn't published (see _require_published_or_preview in
+// app/routes/products.py). Lets a product be reviewed on the actual
+// storefront without publishing it first.
+function previewUrl(id) {
+    return `${SITE_URL}/?preview=${id}&key=${encodeURIComponent(masterKey)}`;
+}
+function openPreview(id) {
+    window.open(previewUrl(id), '_blank');
+}
 
 function authenticate() {
     const key = document.getElementById('master-key').value;
@@ -928,6 +942,7 @@ function renderProducts(cat) {
                 <div class="prod-price">$${p.final_price}</div>
                 <div class="prod-stock">${p.stock > 0 ? `${p.stock} in stock` : 'Out of stock'}</div>
             </div>
+            <button class="prod-del" style="right:32px;font-size:13px;" onclick="event.stopPropagation();openPreview(${p.id})" title="View exactly as a customer would see it">👁</button>
         </div>`;
     }).join('');
 }
@@ -1355,6 +1370,7 @@ function catalogCard(p, isOos=false) {
             <div class="stock-badge ${stockClass}">${stockLabel}</div>
             ${isOos ? `<div style="font-size:8px;color:#ef4444;letter-spacing:1px;margin-top:2px;">AWAITING RESTOCK</div>` : ''}
         </div>
+        <button class="catalog-img-btn" onclick="event.stopPropagation();openPreview(${p.id})" title="View exactly as a customer would see it">👁 Preview</button>
         <button class="catalog-img-btn" onclick="event.stopPropagation();openImgMgr(${p.id},'${p.name.replace(/'/g,"\\'")}')">⊞ Images</button>
     </div>`;
 }
@@ -1377,6 +1393,7 @@ function catalogCardDiscontinued(p) {
                 CHECK ${misses}/3${checksLeft > 0 ? ` · DELETES IN ${checksLeft} MORE` : ' · DELETING NEXT RUN'}
             </div>
         </div>
+        <button class="catalog-img-btn" onclick="event.stopPropagation();openPreview(${p.id})" title="View exactly as a customer would see it">👁 Preview</button>
         <button class="catalog-img-btn" onclick="event.stopPropagation();openImgMgr(${p.id},'${p.name.replace(/'/g,"\\'")}')">⊞ Images</button>
     </div>`;
 }
