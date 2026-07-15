@@ -190,33 +190,19 @@ nav{
   align-items:center;gap:10px;color:var(--light);
 }
 .hero-banner-ph p{font-family:'Cormorant Garamond',serif;font-size:18px;font-style:italic;}
-/* Hero rotation — blurred backdrop + sharp foreground, both background-image
-   divs (not <img> tags) inside .hero-banner — same reverse-image-search
-   protection as #hero-img above. */
-/* Blurred full-bleed backdrop — cropping this layer is fine, it's just a
-   soft glow of the same photo's colors, never the actual subject. Scaled up
-   slightly so the blur's own edge softness never shows the container edge.
-   Stays permanently opaque (no fade) and swaps its image in a hard cut at
-   the same instant the foreground is invisible — a hard cut here is masked
-   by its own heavy blur, and staying opaque means the page's cream
-   background never peeks through mid-transition the way it did when both
-   layers faded to 0 together. */
-.hero-banner .hero-rot-bg{
+/* Hero rotation — a horizontal track of background-image divs (not <img>
+   tags, same reverse-image-search protection as #hero-img above), one per
+   rotation photo. Sliding the track left is the only motion; each slide is
+   background-size:cover so the photo always fills the banner edge-to-edge
+   (may crop, no letterboxing/blur padding). */
+.hero-banner .hero-rot-track{
   position:absolute;top:0;left:0;width:100%;height:100%;
+  display:none;transition:transform 0.9s cubic-bezier(.4,0,.2,1);
+}
+.hero-banner .hero-rot-track .hero-rot-slide{
+  flex:0 0 100%;width:100%;height:100%;
   background-size:cover;background-position:center;background-repeat:no-repeat;
-  display:none;opacity:1;
-  filter:blur(45px) brightness(0.88) saturate(1.15);
-  transform:scale(1.2);
 }
-/* Sharp foreground — background-size:contain guarantees the whole photo is
-   visible on every screen size, no cropping, regardless of the photo's own
-   aspect ratio or background color. This is the only layer that fades. */
-.hero-banner .hero-rot-img{
-  position:absolute;top:0;left:0;width:100%;height:100%;
-  background-size:contain;background-position:center;background-repeat:no-repeat;
-  opacity:0;transition:opacity 1.3s ease;display:none;
-}
-.hero-banner .hero-rot-img.active{opacity:1;}
 
 /* ── MARQUEE ── */
 .marquee-wrap{background:var(--black);overflow:hidden;padding:13px 0;white-space:nowrap;}
@@ -949,15 +935,10 @@ footer{background:var(--black);padding:52px 48px 36px;}
     <div id="hero-img" role="img" aria-label="Mikisi" style="display:none"></div>
     <!-- Rotating hero images — real product photos, curated by Dennis. Takes
          priority over the single banner_url/video_url above when populated.
-         Two layers per photo: a blurred, full-bleed backdrop (crops fine —
-         it's just a soft color glow, not the subject) behind a sharp
-         foreground copy that's never cropped, since photo backgrounds vary
-         wildly (black slate, white studio, grey pedestal) and a single fixed
-         page-background color can't blend seamlessly with all of them.
-         Fades fully out, swaps src while invisible, fades back in — never
-         overlaps two different photos at once. -->
-    <div class="hero-rot-bg" id="hero-rot-bg"></div>
-    <div class="hero-rot-img" id="hero-rot-img" role="img" aria-label="Mikisi jewelry"></div>
+         One slide div per photo, laid out side by side in a flex track;
+         JS slides the whole track left to advance, full-bleed cover fit
+         on every slide (see JS for the seamless last-to-first wrap). -->
+    <div class="hero-rot-track" id="hero-rot-track" role="img" aria-label="Mikisi jewelry"></div>
     <div class="hero-tagline fu fu3" id="hero-tagline-el">Unique pieces you won't find everywhere — genuine 925 sterling silver, honest prices, always something new.</div>
   </div>
 </div>
@@ -1522,26 +1503,42 @@ function startHeroRotation(images){
   document.getElementById('hero-ph').style.display='none';
   document.getElementById('hero-video').style.display='none';
   document.getElementById('hero-img').style.display='none';
-  const bg=document.getElementById('hero-rot-bg'), fg=document.getElementById('hero-rot-img');
-  bg.style.display='block'; fg.style.display='block';
-  setHeroBg(bg, heroRotation[0].url); setHeroBg(fg, heroRotation[0].url);
-  requestAnimationFrame(()=>fg.classList.add('active')); // fade the first photo in
+  const track=document.getElementById('hero-rot-track');
+  track.style.display='flex';
+  track.innerHTML='';
+  heroRotation.forEach(img=>{
+    const s=document.createElement('div');
+    s.className='hero-rot-slide';
+    setHeroBg(s, img.url);
+    track.appendChild(s);
+  });
+  // A clone of the first photo appended after the last one lets the
+  // last→first wrap slide like every other transition instead of jumping
+  // backwards; once it's fully on screen we snap back to the real first
+  // slide with the transition switched off, invisibly to the viewer.
+  if(heroRotation.length>1){
+    const clone=document.createElement('div');
+    clone.className='hero-rot-slide';
+    setHeroBg(clone, heroRotation[0].url);
+    track.appendChild(clone);
+  }
+  track.style.transition='none';
+  track.style.transform='translateX(0%)';
+  void track.offsetWidth; // force reflow so later transform changes animate
+  track.style.transition='';
   if(heroRotTimer) clearInterval(heroRotTimer);
-  if(heroRotation.length<2) return; // nothing to rotate to
+  if(heroRotation.length<2) return; // nothing to slide to
   heroRotTimer=setInterval(()=>{
-    // Only the sharp foreground fades — two different photos are never on
-    // screen at the same time (a simultaneous crossfade looked like a messy
-    // double-exposure). The blurred backdrop stays fully opaque throughout
-    // and swaps its image in a hard cut at the exact instant the foreground
-    // is invisible, so the page's cream background never gets a moment to
-    // peek through mid-transition.
-    fg.classList.remove('active');
-    setTimeout(()=>{
-      heroRotIndex=(heroRotIndex+1)%heroRotation.length;
-      setHeroBg(bg, heroRotation[heroRotIndex].url);
-      setHeroBg(fg, heroRotation[heroRotIndex].url);
-      fg.classList.add('active');
-    },1300); // must match the .hero-rot-img opacity transition duration
+    heroRotIndex++;
+    track.style.transition='transform 0.9s cubic-bezier(.4,0,.2,1)';
+    track.style.transform=`translateX(-${heroRotIndex*100}%)`;
+    if(heroRotIndex===heroRotation.length){
+      setTimeout(()=>{
+        track.style.transition='none';
+        heroRotIndex=0;
+        track.style.transform='translateX(0%)';
+      },900); // must match the .hero-rot-track transform transition duration
+    }
   },10000);
 }
 
