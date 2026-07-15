@@ -232,6 +232,24 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
     from app.agents.suppliers.silverbene_adapter import _bracelet_size_denom
     _denom = _bracelet_size_denom(variants)
 
+    # Mirrors _extract_variants()'s _purity_is_real pre-scan — "Purity" is
+    # boilerplate material text ("925 Sterling Silver") on most products,
+    # identical across every option, and only a real second selector when it
+    # actually varies (e.g. "18k gold" vs "No plating"). Must agree with
+    # p.colors or this endpoint's color field would disagree with what the
+    # customer sees in the chip.
+    _purity_vals_seen = set()
+    for _v in variants:
+        for _a in (_v.get("attribute") or _v.get("attributes") or []):
+            if (_a.get("name") or "").lower().strip() != "purity":
+                continue
+            _pval = (_a.get("value") or "").strip()
+            if _pval and _re.search(r'\b(gold|silver|platinum|plating|plated|rhodium)\b', _pval, _re.I):
+                _norm = _normalize_color_final(_clean_plain_color(_pval), "finish", normalize_rhodium=False)
+                if _norm:
+                    _purity_vals_seen.add(_norm)
+    _purity_is_real = len(_purity_vals_seen) > 1
+
     result = []
     for v in variants:
         bp = v.get("base_price") or v.get("price")
@@ -290,6 +308,16 @@ def get_variant_prices(product_id: int, session: Session = Depends(get_session))
                     # when it's the only thing that varies — fall back to the raw word
                     # so this endpoint stays consistent with p.colors in that case.
                     part = _normalize_color_final(_clean_plain_color(val), name) or val
+                if part:
+                    _color_parts.append(part)
+            elif name == "purity" and _purity_is_real and val and _re.search(r'\b(gold|silver|platinum|plating|plated|rhodium)\b', val, _re.I):
+                # Mirrors _extract_variants()'s "purity" branch — Silverbene
+                # sometimes uses "Purity" for the plating/finish choice
+                # instead of "Color" (e.g. "18k gold" vs "No plating"). Only
+                # fires on a metal/plating-shaped value so it never collides
+                # with _detect_option_suffix's pendant/chain-style reading of
+                # the same attribute name.
+                part = _normalize_color_final(_clean_plain_color(val), "finish", normalize_rhodium=False)
                 if part:
                     _color_parts.append(part)
         # Combine every real color-type attribute this option carries (e.g. a

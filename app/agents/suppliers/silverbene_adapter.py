@@ -98,6 +98,7 @@ _METAL_COLOR_NORMALIZE = {
     "18k rose gold":     "Rose Gold",
     "18k white gold":    "White Gold",
     "18k yellow gold":   "Yellow Gold",
+    "no plating":        "Silver",
 }
 
 # Maps frontend display labels back to the raw Silverbene values they could represent.
@@ -131,6 +132,14 @@ def _normalize_color_final(value: str, attr_name: str = "color", normalize_rhodi
     """
     if not value:
         return value
+    # Check the whole raw value against the dict first — "No plating" is a
+    # dict entry in its own right, and the generic trailing-suffix strip
+    # below would otherwise mangle it into "No" ("plating" reads as the
+    # stripped suffix, not part of the phrase) before it ever reached the
+    # lookup.
+    raw_lower = value.strip().lower()
+    if attr_name.lower() in _METAL_ATTR_NAMES and raw_lower in _METAL_COLOR_NORMALIZE:
+        return _METAL_COLOR_NORMALIZE[raw_lower]
     # Strip technical suffixes: "White Gold Color" → "White Gold", "Gold Plated" → "Gold"
     cleaned = re.sub(r'\s+(color|plating|plated)\s*$', '', value, flags=re.I).strip()
     v_lower = cleaned.lower()
@@ -733,6 +742,27 @@ class SilverbeneAdapter(SupplierAdapter):
             (len(_measurement_chips_seen) == 1 and not _has_dedicated_size_attr)
         )
 
+        # "Purity" is overloaded: sometimes it's just boilerplate material
+        # description ("925 Sterling Silver") repeated identically on every
+        # option regardless of which Color/finish was picked — not a real
+        # second choice, and appending it to the color chip would tack a
+        # redundant "· 925 Silver" onto products that never varied by it.
+        # Only treat it as a genuine second selector when its own normalized
+        # value actually differs across this product's options (e.g. "18k
+        # gold" vs "No plating" — a real plating choice with nothing else to
+        # distinguish the two).
+        _purity_vals_seen = set()
+        for _opt in options:
+            for _attr in _opt.get("attribute", []):
+                if (_attr.get("name") or "").lower().strip() != "purity":
+                    continue
+                _pval = (_attr.get("value") or "").strip()
+                if _pval and re.search(r'\b(gold|silver|platinum|plating|plated|rhodium)\b', _pval, re.I):
+                    _norm = _normalize_color_final(_clean_plain_color(_pval), "finish", normalize_rhodium=False)
+                    if _norm:
+                        _purity_vals_seen.add(_norm)
+        _purity_is_real = len(_purity_vals_seen) > 1
+
         for opt in options:
             attrs = opt.get("attribute", [])
             _chain_style_suffix = _detect_option_suffix(attrs)
@@ -835,6 +865,24 @@ class SilverbeneAdapter(SupplierAdapter):
                     elif value.lower().strip() in _CATEGORY_PREFIXES and value not in _seen_bare:
                         _seen_bare.add(value)
                         _bare_category_values.append(value)
+                elif name == "purity" and _purity_is_real and re.search(r'\b(gold|silver|platinum|plating|plated|rhodium)\b', value, re.I):
+                    # "Purity" is overloaded — Silverbene also uses it for a
+                    # pendant/chain-style choice ("Pendant Only" vs "Pendant +
+                    # Necklace"), already handled by _detect_option_suffix, so
+                    # "purity" is deliberately NOT in COLOR_ATTRIBUTE_NAMES.
+                    # But sometimes it genuinely carries the plating/finish
+                    # choice instead (e.g. "18k gold" vs "No plating") — a
+                    # real, customer-facing selection that was previously
+                    # invisible entirely (never became a color chip, never
+                    # showed up in p.colors, both options collapsed into one
+                    # indistinguishable listing). Only fires on a metal/plating
+                    # -shaped value that actually varies (_purity_is_real), so
+                    # it never collides with the pendant/chain-style case
+                    # above, and never tacks redundant boilerplate material
+                    # text onto every other product's color chip.
+                    part = _normalize_color_final(_clean_plain_color(value), "finish", normalize_rhodium=False)
+                    if part:
+                        _color_parts_this_option.append(part)
 
             # Combine every real color-type attribute this option carries (e.g. a
             # separate metal "Color" + gem "Main Stone") into ONE display chip —
