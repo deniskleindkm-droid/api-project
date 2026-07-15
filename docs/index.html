@@ -911,7 +911,6 @@ footer{background:var(--black);padding:52px 48px 36px;}
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-eyebrow fu fu1">The Mikisi Edit · 2026</div>
   <h1 class="fu fu2">Real silver, <em>rare finds.</em></h1>
   <div class="hero-tagline fu fu3" id="hero-tagline-el">Unique pieces you won't find everywhere — genuine 925 sterling silver, honest prices, always something new.</div>
   <div class="hero-btns fu fu4">
@@ -981,7 +980,6 @@ footer{background:var(--black);padding:52px 48px 36px;}
 
 <!-- COLLECTIONS HOME -->
 <div class="collections-home" id="collections-home">
-  <div class="section-eyebrow">The Edit</div>
   <div class="section-title" id="collections-title">Discover the Collections</div>
   <div class="section-discover-note">New finds added often. Discover something unique.</div>
   <div class="collections-grid" id="collections-grid">
@@ -1049,6 +1047,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
         <div id="pp-stock-wrap" style="display:none">
           <div class="pp-stock-low" id="pp-stock"><span></span></div>
         </div>
+        <div id="pp-invalid-selection" style="display:none;font-size:11px;color:var(--pink);margin-bottom:8px;letter-spacing:0.3px;">Please pick a valid option — this selection isn't available.</div>
         <button class="pp-atc" id="pp-atc">Add to Cart</button>
         <!-- Collapsible sections -->
         <details class="pp-accordion" id="pp-acc-details" style="display:none">
@@ -1098,13 +1097,6 @@ footer{background:var(--black);padding:52px 48px 36px;}
   <div class="divider-eye">Real Silver, Rare Finds</div>
   <div class="divider-quote">"Unique pieces you won't find everywhere —<br>genuine, refined, and made to last."</div>
   <div class="divider-sub">Genuine · Unique · Always Something New</div>
-</div>
-
-<!-- URGENCY -->
-<div class="urgency-bar">
-  <div class="urgency-text">Sale ends in</div>
-  <div class="urgency-timer" id="timer">23:59:59</div>
-  <div class="urgency-text">— Shop now</div>
 </div>
 
 <!-- ABOUT -->
@@ -1337,6 +1329,7 @@ let ppSelectedSize = null;
 let ppSelectedColor = null;
 let ppSelectedColorRaw = null; // raw API value (before COLOR_LABEL mapping)
 let ppSelectedOptionId = null; // real Silverbene option_id resolved from /variant-prices — carried to checkout as-is
+let ppInvalidSelection = false; // true when the active chip(s) match no priced option — blocks Add to Cart instead of silently substituting a different variant
 let ppSelectedStone = null;
 let ppSelectedWidth = null;
 let ppOpening = false; // guard — prevents double-click opening two panels
@@ -1350,7 +1343,6 @@ let wishlist = JSON.parse(localStorage.getItem('mk_wishlist')||'[]');
 
 // ── HELPERS ──
 function getPlaceholder(){return 'https://placehold.co/400x600/fdf9f6/d4849c?text=Mikisi';}
-function pad(n){return String(n).padStart(2,'0');}
 function stripHtml(str){
   if(!str)return'';
   return str.replace(/<[^>]+>/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/\s+/g,' ').trim();
@@ -1465,7 +1457,6 @@ function applyVariantUI(chipLabel){
 // ── INIT ──
 window.onload = async()=>{
   updateAuthUI();
-  startTimer();
   loadHero();
   await Promise.all([loadCollections(),loadProducts()]);
   loadCart();
@@ -1480,11 +1471,6 @@ window.onload = async()=>{
   const addParam = p.get('add');
   if(addParam) addParam.split(',').forEach(pair=>{const[id,qty]=pair.split(':');if(id)addToCart(Number(id),'',null,null);});
 };
-
-function startTimer(){
-  let h=23,m=59,s=59;
-  setInterval(()=>{s--;if(s<0){s=59;m--;}if(m<0){m=59;h--;}if(h<0)h=23;document.getElementById('timer').textContent=`${pad(h)}:${pad(m)}:${pad(s)}`;},1000);
-}
 
 let heroRotation=[];
 let heroRotIndex=0;
@@ -2416,6 +2402,8 @@ async function openPP(id){
   // Reset — resolved fresh by updateVariantPrice() once /variant-prices loads (or
   // immediately below if it's already cached from this product's own earlier fetch).
   ppSelectedOptionId = null;
+  ppInvalidSelection = false;
+  document.getElementById('pp-invalid-selection').style.display='none';
 
   // Apply material + description for the initially-selected chip
   const initChip=document.querySelector('#pp-color-chips .pp-chip.active');
@@ -2467,9 +2455,38 @@ function closePP(){
 }
 function ppNavPrev(){if(ppNavIdx>0){ppOpening=false;openPP(ppNavList[ppNavIdx-1].id);}}
 function ppNavNext(){if(ppNavIdx>=0&&ppNavIdx<ppNavList.length-1){ppOpening=false;openPP(ppNavList[ppNavIdx+1].id);}}
+// Disables Add to Cart and shows an inline notice when the active chip(s)
+// match no priced option (ppInvalidSelection) — never touches the button
+// when the product is simply out of stock, that state already owns it.
+function updateAtcAvailability(){
+  const atcBtn=document.getElementById('pp-atc');
+  const noteEl=document.getElementById('pp-invalid-selection');
+  if(!atcBtn||!noteEl||!ppCurrentProduct)return;
+  if(!ppCurrentProduct.stock||ppCurrentProduct.stock===0)return;
+  atcBtn.disabled=ppInvalidSelection;
+  atcBtn.style.cursor=ppInvalidSelection?'default':'';
+  noteEl.style.display=ppInvalidSelection?'block':'none';
+}
+
+// Mirrors the backend's _normalize_size_for_match (silverbene_adapter.py) —
+// the size chip label keeps Silverbene's raw prefix ("US 5", "Size 6") but
+// /variant-prices strips it (v.size is bare "5"/"6") since that's what
+// resolve_option_id compares against at order time. Without stripping the
+// same prefix here, wantSize vs v.size would never exact-match on ANY
+// prefixed ring size — silently falling through to a fallback that ignores
+// which size the customer actually picked.
+function _normalizeSizeForMatch(raw){
+  let v=(raw||'').trim();
+  v=v.replace(/,\s*$/,'').trim();
+  for(const prefix of ['US-','US  ','US ','Size ','Ring Size ','No. ','No ']){
+    if(v.toUpperCase().startsWith(prefix.toUpperCase())) return v.slice(prefix.length).trim();
+  }
+  return v;
+}
+
 function updateVariantPrice(){
   if(!ppVariantPrices.length){ ppSelectedOptionId=null; return; }
-  const wantSize = ppSelectedSize || null;
+  const wantSize = ppSelectedSize ? _normalizeSizeForMatch(ppSelectedSize) : null;
   // Every non-size selector the customer has currently made. The product panel
   // can show up to three independent selector groups beyond size — Color
   // (ppSelectedColor/Raw), a second dimension like gemstone or style
@@ -2504,9 +2521,25 @@ function updateVariantPrice(){
   if(!match && wantSize)           match = ppVariantPrices.find(v=>v.size===wantSize);
   // Pass 3: every active selector, any size
   if(!match && wantParts.length)   match = ppVariantPrices.find(v=>colorEq(v));
-  // Pass 4: first variant
-  if(!match)                       match = ppVariantPrices[0];
-  if(!match){ ppSelectedOptionId=null; return; }
+  // Pass 4: nothing to select at all (no size chip, no color/stone/width chip
+  // rendered for this product) — the single variant IS the only real choice,
+  // not a guess. Never fires when wantSize/wantParts WAS set but matched
+  // nothing — that means a chip is showing as selected that doesn't
+  // correspond to any real, priced Silverbene option (a data bug), and
+  // silently substituting a different variant's price/option_id here would
+  // check the customer out with an item they never actually chose.
+  if(!match && !wantSize && !wantParts.length) match = ppVariantPrices[0];
+  if(!match){
+    ppSelectedOptionId=null;
+    if(wantSize||wantParts.length){
+      console.error(`[variant-price] no priced option matches the selected size/color for product ${ppCurrentProduct?.id} — size="${wantSize}" parts=${JSON.stringify(wantParts)}`);
+    }
+    ppInvalidSelection = !!(wantSize||wantParts.length);
+    updateAtcAvailability();
+    return;
+  }
+  ppInvalidSelection = false;
+  updateAtcAvailability();
   // This is the exact Silverbene option_id for the customer's current selection —
   // carried straight through to cart/checkout so the backend never has to re-guess
   // it from size/color text.
