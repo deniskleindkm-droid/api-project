@@ -1326,6 +1326,12 @@ let ppIdx = 0;
 let pendingVerifyEmail = '';
 let cartItems = [];
 let ppSelectedSize = null;
+// True only when a real, clickable <button class="pp-chip"> size chip was
+// rendered — false for the open/adjustable-ring, bangle-diameter, and
+// single-non-US-size cases, where ppSelectedSize instead holds a synthetic
+// display string (e.g. "US5-8") that was never meant to be matched against
+// a priced option, only shown in the cart line item.
+let ppHasSizeChips = false;
 let ppSelectedColor = null;
 let ppSelectedColorRaw = null; // raw API value (before COLOR_LABEL mapping)
 let ppSelectedOptionId = null; // real Silverbene option_id resolved from /variant-prices — carried to checkout as-is
@@ -2232,6 +2238,7 @@ async function openPP(id){
 
   // ── Size chips — from p.sizes or extracted from variants ──
   // (sizes declared above — may already contain promoted bracelet/anklet lengths from color detection)
+  ppHasSizeChips=false; // set true below only in the branch that renders real <button> chips
   if(!sizes.length){try{let _s=p.sizes?JSON.parse(p.sizes):[];if(typeof _s==='string')_s=JSON.parse(_s);sizes=Array.isArray(_s)?_s:[];}catch{sizes=[];}}
   if(!sizes.length&&p.variants){
     try{
@@ -2329,6 +2336,7 @@ async function openPP(id){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
       document.getElementById('pp-size-chips').innerHTML=sizes.map((s,i)=>`<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'size')">${s}</button>`).join('');
+      ppHasSizeChips=true;
     }else{
       // Single non-meaningful size chip (e.g. bracelet "One Size / Adjustable") — hide
       document.getElementById('pp-sizes-wrap').style.display='none';
@@ -2521,20 +2529,27 @@ function updateVariantPrice(){
   if(!match && wantSize)           match = ppVariantPrices.find(v=>v.size===wantSize);
   // Pass 3: every active selector, any size
   if(!match && wantParts.length)   match = ppVariantPrices.find(v=>colorEq(v));
-  // Pass 4: nothing to select at all (no size chip, no color/stone/width chip
-  // rendered for this product) — the single variant IS the only real choice,
-  // not a guess. Never fires when wantSize/wantParts WAS set but matched
-  // nothing — that means a chip is showing as selected that doesn't
-  // correspond to any real, priced Silverbene option (a data bug), and
-  // silently substituting a different variant's price/option_id here would
-  // check the customer out with an item they never actually chose.
-  if(!match && !wantSize && !wantParts.length) match = ppVariantPrices[0];
+  // Pass 4: nothing REAL to select at all (no clickable size chip, no
+  // color/stone/width chip rendered for this product) — the single variant
+  // IS the only real choice, not a guess. Gated on ppHasSizeChips rather
+  // than wantSize's truthiness: an open/adjustable ring or bangle-diameter
+  // product has no real size chip but still carries a synthetic display
+  // string in ppSelectedSize (e.g. "US5-8") purely for the cart line item —
+  // that string was never meant to match a priced option, so treating it as
+  // a "selection" here would wrongly flag every one of those products as
+  // broken. Never fires when a REAL chip is active but matched nothing —
+  // that means a chip is showing as selected that doesn't correspond to any
+  // real, priced Silverbene option (a data bug), and silently substituting
+  // a different variant's price/option_id here would check the customer out
+  // with an item they never actually chose.
+  if(!match && !ppHasSizeChips && !wantParts.length) match = ppVariantPrices[0];
   if(!match){
     ppSelectedOptionId=null;
-    if(wantSize||wantParts.length){
+    const _realSelectionActive = (ppHasSizeChips&&wantSize) || wantParts.length;
+    if(_realSelectionActive){
       console.error(`[variant-price] no priced option matches the selected size/color for product ${ppCurrentProduct?.id} — size="${wantSize}" parts=${JSON.stringify(wantParts)}`);
     }
-    ppInvalidSelection = !!(wantSize||wantParts.length);
+    ppInvalidSelection = !!_realSelectionActive;
     updateAtcAvailability();
     return;
   }
