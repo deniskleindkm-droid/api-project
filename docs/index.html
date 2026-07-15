@@ -134,14 +134,8 @@ nav{
 .hero h1 em{color:var(--pink);font-style:italic;}
 .hero-tagline{
   font-family:'Cormorant Garamond',serif;font-size:17px;
-  font-weight:300;font-style:italic;color:#fff;
-  text-align:center;line-height:1.6;
-  /* Overlays the bottom edge of the hero banner image rather than sitting
-     as plain text above it — semi-transparent dark bar (not solid black) so
-     the rotating photo still shows through faintly. */
-  position:absolute;left:0;right:0;bottom:0;z-index:2;
-  background:rgba(20,20,20,0.4);
-  padding:16px 24px;
+  font-weight:300;font-style:italic;color:var(--mid);
+  text-align:center;margin-bottom:40px;line-height:1.6;
 }
 .hero-btns{display:flex;gap:14px;justify-content:center;margin-bottom:56px;flex-wrap:wrap;}
 .btn-black{
@@ -159,7 +153,13 @@ nav{
 }
 .btn-ghost:hover{border-color:var(--pink);color:var(--pink);}
 .hero-banner{
-  width:100vw;margin-left:calc(-50vw + 50%);height:560px;overflow:hidden;
+  width:100vw;margin-left:calc(-50vw + 50%);
+  /* Every rotation photo is a perfect square (1:1). A short, very wide
+     banner would cover-crop nearly half of each photo's height away, so
+     this scales with viewport width toward a ~1.6:1 box (much closer to
+     square, still clearly a wide banner) instead of the old fixed 560px. */
+  height:clamp(640px,62vw,860px);
+  overflow:hidden;
   background:var(--ivory);display:flex;align-items:center;justify-content:center;
   position:relative;
 }
@@ -795,7 +795,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
   .hero{padding:52px 18px 0;min-height:75vh;}
   .hero h1{font-size:36px;white-space:normal;text-align:center;line-height:1.08;}
   .hero-eyebrow{justify-content:center;}
-  .hero-tagline{font-size:12px;padding:12px 16px;}
+  .hero-tagline{font-size:14px;margin-bottom:32px;}
   .hero-btns{gap:10px;margin-bottom:36px;}
   .btn-black,.btn-ghost{padding:13px 26px;font-size:9px;letter-spacing:2px;}
   .hero-banner{height:300px;}
@@ -913,6 +913,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
 <div class="hero">
   <div class="hero-eyebrow fu fu1">The Mikisi Edit · 2026</div>
   <h1 class="fu fu2">Real silver, <em>rare finds.</em></h1>
+  <div class="hero-tagline fu fu3" id="hero-tagline-el">Unique pieces you won't find everywhere — genuine 925 sterling silver, honest prices, always something new.</div>
   <div class="hero-btns fu fu4">
     <button class="btn-black" onclick="showCollections()">Discover the Collections</button>
     <button class="btn-ghost" onclick="scrollToAbout()">Our Story</button>
@@ -939,7 +940,6 @@ footer{background:var(--black);padding:52px 48px 36px;}
          JS slides the whole track left to advance, full-bleed cover fit
          on every slide (see JS for the seamless last-to-first wrap). -->
     <div class="hero-rot-track" id="hero-rot-track" role="img" aria-label="Mikisi jewelry"></div>
-    <div class="hero-tagline fu fu3" id="hero-tagline-el">Unique pieces you won't find everywhere — genuine 925 sterling silver, honest prices, always something new.</div>
   </div>
 </div>
 
