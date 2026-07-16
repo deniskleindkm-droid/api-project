@@ -32,18 +32,20 @@ actually shipped:
      the manual step this session kept needing a human to remember.
 
   4. Name/category mismatch — Product.name is NOT Silverbene's raw title;
-     it's an LLM rewrite of it (product_rewriter.py's rewrite_product(),
-     "ARIA" prompt: compress the raw title to a clean name, max 8 words).
-     Found live on 2026-07-16: Silverbene's actual raw title for SKU
+     it's an LLM rewrite of it. Two independent pipelines can produce it:
+     bulk_import_agent.py's run_bulk_import_agent() (the actual scheduled
+     one, wired into scheduler.py) and product_rewriter.py's
+     rewrite_product() (called from store_manager.py's
+     import_product_from_supplier(), a separate entry point). Found live on
+     2026-07-16: Silverbene's actual raw title for SKU
      RANISZE_676323268083 is "...Station Chain 925 Sterling Silver Clavicle
-     Necklace" (confirmed via a live API call) — the LLM correctly assigned
-     collection_id=Necklaces in the very same response, but wrote back
-     mikisi_name="Cubic Zirconia Station Chain Ring". Self-inconsistent
-     LLM output, not a Silverbene data problem and not a deterministic code
-     bug — rewrite_product() now guards against it directly (see
-     implied_category_from_name, called from both places so they can never
-     disagree), but this check stays as the permanent regression net for
-     any row that slipped through before the guardrail existed, or if the
+     Necklace" (confirmed via a live API call), collection was correctly
+     Necklaces, but the stored name was "Cubic Zirconia Station Chain
+     Ring" — a self-inconsistent LLM rewrite, not a Silverbene data problem.
+     Both pipelines now guard against it directly using
+     implied_category_from_name (below) so detection and prevention can
+     never disagree, but this check stays as the permanent regression net
+     for any row that slipped through before the guardrails existed, or if
      guardrail itself is ever removed.
 
 Read-only: prints a report and returns it as a dict. Never writes to the

@@ -372,6 +372,22 @@ Return ONLY valid JSON array. No other text."""
             raw_name = _enforce_earring_style(raw_name, product.get("name", ""), aria_cat, product.get("description", ""))
             raw_name = _ensure_category_in_name(raw_name, aria_cat)
             raw_name = _ensure_bangle_naming(raw_name, aria_cat, product.get("name", ""), product.get("description", ""))
+            # _ensure_category_in_name only guarantees a required word is
+            # PRESENT somewhere in the name — it doesn't notice a different,
+            # CONTRADICTING item-type word sitting at the end (e.g. "...Chain
+            # Ring" for a Necklaces product: "necklace" is required but
+            # missing, so it should append "Necklace" — but this residual
+            # check exists in case a future prompt change makes ARIA produce
+            # a name that already contains an unrelated required word, like
+            # "Ring-Style Clasp" on a Necklaces item, masking the trailing
+            # contradiction). Same guardrail as product_rewriter.py's
+            # rewrite_product() — see implied_category_from_name's docstring
+            # for the exact live case (SKU RANISZE_676323268083) this closes.
+            from app.agents.catalog_audit_agent import implied_category_from_name
+            _implied = implied_category_from_name(raw_name)
+            if _implied and _implied != aria_cat:
+                print(f"[Bulk Import] '{raw_name[:50]}' implies {_implied} but category is {aria_cat} — using raw title instead")
+                raw_name = _ensure_category_in_name(product.get("name", ""), aria_cat)
             product["mikisi_name"] = raw_name[:100]
             product["mikisi_description"] = _enforce_earring_description_style(
                 result.get("mikisi_description", ""), product.get("name", ""), aria_cat, product.get("description", "")
