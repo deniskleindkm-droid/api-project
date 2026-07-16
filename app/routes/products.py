@@ -522,6 +522,23 @@ def unpublish_products(data: PublishRequest, session: Session = Depends(get_sess
     return {"unpublished": len(products), "ids": [p.id for p in products]}
 
 
+@router.post("/admin/products/backfill-images")
+def backfill_product_images_endpoint(master_key: str, limit: int = 20):
+    """
+    Admin — uploads image_url to Cloudinary for active products missing
+    content_image_url (see image_cdn_agent.py). Deliberately small default
+    limit and processes synchronously within the request — call repeatedly
+    while the response's "scanned" count is > 0 to work through the full
+    backlog without risking a request timeout on a large one-shot run.
+    """
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    from app.agents.image_cdn_agent import backfill_product_images
+    return backfill_product_images(limit=limit)
+
+
 class HiddenCategoriesUpdate(BaseModel):
     master_key: str
     categories: List[str]

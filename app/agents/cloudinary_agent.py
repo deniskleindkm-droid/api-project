@@ -50,17 +50,31 @@ def _upload_video(url: str, public_id: str, tags: list) -> str:
     return result.get("secure_url", "")
 
 
-def store_product_image(product_id: int, image_url: str, variant: str) -> str:
+def store_product_image(product_id: int, image_url: str, variant: str, retries: int = 3) -> str:
     """
-    variant: 'clean' | 'lifestyle_dark' | 'lifestyle_light'
+    variant: 'clean' | 'lifestyle_dark' | 'lifestyle_light' | 'primary'
     Returns permanent Cloudinary URL or '' on failure.
+
+    Retries on failure — Silverbene's media CDN intermittently 503s on
+    individual requests (seen directly while sourcing hero photos; see
+    store_hero_rotation_image), and a fetch-by-URL upload of a Silverbene
+    image_url hits the same origin. Also used for 'primary' by
+    image_cdn_agent.py to mirror image_url itself onto Cloudinary — see
+    that module's docstring for why every product needs this, not just
+    the AI-generated variants.
     """
+    import time
     public_id = f"{FOLDER_IMAGES}/{product_id}_{variant}"
-    try:
-        return _upload_image(image_url, public_id, ["mikisi", "product", variant])
-    except Exception as e:
-        print(f"[Cloudinary] Image upload failed product={product_id} variant={variant}: {e}")
-        return ""
+    last_err = None
+    for attempt in range(retries):
+        try:
+            return _upload_image(image_url, public_id, ["mikisi", "product", variant])
+        except Exception as e:
+            last_err = e
+            if attempt < retries - 1:
+                time.sleep(2)
+    print(f"[Cloudinary] Image upload failed product={product_id} variant={variant} after {retries} attempts: {last_err}")
+    return ""
 
 
 def store_product_video(product_id: int, category: str, video_url: str) -> str:

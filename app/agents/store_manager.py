@@ -132,6 +132,27 @@ def add_product_to_store(product_data):
         session.add(product)
         session.commit()
         session.refresh(product)
+
+        # Cache the primary image on Cloudinary so it's never served from
+        # Silverbene's slow origin on the storefront — see image_cdn_agent.py's
+        # docstring for why (measured 0.5-1.3s per Silverbene image request).
+        # Backgrounded: this is the single point both import pipelines
+        # (bulk_import_agent.py and product_rewriter.py's path) converge on,
+        # so it must never block or fail the import itself.
+        if product.image_url:
+            import threading
+            def _cache_primary_image(pid=product.id, url=product.image_url):
+                from app.agents.cloudinary_agent import store_product_image
+                cloudinary_url = store_product_image(pid, url, "primary")
+                if cloudinary_url:
+                    with Session(engine) as s2:
+                        p2 = s2.get(Product, pid)
+                        if p2:
+                            p2.content_image_url = cloudinary_url
+                            s2.add(p2)
+                            s2.commit()
+            threading.Thread(target=_cache_primary_image, daemon=True).start()
+
         return product, "added"
 
 
