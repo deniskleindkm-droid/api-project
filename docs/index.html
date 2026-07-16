@@ -1339,6 +1339,7 @@ let ppImages = [];
 let ppIdx = 0;
 let pendingVerifyEmail = '';
 let cartItems = [];
+let ppEnteredCollectionModeForPreview = false; // true when positionPPInline had to flip collection-mode on itself (no real collection was ever browsed into) — closePP() undoes it instead of leaving an empty collection-view showing
 let ppSelectedSize = null;
 // True only when a real, clickable <button class="pp-chip"> size chip was
 // rendered — false for the open/adjustable-ring, bangle-diameter, and
@@ -2028,7 +2029,20 @@ function positionPPInline(productId){
   const ppEl=document.getElementById('pp-inline');
   if(!grid||!ppEl) return;
   const card=grid.querySelector(`.pcard[data-id="${productId}"]`);
-  if(!card){grid.appendChild(ppEl);return;}
+  if(!card){
+    // No visible card to anchor to (e.g. an admin preview link opened cold,
+    // with no collection ever browsed into this session) — .collection-view
+    // is hidden by default on the homepage, so appending the panel there
+    // would put it in the DOM with display:block but stay invisible inside
+    // a hidden ancestor. Reveal the same shell openCollection() uses so the
+    // panel actually has somewhere visible to render.
+    if(!document.body.classList.contains('collection-mode')){
+      document.body.classList.add('collection-mode');
+      ppEnteredCollectionModeForPreview=true;
+    }
+    grid.appendChild(ppEl);
+    return;
+  }
   const cards=[...grid.querySelectorAll('.pcard')];
   const clickedTop=card.offsetTop;
   let lastInRow=cards.indexOf(card);
@@ -2482,6 +2496,16 @@ function closePP(){
   const ppInlineEl=document.getElementById('pp-inline');
   if(ppInlineEl) ppInlineEl.style.display='none';
   ppOpening=false;
+  if(ppEnteredCollectionModeForPreview){
+    // positionPPInline flipped collection-mode on just to give the panel
+    // somewhere visible to render (no real collection was ever browsed
+    // into) — closing should land back on the homepage, not an empty
+    // collection-view with nothing in its grid.
+    ppEnteredCollectionModeForPreview=false;
+    document.body.classList.remove('collection-mode');
+    document.getElementById('breadcrumb').style.display='none';
+    document.getElementById('collection-view').style.display='none';
+  }
 }
 function ppNavPrev(){if(ppNavIdx>0){ppOpening=false;openPP(ppNavList[ppNavIdx-1].id);}}
 function ppNavNext(){if(ppNavIdx>=0&&ppNavIdx<ppNavList.length-1){ppOpening=false;openPP(ppNavList[ppNavIdx+1].id);}}
