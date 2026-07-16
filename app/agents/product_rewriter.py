@@ -164,6 +164,21 @@ Return JSON only:
             result["mikisi_name"] = raw_name[:60].strip()
             print(f"[Rewriter] Low confidence — keeping original name")
 
+        # Guardrail: the LLM can assign the right collection_id and still
+        # write a mikisi_name whose own trailing word implies a different
+        # item type — self-inconsistent within the same response (e.g.
+        # collection_id=Necklaces, mikisi_name="...Station Chain Ring").
+        # Nothing else catches this since collection_id and mikisi_name are
+        # never otherwise cross-checked. implied_category_from_name is the
+        # same function catalog_audit_agent.py's name/category check uses,
+        # so detection and prevention can never drift out of agreement.
+        from app.agents.catalog_audit_agent import implied_category_from_name
+        implied = implied_category_from_name(result.get("mikisi_name", ""))
+        result_collection = collection_map.get(result.get("collection_id"), {}).get("name")
+        if implied and result_collection and implied != result_collection:
+            print(f"[Rewriter] mikisi_name implies {implied} but collection is {result_collection} — keeping original name")
+            result["mikisi_name"] = raw_name[:60].strip()
+
         print(f"[Rewriter] {'✅' if result.get('accepted') else '❌'} {raw_name[:50]} → {result.get('mikisi_name', 'rejected')}")
         return result
 

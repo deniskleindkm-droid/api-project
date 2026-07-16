@@ -8,7 +8,7 @@ one-off comparison scripts written during the 2026-07-15 size/color chip
 bug hunt (see memory: feedback_silverbene_price_backed_sizes,
 project_compound_variant_fix).
 
-Three checks, each catching a different class of bug this pipeline has
+Four checks, each catching a different class of bug this pipeline has
 actually shipped:
 
   1. Unknown attribute names — any variant attribute name Silverbene sends
@@ -30,6 +30,21 @@ actually shipped:
      diffs against what's actually stored on the row. Any mismatch means
      a code fix landed but this product was never backfilled — exactly
      the manual step this session kept needing a human to remember.
+
+  4. Name/category mismatch — Product.name is NOT Silverbene's raw title;
+     it's an LLM rewrite of it (product_rewriter.py's rewrite_product(),
+     "ARIA" prompt: compress the raw title to a clean name, max 8 words).
+     Found live on 2026-07-16: Silverbene's actual raw title for SKU
+     RANISZE_676323268083 is "...Station Chain 925 Sterling Silver Clavicle
+     Necklace" (confirmed via a live API call) — the LLM correctly assigned
+     collection_id=Necklaces in the very same response, but wrote back
+     mikisi_name="Cubic Zirconia Station Chain Ring". Self-inconsistent
+     LLM output, not a Silverbene data problem and not a deterministic code
+     bug — rewrite_product() now guards against it directly (see
+     implied_category_from_name, called from both places so they can never
+     disagree), but this check stays as the permanent regression net for
+     any row that slipped through before the guardrail existed, or if the
+     guardrail itself is ever removed.
 
 Read-only: prints a report and returns it as a dict. Never writes to the
 database — a human (or a follow-up, explicitly-approved backfill pass)
@@ -68,6 +83,41 @@ _SUSPICIOUS_VALUE_RE = re.compile(
 
 _CARAT_RE = re.compile(r'\d\s*c\.?t\.?\b|\bcarat\b', re.I)
 _DIAMETER_LEAK_RE = re.compile(r'\b(outer|inner)?\s*diameter\b', re.I)
+
+# Trailing word in a raw Silverbene title -> the Mikisi category it implies.
+# Only the LAST word of the title is checked — jewelry titles routinely
+# mention other item types mid-sentence ("Ring-Style Clasp Necklace") without
+# that being wrong, but the trailing word is conventionally the item type
+# itself, and is what actually goes wrong (see check 4's docstring above).
+_NAME_CATEGORY_WORDS = {
+    "ring": "Rings", "rings": "Rings",
+    "necklace": "Necklaces", "necklaces": "Necklaces", "pendant": "Necklaces",
+    "bracelet": "Bracelets", "bracelets": "Bracelets", "bangle": "Bracelets",
+    "earring": "Earrings", "earrings": "Earrings", "stud": "Earrings",
+    "studs": "Earrings", "hoop": "Earrings", "hoops": "Earrings",
+    "anklet": "Anklets", "anklets": "Anklets",
+    "cuff": "Ear Cuffs", "cuffs": "Ear Cuffs",
+}
+_WORD_RE = re.compile(r'[A-Za-z]+')
+
+
+def implied_category_from_name(name: str):
+    """
+    The Mikisi category a product name's trailing word implies, or None if
+    the last word isn't a recognized item-type word at all. Shared by this
+    audit's check 4 (below) and product_rewriter.py's rewrite_product(),
+    which calls this as a guardrail on the LLM-generated mikisi_name before
+    accepting it — see rewrite_product's docstring for why: the LLM is
+    given a raw title ending "...Clavicle Necklace" and asked to compress it
+    to 8 words, and can produce a name ending in the wrong item-type word
+    even while correctly assigning collection_id in the very same response
+    (self-inconsistent, not obviously wrong — nothing else catches it). One
+    function, so the guardrail and this audit's detection never disagree.
+    """
+    words = _WORD_RE.findall((name or "").lower())
+    return _NAME_CATEGORY_WORDS.get(words[-1]) if words else None
+
+
 _BARE_MEASUREMENT_RE = re.compile(r'\b\d+(\.\d+)?\s*(mm|cm)\b', re.I)
 _TRAILING_PUNCT_RE = re.compile(r'[,;]\s*$')
 
@@ -180,9 +230,21 @@ def _audit_stale_data(products):
     return findings
 
 
+def _audit_name_category_mismatch(products):
+    """Check 4 — stored name's trailing word implies a different jewelry
+    type than the category this product is actually assigned to. Returns
+    [(product_id, name, actual_category, implied_category), ...]."""
+    findings = []
+    for p in products:
+        implied = implied_category_from_name(p.name)
+        if implied and implied != p.category:
+            findings.append((p.id, p.name, p.category, implied))
+    return findings
+
+
 def run_catalog_audit(verbose: bool = True) -> dict:
     """
-    Runs all three checks against every active Silverbene product.
+    Runs all four checks against every active Silverbene product.
     Returns a dict report; also prints it when verbose (default — matches
     every other agent in this codebase, which report via print()).
     """
@@ -197,12 +259,14 @@ def run_catalog_audit(verbose: bool = True) -> dict:
     unknown_attrs = _audit_unknown_attributes(products)
     suspicious_chips = _audit_suspicious_chips(products)
     stale = _audit_stale_data(products)
+    name_category_mismatches = _audit_name_category_mismatch(products)
 
     report = {
         "products_scanned": len(products),
         "unknown_attributes": unknown_attrs,
         "suspicious_chips": suspicious_chips,
         "stale_data": stale,
+        "name_category_mismatches": name_category_mismatches,
     }
 
     if verbose:
@@ -232,6 +296,13 @@ def run_catalog_audit(verbose: bool = True) -> dict:
                     print(f"[Catalog Audit]   #{pid} {pname}: {issue}")
         else:
             print("[Catalog Audit] No stale sizes/colors — every product matches what current code would produce")
+
+        if name_category_mismatches:
+            print(f"[Catalog Audit] {len(name_category_mismatches)} product(s) whose title implies a different category:")
+            for pid, pname, actual_cat, implied_cat in name_category_mismatches:
+                print(f"[Catalog Audit]   #{pid} {pname!r}: category={actual_cat} but title implies {implied_cat}")
+        else:
+            print("[Catalog Audit] No product titles conflict with their assigned category")
 
     return report
 
