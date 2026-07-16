@@ -928,7 +928,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
   <h1 class="fu fu2">Real silver, <em>rare finds.</em></h1>
   <div class="hero-tagline fu fu3" id="hero-tagline-el">Unique pieces you won't find everywhere — genuine 925 sterling silver, honest prices, always something new.</div>
   <div class="hero-btns fu fu4">
-    <button class="btn-black" onclick="showCollections()">Discover the Collections</button>
+    <button class="btn-black" onclick="showCollections()">Discover New Finds</button>
     <button class="btn-ghost" onclick="scrollToAbout()">Our Story</button>
   </div>
   <div class="hero-banner fu" style="animation-delay:0.78s">
@@ -994,7 +994,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
 
 <!-- COLLECTIONS HOME -->
 <div class="collections-home" id="collections-home">
-  <div class="section-title" id="collections-title">Discover the Collections</div>
+  <div class="section-title" id="collections-title">Discover New Finds</div>
   <div class="section-discover-note">New finds added often. Discover something unique.</div>
   <div class="collections-grid" id="collections-grid">
     <div class="loading">Discovering collections…</div>
@@ -1122,7 +1122,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
     <div class="about-text" style="margin-top:-10px;">Our selection is always evolving, so there's always something new to find. No luxury markup, no fast-fashion fakes — just real silver, thoughtfully chosen.</div>
     <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;">
       <button class="btn-ghost" onclick="window.location.href='/about'" style="width:fit-content;padding:12px 28px;">Our Full Story</button>
-      <button class="btn-ghost" onclick="showCollections()" style="width:fit-content;padding:12px 28px;">Discover the Collections</button>
+      <button class="btn-ghost" onclick="showCollections()" style="width:fit-content;padding:12px 28px;">Discover New Finds</button>
     </div>
   </div>
   <div class="about-img"><img src="https://placehold.co/520x400/fdf9f6/d4849c?text=Mikisi" alt="Mikisi sterling silver jewelry" loading="lazy"/></div>
@@ -2992,7 +2992,7 @@ function goHome(){
   document.body.classList.remove('collection-mode');
   document.getElementById('breadcrumb').style.display='none';
   document.getElementById('collection-view').style.display='none';
-  document.getElementById('collections-title').textContent='Discover the Collections';
+  document.getElementById('collections-title').textContent='Discover New Finds';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function showCollections(){
@@ -3035,7 +3035,7 @@ function scrollToCollectionTop(){
   document.body.classList.remove('collection-mode');
   document.getElementById('breadcrumb').style.display='none';
   document.getElementById('collection-view').style.display='none';
-  document.getElementById('collections-title').textContent='Discover the Collections';
+  document.getElementById('collections-title').textContent='Discover New Finds';
   // Unlike goHome() (used by the logo/"Home" breadcrumb, which should reset
   // all the way to the hero), this button's job is to return to the
   // collections picker specifically — not the top of the page.
