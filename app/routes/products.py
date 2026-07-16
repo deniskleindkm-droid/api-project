@@ -100,6 +100,22 @@ def _size_display_meta(p) -> dict:
     ):
         return {"size_label": label, "size_hint": None, "size_display_mode": "adjustable_badge"}
 
+    # Ground-truth check: a size string with real digits in it (a measured
+    # range, a length) is still only a genuine selectable CHOICE if some
+    # real, priced Silverbene option actually carries a size-type attribute.
+    # Many single-option bracelets/necklaces/anklets have no such attribute
+    # at all — Silverbene priced them by color only (or not at all) — and
+    # p.sizes was filled in purely from parsing the description as a
+    # fallback (see sizes_are_variant_backed's docstring). Digit-presence
+    # alone can't distinguish a real priced option from a descriptive
+    # estimate, so ask the source of truth instead of guessing from text.
+    # A product whose "size" is display-only can never be matched against
+    # /variant-prices (every option's size comes back null there too) — the
+    # frontend must never render it as a clickable/matchable chip.
+    from app.agents.suppliers.silverbene_adapter import sizes_are_variant_backed
+    if not sizes_are_variant_backed(p.variants):
+        return {"size_label": label, "size_hint": None, "size_display_mode": "description_badge"}
+
     return {
         "size_label":        label,
         "size_hint":         _SIZE_HINTS.get(category),

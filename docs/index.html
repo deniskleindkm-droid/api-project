@@ -2368,11 +2368,24 @@ async function openPP(id){
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
       document.getElementById('pp-size-chips').innerHTML=
         `<div class="pp-open-size-note" style="font-size:12px;color:var(--black);letter-spacing:0.3px;">Adjustable — fits most wrists</div>`;
-    }else if(sizes.length>=2||showSingle){
+    }else if((sizes.length>=2||showSingle)&&p.size_display_mode==='selector'){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
       document.getElementById('pp-size-chips').innerHTML=sizes.map((s,i)=>`<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'size')">${s}</button>`).join('');
       ppHasSizeChips=true;
+    }else if(sizes.length>=2||showSingle){
+      // Backend ground truth (size_display_mode, computed in _size_display_meta
+      // from the real Silverbene option data — see sizes_are_variant_backed in
+      // silverbene_adapter.py) says none of these size values are backed by an
+      // actual priced option, even though they look like real chips (e.g. a
+      // measured "Adjustable 6.5\"–8\"" range parsed from the description as a
+      // fallback because Silverbene priced this product by color only). Real,
+      // useful information — just never a clickable/matchable choice, so show
+      // it as plain text instead of a <button> (ppHasSizeChips stays false).
+      document.getElementById('pp-sizes-wrap').style.display='block';
+      document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
+      document.getElementById('pp-size-chips').innerHTML=
+        `<div class="pp-open-size-note" style="font-size:12px;color:var(--black);letter-spacing:0.3px;">${sizes.join(' / ')}</div>`;
     }else{
       // Single non-meaningful size chip (e.g. bracelet "One Size / Adjustable") — hide
       document.getElementById('pp-sizes-wrap').style.display='none';
@@ -2540,6 +2553,19 @@ function _normalizeSizeForMatch(raw){
 
 function updateVariantPrice(){
   if(!ppVariantPrices.length){ ppSelectedOptionId=null; return; }
+  // True only when at least one priced Silverbene option actually carries a
+  // size value. Some single-option bracelets/necklaces/anklets have no real
+  // Size/Length attribute at all — Silverbene gave one plain option with just
+  // Color/Purity — but p.sizes still holds a descriptive range synthesized
+  // from the product's raw text (e.g. "Adjustable 6.5\"–8\"", "9.5\""),
+  // which renders as a real <button> chip (ppHasSizeChips=true) because it's
+  // not one of the literal ADJUSTABLE_VALS phrases. That chip can never match
+  // any v.size here since the backend never had a size attribute to extract —
+  // gate the mismatch logic on this too, or every one of those products would
+  // wrongly show "invalid selection" and a disabled Add to Cart on load, with
+  // no click involved (the sibling case to the ring fix above: a decorative
+  // size string mistaken for a real, matchable one).
+  const backendHasSize = ppVariantPrices.some(v=>v.size!=null);
   const wantSize = ppSelectedSize ? _normalizeSizeForMatch(ppSelectedSize) : null;
   // Every non-size selector the customer has currently made. The product panel
   // can show up to three independent selector groups beyond size — Color
@@ -2575,23 +2601,24 @@ function updateVariantPrice(){
   if(!match && wantSize)           match = ppVariantPrices.find(v=>v.size===wantSize);
   // Pass 3: every active selector, any size
   if(!match && wantParts.length)   match = ppVariantPrices.find(v=>colorEq(v));
-  // Pass 4: nothing REAL to select at all (no clickable size chip, no
-  // color/stone/width chip rendered for this product) — the single variant
-  // IS the only real choice, not a guess. Gated on ppHasSizeChips rather
-  // than wantSize's truthiness: an open/adjustable ring or bangle-diameter
-  // product has no real size chip but still carries a synthetic display
-  // string in ppSelectedSize (e.g. "US5-8") purely for the cart line item —
-  // that string was never meant to match a priced option, so treating it as
-  // a "selection" here would wrongly flag every one of those products as
-  // broken. Never fires when a REAL chip is active but matched nothing —
-  // that means a chip is showing as selected that doesn't correspond to any
-  // real, priced Silverbene option (a data bug), and silently substituting
-  // a different variant's price/option_id here would check the customer out
-  // with an item they never actually chose.
-  if(!match && !ppHasSizeChips && !wantParts.length) match = ppVariantPrices[0];
+  // Pass 4: nothing REAL to select at all (no clickable size chip backed by
+  // an actual priced size attribute, no color/stone/width chip rendered for
+  // this product) — the single variant IS the only real choice, not a guess.
+  // Gated on ppHasSizeChips&&backendHasSize rather than wantSize's
+  // truthiness: an open/adjustable ring, a bangle-diameter product, or a
+  // single-option bracelet/necklace/anklet with a decorative "Adjustable
+  // X–Y" range chip all carry a synthetic display string in ppSelectedSize
+  // that was never meant to match a priced option, so treating it as a
+  // "selection" here would wrongly flag every one of those products as
+  // broken. Never fires when a REAL chip backed by real size data is active
+  // but matched nothing — that means a chip is showing as selected that
+  // doesn't correspond to any real, priced Silverbene option (a data bug),
+  // and silently substituting a different variant's price/option_id here
+  // would check the customer out with an item they never actually chose.
+  if(!match && !(ppHasSizeChips&&backendHasSize) && !wantParts.length) match = ppVariantPrices[0];
   if(!match){
     ppSelectedOptionId=null;
-    const _realSelectionActive = (ppHasSizeChips&&wantSize) || wantParts.length;
+    const _realSelectionActive = (ppHasSizeChips&&backendHasSize&&wantSize) || wantParts.length;
     if(_realSelectionActive){
       console.error(`[variant-price] no priced option matches the selected size/color for product ${ppCurrentProduct?.id} — size="${wantSize}" parts=${JSON.stringify(wantParts)}`);
     }

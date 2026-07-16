@@ -74,6 +74,50 @@ BRACELET_SIZE_ATTR_NAMES = {"wrist size", "inner diameter", "bracelet size", "br
 COLOR_ATTRIBUTE_NAMES = {"color", "colour", "metal color", "metal finish", "finish", "main stone", "stone", "stone color", "stone type", "birthstone"}
 _METAL_ATTR_NAMES = {"color", "colour", "metal color", "metal finish", "finish"}
 
+_SIZE_MEASURE_RE = re.compile(r'\d+\s*(mm|cm)', re.I)
+
+def sizes_are_variant_backed(variants_json) -> bool:
+    """
+    True only if at least one of this product's real, priced Silverbene
+    options carries a genuine size-type attribute (Size, Ring Size, Chain
+    Length, Bracelet Size, Wrist Size, Inner Diameter, ...) OR a Color-type
+    attribute whose value bundles a real measurement (e.g. "18K Yellow Gold
+    2.0x15mm") — the same two conditions /variant-prices (routes/products.py)
+    and _extract_variants() (below) use to ever produce a non-null size for
+    an option, so this always agrees with whether those endpoints actually
+    can resolve a size. Deliberately checks the same preconditions rather
+    than re-running the full split/parse — see _split_color_and_size's
+    docstring: a matched measurement is never silently discarded, always
+    becomes some size chip.
+
+    False means any size text the product displays (p.sizes) was
+    synthesized by parsing the free-text description as a fallback (see
+    _extract_bracelet_info_from_desc / _parse_chain_length_from_desc below)
+    because Silverbene's real options gave us nothing — real information,
+    but never a distinct priced choice. A product like this has ONE priced
+    option that varies only by color (or nothing at all), so its
+    description-derived size can never correspond to a different
+    option_id/price and must never be offered as a clickable/matchable
+    selector — see _size_display_meta() in routes/products.py, the single
+    place that decides selector vs. display-only badge, which calls this
+    instead of guessing from the display text.
+    """
+    try:
+        variants = json.loads(variants_json) if isinstance(variants_json, str) else (variants_json or [])
+    except Exception:
+        return False
+    size_names = SIZE_ATTRIBUTE_NAMES | BRACELET_SIZE_ATTR_NAMES
+    for v in (variants or []):
+        for a in (v.get("attribute") or v.get("attributes") or []):
+            name = (a.get("name") or "").lower().strip()
+            val = (a.get("value") or "").strip()
+            if name in size_names:
+                return True
+            if name in COLOR_ATTRIBUTE_NAMES and val and _SIZE_MEASURE_RE.search(val):
+                return True
+    return False
+
+
 # Matches "Rhodium" wherever it appears, including Silverbene's typo'd raw-data
 # variants that glue extra characters directly onto the word with no separator
 # ("Rhodiumm Tone", "Rhodiumne") — \w* consumes those, stopping at the next
