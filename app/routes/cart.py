@@ -30,6 +30,14 @@ def add_to_cart(
     product = session.get(Product, item.product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+    # Mirrors _require_published_or_preview in routes/products.py — a
+    # customer should never be able to add an unpublished or hidden-
+    # category product to their cart just because they know its ID
+    # (found live 2026-07-17: the product page itself was already gated,
+    # but this endpoint had no idea and would accept any product_id).
+    from app.agents.store_config import get_hidden_categories
+    if not product.is_published or product.category in get_hidden_categories():
+        raise HTTPException(status_code=404, detail="Product not found")
 
     # Same product + same size + same color = increment quantity
     # Same product + different variant = separate line item

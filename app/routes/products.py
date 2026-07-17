@@ -220,11 +220,25 @@ def _require_published_or_preview(product: Product, preview_key: Optional[str]):
     stranger) unless a valid preview_key is supplied, letting the admin
     dashboard's Preview link show the exact live-site view without
     publishing first.
+
+    A published product in a hidden category (see get_hidden_categories,
+    e.g. Ear Cuffs) gets the same treatment. Found live 2026-07-17: hiding
+    a category only ever removed it from listing/browsing endpoints
+    (GET /products, /collections/*) — the single-product endpoint had no
+    idea hidden categories existed at all, so 13 published Ear Cuffs
+    products were fully viewable and purchasable by anyone with the
+    direct URL despite being "hidden". This is the one place both
+    /products/{id} and /products/{id}/variant-prices funnel through, so
+    fixing it here closes the gap for both without touching either route.
     """
-    if product.is_published:
-        return
     from app.agents.aria_security import verify_master_key
-    if not preview_key or not verify_master_key(preview_key):
+    is_preview = preview_key and verify_master_key(preview_key)
+
+    if not product.is_published and not is_preview:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    from app.agents.store_config import get_hidden_categories
+    if product.category in get_hidden_categories() and not is_preview:
         raise HTTPException(status_code=404, detail="Product not found")
 
 

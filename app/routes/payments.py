@@ -103,6 +103,14 @@ def create_guest_checkout_session(
         product = session.get(Product, item.product_id)
         if not product or not product.is_active or not product.is_published:
             raise HTTPException(status_code=404, detail=f"Product {item.product_id} is no longer available")
+        # Mirrors _require_published_or_preview in routes/products.py — a
+        # hidden-category product must never be purchasable even if it
+        # somehow ended up in the cart (see the same fix in routes/cart.py's
+        # add_to_cart; this is the actual money-taking step, so it gets its
+        # own check rather than relying solely on that earlier gate).
+        from app.agents.store_config import get_hidden_categories
+        if product.category in get_hidden_categories():
+            raise HTTPException(status_code=404, detail=f"Product {item.product_id} is no longer available")
         if product.stock == 0:
             raise HTTPException(status_code=400, detail=f"'{product.name[:40]}' is out of stock")
         line_items.append({
