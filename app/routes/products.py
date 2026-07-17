@@ -484,7 +484,24 @@ def publish_products(data: PublishRequest, session: Session = Depends(get_sessio
         p.is_reviewed = True  # a deliberate decision was just made — no longer "New"
         session.add(p)
     session.commit()
-    return {"published": len(eligible), "ids": [p.id for p in eligible]}
+
+    # Publishing an entire collection back also re-enables its display —
+    # otherwise it'd sit fully published yet still absent from browsing/
+    # collection tiles, the same drift-between-two-controls shape that
+    # caused Ear Cuffs to leak (see unpublish_products). Only for a
+    # whole-category action, not an arbitrary product_ids batch that
+    # happens to include some — a partial republish shouldn't silently
+    # reveal the whole collection.
+    category_unhidden = False
+    if data.category and not data.product_ids:
+        from app.agents.store_config import get_hidden_categories, set_hidden_categories
+        hidden = get_hidden_categories()
+        if data.category in hidden:
+            hidden.discard(data.category)
+            set_hidden_categories(sorted(hidden))
+            category_unhidden = True
+
+    return {"published": len(eligible), "ids": [p.id for p in eligible], "category_unhidden": category_unhidden}
 
 
 @router.post("/admin/products/restore")
@@ -514,7 +531,25 @@ def restore_products(data: PublishRequest, session: Session = Depends(get_sessio
 
 @router.post("/admin/products/unpublish")
 def unpublish_products(data: PublishRequest, session: Session = Depends(get_session)):
-    """Admin — unpublish one product, a batch, or an entire collection."""
+    """
+    Admin — unpublish one product, a batch, or an entire collection.
+
+    A whole-category unpublish also hides the collection's display (adds
+    it to hidden_categories) in the same call — found live 2026-07-17 that
+    these were two separate, disconnected controls: Ear Cuffs was hidden
+    from browsing via hidden_categories, but nothing stopped new imports
+    from landing published (is_published defaults false for new imports,
+    but doesn't block a later publish action), so the category quietly
+    filled back up with published-but-"hidden" products that were still
+    fully viewable and purchasable via direct link (see
+    _require_published_or_preview in this file, and the matching gates
+    added to cart.py/payments.py). Unpublishing is already the real,
+    consistently-enforced gate everywhere a customer can view or buy a
+    product — hidden_categories should only ever mean "don't show this
+    collection tile," never carry purchasability on its own. Tying them
+    together here closes that gap at the source instead of relying on
+    both being remembered separately.
+    """
     from app.agents.aria_security import verify_master_key
     if not verify_master_key(data.master_key):
         raise HTTPException(status_code=403, detail="Unauthorized")
@@ -533,7 +568,17 @@ def unpublish_products(data: PublishRequest, session: Session = Depends(get_sess
         p.is_reviewed = True  # a deliberate decision was just made — no longer "New"
         session.add(p)
     session.commit()
-    return {"unpublished": len(products), "ids": [p.id for p in products]}
+
+    category_hidden = False
+    if data.category and not data.product_ids:
+        from app.agents.store_config import get_hidden_categories, set_hidden_categories
+        hidden = get_hidden_categories()
+        if data.category not in hidden:
+            hidden.add(data.category)
+            set_hidden_categories(sorted(hidden))
+            category_hidden = True
+
+    return {"unpublished": len(products), "ids": [p.id for p in products], "category_hidden": category_hidden}
 
 
 @router.post("/admin/products/backfill-images")
