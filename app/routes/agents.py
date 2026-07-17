@@ -2005,3 +2005,22 @@ def queue_campaign_product(product_id: int, master_key: str, session: Session = 
         "queued_product_id": product_id,
         "message": f"Next campaign post will use product #{product_id}" if product_id else "Manual queue cleared",
     }
+
+
+@router.get("/admin/instagram/env-check")
+def instagram_env_check(master_key: str):
+    """
+    Admin — reports which social/commerce env vars are actually set on
+    THIS deployment, presence only (never the value) — a claim like
+    "X is already in Railway" made in a different session/tool should
+    always be verified here before code is built assuming it's true.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    import os
+    keys = [
+        "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_ACCOUNT_ID",
+        "FACEBOOK_ACCESS_TOKEN", "FACEBOOK_PAGE_ID", "FACEBOOK_CATALOG_ID",
+    ]
+    return {k: bool(os.getenv(k)) for k in keys}
