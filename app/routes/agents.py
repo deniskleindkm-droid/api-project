@@ -2022,6 +2022,7 @@ def instagram_env_check(master_key: str):
     keys = [
         "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_ACCOUNT_ID",
         "FACEBOOK_ACCESS_TOKEN", "FACEBOOK_PAGE_ID", "FACEBOOK_CATALOG_ID",
+        "FACEBOOK_APP_SECRET", "FACEBOOK_APP_ID",
     ]
     return {k: bool(os.getenv(k)) for k in keys}
 
@@ -2065,4 +2066,70 @@ def meta_catalog_test(product_id: int, master_key: str, session: Session = Depen
         "resolved": bool(items),
         "meta_product": items[0] if items else None,
         "raw_response": data if not items else None,
+    }
+
+
+@router.post("/admin/instagram/exchange-facebook-token")
+def exchange_facebook_token(short_lived_token: str, master_key: str):
+    """
+    Admin — exchanges a short-lived Graph API Explorer user token for the
+    long-lived Page access token FACEBOOK_ACCESS_TOKEN /
+    INSTAGRAM_ACCESS_TOKEN actually need (the previous one expired
+    2026-06-23 — short-lived user tokens are NOT what should be stored
+    long-term). FACEBOOK_APP_ID/FACEBOOK_APP_SECRET never leave this
+    server — only the resulting page token is returned, for pasting into
+    Railway by hand (no Railway write access from here).
+
+    Two-step exchange per Meta's own docs: short-lived user token ->
+    long-lived user token -> that user's page tokens (which, for a Page
+    token obtained this way, don't expire on their own).
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    import os, requests
+    app_id = os.getenv("FACEBOOK_APP_ID")
+    app_secret = os.getenv("FACEBOOK_APP_SECRET")
+    page_id = os.getenv("FACEBOOK_PAGE_ID")
+    if not app_id or not app_secret:
+        raise HTTPException(status_code=400, detail="FACEBOOK_APP_ID or FACEBOOK_APP_SECRET not set in Railway")
+    if not page_id:
+        raise HTTPException(status_code=400, detail="FACEBOOK_PAGE_ID not set in Railway")
+
+    r1 = requests.get(
+        "https://graph.facebook.com/v18.0/oauth/access_token",
+        params={
+            "grant_type": "fb_exchange_token",
+            "client_id": app_id,
+            "client_secret": app_secret,
+            "fb_exchange_token": short_lived_token,
+        },
+        timeout=15,
+    )
+    data1 = r1.json()
+    long_lived_user_token = data1.get("access_token")
+    if not long_lived_user_token:
+        return {"step": "exchange_user_token", "success": False, "error": data1}
+
+    r2 = requests.get(
+        "https://graph.facebook.com/v18.0/me/accounts",
+        params={"access_token": long_lived_user_token},
+        timeout=15,
+    )
+    data2 = r2.json()
+    pages = data2.get("data", [])
+    target = next((p for p in pages if p.get("id") == page_id), None)
+    if not target:
+        return {
+            "step": "get_page_token", "success": False,
+            "reason": f"page {page_id} not found among this user's pages",
+            "page_ids_found": [p.get("id") for p in pages],
+        }
+
+    return {
+        "success": True,
+        "page_id": target["id"],
+        "page_name": target.get("name"),
+        "page_access_token": target["access_token"],
+        "message": "Paste this value into Railway as BOTH FACEBOOK_ACCESS_TOKEN and INSTAGRAM_ACCESS_TOKEN",
     }
