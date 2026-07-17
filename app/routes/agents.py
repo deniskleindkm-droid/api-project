@@ -1977,3 +1977,31 @@ def disable_auto_posting():
     from app.agents.store_config import set_config
     set_config("auto_posting_enabled", "false", "Automatic social media posting")
     return {"status": "disabled", "message": "Auto-posting is now OFF."}
+
+
+@router.post("/admin/instagram/queue-campaign")
+def queue_campaign_product(product_id: int, master_key: str, session: Session = Depends(get_session)):
+    """
+    Admin — manually choose which product's photoshoot goes out on the
+    NEXT campaign post (see instagram_agent.py's _pick_campaign_product).
+    Consumed exactly once, cleared automatically after that post succeeds.
+    Pass product_id=0 to clear a queued pick without replacing it.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    from app.agents.store_config import set_config
+    from app.models.product import Product
+
+    if product_id:
+        product = session.get(Product, product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+        if not (product.content_lifestyle_url or product.image_url):
+            raise HTTPException(status_code=400, detail="Product has no image to post")
+
+    set_config("instagram_manual_campaign_product_id", str(product_id))
+    return {
+        "queued_product_id": product_id,
+        "message": f"Next campaign post will use product #{product_id}" if product_id else "Manual queue cleared",
+    }

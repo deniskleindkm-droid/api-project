@@ -62,6 +62,11 @@ def _init_defaults():
             "0",
             "Product ID used in last campaign post — avoided on next pick"
         ),
+        "instagram_manual_campaign_product_id": (
+            "0",
+            "Manually queued product ID for the NEXT campaign post — set via "
+            "POST /admin/instagram/queue-campaign, consumed once posted"
+        ),
         "instagram_last_category": (
             "",
             "Category of last product post — used for category rotation"
@@ -240,10 +245,27 @@ def _pick_product_post() -> Optional[Product]:
 def _pick_campaign_product() -> Optional[Product]:
     """
     Pick the best product for a campaign post.
-    Scores on visual potential (category), price tier, image count.
-    Avoids the product used in the last campaign post.
-    Only published, in-stock products qualify.
+
+    Manual override first: Dennis is choosing which RAWSHOT photoshoot
+    goes out next while he's still new to this (see
+    instagram_manual_campaign_product_id, set via POST
+    /admin/instagram/queue-campaign) — consumed exactly once, cleared in
+    _update_state() only after that product's post actually succeeds, so a
+    failed post doesn't silently lose the manual choice.
+
+    Falls back to automatic scoring (visual potential, price tier, image
+    count) when nothing is queued. Avoids the product used in the last
+    campaign post either way. Only published, in-stock products qualify.
     """
+    manual_id = int(get_config("instagram_manual_campaign_product_id", default="0") or 0)
+    if manual_id:
+        with Session(engine) as session:
+            manual_product = session.get(Product, manual_id)
+        if (manual_product and manual_product.is_active and manual_product.is_published
+                and manual_product.stock > 0 and manual_product.image_url):
+            return manual_product
+        print(f"[Instagram] Queued campaign product {manual_id} no longer eligible — falling back to auto-pick")
+
     last_id = int(get_config("instagram_last_campaign_product_id", default="0") or 0)
     from app.agents.store_config import get_hidden_categories
     hidden = get_hidden_categories()
@@ -292,9 +314,15 @@ def _pick_campaign_product() -> Optional[Product]:
 
 def _best_campaign_image(product: Product) -> str:
     """
-    For campaign posts, prefer a second gallery image (different angle).
-    Falls back to primary image_url if the gallery has only one image.
+    For campaign posts, prefer a real on-model RAWSHOT lifestyle photo
+    (product.content_lifestyle_url — see rawshot_import_agent.py) over a
+    plain second Silverbene gallery angle, since that's the whole point of
+    a campaign post: emotional, on-model storytelling, not a product shot.
+    Falls back to a second gallery image, then the primary image_url, for
+    products that don't have a RAWSHOT photoshoot yet.
     """
+    if product.content_lifestyle_url:
+        return product.content_lifestyle_url
     if product.images:
         try:
             gallery = json.loads(product.images)
@@ -390,6 +418,7 @@ def _update_state(product: Product, post_type: str):
     if post_type == "campaign":
         set_config("instagram_post_counter", "0")
         set_config("instagram_last_campaign_product_id", str(product.id))
+        set_config("instagram_manual_campaign_product_id", "0")  # consumed — see _pick_campaign_product
     else:
         set_config("instagram_post_counter", str(counter + 1))
         set_config("instagram_last_category", product.category)
