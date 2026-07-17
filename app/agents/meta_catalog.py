@@ -6,12 +6,15 @@ instagram_agent.py can tag it in a post (the shopping-bag icon that links
 straight to the product from inside Instagram, in addition to the caption
 link that already works today).
 
-Requires FACEBOOK_CATALOG_ID and FACEBOOK_ACCESS_TOKEN — not yet
-confirmed live on this deployment as of 2026-07-16 (see GET
-/admin/instagram/env-check, which reports presence only, never values).
-Every caller degrades gracefully to "no tag" if either is missing or the
-lookup fails — a missing/failed tag must never block the post itself,
-since the caption's direct product link already works without this.
+Requires FACEBOOK_CATALOG_ID and a token with catalog read access.
+FACEBOOK_CATALOG_TOKEN (a dedicated system-user token scoped to catalog
+access, added 2026-07-17) is preferred — falls back to
+FACEBOOK_ACCESS_TOKEN (the Page token, used for posting) only if the
+catalog-specific one isn't set, since a Page token doesn't necessarily
+carry catalog_management permission. Every caller degrades gracefully to
+"no tag" if nothing usable is configured or the lookup fails — a
+missing/failed tag must never block the post itself, since the caption's
+direct product link already works without this.
 
 Assumes the catalog's retailer_id field was populated with Mikisi's own
 product.id when the feed was set up — verify this is actually true (see
@@ -37,7 +40,7 @@ def resolve_meta_product_id(product_id: int) -> str:
     per product, not on every post.
     """
     catalog_id = os.getenv("FACEBOOK_CATALOG_ID")
-    access_token = os.getenv("FACEBOOK_ACCESS_TOKEN")
+    access_token = os.getenv("FACEBOOK_CATALOG_TOKEN") or os.getenv("FACEBOOK_ACCESS_TOKEN")
     if not catalog_id or not access_token:
         return ""
 

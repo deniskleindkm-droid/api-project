@@ -2022,7 +2022,7 @@ def instagram_env_check(master_key: str):
     keys = [
         "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_ACCOUNT_ID",
         "FACEBOOK_ACCESS_TOKEN", "FACEBOOK_PAGE_ID", "FACEBOOK_CATALOG_ID",
-        "FACEBOOK_APP_SECRET", "FACEBOOK_APP_ID",
+        "FACEBOOK_CATALOG_TOKEN", "FACEBOOK_APP_SECRET", "FACEBOOK_APP_ID",
     ]
     return {k: bool(os.getenv(k)) for k in keys}
 
@@ -2033,7 +2033,10 @@ def meta_catalog_test(product_id: int, master_key: str, session: Session = Depen
     Admin — verifies a Mikisi product actually resolves in the Meta
     catalog BEFORE trusting that mapping in a real post. Bypasses the
     cache (always does a fresh Graph API lookup) so this reflects the
-    catalog's real current state, not a previously cached miss/hit.
+    catalog's real current state, not a previously cached miss/hit. Uses
+    the exact same token preference as meta_catalog.py's real lookup
+    (FACEBOOK_CATALOG_TOKEN first, FACEBOOK_ACCESS_TOKEN as fallback) so
+    this test reflects what a real post will actually use.
     """
     if not verify_master_key(master_key):
         raise HTTPException(status_code=403, detail="Unauthorized")
@@ -2045,9 +2048,10 @@ def meta_catalog_test(product_id: int, master_key: str, session: Session = Depen
 
     import os, requests
     catalog_id = os.getenv("FACEBOOK_CATALOG_ID")
-    access_token = os.getenv("FACEBOOK_ACCESS_TOKEN")
+    access_token = os.getenv("FACEBOOK_CATALOG_TOKEN") or os.getenv("FACEBOOK_ACCESS_TOKEN")
+    token_source = "FACEBOOK_CATALOG_TOKEN" if os.getenv("FACEBOOK_CATALOG_TOKEN") else "FACEBOOK_ACCESS_TOKEN"
     if not catalog_id or not access_token:
-        return {"product_id": product_id, "resolved": False, "reason": "FACEBOOK_CATALOG_ID or FACEBOOK_ACCESS_TOKEN not set"}
+        return {"product_id": product_id, "resolved": False, "reason": "FACEBOOK_CATALOG_ID or a catalog-capable token not set"}
 
     r = requests.get(
         f"https://graph.facebook.com/v18.0/{catalog_id}/products",
@@ -2063,6 +2067,7 @@ def meta_catalog_test(product_id: int, master_key: str, session: Session = Depen
     return {
         "product_id": product_id,
         "product_name": product.name,
+        "token_used": token_source,
         "resolved": bool(items),
         "meta_product": items[0] if items else None,
         "raw_response": data if not items else None,
