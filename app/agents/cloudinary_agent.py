@@ -20,9 +20,47 @@ FOLDER_VIDEOS = "mikisi/videos"
 FOLDER_COLLECTIONS = "mikisi/collections"
 
 
+def _shrink_local_image_if_needed(path: str, max_bytes: int = 9_500_000) -> str:
+    """
+    Cloudinary's plan caps a single image upload at 10MB — hit directly by
+    a RAWSHOT photoshoot export (10,874,565 bytes, lossless PNG). Only
+    touches local files over the limit; remote URLs and files already
+    under it pass through untouched (Cloudinary's own auto quality/format
+    already handles those on its end).
+
+    Downscales to a max 2400px side and re-encodes as JPEG (photographic
+    AI-generated content compresses far better as JPEG than lossless PNG),
+    stepping quality down until it clears the limit. Returns the original
+    path if this isn't a local file at all.
+    """
+    if not os.path.isfile(path):
+        return path
+    if os.path.getsize(path) <= max_bytes:
+        return path
+
+    from PIL import Image
+    import tempfile
+    img = Image.open(path).convert("RGB")
+    max_dim = 2400
+    if max(img.size) > max_dim:
+        ratio = max_dim / max(img.size)
+        img = img.resize((int(img.width * ratio), int(img.height * ratio)))
+
+    fd, tmp_path = tempfile.mkstemp(suffix=".jpg")
+    os.close(fd)
+    quality = 90
+    while quality >= 50:
+        img.save(tmp_path, "JPEG", quality=quality, optimize=True)
+        if os.path.getsize(tmp_path) <= max_bytes:
+            break
+        quality -= 10
+    return tmp_path
+
+
 def _upload_image(url: str, public_id: str, tags: list) -> str:
+    upload_source = _shrink_local_image_if_needed(url)
     result = cloudinary.uploader.upload(
-        url,
+        upload_source,
         public_id=public_id,
         overwrite=True,
         resource_type="image",
