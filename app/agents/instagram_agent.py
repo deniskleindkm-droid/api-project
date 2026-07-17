@@ -338,14 +338,16 @@ def _best_campaign_image(product: Product) -> str:
 # ── INSTAGRAM GRAPH API ───────────────────────────────────────────────────────
 
 def _post_to_instagram(image_url: str, caption: str, hashtags: str,
-                        instagram_catalog_id: str = "") -> dict:
+                        meta_catalog_product_id: str = "") -> dict:
     """
     Post to Instagram via Graph API.
-    If instagram_catalog_id is set on the product, the post is tagged as a
-    shoppable product so it pops up in Instagram Shop when tapped.
-    To enable Instagram Shopping: connect your Facebook Commerce account,
-    create a product catalog, then store each product's catalog ID in
-    product.instagram_catalog_id.
+    If meta_catalog_product_id is set (resolved via
+    app.agents.meta_catalog.resolve_meta_product_id — requires
+    FACEBOOK_CATALOG_ID + FACEBOOK_ACCESS_TOKEN, see that module's
+    docstring), the post is tagged as a shoppable product so the
+    shopping-bag icon appears and links straight to it. A missing/failed
+    tag never blocks the post — the caption's direct product link
+    (mikisi.co/products/{id}) already works regardless.
     """
     access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
     account_id = os.getenv("INSTAGRAM_ACCOUNT_ID")
@@ -363,10 +365,15 @@ def _post_to_instagram(image_url: str, caption: str, hashtags: str,
             "access_token": access_token,
         }
 
-        # Instagram Shopping — tag the product so it shows in Instagram Shop
-        if instagram_catalog_id:
+        # Instagram Shopping — tag the product so the shopping-bag icon
+        # shows and links to it. x/y (0-1 range) position the tag bubble
+        # on the image — center, lower-third, where jewelry on a model
+        # typically sits. A single fixed position is a reasonable default
+        # for a single-product post; revisit if photos vary a lot in
+        # composition.
+        if meta_catalog_product_id:
             container_params["product_tags"] = json.dumps([
-                {"product_id": instagram_catalog_id}
+                {"product_id": meta_catalog_product_id, "x": 0.5, "y": 0.7}
             ])
 
         r = requests.post(
@@ -603,7 +610,8 @@ def run_instagram_agent():
     caption  = _generate_caption(product, post_type)
     hashtags = _build_hashtags(product.category, product.material or "")
 
-    catalog_id = getattr(product, "instagram_catalog_id", "") or ""
+    from app.agents.meta_catalog import resolve_meta_product_id
+    catalog_id = resolve_meta_product_id(product.id)
     result = _post_to_instagram(image_url, caption, hashtags, catalog_id)
 
     if result.get("success"):

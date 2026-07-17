@@ -52,6 +52,10 @@ class Product(SQLModel, table=True):
     pinterest_pin_id: Optional[str] = None
     pinterest_synced_at: Optional[datetime] = None
     pinterest_catalog_id: Optional[str] = None
+    # Meta (Facebook/Instagram) Commerce catalog — resolved product ID within
+    # FACEBOOK_CATALOG_ID, cached here so instagram_agent.py's product-tag
+    # lookup only hits the Graph API once per product, not on every post.
+    meta_catalog_product_id: Optional[str] = None
 
 
 class ProductPublic(SQLModel):

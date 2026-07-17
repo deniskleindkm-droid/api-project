@@ -2024,3 +2024,45 @@ def instagram_env_check(master_key: str):
         "FACEBOOK_ACCESS_TOKEN", "FACEBOOK_PAGE_ID", "FACEBOOK_CATALOG_ID",
     ]
     return {k: bool(os.getenv(k)) for k in keys}
+
+
+@router.get("/admin/instagram/meta-catalog-test")
+def meta_catalog_test(product_id: int, master_key: str, session: Session = Depends(get_session)):
+    """
+    Admin — verifies a Mikisi product actually resolves in the Meta
+    catalog BEFORE trusting that mapping in a real post. Bypasses the
+    cache (always does a fresh Graph API lookup) so this reflects the
+    catalog's real current state, not a previously cached miss/hit.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    from app.models.product import Product
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    import os, requests
+    catalog_id = os.getenv("FACEBOOK_CATALOG_ID")
+    access_token = os.getenv("FACEBOOK_ACCESS_TOKEN")
+    if not catalog_id or not access_token:
+        return {"product_id": product_id, "resolved": False, "reason": "FACEBOOK_CATALOG_ID or FACEBOOK_ACCESS_TOKEN not set"}
+
+    r = requests.get(
+        f"https://graph.facebook.com/v18.0/{catalog_id}/products",
+        params={
+            "filter": f'{{"retailer_id":{{"eq":"{product_id}"}}}}',
+            "fields": "id,retailer_id,name",
+            "access_token": access_token,
+        },
+        timeout=15,
+    )
+    data = r.json()
+    items = data.get("data", [])
+    return {
+        "product_id": product_id,
+        "product_name": product.name,
+        "resolved": bool(items),
+        "meta_product": items[0] if items else None,
+        "raw_response": data if not items else None,
+    }
