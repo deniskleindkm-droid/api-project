@@ -2138,3 +2138,35 @@ def exchange_facebook_token(short_lived_token: str, master_key: str):
         "page_access_token": target["access_token"],
         "message": "Paste this value into Railway as BOTH FACEBOOK_ACCESS_TOKEN and INSTAGRAM_ACCESS_TOKEN",
     }
+
+
+class ManualPostRequest(BaseModel):
+    product_id: int
+    post_type: str  # "product" or "campaign"
+    master_key: str
+    image_count: Optional[int] = None   # first N images from the product's gallery
+    image_urls: Optional[list] = None   # explicit list, overrides image_count entirely
+    dry_run: bool = True                # default True — preview before any real post
+
+
+@router.post("/admin/instagram/post-now")
+def instagram_post_now(data: ManualPostRequest):
+    """
+    Admin — manually post one specific product, on command. Never touches
+    the automatic scheduler/counter (see instagram_agent.py's
+    post_manually docstring) — Dennis is posting by hand for now.
+    dry_run defaults True: generates the real caption/hashtags/catalog tag
+    and returns exactly what would be posted without calling the Graph
+    API. Pass dry_run=false only once you've reviewed that preview.
+    """
+    if not verify_master_key(data.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    from app.agents.instagram_agent import post_manually
+    return post_manually(
+        product_id=data.product_id,
+        post_type=data.post_type,
+        image_count=data.image_count,
+        image_urls=data.image_urls,
+        dry_run=data.dry_run,
+    )

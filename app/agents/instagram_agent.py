@@ -796,3 +796,99 @@ def run_instagram_agent():
             )
         except Exception as e:
             print(f"[Instagram] Signal error: {e}")
+
+
+# ── MANUAL POSTING ────────────────────────────────────────────────────────────
+# Dennis is posting by hand for now, deliberately not via the automatic 3:1
+# counter/scheduler — he picks exactly which product, which images, and which
+# post type each time (see conversation 2026-07-18). This never touches
+# instagram_post_counter or the automatic pickers (_pick_product_post/
+# _pick_campaign_product) at all, and auto_posting_enabled stays whatever it
+# already was — calling this does not turn on automatic posting.
+
+def post_manually(product_id: int, post_type: str, image_count: Optional[int] = None,
+                   image_urls: Optional[list] = None, dry_run: bool = True) -> dict:
+    """
+    Post one specific product on command — the manual counterpart to
+    run_instagram_agent()'s automatic picker.
+
+    image_urls: explicit list, used verbatim in order — overrides
+      image_count/post_type defaults entirely. Use this for a hand-picked
+      set of images.
+    image_count: for post_type="product", takes the first N images from
+      the product's own gallery (product.images) instead of just the
+      primary image_url. Ignored if image_urls is given.
+    post_type="campaign" with no image_urls defaults to
+      product.content_lifestyle_url (the RAWSHOT photoshoot image, see
+      rawshot_import_agent.py) — falls back to _best_campaign_image() if
+      that's not set.
+
+    dry_run=True (the default — deliberately, given how much review this
+    launch has had) generates the real caption/hashtags/catalog-tag
+    resolution and reports exactly what WOULD be posted, without calling
+    the Graph API at all. Only pass dry_run=False once you've reviewed
+    the preview and are ready for the real, live, public post.
+    """
+    with Session(engine) as session:
+        product = session.get(Product, product_id)
+    if not product:
+        return {"success": False, "reason": "product_not_found"}
+    if post_type not in ("product", "campaign"):
+        return {"success": False, "reason": "post_type must be 'product' or 'campaign'"}
+
+    if image_urls:
+        images = [u for u in image_urls if u]
+    elif post_type == "campaign":
+        images = [product.content_lifestyle_url] if product.content_lifestyle_url else \
+                 ([_best_campaign_image(product)] if _best_campaign_image(product) else [])
+    else:
+        gallery = []
+        if product.images:
+            try:
+                gallery = json.loads(product.images)
+            except Exception:
+                gallery = []
+        if image_count and gallery:
+            images = gallery[:image_count]
+        else:
+            images = [product.image_url] if product.image_url else []
+
+    images = [u for u in images if u]
+    if not images:
+        return {"success": False, "reason": "no_images_resolved"}
+
+    caption  = _generate_caption(product, post_type)
+    hashtags = _build_hashtags(product.category, product.material or "")
+
+    from app.agents.meta_catalog import resolve_meta_product_id
+    catalog_id = resolve_meta_product_id(product.id)
+
+    preview = {
+        "product_id":   product.id,
+        "product_name": product.name,
+        "post_type":    post_type,
+        "images":       images,
+        "carousel":     len(images) > 1,
+        "caption":      caption,
+        "hashtags":     hashtags,
+        "meta_catalog_tag": catalog_id or None,
+    }
+
+    if dry_run:
+        preview["dry_run"] = True
+        return preview
+
+    if len(images) > 1:
+        result = _post_to_instagram_carousel(images, caption, hashtags, catalog_id)
+    else:
+        result = _post_to_instagram(images[0], caption, hashtags, catalog_id)
+
+    if result.get("success"):
+        post_id = result.get("post_id", "")
+        _save_post(product.id, post_type, images[0], caption, hashtags, post_id)
+        _update_state(product, post_type)
+        print(f"[Instagram] ✅ Manually posted — {post_type} — {product.name}")
+    else:
+        print(f"[Instagram] ❌ Manual post failed: {result.get('reason')}")
+
+    return {**preview, "dry_run": False, **result}
