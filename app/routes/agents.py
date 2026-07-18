@@ -2086,7 +2086,13 @@ def meta_catalog_test(product_id: int, master_key: str, session: Session = Depen
         f"https://graph.facebook.com/v18.0/{catalog_id}/products",
         params={
             "filter": f'{{"retailer_id":{{"eq":"{product_id}"}}}}',
-            "fields": "id,retailer_id,name",
+            # review_status/availability/visibility: catalog membership alone
+            # (what this endpoint originally checked) isn't the same as
+            # being individually approved for shopping tags — a product can
+            # be "in the catalog" but still pending/rejected review, which
+            # is a per-product status separate from the account-level
+            # shopping_product_tag_eligibility check.
+            "fields": "id,retailer_id,name,review_status,availability,visibility",
             "access_token": access_token,
         },
         timeout=15,
