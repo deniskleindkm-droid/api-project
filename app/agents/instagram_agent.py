@@ -41,6 +41,23 @@ CATEGORY_HASHTAGS = {
     "Ear Cuffs": ["#earcuff", "#cartilageearring", "#nopiercing", "#earcuffs"],
 }
 
+# Instagram enforcement, Dec 2025: a hard 5-hashtag cap per post/Reel —
+# excess tags get truncated/rejected, not just deprioritized (Mosseri /
+# @Creators: "a few specific tags actually perform better than a long
+# list of generic ones"). Researched 2026-07-18. Picks exactly ONE best
+# tag per category instead of the old 3-4 variants — the old approach
+# alone would already blow the whole budget before material/discovery
+# tags get a slot. Still keyed off the full CATEGORY_HASHTAGS list below
+# (index 3, the most specific variant) so there's one source of truth.
+_CATEGORY_HASHTAG_PRIMARY = {cat: tags[-1] for cat, tags in CATEGORY_HASHTAGS.items()}
+
+# Mid-volume (5K-500K posts) community/discovery tags — sweet spot per
+# research: big enough for active search traffic, small enough a post
+# isn't buried in seconds. Replaces the old #jewelry/#silverjewelry/
+# #jewelrylovers (10M+ posts each — too broad to be useful, not banned,
+# just no real reach at that volume).
+_NICHE_DISCOVERY_TAGS = ["#handmadejewelry", "#jewelrymaker", "#artisanjewelry"]
+
 
 # ── DEFAULTS ──────────────────────────────────────────────────────────────────
 
@@ -105,28 +122,40 @@ def _init_defaults():
 # ── HASHTAG BUILDER ───────────────────────────────────────────────────────────
 
 def _build_hashtags(category: str, material: str) -> str:
-    tags = ["#mikisi", "#mikisico"]
-    tags.extend(CATEGORY_HASHTAGS.get(category, ["#jewelry"]))
+    """
+    Exactly 5 hashtags, in priority order — Instagram's hard cap (see
+    module-level comment above _CATEGORY_HASHTAG_PRIMARY). Mix per
+    research: 1 branded + 1 category/style + 1 material + up to 2 niche
+    discovery tags, never generic broad ones.
+    """
+    tags = ["#mikisi"]
+    tags.append(_CATEGORY_HASHTAG_PRIMARY.get(category, "#jewelrygram"))
 
     if material:
         m = material.lower()
-        if "925" in m or "sterling" in m:
-            tags += ["#sterlingsilver", "#925silver"]
         if "rose" in m and "gold" in m:
             tags.append("#rosegold")
         elif "gold" in m:
             tags.append("#goldplated")
-        if "rhodium" in m:
+        elif "rhodium" in m:
             tags.append("#rhodiumplated")
-
-    tags += ["#jewelry", "#silverjewelry", "#minimalistjewelry"]
+        elif "925" in m or "sterling" in m:
+            tags.append("#sterlingsilverjewelry")
 
     seen, unique = set(), []
     for t in tags:
         if t not in seen:
             seen.add(t)
             unique.append(t)
-    return " ".join(unique[:9])
+
+    for t in _NICHE_DISCOVERY_TAGS:
+        if len(unique) >= 5:
+            break
+        if t not in seen:
+            seen.add(t)
+            unique.append(t)
+
+    return " ".join(unique[:5])
 
 
 # ── CAPTION GENERATION ────────────────────────────────────────────────────────
@@ -143,8 +172,14 @@ def _generate_caption(product: Product, post_type: str) -> str:
     caption_rules = "\n".join(f"- {r}" for r in kb.get("caption_rules", []))
     bv = kb.get("brand_voice", brand_voice)
 
-    product_url = f"https://mikisi.co/products/{product.id}"
-
+    # Instagram feed captions can't contain a clickable link at all (only
+    # the bio link, Stories stickers, and Shopping tags are ever tappable)
+    # — a raw URL here is just dead text a customer would have to
+    # manually retype, and it exposes a bare internal product ID. The
+    # Shopping tag (see meta_catalog.resolve_meta_product_id, applied
+    # uniformly to every post type in run_instagram_agent) is the actual
+    # tap-to-shop mechanism now, so the CTA just points at that instead of
+    # printing a URL.
     if post_type == "product":
         prompt = (
             f"Write an Instagram caption for this Mikisi product post.\n\n"
@@ -156,7 +191,8 @@ def _generate_caption(product: Product, post_type: str) -> str:
             f"Caption rules:\n{caption_rules}\n\n"
             f"Brand voice: {bv}\n\n"
             f"Structure: Hook (10-12 words) → Body (2-3 sentences) → "
-            f"CTA: 'Shop now → {product_url}'\n"
+            f"CTA: 'Tap to shop 🛍️'\n"
+            f"Do NOT include a URL or 'link in bio' — the shopping bag tap handles that.\n"
             f"Do NOT include hashtags. Return caption text only."
         )
     else:
@@ -171,7 +207,8 @@ def _generate_caption(product: Product, post_type: str) -> str:
             f"This is a campaign post — speak to her identity, not the product specs.\n"
             f"Do NOT mention price. No product listing language.\n"
             f"Structure: Emotional hook → Brand storytelling (2-3 sentences) → "
-            f"CTA: 'Find yours → {product_url}'\n"
+            f"CTA: 'Tap to shop the look 🛍️'\n"
+            f"Do NOT include a URL or 'link in bio' — the shopping bag tap handles that.\n"
             f"Do NOT include hashtags. Return caption text only."
         )
 
@@ -181,7 +218,18 @@ def _generate_caption(product: Product, post_type: str) -> str:
             max_tokens=300,
             messages=[{"role": "user", "content": prompt}],
         )
-        return response.content[0].text.strip()
+        text = response.content[0].text.strip()
+        # Haiku occasionally prepends a markdown title line despite being
+        # told "caption text only" (seen live: "# Blue Sapphire Tennis
+        # Bracelet Campaign Caption") — strip a leading "# ..." line before
+        # it ever reaches a real post. Safe to strip unconditionally: the
+        # prompt already forbids hashtags in the caption body (those come
+        # from _build_hashtags separately), so a real caption never
+        # legitimately starts with a "#" line.
+        lines = text.split("\n")
+        if lines and lines[0].strip().startswith("#"):
+            text = "\n".join(lines[1:]).strip()
+        return text
     except Exception as e:
         print(f"[Instagram] Caption generation error: {e}")
         return (
@@ -392,6 +440,98 @@ def _post_to_instagram(image_url: str, caption: str, hashtags: str,
             timeout=30,
         )
         pub = r2.json()
+        if "id" in pub:
+            return {"success": True, "post_id": pub["id"]}
+
+        reason = pub.get("error", {}).get("message", "Publish failed")
+        return {"success": False, "reason": reason}
+
+    except Exception as e:
+        return {"success": False, "reason": str(e)}
+
+
+def _post_to_instagram_carousel(image_urls: list, caption: str, hashtags: str,
+                                 meta_catalog_product_id: str = "") -> dict:
+    """
+    Post a multi-image carousel to Instagram via Graph API.
+
+    Three-step flow, different from a single-image post: each image
+    becomes its own "child" container (is_carousel_item=true, no caption
+    on these), then one parent container references all children plus the
+    single caption (media_type=CAROUSEL, children=<comma-joined ids>),
+    then the parent gets published. The caption/hashtags only ever go on
+    the parent — never per-child.
+
+    Product tagging on a carousel attaches to individual child images, not
+    the parent container — there's no "tag the whole carousel" concept.
+    Tags only the first child here (index 0) since every image in one of
+    these posts shows the same single product; revisit if a carousel ever
+    mixes multiple products.
+
+    Falls back to _post_to_instagram for a single-image list — not a
+    carousel at that point, and Instagram's carousel endpoint requires 2+
+    children anyway.
+    """
+    if not image_urls:
+        return {"success": False, "reason": "no_images"}
+    if len(image_urls) == 1:
+        return _post_to_instagram(image_urls[0], caption, hashtags, meta_catalog_product_id)
+
+    access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+    account_id = os.getenv("INSTAGRAM_ACCOUNT_ID")
+    if not access_token or not account_id:
+        print("[Instagram] Credentials not set — post skipped")
+        return {"success": False, "reason": "credentials_missing"}
+
+    # Instagram carousels support at most 10 images.
+    image_urls = image_urls[:10]
+
+    try:
+        child_ids = []
+        for i, image_url in enumerate(image_urls):
+            child_params = {
+                "image_url": image_url,
+                "is_carousel_item": "true",
+                "access_token": access_token,
+            }
+            if i == 0 and meta_catalog_product_id:
+                child_params["product_tags"] = json.dumps([
+                    {"product_id": meta_catalog_product_id, "x": 0.5, "y": 0.7}
+                ])
+            r = requests.post(
+                f"https://graph.facebook.com/v18.0/{account_id}/media",
+                params=child_params,
+                timeout=30,
+            )
+            child = r.json()
+            if "id" not in child:
+                reason = child.get("error", {}).get("message", f"Child container {i} failed")
+                return {"success": False, "reason": reason}
+            child_ids.append(child["id"])
+
+        full_caption = f"{caption}\n\n{hashtags}"
+        parent_params = {
+            "media_type":   "CAROUSEL",
+            "children":     ",".join(child_ids),
+            "caption":      full_caption,
+            "access_token": access_token,
+        }
+        r2 = requests.post(
+            f"https://graph.facebook.com/v18.0/{account_id}/media",
+            params=parent_params,
+            timeout=30,
+        )
+        parent = r2.json()
+        if "id" not in parent:
+            reason = parent.get("error", {}).get("message", "Carousel container creation failed")
+            return {"success": False, "reason": reason}
+
+        r3 = requests.post(
+            f"https://graph.facebook.com/v18.0/{account_id}/media_publish",
+            params={"creation_id": parent["id"], "access_token": access_token},
+            timeout=30,
+        )
+        pub = r3.json()
         if "id" in pub:
             return {"success": True, "post_id": pub["id"]}
 
