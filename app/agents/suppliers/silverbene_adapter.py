@@ -664,6 +664,16 @@ class SilverbeneAdapter(SupplierAdapter):
         if desc_lengths and not sizes:
             sizes = desc_lengths
         raw_desc = raw.get("description", "") or raw.get("desc", "")
+        # Last resort for Anklets/Bracelets with no real length anywhere —
+        # neither a priced-option size nor a parseable number in the
+        # description. If Silverbene's own text still confirms adjustability
+        # somewhere (see _has_adjustable_language — catches "Extender"/
+        # "Spring Ring" language embedded in an unrelated field, not just a
+        # dedicated "Extension Chain: Yes" line), say so honestly instead of
+        # showing nothing. Never fabricates a specific measurement — a bare
+        # "Adjustable" is real, stated information, not a guessed number.
+        if not sizes and category in ("Anklets", "Bracelets") and _has_adjustable_language(raw_desc):
+            sizes = ["Adjustable"]
         material = self._infer_material_from_desc(raw_desc, colors)
         specs = self._extract_specs_from_desc(raw_desc, category=category)
         # For bracelets: inject width, remove any necklace-range chain_length
@@ -2120,6 +2130,35 @@ def _parse_chain_length_from_desc(desc: str, category: str = "") -> list:
         if chips:
             return chips
     return []
+
+
+_ADJUSTABLE_LANGUAGE_RE = re.compile(
+    r'\badjustable\b|\bextender\b|\bextension\s+chain\b|\bextending\s+chain\b|'
+    r'\bspring\s+ring\b|\bspring\s+clasp\b',
+    re.I,
+)
+
+
+def _has_adjustable_language(desc: str) -> bool:
+    """
+    True if the raw description mentions adjustability anywhere at all —
+    not just in a dedicated "Extension Chain: Yes" field (that's already
+    captured as its own spec key by _extract_specs_from_desc), but also
+    when the exact same real information is embedded inside a different
+    field's value, e.g. "Closure: Spring Ring Clasp With Extender Chain".
+    A spring-ring/spring-clasp closure is included deliberately (per
+    Dennis) — in this catalog's anklet/bracelet listings it consistently
+    co-occurs with a genuinely adjustable extender, even on the listings
+    that never say "adjustable" or "extender" outright.
+
+    Used only as the last-resort fallback for Anklets/Bracelets that have
+    NO real length anywhere (no priced-option size, no parseable number in
+    the description — see _parse_chain_length_from_desc) — surfaces an
+    honest "Adjustable" note instead of showing nothing, but never invents
+    a specific measurement. If this text isn't present, the gap is real
+    and nothing is shown, same as before.
+    """
+    return bool(_ADJUSTABLE_LANGUAGE_RE.search(desc or ""))
 
 
 def _parse_chain_length_from_desc_bracelet(desc: str) -> list:

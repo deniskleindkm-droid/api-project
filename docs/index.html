@@ -2366,8 +2366,9 @@ async function openPP(id){
       // instead of fabricating a number or hiding the section entirely.
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
+      const _fitsWord=colName==='anklets'?'ankles':'wrists';
       document.getElementById('pp-size-chips').innerHTML=
-        `<div class="pp-open-size-note" style="font-size:12px;color:var(--black);letter-spacing:0.3px;">Adjustable — fits most wrists</div>`;
+        `<div class="pp-open-size-note" style="font-size:12px;color:var(--black);letter-spacing:0.3px;">Adjustable — fits most ${_fitsWord}</div>`;
     }else if((sizes.length>=2||showSingle)&&p.size_display_mode==='selector'){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
