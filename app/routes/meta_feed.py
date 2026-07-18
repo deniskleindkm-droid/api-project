@@ -3,6 +3,7 @@ from fastapi.responses import Response
 from sqlmodel import Session, select, or_
 from app.database import engine
 from app.models.product import Product
+import json
 import re
 import xml.etree.ElementTree as ET
 
@@ -25,6 +26,24 @@ def _published_active(session: Session):
     ).all()
 
 
+def _additional_images(p: Product) -> list:
+    try:
+        gallery = json.loads(p.images) if p.images else []
+    except Exception:
+        gallery = []
+    # Meta allows up to 10 additional_image_link entries — exclude the
+    # primary image_link (product.image_url) and dedupe while preserving
+    # order, so the shop's product card shows real distinct photos
+    # instead of repeating the single primary image.
+    seen = {p.image_url}
+    extras = []
+    for url in gallery:
+        if url and url not in seen:
+            seen.add(url)
+            extras.append(url)
+    return extras[:10]
+
+
 def _item(p: Product) -> dict:
     return {
         "id": str(p.id),
@@ -35,6 +54,7 @@ def _item(p: Product) -> dict:
         "price": f"{p.final_price:.2f} USD",
         "link": f"{_STORE}/products/{p.id}",
         "image_link": p.image_url,
+        "additional_image_link": _additional_images(p),
         "brand": "Mikisi",
         "google_product_category": "188",
         "product_type": p.category,
@@ -70,6 +90,8 @@ def meta_products_xml():
         ET.SubElement(item, "g:price").text = d["price"]
         ET.SubElement(item, "g:link").text = d["link"]
         ET.SubElement(item, "g:image_link").text = d["image_link"]
+        for extra_url in d["additional_image_link"]:
+            ET.SubElement(item, "g:additional_image_link").text = extra_url
         ET.SubElement(item, "g:brand").text = d["brand"]
         ET.SubElement(item, "g:google_product_category").text = d["google_product_category"]
         ET.SubElement(item, "g:product_type").text = d["product_type"]
