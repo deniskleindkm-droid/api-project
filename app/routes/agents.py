@@ -2027,6 +2027,35 @@ def instagram_env_check(master_key: str):
     return {k: bool(os.getenv(k)) for k in keys}
 
 
+@router.get("/admin/instagram/shop-eligibility")
+def instagram_shop_eligibility(master_key: str):
+    """
+    Admin — checks shopping_product_tag_eligibility directly on the
+    Instagram account. Hit a generic "(#100) Invalid parameter" trying to
+    tag a real post despite a valid token with instagram_shopping_tag_products
+    permission and a confirmed-real catalog product ID — research (Meta's
+    own product-tagging docs) points to Shop/Checkout-on-Instagram approval
+    status (a separate Commerce Manager review, not a token scope) as the
+    most likely cause. This field says so directly instead of guessing
+    from a vague error on a real post.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    import os, requests
+    access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+    account_id = os.getenv("INSTAGRAM_ACCOUNT_ID")
+    if not access_token or not account_id:
+        return {"error": "INSTAGRAM_ACCESS_TOKEN or INSTAGRAM_ACCOUNT_ID not set"}
+
+    r = requests.get(
+        f"https://graph.facebook.com/v18.0/{account_id}",
+        params={"fields": "shopping_product_tag_eligibility,username", "access_token": access_token},
+        timeout=15,
+    )
+    return r.json()
+
+
 @router.get("/admin/instagram/meta-catalog-test")
 def meta_catalog_test(product_id: int, master_key: str, session: Session = Depends(get_session)):
     """
