@@ -906,7 +906,8 @@ def run_instagram_agent():
 # already was — calling this does not turn on automatic posting.
 
 def post_manually(product_id: int, post_type: str, image_count: Optional[int] = None,
-                   image_urls: Optional[list] = None, dry_run: bool = True) -> dict:
+                   image_urls: Optional[list] = None, dry_run: bool = True,
+                   skip_catalog_tag: bool = False) -> dict:
     """
     Post one specific product on command — the manual counterpart to
     run_instagram_agent()'s automatic picker.
@@ -921,6 +922,10 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
       product.content_lifestyle_url (the RAWSHOT photoshoot image, see
       rawshot_import_agent.py) — falls back to _best_campaign_image() if
       that's not set.
+    skip_catalog_tag: post without attempting the Shopping tag at all —
+      useful to isolate whether a failure is the tagging call itself
+      (e.g. the account not yet approved for Instagram Shopping/
+      instagram_shopping_tag_products) vs. something in the base post.
 
     dry_run=True (the default — deliberately, given how much review this
     launch has had) generates the real caption/hashtags/catalog-tag
@@ -959,8 +964,10 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
     caption  = _generate_caption(product, post_type)
     hashtags = _build_hashtags(product.category, product.material or "")
 
-    from app.agents.meta_catalog import resolve_meta_product_id
-    catalog_id = resolve_meta_product_id(product.id)
+    catalog_id = ""
+    if not skip_catalog_tag:
+        from app.agents.meta_catalog import resolve_meta_product_id
+        catalog_id = resolve_meta_product_id(product.id)
 
     preview = {
         "product_id":   product.id,

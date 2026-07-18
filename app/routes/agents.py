@@ -2147,6 +2147,7 @@ class ManualPostRequest(BaseModel):
     image_count: Optional[int] = None   # first N images from the product's gallery
     image_urls: Optional[list] = None   # explicit list, overrides image_count entirely
     dry_run: bool = True                # default True — preview before any real post
+    skip_catalog_tag: bool = False      # post without the Shopping tag attempt at all
 
 
 @router.post("/admin/instagram/post-now")
@@ -2169,4 +2170,5 @@ def instagram_post_now(data: ManualPostRequest):
         image_count=data.image_count,
         image_urls=data.image_urls,
         dry_run=data.dry_run,
+        skip_catalog_tag=data.skip_catalog_tag,
     )
