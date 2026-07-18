@@ -160,6 +160,89 @@ def _build_hashtags(category: str, material: str) -> str:
 
 # ── CAPTION GENERATION ────────────────────────────────────────────────────────
 
+# Where each category is actually worn — injected into the caption prompt
+# so the LLM is never left to guess, and checked against the LLM's own
+# output afterward (see _wrong_body_part_words). Found live 2026-07-18:
+# a campaign caption for a RING said "Your wrists deserve more than
+# whispers" — the model defaulted to the most common jewelry-caption body
+# part (wrist) rather than the one that actually applies to this product.
+CATEGORY_BODY_PART = {
+    "Rings":     "finger",
+    "Bracelets": "wrist",
+    "Anklets":   "ankle",
+    "Necklaces": "neck",
+    "Earrings":  "ear",
+    "Ear Cuffs": "ear",
+}
+
+# Every body-part word grouped by which part it actually belongs to —
+# used to build the "wrong words for this category" list below. Plurals
+# and close synonyms included (e.g. "collarbone" for neck, "earlobe" for
+# ear) since a caption is just as wrong saying "collarbone" on a ring as
+# it is saying "wrist" outright.
+_BODY_PART_WORDS = {
+    "finger": ["finger", "fingers"],
+    "wrist":  ["wrist", "wrists"],
+    "ankle":  ["ankle", "ankles"],
+    "neck":   ["neck", "collarbone", "collarbones", "throat"],
+    "ear":    ["ear", "ears", "earlobe", "earlobes"],
+}
+
+_WORD_RE_CACHE = {}
+
+
+def _wrong_body_part_words(category: str) -> list:
+    """Every body-part word that does NOT belong to this category."""
+    correct = CATEGORY_BODY_PART.get(category)
+    if not correct:
+        return []
+    words = []
+    for part, terms in _BODY_PART_WORDS.items():
+        if part != correct:
+            words.extend(terms)
+    return words
+
+
+def _has_wrong_body_part(text: str, category: str) -> bool:
+    """
+    True if the caption mentions a body part that isn't the one this
+    product is actually worn on (e.g. "wrist" on a ring). Word-boundary
+    matched so "ear" doesn't false-positive inside "wear"/"early"/"heard".
+    """
+    wrong_words = _wrong_body_part_words(category)
+    if not wrong_words:
+        return False
+    if category not in _WORD_RE_CACHE:
+        import re
+        _WORD_RE_CACHE[category] = re.compile(
+            r'\b(' + '|'.join(wrong_words) + r')\b', re.I
+        )
+    return bool(_WORD_RE_CACHE[category].search(text))
+
+
+def _fallback_caption(product: Product) -> str:
+    return (
+        f"{product.name} — {product.material or '925 Sterling Silver'}. "
+        f"Find yours at mikisi.co"
+    )
+
+
+def _strip_stray_header(text: str) -> str:
+    """
+    Haiku occasionally prepends a markdown title line despite being told
+    "caption text only" (seen live: "# Blue Sapphire Tennis Bracelet
+    Campaign Caption") — strip a leading "# ..." line before it ever
+    reaches a real post. Safe to strip unconditionally: the prompt already
+    forbids hashtags in the caption body (those come from _build_hashtags
+    separately), so a real caption never legitimately starts with a "#"
+    line.
+    """
+    lines = text.split("\n")
+    if lines and lines[0].strip().startswith("#"):
+        return "\n".join(lines[1:]).strip()
+    return text
+
+
 def _generate_caption(product: Product, post_type: str) -> str:
     kb_raw = get_config("instagram_knowledge_base", default="{}")
     brand_voice = get_config("brand_voice", default="Mikisi — luxury sterling silver jewelry.")
@@ -172,36 +255,48 @@ def _generate_caption(product: Product, post_type: str) -> str:
     caption_rules = "\n".join(f"- {r}" for r in kb.get("caption_rules", []))
     bv = kb.get("brand_voice", brand_voice)
 
-    # Instagram feed captions can't contain a clickable link at all (only
-    # the bio link, Stories stickers, and Shopping tags are ever tappable)
-    # — a raw URL here is just dead text a customer would have to
-    # manually retype, and it exposes a bare internal product ID. The
-    # Shopping tag (see meta_catalog.resolve_meta_product_id, applied
-    # uniformly to every post type in run_instagram_agent) is the actual
-    # tap-to-shop mechanism now, so the CTA just points at that instead of
-    # printing a URL.
-    if post_type == "product":
-        prompt = (
-            f"Write an Instagram caption for this Mikisi product post.\n\n"
-            f"Product: {product.name}\n"
-            f"Category: {product.category}\n"
-            f"Material: {product.material or '925 Sterling Silver'}\n"
-            f"Price: ${product.final_price:.0f}\n"
-            f"Description: {product.description[:400]}\n\n"
-            f"Caption rules:\n{caption_rules}\n\n"
-            f"Brand voice: {bv}\n\n"
-            f"Structure: Hook (10-12 words) → Body (2-3 sentences) → "
-            f"CTA: 'Tap to shop 🛍️'\n"
-            f"Do NOT include a URL or 'link in bio' — the shopping bag tap handles that.\n"
-            f"Do NOT include hashtags. Return caption text only."
-        )
-    else:
-        prompt = (
+    body_part = CATEGORY_BODY_PART.get(product.category, "")
+    body_part_rule = (
+        f"This is a {product.category[:-1] if product.category.endswith('s') else product.category} "
+        f"— worn on the {body_part}. Every physical/wearing reference MUST say "
+        f"{body_part} or {body_part}s. NEVER mention any other body part "
+        f"(wrist, ankle, neck/collarbone, ear/finger) unless {body_part} is that same part.\n"
+        if body_part else ""
+    )
+
+    def _build_prompt(correction: str = "") -> str:
+        # Instagram feed captions can't contain a clickable link at all
+        # (only the bio link, Stories stickers, and Shopping tags are ever
+        # tappable) — a raw URL here is just dead text a customer would
+        # have to manually retype, and it exposes a bare internal product
+        # ID. The Shopping tag (see meta_catalog.resolve_meta_product_id,
+        # applied uniformly to every post type in run_instagram_agent) is
+        # the actual tap-to-shop mechanism now, so the CTA just points at
+        # that instead of printing a URL.
+        if post_type == "product":
+            return (
+                f"Write an Instagram caption for this Mikisi product post.\n\n"
+                f"Product: {product.name}\n"
+                f"Category: {product.category}\n"
+                f"Material: {product.material or '925 Sterling Silver'}\n"
+                f"Price: ${product.final_price:.0f}\n"
+                f"Description: {product.description[:400]}\n\n"
+                f"{body_part_rule}"
+                f"Caption rules:\n{caption_rules}\n\n"
+                f"Brand voice: {bv}\n\n"
+                f"Structure: Hook (10-12 words) → Body (2-3 sentences) → "
+                f"CTA: 'Tap to shop 🛍️'\n"
+                f"Do NOT include a URL or 'link in bio' — the shopping bag tap handles that.\n"
+                f"Do NOT include hashtags. Return caption text only."
+                f"{correction}"
+            )
+        return (
             f"Write an emotional brand storytelling caption for a Mikisi campaign post.\n\n"
             f"Product: {product.name}\n"
             f"Category: {product.category}\n"
             f"Material: {product.material or '925 Sterling Silver'}\n"
             f"Description: {product.description[:400]}\n\n"
+            f"{body_part_rule}"
             f"Caption rules:\n{caption_rules}\n\n"
             f"Brand voice: {bv}\n\n"
             f"This is a campaign post — speak to her identity, not the product specs.\n"
@@ -210,32 +305,36 @@ def _generate_caption(product: Product, post_type: str) -> str:
             f"CTA: 'Tap to shop the look 🛍️'\n"
             f"Do NOT include a URL or 'link in bio' — the shopping bag tap handles that.\n"
             f"Do NOT include hashtags. Return caption text only."
+            f"{correction}"
         )
 
-    try:
+    def _call_llm(prompt: str) -> str:
         response = _client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=300,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = response.content[0].text.strip()
-        # Haiku occasionally prepends a markdown title line despite being
-        # told "caption text only" (seen live: "# Blue Sapphire Tennis
-        # Bracelet Campaign Caption") — strip a leading "# ..." line before
-        # it ever reaches a real post. Safe to strip unconditionally: the
-        # prompt already forbids hashtags in the caption body (those come
-        # from _build_hashtags separately), so a real caption never
-        # legitimately starts with a "#" line.
-        lines = text.split("\n")
-        if lines and lines[0].strip().startswith("#"):
-            text = "\n".join(lines[1:]).strip()
+        return _strip_stray_header(response.content[0].text.strip())
+
+    try:
+        text = _call_llm(_build_prompt())
+        if _has_wrong_body_part(text, product.category):
+            print(f"[Instagram] Caption mentioned the wrong body part for "
+                  f"{product.name} ({product.category}) — regenerating")
+            correction = (
+                f"\n\nIMPORTANT: your previous draft incorrectly referenced the "
+                f"wrong body part. This is a {product.category} — it goes on the "
+                f"{body_part}. Do not repeat that mistake."
+            )
+            text = _call_llm(_build_prompt(correction))
+            if _has_wrong_body_part(text, product.category):
+                print(f"[Instagram] Still wrong after retry for {product.name} "
+                      f"— using safe fallback caption")
+                return _fallback_caption(product)
         return text
     except Exception as e:
         print(f"[Instagram] Caption generation error: {e}")
-        return (
-            f"{product.name} — {product.material or '925 Sterling Silver'}. "
-            f"Find yours at mikisi.co"
-        )
+        return _fallback_caption(product)
 
 
 # ── PRODUCT SELECTION ─────────────────────────────────────────────────────────
