@@ -484,6 +484,28 @@ def _best_campaign_image(product: Product) -> str:
 
 # ── INSTAGRAM GRAPH API ───────────────────────────────────────────────────────
 
+def _extract_error(response: dict, default: str) -> str:
+    """
+    A generic Graph API error (e.g. "(#100) Invalid parameter") often has
+    more specific detail in error_user_msg/error_user_title/error_data
+    that .message alone drops — found live 2026-07-18 debugging a product-
+    tagging failure where .message never changed but the underlying cause
+    did (Shop eligibility, then something else). Surface everything so a
+    real failure is diagnosable from the response alone, not by guessing.
+    """
+    err = response.get("error", {})
+    if not err:
+        return default
+    parts = [err.get("message", default)]
+    if err.get("error_user_title"):
+        parts.append(f"[{err['error_user_title']}]")
+    if err.get("error_user_msg"):
+        parts.append(f"— {err['error_user_msg']}")
+    if err.get("error_subcode"):
+        parts.append(f"(subcode {err['error_subcode']})")
+    return " ".join(parts)
+
+
 def _post_to_instagram(image_url: str, caption: str, hashtags: str,
                         meta_catalog_product_id: str = "") -> dict:
     """
@@ -530,8 +552,7 @@ def _post_to_instagram(image_url: str, caption: str, hashtags: str,
         )
         container = r.json()
         if "id" not in container:
-            reason = container.get("error", {}).get("message", "Container creation failed")
-            return {"success": False, "reason": reason}
+            return {"success": False, "reason": _extract_error(container, "Container creation failed")}
 
         r2 = requests.post(
             f"https://graph.facebook.com/v18.0/{account_id}/media_publish",
@@ -542,8 +563,7 @@ def _post_to_instagram(image_url: str, caption: str, hashtags: str,
         if "id" in pub:
             return {"success": True, "post_id": pub["id"]}
 
-        reason = pub.get("error", {}).get("message", "Publish failed")
-        return {"success": False, "reason": reason}
+        return {"success": False, "reason": _extract_error(pub, "Publish failed")}
 
     except Exception as e:
         return {"success": False, "reason": str(e)}
@@ -604,8 +624,7 @@ def _post_to_instagram_carousel(image_urls: list, caption: str, hashtags: str,
             )
             child = r.json()
             if "id" not in child:
-                reason = child.get("error", {}).get("message", f"Child container {i} failed")
-                return {"success": False, "reason": reason}
+                return {"success": False, "reason": _extract_error(child, f"Child container {i} failed")}
             child_ids.append(child["id"])
 
         full_caption = f"{caption}\n\n{hashtags}"
@@ -622,8 +641,7 @@ def _post_to_instagram_carousel(image_urls: list, caption: str, hashtags: str,
         )
         parent = r2.json()
         if "id" not in parent:
-            reason = parent.get("error", {}).get("message", "Carousel container creation failed")
-            return {"success": False, "reason": reason}
+            return {"success": False, "reason": _extract_error(parent, "Carousel container creation failed")}
 
         r3 = requests.post(
             f"https://graph.facebook.com/v18.0/{account_id}/media_publish",
@@ -634,8 +652,7 @@ def _post_to_instagram_carousel(image_urls: list, caption: str, hashtags: str,
         if "id" in pub:
             return {"success": True, "post_id": pub["id"]}
 
-        reason = pub.get("error", {}).get("message", "Publish failed")
-        return {"success": False, "reason": reason}
+        return {"success": False, "reason": _extract_error(pub, "Publish failed")}
 
     except Exception as e:
         return {"success": False, "reason": str(e)}
