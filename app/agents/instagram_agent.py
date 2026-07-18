@@ -17,6 +17,7 @@ updates the knowledge base in StoreConfig over time.
 
 import os
 import json
+import time
 import requests
 from datetime import datetime, timedelta
 from typing import Optional
@@ -506,6 +507,31 @@ def _extract_error(response: dict, default: str) -> str:
     return " ".join(parts)
 
 
+def _wait_for_container_ready(container_id: str, access_token: str,
+                               max_attempts: int = 10, delay: float = 3.0) -> Optional[str]:
+    """
+    Polls a media container's status_code until FINISHED. Publishing right
+    after container creation races Meta's own async image download/
+    validation — found live 2026-07-18 as subcode 2207027 ("Media ID is
+    not available... please wait for a moment") once the actual product-
+    tagging permission block (catalog_management) was resolved. Returns
+    None once ready, or an error reason string on failure/timeout.
+    """
+    for _ in range(max_attempts):
+        r = requests.get(
+            f"https://graph.facebook.com/v18.0/{container_id}",
+            params={"fields": "status_code", "access_token": access_token},
+            timeout=15,
+        )
+        status = r.json().get("status_code")
+        if status == "FINISHED":
+            return None
+        if status == "ERROR":
+            return "Container processing failed (status_code=ERROR)"
+        time.sleep(delay)
+    return "Container did not finish processing in time"
+
+
 def _post_to_instagram(image_url: str, caption: str, hashtags: str,
                         meta_catalog_product_id: str = "") -> dict:
     """
@@ -553,6 +579,10 @@ def _post_to_instagram(image_url: str, caption: str, hashtags: str,
         container = r.json()
         if "id" not in container:
             return {"success": False, "reason": _extract_error(container, "Container creation failed")}
+
+        wait_err = _wait_for_container_ready(container["id"], access_token)
+        if wait_err:
+            return {"success": False, "reason": wait_err}
 
         r2 = requests.post(
             f"https://graph.facebook.com/v18.0/{account_id}/media_publish",
@@ -642,6 +672,10 @@ def _post_to_instagram_carousel(image_urls: list, caption: str, hashtags: str,
         parent = r2.json()
         if "id" not in parent:
             return {"success": False, "reason": _extract_error(parent, "Carousel container creation failed")}
+
+        wait_err = _wait_for_container_ready(parent["id"], access_token)
+        if wait_err:
+            return {"success": False, "reason": wait_err}
 
         r3 = requests.post(
             f"https://graph.facebook.com/v18.0/{account_id}/media_publish",
