@@ -2056,6 +2056,36 @@ def instagram_shop_eligibility(master_key: str):
     return r.json()
 
 
+@router.get("/admin/instagram/catalog-product-search")
+def instagram_catalog_product_search(q: str, master_key: str):
+    """
+    Admin — calls the exact endpoint Instagram itself uses to search for
+    taggable products (catalog_product_search) rather than inferring
+    eligibility from review_status, which came back blank for all 125
+    products and proved uninformative. Only products that pass Meta's own
+    internal tagging-eligibility check are returned here, so results are
+    a direct list of what's actually postable right now — as opposed to
+    guessing product IDs against post-now and hitting subcode 2207037
+    one at a time.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    import os, requests
+    access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+    account_id = os.getenv("INSTAGRAM_ACCOUNT_ID")
+    catalog_id = os.getenv("FACEBOOK_CATALOG_ID")
+    if not access_token or not account_id or not catalog_id:
+        return {"error": "INSTAGRAM_ACCESS_TOKEN, INSTAGRAM_ACCOUNT_ID, or FACEBOOK_CATALOG_ID not set"}
+
+    r = requests.get(
+        f"https://graph.facebook.com/v18.0/{account_id}/catalog_product_search",
+        params={"catalog_id": catalog_id, "q": q, "access_token": access_token},
+        timeout=15,
+    )
+    return r.json()
+
+
 @router.get("/admin/instagram/meta-catalog-test")
 def meta_catalog_test(product_id: int, master_key: str, session: Session = Depends(get_session)):
     """
