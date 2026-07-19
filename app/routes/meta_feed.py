@@ -44,11 +44,31 @@ def _additional_images(p: Product) -> list:
     return extras[:10]
 
 
+def _description_with_size_note(p: Product) -> str:
+    desc = _strip_html(p.description)
+    try:
+        from app.agents.suppliers.silverbene_adapter import sizes_are_variant_backed
+        # sizes_are_variant_backed==False means p.sizes is real, useful info
+        # (e.g. "Adjustable 16\"-18\"") that was never a distinct priced
+        # choice — never a chip, per the site's own rule (see that
+        # function's docstring), but it was reaching the feed nowhere at
+        # all: not as a size (correctly excluded) and not anywhere else
+        # either, so Instagram customers never saw it. Fold it into the
+        # description text instead, same info the site shows as a badge.
+        if not sizes_are_variant_backed(p.variants):
+            sizes = json.loads(p.sizes) if p.sizes else []
+            if sizes and sizes[0]:
+                desc = f"{desc} {sizes[0]}.".strip()
+    except Exception:
+        pass
+    return desc
+
+
 def _base_fields(p: Product) -> dict:
     extras = _additional_images(p)
     return {
         "title": p.name,
-        "description": _strip_html(p.description),
+        "description": _description_with_size_note(p),
         "condition": "new",
         "link": f"{_STORE}/products/{p.id}",
         "image_link": p.image_url,
@@ -56,6 +76,7 @@ def _base_fields(p: Product) -> dict:
         "brand": "Mikisi",
         "google_product_category": "188",
         "product_type": p.category,
+        "material": p.material or None,
     }
 
 
@@ -157,6 +178,8 @@ def meta_products_xml():
             ET.SubElement(item, "g:color").text = d["color"]
         if d["size"]:
             ET.SubElement(item, "g:size").text = d["size"]
+        if d["material"]:
+            ET.SubElement(item, "g:material").text = d["material"]
         ET.SubElement(item, "g:brand").text = d["brand"]
         ET.SubElement(item, "g:google_product_category").text = d["google_product_category"]
         ET.SubElement(item, "g:product_type").text = d["product_type"]
