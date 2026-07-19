@@ -37,7 +37,16 @@ def resolve_meta_product_id(product_id: int) -> str:
     unavailable (catalog not configured, product not found in the catalog,
     or the lookup failed). Caches a successful resolution on
     product.meta_catalog_product_id so this only hits the Graph API once
-    per product, not on every post.
+    per product, not on every post — EXCEPT for multi-variant products
+    (see app/routes/meta_feed.py), which are always re-checked fresh.
+
+    Why: multi-variant products are split into per-variant catalog entries
+    under item_group_id == product_id, with no plain retailer_id ==
+    product_id entry at all. A cache populated before a product
+    transitioned into that split structure would be permanently stale —
+    found live 2026-07-18, where a cached flat-product ID kept being
+    returned after the split replaced it, silently breaking every tag
+    attempt with no error anywhere pointing at the cache being the cause.
     """
     catalog_id = os.getenv("FACEBOOK_CATALOG_ID")
     access_token = os.getenv("FACEBOOK_CATALOG_TOKEN") or os.getenv("FACEBOOK_ACCESS_TOKEN")
@@ -48,28 +57,32 @@ def resolve_meta_product_id(product_id: int) -> str:
         product = session.get(Product, product_id)
         if not product:
             return ""
-        if product.meta_catalog_product_id:
+        from app.routes.products import get_variant_prices
+        try:
+            is_split = len(get_variant_prices(product_id, None, session)) >= 2
+        except Exception:
+            is_split = False
+        if product.meta_catalog_product_id and not is_split:
             return product.meta_catalog_product_id
 
     try:
-        r = requests.get(
-            f"https://graph.facebook.com/{GRAPH_API_VERSION}/{catalog_id}/products",
-            params={
-                "filter": f'{{"retailer_id":{{"eq":"{product_id}"}}}}',
-                "fields": "id,retailer_id,name",
-                "access_token": access_token,
-            },
-            timeout=15,
-        )
-        data = r.json()
-        items = data.get("data", [])
+        items = []
+        if not is_split:
+            r = requests.get(
+                f"https://graph.facebook.com/{GRAPH_API_VERSION}/{catalog_id}/products",
+                params={
+                    "filter": f'{{"retailer_id":{{"eq":"{product_id}"}}}}',
+                    "fields": "id,retailer_id,name",
+                    "access_token": access_token,
+                },
+                timeout=15,
+            )
+            items = r.json().get("data", [])
 
         if not items:
-            # Multi-variant products (see app/routes/meta_feed.py) use
-            # "{product_id}-{option_id}" retailer_ids grouped under
-            # item_group_id == product_id instead of a plain retailer_id
-            # match — fall back to that so tagging still resolves to a
-            # usable (any variant's) Meta product ID.
+            # Multi-variant products use "{product_id}-{option_id}"
+            # retailer_ids grouped under item_group_id == product_id
+            # instead of a plain retailer_id match.
             r = requests.get(
                 f"https://graph.facebook.com/{GRAPH_API_VERSION}/{catalog_id}/products",
                 params={
@@ -79,8 +92,7 @@ def resolve_meta_product_id(product_id: int) -> str:
                 },
                 timeout=15,
             )
-            data = r.json()
-            items = data.get("data", [])
+            items = r.json().get("data", [])
 
         if not items:
             print(f"[Meta Catalog] Product {product_id} not found in catalog {catalog_id} — posting without a tag")
