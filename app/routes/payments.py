@@ -15,6 +15,15 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter()
 
+
+def _option_id_in_variants(variants_json, option_id) -> bool:
+    """Whether option_id actually appears among this product's own variants."""
+    try:
+        variants = json.loads(variants_json or "[]")
+    except Exception:
+        return False
+    return any(str(v.get("option_id")) == str(option_id) for v in variants)
+
 class CheckoutRequest(BaseModel):
     shipping_address: str
     shipping_method: str = "usps"  # "fast_track" or "usps"
@@ -332,7 +341,17 @@ def process_order_background(checkout_data: dict):
                 # options, not guessed text). Trust that id directly; only fall back to
                 # re-deriving it from size/color text for the rare cart item that
                 # somehow arrived without one (older client, direct API call, etc.).
+                #
+                # But never trust it blindly — a client-submitted option_id that
+                # doesn't actually belong to THIS product (spoofed, stale, or from a
+                # mismatched deep link) would place a real Silverbene order for the
+                # wrong item. This is the one point both the guest and logged-in
+                # checkout paths funnel through before the real supplier order call,
+                # so it's the last-chance gate to catch that before money moves.
                 option_id_from_cart = d.get("selected_option_id")
+                if option_id_from_cart and not _option_id_in_variants(d.get("variants"), option_id_from_cart):
+                    print(f"[Payments] selected_option_id={option_id_from_cart} does not belong to product {d.get('product_id')} — ignoring, re-resolving from size/color")
+                    option_id_from_cart = None
                 if option_id_from_cart:
                     option_id, resolve_pass = option_id_from_cart, "client_selected"
                 else:
