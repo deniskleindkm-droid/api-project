@@ -81,13 +81,16 @@ def resolve_meta_product_id(product_id: int) -> str:
 
         if not items:
             # Multi-variant products use "{product_id}-{option_id}"
-            # retailer_ids grouped under item_group_id == product_id
-            # instead of a plain retailer_id match.
+            # retailer_ids instead of a plain retailer_id match. Note:
+            # item_group_id is NOT a valid filterable/readable field on this
+            # endpoint (confirmed live — Meta returns "Invalid field names:
+            # item_group_id") despite being a real field on the feed side,
+            # so match on the retailer_id prefix instead.
             r = requests.get(
                 f"https://graph.facebook.com/{GRAPH_API_VERSION}/{catalog_id}/products",
                 params={
-                    "filter": f'{{"item_group_id":{{"eq":"{product_id}"}}}}',
-                    "fields": "id,retailer_id,item_group_id,name",
+                    "filter": f'{{"retailer_id":{{"i_contains":"{product_id}-"}}}}',
+                    "fields": "id,retailer_id,name",
                     "access_token": access_token,
                 },
                 timeout=15,
