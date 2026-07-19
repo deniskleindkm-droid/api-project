@@ -102,6 +102,7 @@ def _items_for(p: Product, session: Session) -> list:
             **base,
             "id": f"{p.id}-{option_id}",
             "item_group_id": str(p.id),
+            "link": f"{_STORE}/products/{p.id}?option_id={option_id}",
             "availability": "in stock" if (v.get("stock") or 0) > 0 else "out of stock",
             "price": f"{v['final_price']:.2f} USD",
             "color": v.get("color"),

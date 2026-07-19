@@ -1359,6 +1359,7 @@ let ppOpening = false; // guard — prevents double-click opening two panels
 let ppCurrentProduct = null;
 let ppBaseDesc = '';
 let ppVariantPrices = []; // [{option_id,size,color,final_price,stock}]
+let ppPresetOptionId = null; // set via ?option_id= (e.g. from an Instagram variant tag) — consumed once variant prices load
 let ppBaseMaterial = null;
 let ppVariants = [];
 let ppBaseImages = [];
@@ -1490,7 +1491,7 @@ window.onload = async()=>{
     else{document.getElementById('success-banner').classList.add('show');setTimeout(()=>document.getElementById('success-banner').classList.remove('show'),10000);}
   }
   const prodMatch = window.location.pathname.match(/^\/products\/(\d+)$/);
-  if(prodMatch) openPP(Number(prodMatch[1]));
+  if(prodMatch) openPP(Number(prodMatch[1]), p.get('option_id'));
   // Admin preview link: /?preview=123&key=... — works with this static
   // hosting (no server-side routing needed, unlike the path form above,
   // which 404s here since there's no fallback for arbitrary paths).
@@ -2055,9 +2056,10 @@ function positionPPInline(productId){
   if(anchor.nextSibling!==ppEl) grid.insertBefore(ppEl,anchor.nextSibling);
 }
 
-async function openPP(id){
+async function openPP(id, presetOptionId=null){
   if(ppOpening)return;  // already opening — ignore extra clicks
   ppOpening=true;
+  ppPresetOptionId = presetOptionId || null;
 
   let p = allProducts.find(x=>x.id===id);
   if(!p){
@@ -2126,6 +2128,10 @@ async function openPP(id){
     // it's also how we resolve the exact option_id to carry through to checkout.
     ppVariantPrices=vp;
     updateVariantPrice();
+    if(ppPresetOptionId){
+      preselectFromOptionId(ppPresetOptionId);
+      ppPresetOptionId=null; // one-shot — prev/next navigation must not reapply it
+    }
   }).catch(()=>{});
   document.getElementById('pp-desc').textContent=trunc(stripHtml(p.description||''),320);
 
@@ -2655,6 +2661,22 @@ function selectChip(btn,type){
   if(type==='stone') ppSelectedStone=btn.textContent.trim();
   if(type==='width') ppSelectedWidth=btn.textContent.trim();
   updateVariantPrice();
+}
+
+// Pre-selects the size/color chips matching a specific Silverbene option_id
+// (e.g. from an Instagram variant tag's ?option_id= link) by clicking the
+// real chip buttons — reuses selectChip()'s existing price/image/description
+// update logic instead of re-deriving chip state here. Best-effort: if no
+// chip's text matches (e.g. a compound-variant product this doesn't cover),
+// the panel just falls back to its normal default selection, same as today.
+function preselectFromOptionId(optionId){
+  const v=ppVariantPrices.find(x=>String(x.option_id)===String(optionId));
+  if(!v)return;
+  document.querySelectorAll('.pp-chip').forEach(btn=>{
+    const txt=btn.textContent.trim();
+    if(v.size && _normalizeSizeForMatch(txt)===String(v.size)) btn.click();
+    if(v.color && txt.toLowerCase()===String(v.color).toLowerCase()) btn.click();
+  });
 }
 
 // ── WISHLIST ──
