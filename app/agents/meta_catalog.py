@@ -63,6 +63,25 @@ def resolve_meta_product_id(product_id: int) -> str:
         )
         data = r.json()
         items = data.get("data", [])
+
+        if not items:
+            # Multi-variant products (see app/routes/meta_feed.py) use
+            # "{product_id}-{option_id}" retailer_ids grouped under
+            # item_group_id == product_id instead of a plain retailer_id
+            # match — fall back to that so tagging still resolves to a
+            # usable (any variant's) Meta product ID.
+            r = requests.get(
+                f"https://graph.facebook.com/{GRAPH_API_VERSION}/{catalog_id}/products",
+                params={
+                    "filter": f'{{"item_group_id":{{"eq":"{product_id}"}}}}',
+                    "fields": "id,retailer_id,item_group_id,name",
+                    "access_token": access_token,
+                },
+                timeout=15,
+            )
+            data = r.json()
+            items = data.get("data", [])
+
         if not items:
             print(f"[Meta Catalog] Product {product_id} not found in catalog {catalog_id} — posting without a tag")
             return ""
