@@ -2086,26 +2086,6 @@ def instagram_catalog_product_search(q: str, master_key: str):
     return r.json()
 
 
-@router.get("/admin/debug/variant-prices-direct")
-def debug_variant_prices_direct(product_id: int, master_key: str, session: Session = Depends(get_session)):
-    """
-    Temporary — calls products.get_variant_prices() the exact same way
-    meta_feed.py does (in-process, not via HTTP) to see why it's coming
-    back empty there despite the real HTTP endpoint returning full
-    variant data. Remove once that's diagnosed.
-    """
-    if not verify_master_key(master_key):
-        raise HTTPException(status_code=403, detail="Unauthorized")
-
-    import traceback
-    try:
-        from app.routes.products import get_variant_prices
-        result = get_variant_prices(product_id, None, session)
-        return {"success": True, "count": len(result), "result": result}
-    except Exception as e:
-        return {"success": False, "error": str(e), "traceback": traceback.format_exc()}
-
-
 @router.get("/admin/instagram/meta-catalog-test")
 def meta_catalog_test(product_id: int, master_key: str, session: Session = Depends(get_session)):
     """
