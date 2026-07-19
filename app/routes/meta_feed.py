@@ -27,15 +27,22 @@ def _published_active(session: Session):
 
 
 def _additional_images(p: Product) -> list:
+    # Prefer the Cloudinary-cached gallery over raw Silverbene URLs — a broken
+    # image fetch here risks Meta flagging/disapproving the whole catalog
+    # item, not just a failed Instagram post (see content_images' docstring
+    # in models/product.py). Falls back to raw images for products not yet
+    # backfilled (see image_cdn_agent.py's backfill_product_galleries).
     try:
-        gallery = json.loads(p.images) if p.images else []
+        gallery_source = p.content_images or p.images
+        gallery = json.loads(gallery_source) if gallery_source else []
     except Exception:
         gallery = []
     # Meta allows up to 10 additional_image_link entries — exclude the
-    # primary image_link (product.image_url) and dedupe while preserving
-    # order, so the shop's product card shows real distinct photos
-    # instead of repeating the single primary image.
-    seen = {p.image_url}
+    # primary image_link and dedupe while preserving order, so the shop's
+    # product card shows real distinct photos instead of repeating the
+    # single primary image.
+    primary = p.content_image_url or p.image_url
+    seen = {primary}
     extras = []
     for url in gallery:
         if url and url not in seen:
@@ -71,7 +78,7 @@ def _base_fields(p: Product) -> dict:
         "description": _description_with_size_note(p),
         "condition": "new",
         "link": f"{_STORE}/products/{p.id}",
-        "image_link": p.image_url,
+        "image_link": p.content_image_url or p.image_url,
         "additional_image_link": extras,
         "brand": "Mikisi",
         "google_product_category": "188",
@@ -113,11 +120,17 @@ def _items_for(p: Product, session: Session) -> list:
         # the feed showed nothing at all because it never reached here).
         # Only truly variant-less products (empty list) get None/None.
         v = variants[0] if variants else None
+        # available defaults True when absent (variant never flagged by the stock
+        # sync's per-variant existence check — see _reconcile_variant_availability
+        # in silverbene_stock_agent.py). False means Silverbene confirmed this
+        # specific option no longer exists there — send it as out of stock rather
+        # than dropping the row, so it stays a real (if unselectable) catalog item.
+        v_available = (v.get("available", True) if v else True)
         return [{
             **base,
             "id": str(p.id),
             "item_group_id": None,
-            "availability": "in stock" if (v["stock"] if v else p.stock) > 0 else "out of stock",
+            "availability": "in stock" if v_available and (v["stock"] if v else p.stock) > 0 else "out of stock",
             "price": f"{(v['final_price'] if v else p.final_price):.2f} USD",
             "color": v.get("color") if v else None,
             "size": v.get("size") if v else None,
@@ -128,12 +141,13 @@ def _items_for(p: Product, session: Session) -> list:
         option_id = v.get("option_id")
         if option_id is None:
             continue
+        v_available = v.get("available", True)
         items.append({
             **base,
             "id": f"{p.id}-{option_id}",
             "item_group_id": str(p.id),
             "link": f"{_STORE}/products/{p.id}?option_id={option_id}",
-            "availability": "in stock" if (v.get("stock") or 0) > 0 else "out of stock",
+            "availability": "in stock" if v_available and (v.get("stock") or 0) > 0 else "out of stock",
             "price": f"{v['final_price']:.2f} USD",
             "color": v.get("color"),
             "size": v.get("size"),

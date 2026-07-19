@@ -14,6 +14,7 @@ class Product(SQLModel, table=True):
     final_price: float
     image_url: Optional[str] = None
     images: Optional[str] = None
+    content_images: Optional[str] = None  # JSON array, same order as `images` — Cloudinary-cached gallery, never re-fetched from Silverbene once cached
     stock: int = 0
     supplier_name: Optional[str] = None
     supplier_url: Optional[str] = None
@@ -39,7 +40,8 @@ class Product(SQLModel, table=True):
     is_published: Optional[bool] = Field(default=True)   # False = staging; True = live on storefront; NULL treated as True
     is_reviewed: bool = Field(default=False)              # False = fresh import, no publish/unpublish decision made yet ("New" in admin)
     stock_auto_unpublished: bool = Field(default=False)  # True = system hid this due to OOS; auto-republish on restock
-    sync_miss_count: int = Field(default=0)              # consecutive stock sync misses; 3+ = discontinued at Silverbene
+    sync_miss_count: int = Field(default=0)              # consecutive inconclusive (network/error) existence checks — never drives unpublish/delete on its own
+    confirmed_gone_at: Optional[datetime] = None          # set the moment Silverbene confirms (clean response) the SKU no longer exists; cleared on recovery; 7+ days old = eligible for permanent deletion
     is_premium: bool = False
     needs_review: bool = False
     needs_length_review: bool = False

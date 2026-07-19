@@ -115,6 +115,25 @@ def store_product_image(product_id: int, image_url: str, variant: str, retries: 
     return ""
 
 
+def delete_product_assets(product_id: int) -> bool:
+    """
+    Deletes every Cloudinary asset for this product (primary, gallery,
+    lifestyle/hero, video) in one call — every public_id for a product shares
+    the `{FOLDER_IMAGES}/{product_id}_` prefix (see store_product_image), so
+    a prefix delete catches all variants without needing to track each one.
+    Called when a product is permanently removed from the database (see
+    silverbene_discontinuation_agent.py's 7-day deletion sweep) — Dennis
+    pays for Cloudinary storage monthly and it should never hold orphaned
+    assets for a product that no longer exists.
+    """
+    try:
+        cloudinary.api.delete_resources_by_prefix(f"{FOLDER_IMAGES}/{product_id}_")
+        return True
+    except Exception as e:
+        print(f"[Cloudinary] Asset cleanup failed for product={product_id}: {e}")
+        return False
+
+
 def store_product_video(product_id: int, category: str, video_url: str) -> str:
     public_id = f"{FOLDER_VIDEOS}/{category.lower()}_{product_id}"
     try:

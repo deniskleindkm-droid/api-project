@@ -997,16 +997,22 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
         images = [product.content_lifestyle_url] if product.content_lifestyle_url else \
                  ([_best_campaign_image(product)] if _best_campaign_image(product) else [])
     else:
+        # Prefer the Cloudinary-cached gallery (content_images) over raw
+        # Silverbene URLs (images) — hotlinking Silverbene's gallery directly
+        # hit real intermittent 503s from their CDN on real posts (2026-07-19).
+        # Falls back to raw images only for products not yet backfilled (see
+        # image_cdn_agent.py's backfill_product_galleries).
         gallery = []
-        if product.images:
+        gallery_source = product.content_images or product.images
+        if gallery_source:
             try:
-                gallery = json.loads(product.images)
+                gallery = json.loads(gallery_source)
             except Exception:
                 gallery = []
         if image_count and gallery:
             images = gallery[:image_count]
         else:
-            images = [product.image_url] if product.image_url else []
+            images = [product.content_image_url or product.image_url] if (product.content_image_url or product.image_url) else []
 
     images = [u for u in images if u]
     if not images:

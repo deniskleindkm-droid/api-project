@@ -437,7 +437,7 @@ def _handle_stock_low(payload):
 
 def _handle_stock_out(payload):
     name = payload.get("product_name", "Unknown product")
-    print(f"[Nervous System] 🔴 Out of stock — hidden from store: {name}")
+    print(f"[Nervous System] 🔴 Out of stock (still listed at supplier, stays live): {name}")
 
 
 def _handle_stock_restored(payload):
@@ -448,9 +448,11 @@ def _handle_stock_restored(payload):
 def _handle_stock_sync_complete(payload):
     checked = payload.get("checked", 0)
     updated = payload.get("updated", 0)
-    deactivated = payload.get("deactivated", 0)
-    reactivated = payload.get("reactivated", 0)
-    print(f"[Nervous System] 📦 Silverbene stock sync: {checked} checked | {updated} updated | {deactivated} out | {reactivated} restocked")
+    restocked = payload.get("restocked", 0)
+    gone_count = payload.get("gone_count", 0)
+    recovered = payload.get("recovered", 0)
+    print(f"[Nervous System] 📦 Silverbene stock sync: {checked} checked | {updated} updated | "
+          f"{restocked} restocked | {gone_count} confirmed gone | {recovered} recovered")
 
 def _handle_content_posted(payload):
     content_id = payload.get("content_id")

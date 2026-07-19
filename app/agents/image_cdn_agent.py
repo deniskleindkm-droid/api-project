@@ -34,6 +34,7 @@ Two parts:
      fixing only one of two pipelines).
 """
 import time
+import json
 from sqlmodel import Session, select
 from app.database import engine
 from app.models.product import Product
@@ -86,4 +87,66 @@ def backfill_product_images(limit: int = 20, verbose: bool = True) -> dict:
     result = {"scanned": len(products), "succeeded": succeeded, "failed": failed}
     if verbose:
         print(f"[Image CDN] Done — {succeeded} succeeded, {len(failed)} failed")
+    return result
+
+
+def backfill_product_galleries(limit: int = 20, verbose: bool = True) -> dict:
+    """
+    Same idea as backfill_product_images(), for the full gallery (`images`)
+    instead of just the primary photo. Added 2026-07-19 after Instagram
+    carousel posts hotlinking raw Silverbene gallery URLs hit real
+    intermittent 503s from their CDN — content_image_url (primary) was
+    already Cloudinary-cached and never had this problem; content_images
+    (gallery) didn't exist yet. Only touches products with a real gallery
+    and no content_images yet, so it's cheap and safe to rerun. Call
+    repeatedly (like backfill_product_images) while "scanned" > 0.
+    """
+    with Session(engine) as session:
+        products = session.exec(
+            select(Product).where(
+                Product.is_active == True,
+                Product.content_images == None,
+                Product.images != None,
+                Product.images != "",
+            ).limit(limit)
+        ).all()
+
+    if verbose:
+        print(f"[Image CDN] Processing {len(products)} product(s) missing content_images")
+
+    succeeded, failed = 0, []
+    for p in products:
+        try:
+            gallery = json.loads(p.images) if p.images else []
+        except Exception:
+            gallery = []
+        if not gallery:
+            continue
+
+        cached = []
+        for i, url in enumerate(gallery):
+            if not url:
+                continue
+            result_url = store_product_image(p.id, url, f"gallery_{i}")
+            cached.append(result_url or url)  # keep original as fallback rather than drop the slot
+            time.sleep(0.3)
+
+        if cached:
+            with Session(engine) as session:
+                product = session.get(Product, p.id)
+                if product:
+                    product.content_images = json.dumps(cached)
+                    session.add(product)
+                    session.commit()
+            succeeded += 1
+            if verbose:
+                print(f"[Image CDN] #{p.id} {p.name[:40]} -> gallery cached ({len(cached)} images)")
+        else:
+            failed.append(p.id)
+            if verbose:
+                print(f"[Image CDN] #{p.id} {p.name[:40]} -> FAILED")
+
+    result = {"scanned": len(products), "succeeded": succeeded, "failed": failed}
+    if verbose:
+        print(f"[Image CDN] Gallery backfill done — {succeeded} succeeded, {len(failed)} failed")
     return result

@@ -4,22 +4,30 @@ load_dotenv()
 import os
 import json
 import re
+import time
 from datetime import datetime
 from sqlmodel import Session, select
 from app.database import engine
 from app.models.product import Product
 
 
-def run_silverbene_stock_agent():
+def run_silverbene_stock_agent(product_ids: list = None):
     """
     Silverbene Stock Agent — runs every 6 hours automatically.
 
     Every cycle:
     1. Checks live stock for every Silverbene product
-    2. Updates stock quantities, marks out-of-stock, reactivates restocks
+    2. Confirms existence directly via SKU lookup — the only signal allowed to
+       unpublish/recover a product or flag/restore an individual variant
     3. Refreshes sizes for ALL categories (rings, necklaces, bracelets, anklets, etc.)
        wherever Silverbene has new or missing data
     4. Emails Dennis via ARIA whenever anything changes
+
+    product_ids: optional — restricts this run to specific product IDs, for a
+    scoped rollout or rerun (e.g. re-running just the currently-published set).
+    When set, the catalog-wide size/spec enrichment steps are skipped, since
+    those apply to the whole catalog by design and aren't part of a scoped
+    stock/existence-only run. Leave unset for the normal full-catalog cycle.
     """
 
     print(f"\n[Silverbene Stock Agent] Starting sync — {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
@@ -30,18 +38,19 @@ def run_silverbene_stock_agent():
 
         # ── Step 1: Load all Silverbene products (active + recently inactive) ──
         with Session(engine) as session:
-            active_products = session.exec(
-                select(Product).where(Product.supplier_name == "Silverbene", Product.is_active == True)
-            ).all()
-            inactive_products = session.exec(
-                select(Product).where(Product.supplier_name == "Silverbene", Product.is_active == False)
-            ).all()
+            active_query = select(Product).where(Product.supplier_name == "Silverbene", Product.is_active == True)
+            inactive_query = select(Product).where(Product.supplier_name == "Silverbene", Product.is_active == False)
+            if product_ids is not None:
+                active_query = active_query.where(Product.id.in_(product_ids))
+                inactive_query = inactive_query.where(Product.id.in_(product_ids))
+            active_products = session.exec(active_query).all()
+            inactive_products = session.exec(inactive_query).all()
 
         all_products = list(active_products) + list(inactive_products)
 
         if not all_products:
             print("[Silverbene Stock Agent] No Silverbene products in store")
-            return {"checked": 0, "updated": 0, "deactivated": 0, "reactivated": 0, "sizes_updated": 0}
+            return {"checked": 0, "updated": 0, "restocked": 0, "gone_count": 0, "recovered": 0, "sizes_updated": 0}
 
         # ── Step 2: Build option_id → product map (all variants) ────────────────
         # option_map: option_id_str → product_id
@@ -70,7 +79,7 @@ def run_silverbene_stock_agent():
 
         if not option_map:
             print("[Silverbene Stock Agent] No option_ids found — cannot check stock")
-            return {"checked": 0, "updated": 0, "deactivated": 0, "reactivated": 0, "sizes_updated": 0}
+            return {"checked": 0, "updated": 0, "restocked": 0, "gone_count": 0, "recovered": 0, "sizes_updated": 0}
 
         print(f"[Silverbene Stock Agent] Checking {len(option_map)} option_ids across {len(product_variants)} products")
 
@@ -89,18 +98,28 @@ def run_silverbene_stock_agent():
             qty = int(item.get("qty", item.get("qyt", 0)) or 0)
             live_stock[single_id] = qty
 
-        # ── Step 4: Aggregate per product and apply changes ──────────────────
+        # ── Step 4: Update stock quantities only — never touches is_published ──
+        # Existence (does this SKU still exist at Silverbene at all) is decided
+        # independently in Step 4b, via a direct SKU lookup, never inferred from
+        # option_qty numbers: a fully delisted SKU's old option_ids can keep
+        # echoing a stale cached quantity (Silverbene's "8888" unlimited-stock
+        # placeholder, confirmed live on two actually-delisted products) long
+        # after the parent product is gone, so qty alone is not proof of
+        # anything about existence. Checkout already independently refuses any
+        # order once stock hits 0 (see payments.py/cart.py), so a product can
+        # safely stay published while out of stock — Silverbene may restock it.
         updated = 0
-        deactivated = 0
-        reactivated = 0
+        restocked = 0
         newly_outofstock = []
-        newly_reactivated = []
+        newly_restocked = []
         stock_quantity_changes = []
 
         for product_id, option_ids in product_variants.items():
             checked = {oid: live_stock[oid] for oid in option_ids if oid in live_stock}
             if not checked:
-                # No response at all → record miss
+                # No response for any option this cycle — inconclusive. Existence
+                # is verified independently in Step 4b regardless, so this is now
+                # purely a diagnostic counter, never an action trigger on its own.
                 _record_miss(product_id)
                 continue
 
@@ -126,112 +145,156 @@ def run_silverbene_stock_agent():
                     except Exception:
                         pass
 
-                if total_qty == 0:
-                    # A valid response (even qty=0) proves this product/option still
-                    # exists at Silverbene — it's out of stock, not discontinued.
-                    # Reset any pending miss count so the discontinuation agent stops
-                    # re-flagging it every cycle forever; previously this only reset
-                    # when stock came back above zero, so a product that settled into
-                    # a stable "confirmed, but 0 stock" state stayed stuck at whatever
-                    # miss count it last had, notified on every sync with no resolution.
-                    was_missed = product.sync_miss_count > 0
-                    changed = False
-                    if product.stock != 0:
-                        product.stock = 0
-                        product.is_active = True
-                        if product.is_published:
-                            product.is_published = False
-                            product.stock_auto_unpublished = True
-                        changed = True
-                        deactivated += 1
-                        newly_outofstock.append(product.name[:60])
-                        print(f"[Silverbene Stock Agent] Out of stock → unpublished: {product.name[:50]}")
-                        if product.pinterest_pin_id:
-                            try:
-                                from app.agents.pinterest_agent import update_product_availability
-                                update_product_availability(product.id, False)
-                            except Exception:
-                                pass
-                    if was_missed:
-                        product.sync_miss_count = 0
-                        changed = True
-                        print(f"[Silverbene Stock Agent] Confirmed still exists (qty=0) — miss count reset: {product.name[:50]}")
-                    if changed:
-                        session.add(product)
-                        session.commit()
-                else:
-                    old_qty = product.stock
-                    was_oos = product.stock == 0
-                    was_missed = product.sync_miss_count > 0
-                    product.stock = total_qty
-                    product.is_active = True
-                    product.sync_miss_count = 0
-                    if was_oos and product.stock_auto_unpublished:
-                        product.stock_auto_unpublished = False
-                    session.add(product)
-                    session.commit()
+                old_qty = product.stock
+                was_oos = old_qty == 0
+                product.stock = total_qty
+                session.add(product)
+                session.commit()
 
-                    if was_missed:
+                if total_qty == 0 and not was_oos:
+                    newly_outofstock.append(product.name[:60])
+                    print(f"[Silverbene Stock Agent] Out of stock (still listed at Silverbene): {product.name[:50]}")
+                    if product.pinterest_pin_id:
                         try:
-                            from app.agents.silverbene_discontinuation_agent import handle_recovery
-                            handle_recovery(product.id, {"stock": total_qty, "final_price": product.final_price})
-                        except Exception as e:
-                            print(f"[Silverbene Stock Agent] Recovery handoff error: {e}")
-
-                    if was_oos:
-                        reactivated += 1
-                        newly_reactivated.append(product.name[:60])
-                        print(f"[Silverbene Stock Agent] Back in stock → republished: {product.name[:50]}")
-                        if product.pinterest_pin_id:
-                            try:
-                                from app.agents.pinterest_agent import update_product_availability
-                                update_product_availability(product.id, True)
-                            except Exception:
-                                pass
-                    elif old_qty != total_qty:
-                        updated += 1
-                        stock_quantity_changes.append(
-                            f"{product.name[:40]} ({old_qty} → {total_qty})"
-                        )
+                            from app.agents.pinterest_agent import update_product_availability
+                            update_product_availability(product.id, False)
+                        except Exception:
+                            pass
+                elif total_qty != 0 and was_oos:
+                    restocked += 1
+                    newly_restocked.append(product.name[:60])
+                    print(f"[Silverbene Stock Agent] Back in stock: {product.name[:50]}")
+                    if product.pinterest_pin_id:
+                        try:
+                            from app.agents.pinterest_agent import update_product_availability
+                            update_product_availability(product.id, True)
+                        except Exception:
+                            pass
+                elif old_qty != total_qty:
+                    updated += 1
+                    stock_quantity_changes.append(
+                        f"{product.name[:40]} ({old_qty} → {total_qty})"
+                    )
 
         total_checked = len(product_variants)
         print(f"[Silverbene Stock Agent] Stock: checked={total_checked} updated={updated} "
-              f"out_of_stock={deactivated} restocked={reactivated}")
+              f"newly_out_of_stock={len(newly_outofstock)} restocked={restocked}")
 
-        # ── Step 4: Run discontinuation agent on any products with missed syncs ──
+        # ── Step 4b: Existence check — the ONLY signal allowed to change is_published ──
+        # Runs for every Silverbene product every cycle (active and previously-marked-
+        # gone alike), independent of the stock numbers above, via a direct SKU lookup
+        # against the product catalog endpoint (not option_qty — see Step 4's comment
+        # for why that endpoint alone can't be trusted for existence).
+        gone_count = 0
+        recovered = 0
+        newly_gone = []
+        newly_recovered = []
+
+        for product in all_products:
+            sku = product.cj_product_id
+            if not sku:
+                continue
+            resp = sb._get("/api/dropshipping/product_list", {"sku": sku})
+            if not isinstance(resp, dict) or resp.get("code") != 0:
+                # Request itself failed — inconclusive, change nothing.
+                _record_miss(product.id)
+                time.sleep(0.2)
+                continue
+
+            data = resp.get("data", {})
+            items = data if isinstance(data, list) else data.get("data", []) if isinstance(data, dict) else []
+
+            with Session(engine) as session:
+                p = session.get(Product, product.id)
+                if not p:
+                    time.sleep(0.2)
+                    continue
+
+                if items:
+                    # Confirmed still listed at Silverbene.
+                    p.is_active = True
+                    p.sync_miss_count = 0
+                    was_gone = p.confirmed_gone_at is not None
+                    p.confirmed_gone_at = None
+
+                    # Per-variant reconciliation: the whole product is still real,
+                    # but individual options can still go stale on their own (e.g. one
+                    # color/size discontinued while the rest of the listing lives on —
+                    # confirmed live on product 634, option 57021). Never delete a
+                    # variant for this — flag it unavailable so it can still ship to
+                    # the Meta/Instagram catalog as a real (if unselectable) item, and
+                    # flip it back automatically the moment a later cycle finds it live
+                    # again. Also fills in any real option Silverbene has that we don't
+                    # — copied verbatim from their response, never fabricated.
+                    try:
+                        live_options = sb._to_standard(items[0], category=p.category or "").get("_options", [])
+                        _reconcile_variant_availability(p, live_options)
+                    except Exception as e:
+                        print(f"[Silverbene Stock Agent] Variant reconcile error for {p.name[:40]}: {e}")
+
+                    session.add(p)
+                    session.commit()
+                    if was_gone:
+                        # Came back within the grace window — cancel the deletion
+                        # countdown and route through the same "found again" recovery
+                        # path as any other rediscovered product (lands in Unpublished
+                        # for manual review, never auto-goes-live).
+                        recovered += 1
+                        newly_recovered.append(p.name[:60])
+                        try:
+                            from app.agents.silverbene_discontinuation_agent import handle_recovery
+                            handle_recovery(p.id, {"stock": p.stock, "final_price": p.final_price})
+                        except Exception as e:
+                            print(f"[Silverbene Stock Agent] Recovery handoff error: {e}")
+                else:
+                    # Confirmed gone — a clean response explicitly listing zero
+                    # results, not a network/API failure. Decisive; act immediately.
+                    p.is_active = False
+                    if p.is_published:
+                        p.is_published = False
+                        gone_count += 1
+                        newly_gone.append(p.name[:60])
+                        print(f"[Silverbene Stock Agent] Confirmed gone at Silverbene → unpublished: {p.name[:50]}")
+                    if p.confirmed_gone_at is None:
+                        p.confirmed_gone_at = datetime.utcnow()
+                    session.add(p)
+                    session.commit()
+            time.sleep(0.2)
+
+        print(f"[Silverbene Stock Agent] Existence: newly_gone={gone_count} recovered={recovered}")
+
+        # ── Step 4c: Run discontinuation agent — reports + sweeps 7-day-old deletions ──
         try:
             from app.agents.silverbene_discontinuation_agent import run_discontinuation_agent
             run_discontinuation_agent()
         except Exception as e:
             print(f"[Silverbene Stock Agent] Discontinuation agent error: {e}")
 
-        # ── Step 5: Refresh sizes for ALL categories ──────────────────────────
-        sizes_updated, sizes_detail = _refresh_product_sizes(sb)
-
-        # ── Step 5b: Correct earring naming/description and enrich specs from Silverbene ──
-        names_updated, names_detail = _refresh_earring_details(sb)
-
-        # ── Step 5c: Enrich necklace specs from Silverbene ─────────────────────
-        necklace_specs_updated, necklace_specs_detail = _refresh_necklace_specs(sb)
-
-        # ── Step 5d: Enrich bracelet specs and sizes from Silverbene ───────────
-        bracelet_specs_updated, bracelet_specs_detail = _refresh_bracelet_specs(sb)
-
-        # ── Step 5e: Enrich ring specs from Silverbene ─────────────────────────
-        ring_specs_updated, ring_specs_detail = _refresh_ring_specs(sb)
-
-        # ── Step 5f: Enrich anklet specs and sizes from Silverbene ─────────────
-        anklet_specs_updated, anklet_specs_detail = _refresh_anklet_specs(sb)
-
-        # ── Step 5g: Enrich ear cuff specs from Silverbene ─────────────────────
-        ear_cuff_specs_updated, ear_cuff_specs_detail = _refresh_ear_cuffs_specs(sb)
+        # ── Step 5: Refresh sizes/specs for ALL categories — whole-catalog by design,
+        # skipped entirely on a scoped (product_ids) run since it's unrelated to
+        # stock/existence and isn't part of what a scoped run was asked to do.
+        if product_ids is None:
+            sizes_updated, sizes_detail = _refresh_product_sizes(sb)
+            names_updated, names_detail = _refresh_earring_details(sb)
+            necklace_specs_updated, necklace_specs_detail = _refresh_necklace_specs(sb)
+            bracelet_specs_updated, bracelet_specs_detail = _refresh_bracelet_specs(sb)
+            ring_specs_updated, ring_specs_detail = _refresh_ring_specs(sb)
+            anklet_specs_updated, anklet_specs_detail = _refresh_anklet_specs(sb)
+            ear_cuff_specs_updated, ear_cuff_specs_detail = _refresh_ear_cuffs_specs(sb)
+        else:
+            sizes_updated = names_updated = necklace_specs_updated = 0
+            bracelet_specs_updated = ring_specs_updated = anklet_specs_updated = ear_cuff_specs_updated = 0
+            sizes_detail = names_detail = necklace_specs_detail = []
+            bracelet_specs_detail = ring_specs_detail = anklet_specs_detail = ear_cuff_specs_detail = []
+            print("[Silverbene Stock Agent] Scoped run (product_ids set) — skipping catalog-wide size/spec enrichment")
 
         # ── Step 5: Write to AgentMemory ──────────────────────────────────────
         result = {
             "checked": total_checked,
             "updated": updated,
-            "deactivated": deactivated,
-            "reactivated": reactivated,
+            "restocked": restocked,
+            "gone_count": gone_count,
+            "recovered": recovered,
             "sizes_updated": sizes_updated,
             "names_updated": names_updated,
             "necklace_specs_updated": necklace_specs_updated,
@@ -240,7 +303,9 @@ def run_silverbene_stock_agent():
             "anklet_specs_updated": anklet_specs_updated,
             "ear_cuff_specs_updated": ear_cuff_specs_updated,
             "newly_outofstock": newly_outofstock,
-            "newly_reactivated": newly_reactivated,
+            "newly_restocked": newly_restocked,
+            "newly_gone": newly_gone,
+            "newly_recovered": newly_recovered,
         }
         try:
             from app.models.agent import AgentMemory
@@ -252,7 +317,9 @@ def run_silverbene_stock_agent():
                         "timestamp": datetime.utcnow().isoformat(),
                         **result,
                         "out_of_stock": newly_outofstock[:5],
-                        "restocked": newly_reactivated[:5],
+                        "restocked": newly_restocked[:5],
+                        "gone": newly_gone[:5],
+                        "recovered": newly_recovered[:5],
                         "sizes_detail": sizes_detail[:5],
                         "names_detail": names_detail[:5],
                         "necklace_specs_detail": necklace_specs_detail[:5],
@@ -275,7 +342,7 @@ def run_silverbene_stock_agent():
             for name in newly_outofstock:
                 emit(signal_type="STOCK_OUT", sender="silverbene_stock_agent",
                      payload={"product_name": name}, priority=3)
-            for name in newly_reactivated:
+            for name in newly_restocked:
                 emit(signal_type="STOCK_RESTORED", sender="silverbene_stock_agent",
                      payload={"product_name": name}, priority=6)
         except Exception as e:
@@ -283,7 +350,7 @@ def run_silverbene_stock_agent():
 
         # ── Step 7: Email Dennis if ANYTHING changed ──────────────────────────
         any_change = (
-            deactivated > 0 or reactivated > 0 or
+            len(newly_outofstock) > 0 or restocked > 0 or gone_count > 0 or recovered > 0 or
             updated > 0 or sizes_updated > 0 or names_updated > 0 or
             necklace_specs_updated > 0 or bracelet_specs_updated > 0 or
             ring_specs_updated > 0 or anklet_specs_updated > 0 or ear_cuff_specs_updated > 0
@@ -292,11 +359,14 @@ def run_silverbene_stock_agent():
             _aria_sync_report(
                 total_checked=total_checked,
                 updated=updated,
-                deactivated=deactivated,
-                reactivated=reactivated,
+                restocked=restocked,
+                gone_count=gone_count,
+                recovered=recovered,
                 sizes_updated=sizes_updated,
                 newly_outofstock=newly_outofstock,
-                newly_reactivated=newly_reactivated,
+                newly_restocked=newly_restocked,
+                newly_gone=newly_gone,
+                newly_recovered=newly_recovered,
                 stock_quantity_changes=stock_quantity_changes,
                 sizes_detail=sizes_detail,
                 names_updated=names_updated,
@@ -322,8 +392,61 @@ def run_silverbene_stock_agent():
         return {"error": str(e)}
 
 
+def _reconcile_variant_availability(product, live_options: list) -> bool:
+    """
+    Compare this product's stored options against Silverbene's current live
+    option list for the same SKU (already normalized by _to_standard, so
+    option_id/attribute/qty/base_price shapes match what's already stored).
+
+    Never deletes a stored variant — a variant no longer in the live list gets
+    `available: false` so it can still be sent to the Meta/Instagram catalog
+    as a real item marked out of stock rather than disappearing entirely, and
+    flips back to available automatically the moment a later cycle's live
+    list includes it again. Any live option we don't have stored gets added
+    with its real data (never fabricated).
+
+    Mutates product.variants in place. Returns True if anything changed.
+    """
+    try:
+        local = json.loads(product.variants) if product.variants else []
+    except Exception:
+        local = []
+
+    live_by_id = {
+        str(o.get("option_id")): o for o in (live_options or [])
+        if o.get("option_id") is not None
+    }
+    local_ids = {str(v.get("option_id")) for v in local if v.get("option_id") is not None}
+
+    changed = False
+    for v in local:
+        oid = str(v.get("option_id"))
+        is_live = oid in live_by_id
+        was_available = v.get("available", True)
+        if is_live and was_available is False:
+            v["available"] = True
+            changed = True
+        elif not is_live and was_available is not False:
+            v["available"] = False
+            changed = True
+
+    for oid, live_opt in live_by_id.items():
+        if oid not in local_ids:
+            local.append({**live_opt, "available": True})
+            changed = True
+
+    if changed:
+        product.variants = json.dumps(local)
+    return changed
+
+
 def _record_miss(product_id):
-    """Increment sync_miss_count and unpublish on first miss."""
+    """
+    Increment sync_miss_count only — purely diagnostic now. A failed/inconclusive
+    API call is not evidence a product is gone (see Step 4b in
+    run_silverbene_stock_agent, which is the only thing allowed to change
+    is_published, and only on a clean confirmed "doesn't exist" response).
+    """
     if not product_id:
         return
     try:
@@ -332,10 +455,6 @@ def _record_miss(product_id):
             if not product:
                 return
             product.sync_miss_count = (product.sync_miss_count or 0) + 1
-            if product.sync_miss_count == 1 and product.is_published:
-                product.is_published = False
-                product.stock_auto_unpublished = False  # discontinuation, not OOS
-                print(f"[Silverbene Stock Agent] Miss 1 — unpublished: {product.name[:50]}")
             session.add(product)
             session.commit()
     except Exception as e:
@@ -1050,8 +1169,9 @@ def _refresh_anklet_specs(sb) -> tuple:
         return 0, []
 
 
-def _aria_sync_report(total_checked, updated, deactivated, reactivated,
-                      sizes_updated, newly_outofstock, newly_reactivated,
+def _aria_sync_report(total_checked, updated, restocked, gone_count, recovered,
+                      sizes_updated, newly_outofstock, newly_restocked,
+                      newly_gone, newly_recovered,
                       stock_quantity_changes, sizes_detail,
                       names_updated=0, names_detail=None,
                       necklace_specs_updated=0, necklace_specs_detail=None,
@@ -1072,17 +1192,33 @@ def _aria_sync_report(total_checked, updated, deactivated, reactivated,
             f"Silverbene 6-hour sync completed. Checked {total_checked} products.",
         ]
 
-        if deactivated > 0:
+        if len(newly_outofstock) > 0:
             names = "\n".join(f"  - {n}" for n in newly_outofstock[:10])
             parts.append(
-                f"\n{deactivated} product(s) are now OUT OF STOCK at Silverbene "
-                f"(shown as 'Out of Stock' in store):\n{names}"
+                f"\n{len(newly_outofstock)} product(s) are now OUT OF STOCK at Silverbene "
+                f"but still listed there, so they stay live on the storefront "
+                f"marked 'Out of Stock' in case Silverbene restocks them:\n{names}"
             )
 
-        if reactivated > 0:
-            names = "\n".join(f"  - {n}" for n in newly_reactivated[:10])
+        if restocked > 0:
+            names = "\n".join(f"  - {n}" for n in newly_restocked[:10])
             parts.append(
-                f"\n{reactivated} product(s) came BACK IN STOCK and are now visible:\n{names}"
+                f"\n{restocked} product(s) came BACK IN STOCK and are available again:\n{names}"
+            )
+
+        if gone_count > 0:
+            names = "\n".join(f"  - {n}" for n in newly_gone[:10])
+            parts.append(
+                f"\n{gone_count} product(s) were CONFIRMED GONE at Silverbene (delisted, not just "
+                f"out of stock) and have been unpublished immediately. They'll be permanently "
+                f"removed after 7 days if Silverbene doesn't relist them:\n{names}"
+            )
+
+        if recovered > 0:
+            names = "\n".join(f"  - {n}" for n in newly_recovered[:10])
+            parts.append(
+                f"\n{recovered} previously-gone product(s) reappeared at Silverbene within the "
+                f"7-day window and were moved to Unpublished for your review:\n{names}"
             )
 
         if updated > 0:
@@ -1142,15 +1278,19 @@ def _aria_sync_report(total_checked, updated, deactivated, reactivated,
 
         situation = "\n".join(parts)
 
-        urgency = "high" if deactivated > 3 else "medium" if (deactivated > 0 or reactivated > 0) else "low"
+        urgency = "high" if gone_count > 3 else "medium" if (gone_count > 0 or recovered > 0 or len(newly_outofstock) > 0 or restocked > 0) else "low"
         result = aria_think(situation=situation, urgency=urgency)
 
         store_episode(
-            event=f"Sync: {deactivated} OOS, {reactivated} restocked, {updated} qty changes, {sizes_updated} sizes updated",
+            event=(
+                f"Sync: {len(newly_outofstock)} OOS, {restocked} restocked, "
+                f"{gone_count} confirmed gone, {recovered} recovered, "
+                f"{updated} qty changes, {sizes_updated} sizes updated"
+            ),
             context=situation[:300],
             decision="ARIA sent sync summary to Dennis",
             outcome="sync_reported",
-            significance="medium" if deactivated > 0 else "low"
+            significance="medium" if (gone_count > 0 or recovered > 0) else "low"
         )
 
         # Email to Dennis disabled — every sync that changed anything (which is

@@ -258,7 +258,7 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
     Used by the frontend to update the displayed price when a customer
     selects a size or color.
 
-    Response: list of {option_id, size, color, final_price, stock}
+    Response: list of {option_id, size, color, final_price, stock, available}
     Only includes variants with a known base_price.
     """
     import re as _re
@@ -391,6 +391,12 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
             "base_price":  round(bp, 2),
             "final_price": final_price,
             "stock":       v.get("qty", 0),
+            # False only once the Silverbene stock sync's per-variant existence
+            # check (see silverbene_stock_agent.py's _reconcile_variant_availability)
+            # confirms this specific option is no longer live there — the variant
+            # stays in the list either way, never removed, so it can still ship to
+            # the Meta/Instagram catalog as a real item marked out of stock.
+            "available":   v.get("available", True),
         })
 
     return result
@@ -598,6 +604,23 @@ def backfill_product_images_endpoint(master_key: str, limit: int = 20):
     return backfill_product_images(limit=limit)
 
 
+@router.post("/admin/products/backfill-galleries")
+def backfill_product_galleries_endpoint(master_key: str, limit: int = 20):
+    """
+    Admin — uploads each product's full gallery (`images`) to Cloudinary,
+    storing the result in content_images (see image_cdn_agent.py). Same
+    call-repeatedly-while-scanned>0 pattern as backfill-images. Added
+    2026-07-19 so Instagram carousel posts stop hotlinking Silverbene's
+    gallery URLs directly (see backfill_product_galleries' docstring).
+    """
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    from app.agents.image_cdn_agent import backfill_product_galleries
+    return backfill_product_galleries(limit=limit)
+
+
 class HiddenCategoriesUpdate(BaseModel):
     master_key: str
     categories: List[str]
@@ -668,10 +691,16 @@ def get_catalog(master_key: str, session: Session = Depends(get_session)):
                 "category": p.category,
                 "stock_auto_unpublished": getattr(p, "stock_auto_unpublished", False),
                 "sync_miss_count": getattr(p, "sync_miss_count", 0),
+                "confirmed_gone_at": p.confirmed_gone_at.isoformat() if getattr(p, "confirmed_gone_at", None) else None,
             }
 
         def is_discontinued(p):
-            return getattr(p, "sync_miss_count", 0) >= 1
+            # confirmed_gone_at is the only signal for this — set the moment a
+            # clean SKU lookup confirms Silverbene no longer lists the product
+            # (see silverbene_stock_agent.py Step 4b). sync_miss_count is now
+            # purely a diagnostic counter for failed/inconclusive API calls and
+            # never means the product is actually gone.
+            return getattr(p, "confirmed_gone_at", None) is not None
 
         def is_new(p):
             # Fresh import, no publish/unpublish decision made yet — distinct from
@@ -687,12 +716,15 @@ def get_catalog(master_key: str, session: Session = Depends(get_session)):
             "discontinued":  [card(p) for p in col_products if is_discontinued(p)],
         }
 
+    def _gone(p):
+        return getattr(p, "confirmed_gone_at", None) is not None
+
     total             = len(all_products)
-    published_count   = sum(1 for p in all_products if p.is_published and p.stock > 0 and not getattr(p, "sync_miss_count", 0))
-    new_count         = sum(1 for p in all_products if p.is_published is False and not getattr(p, "is_reviewed", False) and p.stock > 0 and not getattr(p, "sync_miss_count", 0))
-    unpublished_count = sum(1 for p in all_products if not p.is_published and getattr(p, "is_reviewed", False) and p.stock > 0 and not getattr(p, "sync_miss_count", 0))
-    oos_count         = sum(1 for p in all_products if p.stock == 0 and not getattr(p, "sync_miss_count", 0))
-    disc_count        = sum(1 for p in all_products if getattr(p, "sync_miss_count", 0) >= 1)
+    published_count   = sum(1 for p in all_products if p.is_published and p.stock > 0 and not _gone(p))
+    new_count         = sum(1 for p in all_products if p.is_published is False and not getattr(p, "is_reviewed", False) and p.stock > 0 and not _gone(p))
+    unpublished_count = sum(1 for p in all_products if not p.is_published and getattr(p, "is_reviewed", False) and p.stock > 0 and not _gone(p))
+    oos_count         = sum(1 for p in all_products if p.stock == 0 and not _gone(p))
+    disc_count        = sum(1 for p in all_products if _gone(p))
 
     return {
         "summary": {

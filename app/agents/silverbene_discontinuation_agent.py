@@ -3,36 +3,38 @@ Silverbene Discontinuation Agent
 
 Runs automatically after every stock sync cycle.
 
-Each product the stock sync cannot find on Silverbene gets a miss recorded.
-This agent acts on those misses:
+Existence at Silverbene is now decided directly and immediately by the stock
+sync itself (silverbene_stock_agent.py Step 4b) — a clean SKU lookup every
+cycle, not a miss streak. The moment that lookup comes back with a confirmed
+"doesn't exist" response, the product is unpublished right away and
+Product.confirmed_gone_at is stamped.
 
-  Miss 1  → product already unpublished by stock sync
-             → email Dennis immediately: "Product X missing at Silverbene"
-             → product appears in Discontinued folder in admin
+This agent's job, every cycle:
 
-  Miss 2  → email Dennis again: still not found after second check
+  1. Sweep: permanently delete any product whose confirmed_gone_at is 7+ days
+     old and still hasn't been found again — Silverbene gets a real week to
+     restock/relist before anything is removed for good.
+  2. Report: one batched email covering what's newly gone, what's still
+     inside its grace period (with days remaining), and what got deleted.
 
-  Miss 3  → make one final direct API call to confirm
-             → if still not found: DELETE from database permanently + email Dennis
-             → if found (false alarm): treat as recovery
+Recovery (a previously-gone product found again) is called directly by the
+stock sync via handle_recovery() below the moment its existence check finds
+the SKU again — this cancels the countdown immediately, it doesn't wait for
+this agent's next run.
 
-Recovery (stock sync finds a previously-missed product):
-  → called by stock sync with fresh Silverbene data
-  → update all product fields from Silverbene
-  → reset sync_miss_count = 0
-  → move to Unpublished for Dennis to review before going live
-  → email Dennis: "Product X found again — review and publish when ready"
+sync_miss_count is purely diagnostic now — it only means "the existence
+check's own API call failed N times in a row" (network/timeout/etc). It is
+never evidence a product is gone and never triggers deletion or unpublish.
 """
 
-import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlmodel import Session, select
 from app.database import engine
 from app.models.product import Product
 
 
-MISS_THRESHOLD = 3  # delete after this many consecutive misses
+GRACE_PERIOD_DAYS = 7
 
 
 # ─── Public entry points ──────────────────────────────────────────────────────
@@ -40,73 +42,76 @@ MISS_THRESHOLD = 3  # delete after this many consecutive misses
 def run_discontinuation_agent():
     """
     Main entry point — called at end of each stock sync run.
-    Acts on all products with sync_miss_count >= 1.
-    Sends ONE batched report email grouped by collection, not one per product.
+    Deletes anything past its 7-day grace period, then sends one batched
+    report covering newly-gone / still-in-grace / deleted this cycle.
     """
     print(f"\n[Discontinuation Agent] Starting — {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
 
     with Session(engine) as session:
-        missed = session.exec(
+        gone = session.exec(
             select(Product).where(
                 Product.supplier_name == "Silverbene",
-                Product.sync_miss_count >= 1,
+                Product.confirmed_gone_at.is_not(None),
             )
         ).all()
 
-    if not missed:
-        print("[Discontinuation Agent] No missing products — all SKUs found in last sync")
-        return {"checked": 0, "notified": 0, "deleted": 0, "recovered": 0}
+    if not gone:
+        print("[Discontinuation Agent] No products currently marked gone at Silverbene")
+        return {"checked": 0, "deleted": 0, "in_grace_period": 0}
 
-    print(f"[Discontinuation Agent] {len(missed)} products with consecutive misses")
+    print(f"[Discontinuation Agent] {len(gone)} product(s) confirmed gone at Silverbene, checking grace periods")
 
-    # Collect all actions — no emails fired inside the loop
-    first_miss  = []   # (name, category, sku)
-    second_miss = []
-    deleted     = []
+    deleted = []      # (name, category, sku)
+    in_grace = []     # (name, category, sku, days_remaining)
 
-    for product in missed:
-        count = product.sync_miss_count
-        entry = (product.name, product.category or "Uncategorised", product.cj_sku or "N/A")
+    for product in gone:
+        days_gone = (datetime.utcnow() - product.confirmed_gone_at).total_seconds() / 86400
+        entry = (product.name, product.category or "Uncategorised", product.cj_product_id or "N/A")
 
-        if count >= MISS_THRESHOLD:
-            _handle_final_miss_silent(product)
+        if days_gone >= GRACE_PERIOD_DAYS:
+            print(f"[Discontinuation Agent] Deleting permanently (gone {days_gone:.1f} days, "
+                  f"grace period expired): [{product.id}] {product.name[:55]}")
+            try:
+                from app.agents.cloudinary_agent import delete_product_assets
+                delete_product_assets(product.id)
+            except Exception as e:
+                print(f"[Discontinuation Agent] Cloudinary cleanup error for {product.id}: {e}")
+            with Session(engine) as session:
+                p = session.get(Product, product.id)
+                if p:
+                    session.delete(p)
+                    session.commit()
             deleted.append(entry)
+        else:
+            in_grace.append((*entry, round(GRACE_PERIOD_DAYS - days_gone, 1)))
 
-        elif count == 2:
-            second_miss.append(entry)
-
-        elif count == 1:
-            first_miss.append(entry)
-
-    # Send one batched report covering everything
-    if first_miss or second_miss or deleted:
-        _send_batched_report(first_miss, second_miss, deleted)
-
-    notified_count = len(first_miss) + len(second_miss)
-    deleted_count  = len(deleted)
+    if in_grace or deleted:
+        _send_batched_report(in_grace, deleted)
 
     result = {
-        "checked":  len(missed),
-        "notified": notified_count,
-        "deleted":  deleted_count,
+        "checked": len(gone),
+        "deleted": len(deleted),
+        "in_grace_period": len(in_grace),
     }
-
-    _write_memory(result, [n for n,_,_ in first_miss+second_miss], [n for n,_,_ in deleted])
-    print(f"[Discontinuation Agent] Done — notified={notified_count} deleted={deleted_count}")
+    _write_memory(result, [n for n, _, _ in deleted], [n for n, _, _, _ in in_grace])
+    print(f"[Discontinuation Agent] Done — deleted={len(deleted)} in_grace_period={len(in_grace)}")
     return result
 
 
 def handle_recovery(product_id: int, fresh_data: dict):
     """
-    Called by the stock sync when a previously-missed product is found again.
-    Updates product data and moves it back to Unpublished.
+    Called by the stock sync the moment a previously-gone product's existence
+    check finds it again at Silverbene. Cancels the deletion countdown,
+    refreshes core fields, and lands the product in Unpublished for manual
+    review — never auto-goes-live.
     """
     with Session(engine) as session:
         product = session.get(Product, product_id)
         if not product:
             return
 
-        old_miss_count = product.sync_miss_count
+        was_gone_since = product.confirmed_gone_at
+        product.confirmed_gone_at = None
         product.sync_miss_count = 0
         product.is_published = False          # lands in Unpublished for review
         product.stock_auto_unpublished = False
@@ -128,7 +133,8 @@ def handle_recovery(product_id: int, fresh_data: dict):
         session.add(product)
         session.commit()
 
-        print(f"[Discontinuation Agent] Recovery: {product.name[:50]} (was {old_miss_count} misses) → Unpublished")
+        gone_for = f"{(datetime.utcnow() - was_gone_since).total_seconds() / 86400:.1f} days" if was_gone_since else "unknown"
+        print(f"[Discontinuation Agent] Recovery: {product.name[:50]} (was gone {gone_for}) → Unpublished")
 
         try:
             from app.models.agent import AgentMemory
@@ -141,8 +147,8 @@ def handle_recovery(product_id: int, fresh_data: dict):
                         "product_id": product.id,
                         "name": product.name,
                         "category": product.category,
-                        "sku": product.cj_sku,
-                        "was_missed": old_miss_count,
+                        "sku": product.cj_product_id,
+                        "was_gone_since": was_gone_since.isoformat() if was_gone_since else None,
                     }),
                     confidence=1.0,
                 ))
@@ -153,13 +159,13 @@ def handle_recovery(product_id: int, fresh_data: dict):
         _send_email(
             subject=f"Mikisi — Product Recovered: {product.name[:50]}",
             lines=[
-                f"Good news — <strong>{product.name}</strong> has been found again on Silverbene "
-                f"after {old_miss_count} consecutive sync miss(es).",
+                f"Good news — <strong>{product.name}</strong> is back at Silverbene "
+                f"(was gone {gone_for}, before its 7-day removal window ran out).",
                 "",
                 f"It has been moved to <strong>Unpublished</strong> in the Catalog Manager.",
                 "Review it and publish when you're ready to list it again.",
                 "",
-                f"Category: {product.category} &nbsp;|&nbsp; SKU: {product.cj_sku}",
+                f"Category: {product.category} &nbsp;|&nbsp; SKU: {product.cj_product_id}",
             ],
             urgency="low",
         )
@@ -167,71 +173,36 @@ def handle_recovery(product_id: int, fresh_data: dict):
 
 # ─── Internal handlers ────────────────────────────────────────────────────────
 
-def _handle_final_miss_silent(product: Product):
-    """3rd miss — confirm with API, delete if still gone. No email here; batched report handles it."""
-    from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
-    sb = SilverbeneAdapter()
-    sku = product.cj_sku
-    confirmed_gone = True
-
-    if sku:
-        resp = sb._get("/api/dropshipping/option_qty", {"option_id": sku})
-        if isinstance(resp, dict) and resp.get("code") == 0:
-            data = resp.get("data", [])
-            if isinstance(data, list) and data:
-                qty = int((data[0] or {}).get("qty", (data[0] or {}).get("qyt", 0)) or 0)
-                handle_recovery(product.id, {"stock": qty})
-                confirmed_gone = False
-
-    if confirmed_gone:
-        print(f"[Discontinuation Agent] DELETING permanently: [{product.id}] {product.name[:55]}")
-        with Session(engine) as session:
-            p = session.get(Product, product.id)
-            if p:
-                session.delete(p)
-                session.commit()
-
-
-def _send_batched_report(first_miss: list, second_miss: list, deleted: list):
+def _send_batched_report(in_grace: list, deleted: list):
     """
-    One email covering all missed products this cycle, grouped by collection.
-    first_miss / second_miss / deleted are lists of (name, category, sku).
+    One email covering all gone/grace-period/deleted products this cycle,
+    grouped by collection. in_grace items carry days_remaining as their 4th field.
     """
     def _group_by_category(items):
         groups = {}
-        for name, cat, sku in items:
-            groups.setdefault(cat, []).append((name, sku))
+        for entry in items:
+            name, cat = entry[0], entry[1]
+            groups.setdefault(cat, []).append(entry)
         return groups
 
     sections = []
 
-    if first_miss:
-        groups = _group_by_category(first_miss)
+    if in_grace:
+        groups = _group_by_category(in_grace)
         rows = "".join(
             f"<tr><td style='padding:4px 12px 4px 0;color:#555'>{cat}</td>"
             f"<td style='padding:4px 0'>"
-            + "".join(f"{name} <span style='color:#aaa;font-size:11px'>({sku})</span><br>" for name, sku in prods)
+            + "".join(
+                f"{name} <span style='color:#aaa;font-size:11px'>({sku}, {days_left}d left)</span><br>"
+                for name, _, sku, days_left in prods
+            )
             + "</td></tr>"
             for cat, prods in sorted(groups.items())
         )
         sections.append(
-            f"<h3 style='color:#b45309;margin:20px 0 6px'>⚠ New — Hidden from storefront ({len(first_miss)})</h3>"
-            f"<p style='color:#555;margin:0 0 8px;font-size:13px'>Not found in this sync. Will be checked again in 6 hours.</p>"
-            f"<table style='border-collapse:collapse;font-size:13px'>{rows}</table>"
-        )
-
-    if second_miss:
-        groups = _group_by_category(second_miss)
-        rows = "".join(
-            f"<tr><td style='padding:4px 12px 4px 0;color:#555'>{cat}</td>"
-            f"<td style='padding:4px 0'>"
-            + "".join(f"{name} <span style='color:#aaa;font-size:11px'>({sku})</span><br>" for name, sku in prods)
-            + "</td></tr>"
-            for cat, prods in sorted(groups.items())
-        )
-        sections.append(
-            f"<h3 style='color:#dc2626;margin:20px 0 6px'>⚠ Still missing — 2nd check ({len(second_miss)})</h3>"
-            f"<p style='color:#555;margin:0 0 8px;font-size:13px'>One more miss and these will be permanently deleted.</p>"
+            f"<h3 style='color:#dc2626;margin:20px 0 6px'>⚠ Confirmed gone at Silverbene ({len(in_grace)})</h3>"
+            f"<p style='color:#555;margin:0 0 8px;font-size:13px'>Already unpublished. "
+            f"Will be permanently deleted if Silverbene hasn't relisted them by the deadline shown.</p>"
             f"<table style='border-collapse:collapse;font-size:13px'>{rows}</table>"
         )
 
@@ -240,21 +211,22 @@ def _send_batched_report(first_miss: list, second_miss: list, deleted: list):
         rows = "".join(
             f"<tr><td style='padding:4px 12px 4px 0;color:#555'>{cat}</td>"
             f"<td style='padding:4px 0'>"
-            + "".join(f"{name} <span style='color:#aaa;font-size:11px'>({sku})</span><br>" for name, sku in prods)
+            + "".join(f"{name} <span style='color:#aaa;font-size:11px'>({sku})</span><br>" for name, _, sku in prods)
             + "</td></tr>"
             for cat, prods in sorted(groups.items())
         )
         sections.append(
             f"<h3 style='color:#7c3aed;margin:20px 0 6px'>✗ Permanently deleted ({len(deleted)})</h3>"
-            f"<p style='color:#555;margin:0 0 8px;font-size:13px'>Confirmed gone after {MISS_THRESHOLD} checks. Removed from database.</p>"
+            f"<p style='color:#555;margin:0 0 8px;font-size:13px'>Gone at Silverbene for {GRACE_PERIOD_DAYS}+ days "
+            f"with no relisting. Removed from database.</p>"
             f"<table style='border-collapse:collapse;font-size:13px'>{rows}</table>"
         )
 
-    total = len(first_miss) + len(second_miss) + len(deleted)
-    subject = f"Mikisi — {total} Product{'s' if total!=1 else ''} Missing at Silverbene"
+    total = len(in_grace) + len(deleted)
+    subject = f"Mikisi — {total} Product{'s' if total != 1 else ''} Gone/Removed at Silverbene"
     body = (
         "<div style='font-family:sans-serif;max-width:620px;margin:0 auto;padding:24px'>"
-        "<p style='color:#333'>Silverbene sync flagged the following products this cycle:</p>"
+        "<p style='color:#333'>Silverbene existence check flagged the following this cycle:</p>"
         + "".join(sections)
         + "<p style='color:#aaa;font-size:11px;margin-top:24px'>Mikisi autonomous stock system</p>"
         "</div>"
@@ -270,7 +242,7 @@ def _send_email(subject: str, lines: list, urgency: str = "medium", body: str = 
     return
 
 
-def _write_memory(result: dict, notified: list, deleted: list):
+def _write_memory(result: dict, deleted: list, in_grace: list):
     try:
         from app.models.agent import AgentMemory
         with Session(engine) as session:
@@ -280,8 +252,8 @@ def _write_memory(result: dict, notified: list, deleted: list):
                 content=json.dumps({
                     "timestamp": datetime.utcnow().isoformat(),
                     **result,
-                    "notified_names": notified[:10],
-                    "deleted_names":  deleted[:10],
+                    "deleted_names": deleted[:10],
+                    "in_grace_names": in_grace[:10],
                 }),
                 confidence=1.0,
             ))

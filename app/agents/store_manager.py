@@ -133,25 +133,47 @@ def add_product_to_store(product_data):
         session.commit()
         session.refresh(product)
 
-        # Cache the primary image on Cloudinary so it's never served from
-        # Silverbene's slow origin on the storefront — see image_cdn_agent.py's
-        # docstring for why (measured 0.5-1.3s per Silverbene image request).
-        # Backgrounded: this is the single point both import pipelines
-        # (bulk_import_agent.py and product_rewriter.py's path) converge on,
-        # so it must never block or fail the import itself.
-        if product.image_url:
+        # Cache the primary image AND the full gallery on Cloudinary so nothing
+        # about this product is ever re-fetched from Silverbene's slow, flaky
+        # origin again — see image_cdn_agent.py's docstring (storefront) and
+        # the 2026-07-19 Instagram posting failures (carousel posts hotlinking
+        # raw Silverbene gallery URLs hit real intermittent 503s from their
+        # CDN; campaign/hero posts, which already used Cloudinary via RAWSHOT,
+        # had zero failures). Dennis pays for Cloudinary storage monthly —
+        # every image should be cached here once, permanently, not downloaded
+        # from Silverbene on every use. Backgrounded: this is the single point
+        # both import pipelines (bulk_import_agent.py and product_rewriter.py's
+        # path) converge on, so it must never block or fail the import itself.
+        if product.image_url or product.images:
             import threading
-            def _cache_primary_image(pid=product.id, url=product.image_url):
+            def _cache_images(pid=product.id, primary_url=product.image_url, gallery_json=product.images):
                 from app.agents.cloudinary_agent import store_product_image
-                cloudinary_url = store_product_image(pid, url, "primary")
-                if cloudinary_url:
+                import json as _json
+
+                cloudinary_primary = store_product_image(pid, primary_url, "primary") if primary_url else ""
+
+                cloudinary_gallery = []
+                try:
+                    gallery = _json.loads(gallery_json) if gallery_json else []
+                except Exception:
+                    gallery = []
+                for i, url in enumerate(gallery):
+                    if not url:
+                        continue
+                    cached = store_product_image(pid, url, f"gallery_{i}")
+                    cloudinary_gallery.append(cached or url)  # keep original as fallback rather than drop the slot
+
+                if cloudinary_primary or cloudinary_gallery:
                     with Session(engine) as s2:
                         p2 = s2.get(Product, pid)
                         if p2:
-                            p2.content_image_url = cloudinary_url
+                            if cloudinary_primary:
+                                p2.content_image_url = cloudinary_primary
+                            if cloudinary_gallery:
+                                p2.content_images = _json.dumps(cloudinary_gallery)
                             s2.add(p2)
                             s2.commit()
-            threading.Thread(target=_cache_primary_image, daemon=True).start()
+            threading.Thread(target=_cache_images, daemon=True).start()
 
         return product, "added"
 
