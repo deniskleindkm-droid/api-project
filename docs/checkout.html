@@ -197,8 +197,12 @@ const API = 'https://api-project-production-d424.up.railway.app';
 const STORE = 'https://mikisi.co';
 const CART_KEY = 'mikisi_guest_cart';
 
-function getCart(){try{return JSON.parse(localStorage.getItem(CART_KEY)||'[]');}catch{return [];}}
-function saveCart(items){localStorage.setItem(CART_KEY,JSON.stringify(items));}
+// Must match index.html's cart storage exactly (sessionStorage) — this
+// page previously used localStorage under the same key, which index.html
+// unconditionally purges on load as "stale", silently emptying any cart
+// built here right before the redirect landed. Found live 2026-07-18.
+function getCart(){try{return JSON.parse(sessionStorage.getItem(CART_KEY)||'[]');}catch{return [];}}
+function saveCart(items){sessionStorage.setItem(CART_KEY,JSON.stringify(items));}
 
 function addToCart(product, qty){
   const cart = getCart();
