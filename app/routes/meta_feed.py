@@ -104,14 +104,23 @@ def _items_for(p: Product, session: Session) -> list:
         variants = []
 
     if len(variants) < 2:
+        # A product with exactly ONE priced variant still has real
+        # color/size data worth sending (e.g. a single adjustable-length
+        # necklace option) — found live tonight: this branch hardcoded
+        # color/size to None regardless, silently dropping a genuinely
+        # real size (product 721 has one variant whose size correctly
+        # resolves to "Adjustable 16\"-18\"" via get_variant_prices, but
+        # the feed showed nothing at all because it never reached here).
+        # Only truly variant-less products (empty list) get None/None.
+        v = variants[0] if variants else None
         return [{
             **base,
             "id": str(p.id),
             "item_group_id": None,
-            "availability": "in stock" if p.stock > 0 else "out of stock",
-            "price": f"{p.final_price:.2f} USD",
-            "color": None,
-            "size": None,
+            "availability": "in stock" if (v["stock"] if v else p.stock) > 0 else "out of stock",
+            "price": f"{(v['final_price'] if v else p.final_price):.2f} USD",
+            "color": v.get("color") if v else None,
+            "size": v.get("size") if v else None,
         }]
 
     items = []
