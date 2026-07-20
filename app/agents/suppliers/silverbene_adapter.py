@@ -71,7 +71,7 @@ def ensure_bangle_bracelet_naming(name: str, category: str, is_bangle: bool) -> 
 # Attribute names Silverbene uses per category type
 SIZE_ATTRIBUTE_NAMES = {"size", "ring size", "length", "bracelet size", "anklet size", "chain length"}
 BRACELET_SIZE_ATTR_NAMES = {"wrist size", "inner diameter", "bracelet size", "bracelet length"}
-COLOR_ATTRIBUTE_NAMES = {"color", "colour", "metal color", "metal finish", "finish", "main stone", "stone", "stone color", "stone type", "birthstone", "letter"}
+COLOR_ATTRIBUTE_NAMES = {"color", "colour", "metal color", "metal finish", "finish", "main stone", "stone", "stone color", "stone type", "birthstone", "letter", "craft"}
 _METAL_ATTR_NAMES = {"color", "colour", "metal color", "metal finish", "finish"}
 
 _SIZE_MEASURE_RE = re.compile(r'\d+\s*(mm|cm)', re.I)
@@ -84,12 +84,28 @@ _SIZE_MEASURE_RE = re.compile(r'\d+\s*(mm|cm)', re.I)
 # treated as a size source in general.
 _PURITY_LENGTH_RE = re.compile(r'\blength\b\s*[:\-]?\s*\d+(?:\.\d+)?\s*(cm|mm)', re.I)
 
+# A second shape of the same overloaded-"Purity" problem: no literal "Length"
+# word at all, just a bare base+extender measurement (e.g. "40+5cm",
+# "45+5cm") — found live on necklace 736 (Classic Figaro Chain), which has 2
+# real, distinct-priced lengths hidden this way with nothing else on the
+# option to distinguish them. Deliberately narrow (whole value must be just
+# the two numbers) so it never fires on Purity text that happens to contain
+# a "+" alongside real material wording.
+_PURITY_BARE_LENGTH_RE = re.compile(r'^\d+(?:\.\d+)?\s*\+\s*\d+(?:\.\d+)?\s*(cm|mm)$', re.I)
+
 # Silverbene occasionally bundles a model/type word with the metal color
 # under a "Model&Color"-style attribute name (e.g. "Anklet & Silver",
 # "Bracelet & Yellow Gold") — found live on product 865 (an Anklet) whose
 # one "Bracelet & Yellow Gold" option describes a DIFFERENT physical item
 # mistakenly mixed into this listing, not a real color choice on it.
 _MODEL_COLOR_NAME_RE = re.compile(r'model\s*&\s*color', re.I)
+
+# A dedicated attribute name bundling a real width with constant, non-varying
+# material text (e.g. "1mm Wide 925 Silver" — found on necklace 871, 5 real
+# widths at every length, material always "925 Silver"). No Color attribute
+# exists at all on these options, so the width itself is the only real
+# customer-facing choice this attribute carries.
+_WIDTH_MATERIAL_NAME_RE = re.compile(r'width\s*(?:and|&)\s*material', re.I)
 
 # Silverbene sometimes has no human label at all for an attribute slot and
 # sends a placeholder name instead, e.g. "Option 6b36c6f7" — found live on 5
@@ -104,6 +120,30 @@ _OPTION_HASH_NAME_RE = re.compile(r'^option[\s_][0-9a-f]{6,}$', re.I)
 # surface; confirmed live these are single-variant products anyway (no real
 # choice exists to lose). Never show a chip built from this kind of value.
 _OPTION_HASH_VALUE_RE = re.compile(r'^option_[0-9a-f]{6,}$', re.I)
+
+
+def _purity_length_chips(value: str, denom: int = 2) -> list:
+    """
+    Extract size chip(s) from a "Purity" value that's actually hiding a real
+    length (see _PURITY_LENGTH_RE / _PURITY_BARE_LENGTH_RE). Used identically
+    by _extract_variants(), resolve_option_id(), and get_variant_prices() so
+    none of the three can ever disagree about what this kind of option resolves
+    to. Two shapes:
+      "925 Silver, Length 16.5CM" -> single measurement, extract just that number
+      "40+5cm"                   -> base+extender, must pass the WHOLE string
+                                     through so the adjustable range is computed
+                                     correctly (extracting only "5cm" would lose
+                                     the base length entirely).
+    """
+    ext_m = re.search(r'\d+(?:\.\d+)?\s*(?:cm|mm)?\s*\+\s*\d+(?:\.\d+)?\s*(?:cm|mm)', value, re.I)
+    if ext_m:
+        return parse_bracelet_size(ext_m.group(0), denom) or parse_necklace_length(ext_m.group(0))
+    len_m = re.search(r'(\d+(?:\.\d+)?)\s*(cm|mm)', value, re.I)
+    if len_m:
+        len_str = f"{len_m.group(1)}{len_m.group(2)}"
+        return parse_bracelet_size(len_str, denom) or parse_necklace_length(len_str)
+    return []
+
 
 def sizes_are_variant_backed(variants_json) -> bool:
     """
@@ -818,16 +858,17 @@ class SilverbeneAdapter(SupplierAdapter):
                     continue
                 if _name in SIZE_ATTRIBUTE_NAMES or _name in BRACELET_SIZE_ATTR_NAMES:
                     _has_dedicated_size_attr = True
-                elif _name == "purity" and _PURITY_LENGTH_RE.search(_value):
+                elif _name == "purity" and (_PURITY_LENGTH_RE.search(_value) or _PURITY_BARE_LENGTH_RE.match(_value)):
                     # Silverbene occasionally buries the real, price-differentiating
-                    # bracelet length inside "Purity" alongside the material text
-                    # (e.g. "925 Silver, Length 16.5CM") instead of a dedicated
-                    # length attribute — found live on product 1138 (Cuban Link
-                    # Moissanite Bracelet), which has 5 real distinct-priced
-                    # lengths (16.5/18/19/20/21cm) all hidden this way. Counts as
-                    # a real dedicated size source so the chain WIDTH bundled into
-                    # Color (e.g. "8mm", identical across every option here) never
-                    # gets wrongly promoted to the product's only "size" below.
+                    # bracelet/necklace length inside "Purity" alongside the material
+                    # text (e.g. "925 Silver, Length 16.5CM") or as a bare base+
+                    # extender pair with no "Length" word at all (e.g. "40+5cm") —
+                    # found live on product 1138 (Cuban Link Moissanite Bracelet,
+                    # 5 lengths) and product 736 (Figaro Chain Necklace, 2 lengths).
+                    # Counts as a real dedicated size source so the chain WIDTH
+                    # bundled into Color (e.g. "8mm", identical across every option
+                    # here) never gets wrongly promoted to the product's only
+                    # "size" below.
                     _has_dedicated_size_attr = True
                 elif _name in COLOR_ATTRIBUTE_NAMES and re.search(r'\d+\s*(mm|cm)', _value, re.I):
                     _, _chip, _ = _split_color_and_size(_value, category)
@@ -988,21 +1029,17 @@ class SilverbeneAdapter(SupplierAdapter):
                     elif value.lower().strip() in _CATEGORY_PREFIXES and value not in _seen_bare:
                         _seen_bare.add(value)
                         _bare_category_values.append(value)
-                elif name == "purity" and _PURITY_LENGTH_RE.search(value):
+                elif name == "purity" and (_PURITY_LENGTH_RE.search(value) or _PURITY_BARE_LENGTH_RE.match(value)):
                     # The real per-option length hiding inside Purity text (see
-                    # _PURITY_LENGTH_RE / pre-scan comment above). Extract just
-                    # the number+unit and hand it to the same bracelet/necklace
-                    # parsers every other length source uses, so this never
-                    # disagrees with how "chain length"/"length" attributes are
-                    # already handled elsewhere.
-                    _len_m = re.search(r'(\d+(?:\.\d+)?)\s*(cm|mm)', value, re.I)
-                    if _len_m:
-                        _len_str = f"{_len_m.group(1)}{_len_m.group(2)}"
-                        chips = parse_bracelet_size(_len_str, _denom) or parse_necklace_length(_len_str)
-                        for chip in chips:
-                            if chip not in seen_sizes:
-                                seen_sizes.add(chip)
-                                sizes.append(chip)
+                    # _PURITY_LENGTH_RE / _PURITY_BARE_LENGTH_RE / pre-scan comment
+                    # above). Shared with resolve_option_id() and get_variant_prices()
+                    # via _purity_length_chips() so this never disagrees with how
+                    # "chain length"/"length" attributes are already handled elsewhere.
+                    chips = _purity_length_chips(value, _denom)
+                    for chip in chips:
+                        if chip not in seen_sizes:
+                            seen_sizes.add(chip)
+                            sizes.append(chip)
                 elif _MODEL_COLOR_NAME_RE.search(name):
                     # "Model & Color" (e.g. "Anklet & Silver") — the model
                     # word is guaranteed to match this product's own category
@@ -1015,6 +1052,15 @@ class SilverbeneAdapter(SupplierAdapter):
                         _cpart = _normalize_color_final(_clean_plain_color(_parts[1]), "color")
                         if _cpart:
                             _color_parts_this_option.append(_cpart)
+                elif _WIDTH_MATERIAL_NAME_RE.search(name):
+                    # "Width And Material" (e.g. "1mm Wide 925 Silver") — the
+                    # material half is constant across every option (never a
+                    # real choice), and no separate Color attribute exists on
+                    # these options at all, so the width itself is the only
+                    # real customer-facing selector this attribute carries.
+                    _wm = re.search(r'(\d+(?:\.\d+)?)\s*mm', value, re.I)
+                    if _wm:
+                        _color_parts_this_option.append(f"{_wm.group(1)}mm")
                 elif _OPTION_HASH_NAME_RE.match(name) and _option_hash_is_real and not _OPTION_HASH_VALUE_RE.match(value):
                     # Silverbene's unnamed placeholder attribute (see
                     # _OPTION_HASH_NAME_RE) carrying real, varying customer-
@@ -1496,7 +1542,21 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
     if not variants:
         return _none
 
-    want_size  = (selected_size  or "").strip()
+    # Normalized the same way attr_size() below normalizes each variant's raw
+    # Silverbene value — e.g. "US 5" -> "5". Without this, a product whose
+    # customer-facing chip legitimately keeps the "US " prefix (confirmed the
+    # norm across the Rings category, not an import bug — see p.sizes on any
+    # published ring) would NEVER match Pass 1/2 here: attr_size() always
+    # strips it, but want_size never did. Found live on 19 published ring
+    # products (1120, 572, 624, 720, ... all "US N"/"Size N"), where this
+    # silently fell through to Pass 3's color-only match — which, whenever an
+    # option's color/cert text doesn't vary by size, returns whichever size
+    # option happens to be listed first, regardless of what the customer
+    # actually selected. Frontend-resolved orders sidestep this (the option_id
+    # is already resolved before checkout), but any fallback path that must
+    # re-derive it from size/color text — order recovery, older/direct-API
+    # clients — was silently shipping the wrong ring size on every order.
+    want_size  = _normalize_size_for_match((selected_size or "").strip())
     want_color = (selected_color or "").strip()
     # Mirror _extract_variants(): normally half-inch chips, escalating to
     # quarter-inch only when this product's own real sizes would otherwise
@@ -1534,6 +1594,14 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
                 chips = parse_bracelet_size(v, _denom) or parse_necklace_length(v)
                 if chips:
                     return chips[0]
+            if aname == "purity":
+                v = a.get("value", "").strip()
+                if v and (_PURITY_LENGTH_RE.search(v) or _PURITY_BARE_LENGTH_RE.match(v)):
+                    # Mirrors _extract_variants()'s purity-length branch — see
+                    # _purity_length_chips() for why this exists (products 1138, 736).
+                    chips = _purity_length_chips(v, _denom)
+                    if chips:
+                        return chips[0]
         # No dedicated size attribute — Silverbene sometimes bundles the real
         # size measurement into the Color attribute instead (hoop diameter,
         # tube width, bracelet extension). Mirror _extract_variants() exactly
@@ -1582,6 +1650,12 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
                     _mcpart = _normalize_color_final(_clean_plain_color(_mparts[1]), "color")
                     if _mcpart:
                         parts.append(_mcpart)
+                continue
+            if _WIDTH_MATERIAL_NAME_RE.search(aname):
+                # Mirrors _extract_variants()'s "Width And Material" branch.
+                _wm = re.search(r'(\d+(?:\.\d+)?)\s*mm', v, re.I)
+                if _wm:
+                    parts.append(f"{_wm.group(1)}mm")
                 continue
             if aname not in COLOR_ATTRIBUTE_NAMES:
                 continue
@@ -2305,7 +2379,13 @@ def _detect_option_suffix(attrs: list) -> str | None:
         # 6x8mm" also happens to match _SPEC_VALUE_RE's bare "8mm" pattern,
         # doubling the same text onto itself ("Moissanite 6x8mm · Moissanite
         # 6x8mm") before this fix.
-        if not val or name in _OPTION_SUFFIX_SKIP_NAMES or _OPTION_HASH_NAME_RE.match(name):
+        if not val or name in _OPTION_SUFFIX_SKIP_NAMES or _OPTION_HASH_NAME_RE.match(name) \
+           or _WIDTH_MATERIAL_NAME_RE.search(name):
+            # Same reasoning for "Width And Material" — already captured
+            # directly as its own color-equivalent chip (see
+            # _extract_variants()'s _WIDTH_MATERIAL_NAME_RE branch), found
+            # live on product 871 doubling ("1mm · 1mm Wide 925 Silver")
+            # for the identical reason as the Option-hash case above.
             continue
         if _CHAIN_STYLE_ONLY_RE.search(val):
             return "Pendant Only"

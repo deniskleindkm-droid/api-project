@@ -272,6 +272,8 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
         COLOR_ATTRIBUTE_NAMES, BRACELET_SIZE_ATTR_NAMES,
         parse_necklace_length, parse_bracelet_size,
         _OPTION_HASH_NAME_RE, _OPTION_HASH_VALUE_RE, _MODEL_COLOR_NAME_RE,
+        _WIDTH_MATERIAL_NAME_RE, _PURITY_LENGTH_RE, _PURITY_BARE_LENGTH_RE,
+        _purity_length_chips,
     )
 
     product = session.get(Product, product_id)
@@ -402,6 +404,21 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
                     _mcpart = _normalize_color_final(_clean_plain_color(_mparts[1]), "color")
                     if _mcpart:
                         _color_parts.append(_mcpart)
+            elif _WIDTH_MATERIAL_NAME_RE.search(name) and val:
+                # Mirrors _extract_variants()'s "Width And Material" branch —
+                # the material half is constant, the width is the real choice.
+                _wm = _re.search(r'(\d+(?:\.\d+)?)\s*mm', val, _re.I)
+                if _wm:
+                    _color_parts.append(f"{_wm.group(1)}mm")
+            elif name == "purity" and val and (_PURITY_LENGTH_RE.search(val) or _PURITY_BARE_LENGTH_RE.match(val)):
+                # Mirrors _extract_variants()'s purity-length branch (products
+                # 1138, 736) — checked before the finish/plating branch below
+                # so a value like "925 Silver, Length 16.5CM" (which also
+                # contains a metal word) resolves to its real length here,
+                # exactly as it does there, instead of being read as a finish.
+                chips = _purity_length_chips(val, _denom)
+                if chips:
+                    size = chips[0]
             elif name == "purity" and _purity_is_real and val and _re.search(r'\b(gold|silver|platinum|plating|plated|rhodium)\b', val, _re.I):
                 # Mirrors _extract_variants()'s "purity" branch — Silverbene
                 # sometimes uses "Purity" for the plating/finish choice
