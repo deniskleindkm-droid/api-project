@@ -133,6 +133,41 @@ def add_product_to_store(product_data):
         session.commit()
         session.refresh(product)
 
+        # Populate ProductVariant rows (the first-class internal variant
+        # identity — see app.models.product_variant) for this new import,
+        # via the same per-option parser that already produced product.sizes/
+        # colors above, so the two can never disagree. Never blocks/fails the
+        # import itself — a variant-row problem shouldn't prevent the product
+        # from being created, the same way the Cloudinary caching below is
+        # backgrounded rather than load-bearing.
+        if product.variants:
+            try:
+                from app.models.product_variant import ProductVariant
+                from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+                from app.agents.jewelry_pricing import calculate_mikisi_price
+                for row in SilverbeneAdapter()._extract_variant_rows(json.loads(product.variants), product.category or ""):
+                    option_id = str(row["option_id"]) if row["option_id"] is not None else None
+                    base_price = float(row["base_price"] or 0)
+                    if not option_id or not base_price:
+                        continue
+                    session.add(ProductVariant(
+                        product_id=product.id,
+                        supplier_name="Silverbene",
+                        supplier_option_id=option_id,
+                        size=row["size"],
+                        color=row["color"],
+                        raw_attributes=json.dumps(row["raw_attributes"]),
+                        base_price=base_price,
+                        final_price=calculate_mikisi_price(base_price)["final_price"],
+                        stock=int(row["qty"] or 0),
+                        available=bool(row["available"]),
+                        sort_order=row["sort_order"],
+                    ))
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                print(f"[Store Manager] ProductVariant backfill failed for new product {product.id}: {e}")
+
         # Cache the primary image AND the full gallery on Cloudinary so nothing
         # about this product is ever re-fetched from Silverbene's slow, flaky
         # origin again — see image_cdn_agent.py's docstring (storefront) and

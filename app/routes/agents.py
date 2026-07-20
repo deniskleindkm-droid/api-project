@@ -1660,6 +1660,105 @@ def backfill_variants(session: Session = Depends(get_session)):
     }
 
 
+@router.post("/agents/backfill-product-variants")
+def backfill_product_variants(master_key: str, published_only: bool = True, session: Session = Depends(get_session)):
+    """
+    One-time migration: populate ProductVariant rows (the new first-class
+    internal variant identity — see app.models.product_variant) from each
+    product's existing Silverbene `variants` JSON.
+
+    Uses _extract_variant_rows() — the exact same per-option parser that
+    already produces Product.sizes/Product.colors — so a ProductVariant row
+    can never disagree with what the storefront already shows for that
+    option. Idempotent: skips any (product_id, supplier_option_id) already
+    present, safe to re-run.
+
+    published_only=True (default): scope the first pass to live products —
+    verify those, then call again with published_only=false to pick up the
+    rest of the (mostly staged/unpublished) catalog.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    from app.models.product import Product
+    from app.models.product_variant import ProductVariant
+    from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+    from app.agents.jewelry_pricing import calculate_mikisi_price
+
+    adapter = SilverbeneAdapter()
+
+    query = select(Product).where(Product.variants != None, Product.variants != "")
+    if published_only:
+        query = query.where(Product.is_published == True)
+    products = session.exec(query).all()
+
+    total = len(products)
+    products_touched = 0
+    rows_inserted = 0
+    errors = []
+
+    print(f"[Backfill ProductVariant] Starting — {total} products in scope (published_only={published_only})")
+
+    for product in products:
+        try:
+            existing_option_ids = {
+                v.supplier_option_id for v in session.exec(
+                    select(ProductVariant).where(
+                        ProductVariant.product_id == product.id,
+                        ProductVariant.supplier_name == "Silverbene",
+                    )
+                ).all()
+            }
+            options = json.loads(product.variants)
+            variant_rows = adapter._extract_variant_rows(options, product.category or "")
+
+            inserted_this_product = 0
+            for row in variant_rows:
+                option_id = str(row["option_id"]) if row["option_id"] is not None else None
+                if not option_id or option_id in existing_option_ids:
+                    continue
+                # Mirrors get_variant_prices()'s existing rule — only variants
+                # with a known base_price are real, orderable options.
+                base_price = float(row["base_price"] or 0)
+                if not base_price:
+                    continue
+                session.add(ProductVariant(
+                    product_id=product.id,
+                    supplier_name="Silverbene",
+                    supplier_option_id=option_id,
+                    size=row["size"],
+                    color=row["color"],
+                    raw_attributes=json.dumps(row["raw_attributes"]),
+                    base_price=base_price,
+                    final_price=calculate_mikisi_price(base_price)["final_price"],
+                    stock=int(row["qty"] or 0),
+                    available=bool(row["available"]),
+                    sort_order=row["sort_order"],
+                ))
+                inserted_this_product += 1
+
+            if inserted_this_product:
+                session.commit()
+                rows_inserted += inserted_this_product
+                products_touched += 1
+                print(f"[Backfill ProductVariant] {product.name[:40]} — {inserted_this_product} rows")
+
+        except Exception as e:
+            session.rollback()
+            err = f"product {product.id}: {str(e)[:120]}"
+            errors.append(err)
+            print(f"[Backfill ProductVariant] ❌ {err}")
+
+    print(f"[Backfill ProductVariant] Done — {products_touched} products touched, {rows_inserted} rows inserted")
+    return {
+        "scope": "published_only" if published_only else "all_products",
+        "products_scanned": total,
+        "products_touched": products_touched,
+        "rows_inserted": rows_inserted,
+        "errors": errors[:20],
+    }
+
+
 # ── CONNECTION CHECKER ────────────────────────────────────────────────────────
 
 @router.get("/agents/check-connections")

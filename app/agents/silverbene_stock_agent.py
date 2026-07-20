@@ -231,6 +231,12 @@ def run_silverbene_stock_agent(product_ids: list = None):
                         _reconcile_variant_availability(p, live_options)
                     except Exception as e:
                         print(f"[Silverbene Stock Agent] Variant reconcile error for {p.name[:40]}: {e}")
+                        live_options = None
+                    if live_options is not None:
+                        try:
+                            _reconcile_variant_rows(session, p, live_options)
+                        except Exception as e:
+                            print(f"[Silverbene Stock Agent] ProductVariant reconcile error for {p.name[:40]}: {e}")
 
                     session.add(p)
                     session.commit()
@@ -438,6 +444,81 @@ def _reconcile_variant_availability(product, live_options: list) -> bool:
     if changed:
         product.variants = json.dumps(local)
     return changed
+
+
+def _reconcile_variant_rows(session, product, live_options: list) -> None:
+    """
+    ProductVariant-table counterpart to _reconcile_variant_availability()
+    above — same live-vs-stored comparison, same "never delete, flip
+    available" invariant, upserting rows instead of mutating JSON. Kept as a
+    parallel dual-write during the variant-ID migration transition (see
+    [[refactored-wobbling-rabin]]) — both this and the JSON mutation stay
+    correct independently until every reader has cut over to the table.
+
+    size/color for any newly-seen live option come from
+    _extract_variant_rows() — the same per-option parser everything else
+    uses — never hand-derived a second time here.
+    """
+    from app.models.product_variant import ProductVariant
+    from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+    from app.agents.jewelry_pricing import calculate_mikisi_price
+
+    live_by_id = {
+        str(o.get("option_id")): o for o in (live_options or [])
+        if o.get("option_id") is not None
+    }
+    if not live_by_id:
+        return
+
+    existing = {
+        v.supplier_option_id: v for v in session.exec(
+            select(ProductVariant).where(
+                ProductVariant.product_id == product.id,
+                ProductVariant.supplier_name == "Silverbene",
+            )
+        ).all()
+    }
+
+    variant_rows_by_id = {
+        str(row["option_id"]): row
+        for row in SilverbeneAdapter()._extract_variant_rows(list(live_by_id.values()), product.category or "")
+        if row["option_id"] is not None
+    }
+
+    for oid, live_opt in live_by_id.items():
+        base_price = float(live_opt.get("base_price", live_opt.get("price", 0)) or 0)
+        row = existing.get(oid)
+        if row:
+            row.stock = int(live_opt.get("qty", 0))
+            row.available = True
+            if base_price:
+                row.base_price = base_price
+                row.final_price = calculate_mikisi_price(base_price)["final_price"]
+            row.last_synced_at = datetime.utcnow()
+            session.add(row)
+        elif base_price:
+            # A live option we've never stored before — add it with real
+            # data, same as _reconcile_variant_availability does for the JSON
+            # side, never fabricated.
+            vr = variant_rows_by_id.get(oid, {})
+            session.add(ProductVariant(
+                product_id=product.id,
+                supplier_name="Silverbene",
+                supplier_option_id=oid,
+                size=vr.get("size"),
+                color=vr.get("color"),
+                raw_attributes=json.dumps(vr.get("raw_attributes") or live_opt.get("attribute", [])),
+                base_price=base_price,
+                final_price=calculate_mikisi_price(base_price)["final_price"],
+                stock=int(live_opt.get("qty", 0)),
+                available=True,
+                sort_order=vr.get("sort_order", len(existing)),
+            ))
+
+    for oid, row in existing.items():
+        if oid not in live_by_id and row.available:
+            row.available = False
+            session.add(row)
 
 
 def _record_miss(product_id):
