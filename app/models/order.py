@@ -17,6 +17,12 @@ class Order(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     guest_email: Optional[str] = None
     is_guest: bool = False
+    # The canonical internal variant identity (see app.models.product_variant.
+    # ProductVariant) — carried over from the CartItem at checkout time so
+    # order recovery/retry can always resolve the customer's real selection
+    # instead of falling back to the product's default/first variant. NULL on
+    # orders placed before this column existed.
+    variant_id: Optional[int] = Field(default=None, foreign_key="product_variant.id")
 
 class OrderTracking(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

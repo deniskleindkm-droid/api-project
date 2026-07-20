@@ -15,6 +15,7 @@ from app.models.content import ProductContent
 from app.models.instagram_post import InstagramPost
 from app.models.platform_analytics import PlatformAnalytics
 from app.models.order_variant_check import OrderVariantCheck
+from app.models.product_variant import ProductVariant
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users.db")
@@ -79,6 +80,11 @@ def create_db():
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS meta_catalog_product_id varchar(200)"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS confirmed_gone_at timestamp"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS content_images text"))
+        # First-class variant identity — see [[refactored-wobbling-rabin]] plan.
+        # Nullable: populated going forward by cart.py/payments.py; historical
+        # rows stay NULL and fall back to the legacy size/color/option_id path.
+        conn.execute(text("ALTER TABLE cartitem ADD COLUMN IF NOT EXISTS variant_id integer"))
+        conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS variant_id integer'))
         conn.commit()
 
     _setup_defaults()
