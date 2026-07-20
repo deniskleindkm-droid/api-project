@@ -2650,9 +2650,18 @@ function updateVariantPrice(){
   // customer from selecting and ordering it — the chip fade (see
   // applyChipAvailability) is the visual cue, this is the real guardrail.
   const availablePrices = ppVariantPrices.filter(v=>v.available!==false);
+  // Whether there's a REAL, priced size axis actively selected — not just
+  // whether ppSelectedSize happens to be truthy. A decorative "Adjustable
+  // 16"-18"" badge (no clickable size chip, ppHasSizeChips false, backend
+  // never had a size attribute to extract) still populates ppSelectedSize
+  // on load, but it was never a real second axis to satisfy. Mirrors the
+  // exact same real-selection test Pass 4 and _realSelectionActive already
+  // use below — must never diverge from those or this and Pass 4 would
+  // disagree about what counts as "a real size selection."
+  const realSizeActive = !!(ppHasSizeChips && backendHasSize && wantSize);
   let match = null;
   // Pass 1: exact size + every active selector
-  if(wantSize && wantParts.length) match = availablePrices.find(v=>v.size===wantSize && colorEq(v));
+  if(realSizeActive && wantParts.length) match = availablePrices.find(v=>v.size===wantSize && colorEq(v));
   // Pass 2: size only — gated on wantParts being EMPTY. Without this guard,
   // a two-axis product (size + color both actively selected) whose exact
   // combination just got excluded above as unavailable would silently fall
@@ -2660,11 +2669,16 @@ function updateVariantPrice(){
   // found live testing product 634 (Silver+10mm silently resolved to Yellow
   // Gold+10mm). Only meant as a fallback when color was never a real axis
   // for this product at all.
-  if(!match && wantSize && !wantParts.length) match = availablePrices.find(v=>v.size===wantSize);
-  // Pass 3: every active selector, any size — same reasoning, gated on
-  // wantSize being EMPTY so it never silently ignores an active size
-  // selection to substitute a same-color-wrong-size match.
-  if(!match && wantParts.length && !wantSize) match = availablePrices.find(v=>colorEq(v));
+  if(!match && realSizeActive && !wantParts.length) match = availablePrices.find(v=>v.size===wantSize);
+  // Pass 3: every active selector, any size — gated on realSizeActive
+  // (not raw wantSize) for the same reason: a decorative, non-chip-backed
+  // ppSelectedSize must never block this fallback from matching on color
+  // alone — found live on real necklaces (e.g. product 1012, an adjustable-
+  // length necklace with real color chips but no real size chip): raw
+  // wantSize was truthy from the decorative badge text, so this pass never
+  // ran, and the customer's real color selection was wrongly rejected as
+  // "unavailable" even though a matching priced option existed.
+  if(!match && wantParts.length && !realSizeActive) match = availablePrices.find(v=>colorEq(v));
   // Pass 4: nothing REAL to select at all (no clickable size chip backed by
   // an actual priced size attribute, no color/stone/width chip rendered for
   // this product) — the single variant IS the only real choice, not a guess.
