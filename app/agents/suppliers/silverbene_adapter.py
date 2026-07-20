@@ -1649,10 +1649,27 @@ def _parse_ring_diameter_mm(text: str):
 def open_ring_size_text(specs: dict, desc: str = "") -> str:
     """Return the size badge text for an open/adjustable ring.
 
-    Checks specs for ring_diameter or inner_diameter first.
-    If a real mm measurement is found, converts to US range.
-    Falls back to our standard open-ring range US 5-8.
+    Checks ring_size_range first -- Silverbene's own explicitly stated
+    reference size (e.g. "Reference Size: US Size 6") is ground truth and
+    must win over anything we derive ourselves. Only falls back to deriving
+    a size from ring_diameter/inner_diameter mm when Silverbene never
+    stated one directly -- our mm-to-US-size snapping is an approximation
+    and can disagree with Silverbene's own stated size for the same product
+    (found live: 17mm snapped to our table's "US 7" reference point, but
+    Silverbene's own text said this exact ring is "US Size 6").
+    Falls back to our standard open-ring range US 5-8 only when neither is available.
     """
+    ring_size_range = str(specs.get("ring_size_range", "") or "").strip()
+    # Only trust this as a clean, real stated size when it has a digit (rules
+    # out generic phrases like "Open Size/Adjustable" with nothing to state)
+    # and is reasonably short — found live on product 638, a multi-design
+    # bundle listing ("JL250 Small Approx. Size 13 / 16.5mm, WJ053 Large
+    # Approx. Size 17 / 17.9mm") that's real Silverbene text but not a single
+    # clean size a customer badge should ever show verbatim; falls through to
+    # the mm-diameter derivation below instead, same as before this existed.
+    if ring_size_range and re.search(r'\d', ring_size_range) and len(ring_size_range) <= 40:
+        return f"Adjustable · fits {ring_size_range}"
+
     dia_text = None
     for key in ('ring_diameter', 'inner_diameter'):
         val = specs.get(key, "")
@@ -2421,9 +2438,16 @@ def _convert_ring_size_to_us(val: str) -> str:
       "Inner Diameter 17.5mm"    → "US 7"      (explicit mm measurement, not HK size 17)
     """
     v = val.strip()
-    # Already a US size — return as-is
-    if re.match(r'^US\s*[\d.]+', v, re.I):
-        return v
+    # Already a US size — possibly phrased "US Size N" rather than "US N".
+    # Found live on product 525 (Olive Leaf Zirconia Ring): Silverbene's text
+    # said "Reference Size: US Size 6", the word "Size" between "US" and the
+    # number failed this check, and the value fell through to the HK-size
+    # conversion path below, which reinterpreted the already-correct "6" as a
+    # Hong Kong size and wrongly "converted" it to US 3 — corrupting a real,
+    # ground-truth US size Silverbene had already given us directly.
+    m = re.match(r'^US\s*(?:size\s*)?([\d.]+(?:\s*-\s*[\d.]+)?)', v, re.I)
+    if m:
+        return f"US {m.group(1)}"
     # An explicit mm/cm diameter is unambiguous — prefer it over any bare number
     # in the same text. "Inner Diameter 17.5mm" is a measurement, not HK size 17;
     # a phrase like "Approximately 14/16.9mm" pairs a matching HK number with its
