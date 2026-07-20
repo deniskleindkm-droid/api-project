@@ -83,7 +83,7 @@ def run_order_recovery_agent():
                 customer = {
                     "first_name": parts[0].capitalize(),
                     "last_name":  parts[1].capitalize() if len(parts) > 1 else "Customer",
-                    "email":      order.user_id,
+                    "email":      "hello@mikisi.co",  # never send real customer email to supplier — matches payments.py's checkout path
                     "phone":      "",
                 }
 

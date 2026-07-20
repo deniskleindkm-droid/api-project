@@ -23,6 +23,15 @@ class Order(SQLModel, table=True):
     # instead of falling back to the product's default/first variant. NULL on
     # orders placed before this column existed.
     variant_id: Optional[int] = Field(default=None, foreign_key="product_variant.id")
+    # The Stripe Checkout Session id (e.g. "cs_..."). Stripe explicitly warns
+    # webhook events can be delivered more than once (retries on timeout/non-2xx,
+    # or just duplicate delivery under normal operation) — this is the
+    # idempotency key process_order_background() checks before creating any
+    # orders for a session, so a duplicate delivery (or the admin recover-order
+    # endpoint firing after the webhook already succeeded) can never double-
+    # charge Silverbene or double-decrement stock. NULL on orders placed before
+    # this column existed.
+    stripe_session_id: Optional[str] = Field(default=None, index=True)
 
 class OrderTracking(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

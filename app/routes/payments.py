@@ -172,6 +172,24 @@ def process_order_background(checkout_data: dict):
         first_name = checkout_data["metadata"].get("first_name", "")
         last_name = checkout_data["metadata"].get("last_name", "")
         guest_items_raw = checkout_data["metadata"].get("guest_items", "[]")
+        stripe_session_id = checkout_data["metadata"].get("stripe_session_id")
+
+        # Idempotency guard — Stripe explicitly documents that the same webhook
+        # event can be delivered more than once, and the admin recover-order
+        # endpoint funnels through here too (which could otherwise replay an
+        # already-processed session). Without this, a duplicate delivery would
+        # re-decrement stock, re-charge Silverbene for the same items, and
+        # create duplicate Order rows. Orders placed before this column
+        # existed have stripe_session_id=None, so this only guards sessions
+        # that actually carry one.
+        if stripe_session_id:
+            with Session(engine) as _idem_session:
+                already = _idem_session.exec(
+                    select(Order).where(Order.stripe_session_id == stripe_session_id)
+                ).first()
+            if already:
+                print(f"[Payments] Session {stripe_session_id} already processed (order #{already.id}) — skipping duplicate webhook/recovery delivery")
+                return
 
         order_details = []
         total = 0
@@ -218,6 +236,7 @@ def process_order_background(checkout_data: dict):
                             shipping_address=shipping_address,
                             shipping_method=shipping_method,
                             variant_id=sel_variant_id,
+                            stripe_session_id=stripe_session_id,
                         )
                         product.stock -= qty
                         session.add(order)
@@ -265,6 +284,7 @@ def process_order_background(checkout_data: dict):
                             shipping_address=shipping_address,
                             shipping_method=shipping_method,
                             variant_id=item.variant_id,
+                            stripe_session_id=stripe_session_id,
                         )
                         product.stock -= item.quantity
                         session.add(order)
@@ -474,6 +494,28 @@ def process_order_background(checkout_data: dict):
                                 order_rec.status = "pending_credit"
                                 session.add(order_rec)
                                 session.commit()
+                    else:
+                        # Any other rejection reason (stock issue, invalid address,
+                        # API error, etc.) previously had NO immediate alert — the
+                        # customer was already charged, but Dennis had zero
+                        # visibility until order_recovery_agent.py's 2-hour-stuck
+                        # sweep, a silent window during which the order simply sat
+                        # unforwarded. supplier_notified stays False either way, so
+                        # the automatic 30-minute retry sweep still picks this order
+                        # up and will self-heal it without any further action —
+                        # this alert is purely about closing the visibility gap,
+                        # not a substitute for that retry.
+                        silverbene._alert_low_credit(
+                            subject=f"⚠️ Order #{db_order_id or '?'} — Silverbene rejected: {reason}",
+                            body=(
+                                f"<p>Order <b>#{db_order_id or '?'}</b> for <b>{d['name']}</b> "
+                                f"was rejected by Silverbene.</p>"
+                                f"<p><b>Reason:</b> {reason}</p>"
+                                f"<p>The customer has already been charged. The automatic recovery "
+                                f"agent will keep retrying this order every 30 minutes — no action "
+                                f"needed unless it's still failing in a couple of hours.</p>"
+                            ),
+                        )
 
             # One batched alert per order if anything was mismatched
             if _variant_problems and saved_orders:
@@ -617,6 +659,13 @@ async def stripe_webhook(
             "guest_items":      _stripe_meta(raw, "guest_items"),
             "first_name":       _stripe_meta(raw, "first_name"),
             "last_name":        _stripe_meta(raw, "last_name"),
+            # Idempotency key — Stripe explicitly documents that the same
+            # webhook event can be delivered more than once (retries on
+            # timeout/non-2xx, or plain duplicate delivery). Checked in
+            # process_order_background() before any Order is created, so a
+            # duplicate delivery can never double-charge Silverbene or
+            # double-decrement stock.
+            "stripe_session_id": getattr(obj, "id", None),
         }
         background_tasks.add_task(process_order_background, {"metadata": metadata})
 
@@ -644,10 +693,24 @@ async def recover_missed_order(
         if getattr(checkout_obj, "payment_status", None) != "paid":
             raise HTTPException(status_code=400, detail="Session not paid yet")
         raw = getattr(checkout_obj, "metadata", None) or {}
+        # Previously never read is_guest/guest_items — a guest checkout's
+        # session has NO CartItem rows to build order_details from (guest
+        # order_details come entirely from guest_items metadata), so replaying
+        # a missed guest session silently took the logged-in path, found an
+        # empty cart, and did nothing at all — this endpoint simply never
+        # worked for a guest's missed order. stripe_session_id is the same
+        # idempotency key process_order_background() checks for the webhook
+        # path, so replaying an already-processed session here is also a safe
+        # no-op instead of a duplicate order.
         metadata = {
             "user_email":       _stripe_meta(raw, "user_email"),
             "shipping_address": _stripe_meta(raw, "shipping_address"),
             "shipping_method":  _stripe_meta(raw, "shipping_method", "usps"),
+            "is_guest":         _stripe_meta(raw, "is_guest"),
+            "guest_items":      _stripe_meta(raw, "guest_items"),
+            "first_name":       _stripe_meta(raw, "first_name"),
+            "last_name":        _stripe_meta(raw, "last_name"),
+            "stripe_session_id": session_id,
         }
         background_tasks.add_task(process_order_background, {"metadata": metadata})
         return {"status": "recovery_started", "session_id": session_id}

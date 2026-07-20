@@ -85,6 +85,8 @@ def create_db():
         # rows stay NULL and fall back to the legacy size/color/option_id path.
         conn.execute(text("ALTER TABLE cartitem ADD COLUMN IF NOT EXISTS variant_id integer"))
         conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS variant_id integer'))
+        # Stripe webhook idempotency key — see Order.stripe_session_id's docstring.
+        conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS stripe_session_id varchar(200)'))
         conn.commit()
 
     _setup_defaults()
