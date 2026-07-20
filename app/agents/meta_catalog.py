@@ -80,12 +80,15 @@ def resolve_meta_product_id(product_id: int) -> str:
             items = r.json().get("data", [])
 
         if not items:
-            # Multi-variant products use "{product_id}-{option_id}"
-            # retailer_ids instead of a plain retailer_id match. Note:
-            # item_group_id is NOT a valid filterable/readable field on this
-            # endpoint (confirmed live — Meta returns "Invalid field names:
-            # item_group_id") despite being a real field on the feed side,
-            # so match on the retailer_id prefix instead.
+            # Multi-variant products use "{product_id}-{variant_id}" retailer_ids
+            # (the internal ProductVariant id — Silverbene's own option_id for
+            # any product not yet backfilled, see meta_feed.py's _items_for())
+            # instead of a plain retailer_id match. Note: item_group_id is NOT
+            # a valid filterable/readable field on this endpoint (confirmed
+            # live — Meta returns "Invalid field names: item_group_id")
+            # despite being a real field on the feed side, so match on the
+            # retailer_id prefix instead — unaffected by which id scheme the
+            # suffix uses, since only the "{product_id}-" prefix is matched.
             r = requests.get(
                 f"https://graph.facebook.com/{GRAPH_API_VERSION}/{catalog_id}/products",
                 params={

@@ -142,11 +142,23 @@ def _items_for(p: Product, session: Session) -> list:
         if option_id is None:
             continue
         v_available = v.get("available", True)
+        # Prefer the internal ProductVariant id (Mikisi's own, supplier-
+        # independent) for the public catalog identity and deep link once a
+        # product has been backfilled into that table — decouples the
+        # storefront's public IDs from Silverbene's own numbering, so
+        # re-sourcing a product from a different supplier later never breaks
+        # an already-approved Meta catalog entry or an already-tagged
+        # Instagram post. Falls back to the legacy option_id-based scheme for
+        # any product not yet backfilled (see [[refactored-wobbling-rabin]]) —
+        # get_variant_prices() returns `id: null` for those, never `id: p.id-None`.
+        variant_id = v.get("id")
+        catalog_id = f"{p.id}-{variant_id}" if variant_id is not None else f"{p.id}-{option_id}"
+        deep_link_param = f"variant_id={variant_id}" if variant_id is not None else f"option_id={option_id}"
         items.append({
             **base,
-            "id": f"{p.id}-{option_id}",
+            "id": catalog_id,
             "item_group_id": str(p.id),
-            "link": f"{_STORE}/products/{p.id}?option_id={option_id}",
+            "link": f"{_STORE}/products/{p.id}?{deep_link_param}",
             "availability": "in stock" if v_available and (v.get("stock") or 0) > 0 else "out of stock",
             "price": f"{v['final_price']:.2f} USD",
             "color": v.get("color"),
