@@ -97,6 +97,7 @@ body{
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   margin-bottom:3px;
 }
+.product-variant{font-size:10px;font-weight:300;color:var(--charcoal);letter-spacing:0.5px;margin-bottom:3px;}
 .product-qty{font-size:10px;font-weight:300;color:var(--mid);letter-spacing:1px;}
 .product-price{
   font-family:'Cormorant Garamond',serif;
@@ -204,12 +205,21 @@ const CART_KEY = 'mikisi_guest_cart';
 function getCart(){try{return JSON.parse(sessionStorage.getItem(CART_KEY)||'[]');}catch{return [];}}
 function saveCart(items){sessionStorage.setItem(CART_KEY,JSON.stringify(items));}
 
-function addToCart(product, qty){
+function addToCart(product, qty, variant){
   const cart = getCart();
-  const existing = cart.find(i => i.product_id === product.id);
+  // Same variant used by the storefront's own cart everywhere else — carries
+  // the real Silverbene option_id straight through rather than leaving it
+  // null, matching how every other add-to-cart path on the site works (see
+  // resolve_option_id / _option_id_in_variants server-side checks, which
+  // this previously skipped entirely for anything landing via this bridge).
+  const size = variant?.size || null;
+  const color = variant?.color || null;
+  const optionId = variant?.option_id != null ? String(variant.option_id) : null;
+  const existing = cart.find(i => i.product_id === product.id && i.selected_size === size && i.selected_color === color);
   if(existing){
     existing.quantity += qty;
     existing.subtotal = existing.price * existing.quantity;
+    if(optionId) existing.selected_option_id = optionId;
   } else {
     cart.push({
       product_id: product.id,
@@ -218,11 +228,30 @@ function addToCart(product, qty){
       image_url: product.content_image_url || product.image_url || null,
       quantity: qty,
       subtotal: product.final_price * qty,
-      selected_size: null,
-      selected_color: null,
+      selected_size: size,
+      selected_color: color,
+      selected_option_id: optionId,
     });
   }
   saveCart(cart);
+}
+
+async function fetchVariantPrices(id){
+  try{
+    const res = await fetch(`${API}/products/${id}/variant-prices`);
+    if(!res.ok) return [];
+    return res.json();
+  }catch{ return []; }
+}
+
+// The variant actually reflected here is whichever one the customer's
+// real cart will resolve to by default (see updateVariantPrice()'s Pass 4
+// in index.html) — the first available, priced option — since Meta's own
+// checkout redirect only ever passes product_id + quantity through this
+// bridge, never a specific option_id.
+function pickDefaultVariant(variantPrices){
+  if(!variantPrices || !variantPrices.length) return null;
+  return variantPrices.find(v=>v.available!==false) || variantPrices[0];
 }
 
 function cleanName(n){return (n||'').replace(/\b(925|Sterling Silver|Silver|Gold Plated|Plated)\b/gi,'').replace(/\s{2,}/g,' ').trim();}
@@ -259,18 +288,20 @@ async function fetchProduct(id){
   return res.json();
 }
 
-function renderProductRow(product, qty){
+function renderProductRow(product, qty, variant){
   const list = document.getElementById('product-list');
   const row = document.createElement('div');
   row.className = 'product-row';
+  const variantLabel = variant ? [variant.color, variant.size].filter(Boolean).join(' · ') : '';
   row.innerHTML = `
     <div class="product-img">
       <img src="${product.content_image_url||product.image_url||''}"
            onerror="this.style.display='none'" alt=""/>
     </div>
     <div class="product-info">
-      <div class="product-name">${trunc(cleanName(product.name),42)}</div>
-      <div class="product-qty">Qty ${qty} &nbsp;·&nbsp; ${product.category||''}</div>
+      <div class="product-name">${cleanName(product.name)}</div>
+      ${variantLabel ? `<div class="product-variant">${variantLabel}</div>` : ''}
+      <div class="product-qty">Qty ${qty}${!variantLabel && product.category ? ` &nbsp;·&nbsp; ${product.category}` : ''}</div>
     </div>
     <div class="product-price">$${(product.final_price*qty).toFixed(2)}</div>
     <div class="product-check">✦</div>
@@ -293,10 +324,11 @@ async function run(){
 
   for(const {id, qty} of pairs){
     try{
-      const product = await fetchProduct(id);
+      const [product, variantPrices] = await Promise.all([fetchProduct(id), fetchVariantPrices(id)]);
       if(product && product.id){
-        addToCart(product, qty);
-        renderProductRow(product, qty);
+        const variant = pickDefaultVariant(variantPrices);
+        addToCart(product, qty, variant);
+        renderProductRow(product, qty, variant);
         hide('state-loading');
         added++;
       }

@@ -652,8 +652,10 @@ details[open] .pp-accordion-arr{transform:rotate(180deg);}
 .co-summary-title{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--mid);margin-bottom:10px;font-weight:300;}
 .co-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);}
 .co-item:last-of-type{border-bottom:none;}
-.co-item-name{font-size:12px;font-weight:300;color:var(--charcoal);max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.co-item-price{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--black);}
+.co-item-info{max-width:260px;}
+.co-item-name{font-size:12px;font-weight:300;color:var(--charcoal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.co-item-variant{font-size:9px;font-weight:300;color:var(--gold);letter-spacing:0.5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.co-item-price{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--black);flex-shrink:0;padding-left:12px;}
 .co-total{display:flex;justify-content:space-between;align-items:baseline;padding-top:10px;margin-top:4px;border-top:1px solid var(--border);}
 .co-total-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);font-weight:300;}
 .co-total-amount{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;color:var(--black);}
@@ -2866,7 +2868,7 @@ function renderCart(data){
       </div>
       <div class="ci-info">
         <div class="ci-brand" onclick="openPP(${item.product_id})" style="cursor:pointer">Mikisi</div>
-        <div class="ci-name" onclick="openPP(${item.product_id})" style="cursor:pointer">${trunc(cleanName(item.name),38)}</div>
+        <div class="ci-name" onclick="openPP(${item.product_id})" style="cursor:pointer">${cleanName(item.name)}</div>
         ${variant?`<div style="font-size:9px;color:var(--gold);letter-spacing:1px;margin-bottom:2px">${variant}</div>`:''}
         ${oos?`<div style="font-size:9px;color:#ef4444;letter-spacing:1px;margin-bottom:2px">OUT OF STOCK</div>`:''}
         <div class="ci-price"${oos?' style="text-decoration:line-through;color:var(--light)"':''}>$${item.subtotal.toFixed(2)}</div>
@@ -2907,7 +2909,10 @@ function _openCheckoutForm(){
   document.getElementById('guest-fields').style.display=token?'none':'block';
   const summary=document.getElementById('co-summary');
   const total=cartItems.reduce((s,i)=>s+i.subtotal,0);
-  summary.innerHTML=`<div class="co-summary-title">Your Order</div>${cartItems.map(i=>`<div class="co-item"><div class="co-item-name">${trunc(cleanName(i.name),42)} × ${i.quantity}</div><div class="co-item-price">$${i.subtotal.toFixed(2)}</div></div>`).join('')}<div class="co-total"><div class="co-total-label">Total</div><div class="co-total-amount">$${total.toFixed(2)}</div></div>`;
+  summary.innerHTML=`<div class="co-summary-title">Your Order</div>${cartItems.map(i=>{
+    const variant=[i.selected_color,i.selected_size].filter(Boolean).join(' · ');
+    return `<div class="co-item"><div class="co-item-info"><div class="co-item-name">${cleanName(i.name)} × ${i.quantity}</div>${variant?`<div class="co-item-variant">${variant}</div>`:''}</div><div class="co-item-price">$${i.subtotal.toFixed(2)}</div></div>`;
+  }).join('')}<div class="co-total"><div class="co-total-label">Total</div><div class="co-total-amount">$${total.toFixed(2)}</div></div>`;
   document.getElementById('checkout-modal').classList.add('open');
 }
 function closeCheckout(){document.getElementById('checkout-modal').classList.remove('open');}
