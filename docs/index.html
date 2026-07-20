@@ -2188,7 +2188,30 @@ async function openPP(id, presetOptionId=null){
   noteEl.style.display='none'; noteEl.textContent='';
   const colorChips=colors.filter(c=>typeof c==='string');
   if(colorChips.length){
-    const processed=colorChips.map(c=>processVariant(c));
+    // A base design code (e.g. "L13081", "E12927") and its "(With Certificate)"
+    // sibling are BOTH the real, full customer-facing choice for Silverbene's
+    // "Option <hash>" certificate-addon pattern — there's no other descriptive
+    // text at all on these, unlike the "L889-Purple CZ" case processVariant()'s
+    // SKU-prefix-strip exists for (where a real descriptor survives the strip).
+    // Running these through it instead ate the entire label: found live on
+    // product 802 (whole picker vanished — only 1 of 2 chips survived the
+    // strip, tripping the realChips<=1 "nothing to pick" path) and product 851
+    // (both style codes collapsed to an identical, blank-code "(With
+    // Certificate)" label — unselectable duplicates, plus the plain
+    // no-certificate options vanished entirely). Detect the pair by suffix
+    // match and show both members verbatim instead, the same way a product
+    // like 757 (whose raw text never matched the SKU-strip pattern) already
+    // renders correctly today.
+    const _CERT_SUFFIX_RE=/\s*\(with certificate\)\s*$/i;
+    const _certExempt=new Set();
+    colorChips.forEach(c=>{
+      if(_CERT_SUFFIX_RE.test(c)){
+        const base=c.replace(_CERT_SUFFIX_RE,'').trim().toLowerCase();
+        const sibling=colorChips.find(o=>o.trim().toLowerCase()===base);
+        if(sibling){ _certExempt.add(c); _certExempt.add(sibling); }
+      }
+    });
+    const processed=colorChips.map(c=>_certExempt.has(c)?{display:c.trim(),note:null,isSku:false}:processVariant(c));
     // Only show this disclaimer when it applies to EVERY option (e.g. every chip
     // is genuinely pendant-only, no chain-included alternative exists at all) —
     // a mix (some "Pendant Only", some "With Necklace") means the customer has a
