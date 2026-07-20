@@ -549,6 +549,12 @@ nav{
 }
 .pp-chip:hover{border-color:var(--gold);color:var(--gold-deep);}
 .pp-chip.active{background:var(--black);color:white;border-color:var(--black);}
+/* Unavailable variant — real item, kept (never removed from the data), just not
+   orderable right now. Faded + diagonal slash + unclickable, never hidden. */
+.pp-chip.chip-unavailable{
+  opacity:0.4;color:var(--mid);cursor:not-allowed;pointer-events:none;
+  background:linear-gradient(to top right, transparent calc(50% - 1px), currentColor 50%, transparent calc(50% + 1px));
+}
 .pp-desc{font-size:13px;font-weight:300;color:var(--mid);line-height:1.9;}
 .pp-mat-body{display:flex;flex-direction:column;gap:10px;padding:8px 0 14px;}
 .pp-mat-desc{font-size:13px;font-weight:300;color:var(--charcoal);line-height:1.85;}
@@ -2559,7 +2565,40 @@ function _normalizeSizeForMatch(raw){
   return v;
 }
 
+// Fades/disables any rendered chip whose backing option(s) are all flagged
+// unavailable by the Silverbene existence check (see /variant-prices'
+// `available` field, set by silverbene_stock_agent.py's per-variant
+// reconciliation). A chip stays exactly as before (fully clickable, no fade)
+// whenever it has no real matching entry in ppVariantPrices at all — this
+// only ever fades a chip we have positive confirmation is unorderable right
+// now, never guesses. For a compound product where one chip's value could
+// combine with several others (e.g. a color chip alongside separate size
+// chips), the chip only fades once EVERY matching option is unavailable —
+// one still-available combination keeps it live.
+function applyChipAvailability(){
+  document.querySelectorAll('.pp-chip').forEach(btn=>{
+    const group=btn.closest('.pp-chips');
+    if(!group) return;
+    const isSize=group.id==='pp-size-chips';
+    const label=btn.textContent.trim();
+
+    let matches;
+    if(isSize){
+      const norm=_normalizeSizeForMatch(label);
+      matches=ppVariantPrices.filter(v=>v.size===norm);
+    }else{
+      const want=(btn.dataset.raw||label).toLowerCase().trim();
+      matches=ppVariantPrices.filter(v=>v.color && v.color.toLowerCase().split('·').map(s=>s.trim()).includes(want));
+    }
+
+    if(!matches.length){ btn.classList.remove('chip-unavailable'); return; }
+    const anyAvailable=matches.some(v=>v.available!==false);
+    btn.classList.toggle('chip-unavailable', !anyAvailable);
+  });
+}
+
 function updateVariantPrice(){
+  applyChipAvailability();
   if(!ppVariantPrices.length){ ppSelectedOptionId=null; return; }
   // True only when at least one priced Silverbene option actually carries a
   // size value. Some single-option bracelets/necklaces/anklets have no real
@@ -2602,13 +2641,30 @@ function updateVariantPrice(){
     const vParts = v.color.toLowerCase().split('·').map(s=>s.trim());
     return wantParts.every(want=>vParts.includes(want));
   };
+  // Never resolve to an option the Silverbene existence check has flagged
+  // unavailable (see /variant-prices' `available` field) — a compound
+  // product can have every individual chip value still fine on its own
+  // (e.g. product 634: "Silver" and "10mm" each have other available
+  // combinations) while this ONE specific combination is genuinely dead.
+  // Excluding it here, not just fading the chip, is what actually stops a
+  // customer from selecting and ordering it — the chip fade (see
+  // applyChipAvailability) is the visual cue, this is the real guardrail.
+  const availablePrices = ppVariantPrices.filter(v=>v.available!==false);
   let match = null;
   // Pass 1: exact size + every active selector
-  if(wantSize && wantParts.length) match = ppVariantPrices.find(v=>v.size===wantSize && colorEq(v));
-  // Pass 2: size only
-  if(!match && wantSize)           match = ppVariantPrices.find(v=>v.size===wantSize);
-  // Pass 3: every active selector, any size
-  if(!match && wantParts.length)   match = ppVariantPrices.find(v=>colorEq(v));
+  if(wantSize && wantParts.length) match = availablePrices.find(v=>v.size===wantSize && colorEq(v));
+  // Pass 2: size only — gated on wantParts being EMPTY. Without this guard,
+  // a two-axis product (size + color both actively selected) whose exact
+  // combination just got excluded above as unavailable would silently fall
+  // through to a same-size-wrong-color match instead of correctly failing —
+  // found live testing product 634 (Silver+10mm silently resolved to Yellow
+  // Gold+10mm). Only meant as a fallback when color was never a real axis
+  // for this product at all.
+  if(!match && wantSize && !wantParts.length) match = availablePrices.find(v=>v.size===wantSize);
+  // Pass 3: every active selector, any size — same reasoning, gated on
+  // wantSize being EMPTY so it never silently ignores an active size
+  // selection to substitute a same-color-wrong-size match.
+  if(!match && wantParts.length && !wantSize) match = availablePrices.find(v=>colorEq(v));
   // Pass 4: nothing REAL to select at all (no clickable size chip backed by
   // an actual priced size attribute, no color/stone/width chip rendered for
   // this product) — the single variant IS the only real choice, not a guess.
@@ -2623,7 +2679,7 @@ function updateVariantPrice(){
   // doesn't correspond to any real, priced Silverbene option (a data bug),
   // and silently substituting a different variant's price/option_id here
   // would check the customer out with an item they never actually chose.
-  if(!match && !(ppHasSizeChips&&backendHasSize) && !wantParts.length) match = ppVariantPrices[0];
+  if(!match && !(ppHasSizeChips&&backendHasSize) && !wantParts.length) match = availablePrices[0];
   if(!match){
     ppSelectedOptionId=null;
     const _realSelectionActive = (ppHasSizeChips&&backendHasSize&&wantSize) || wantParts.length;
