@@ -145,7 +145,8 @@ def add_product_to_store(product_data):
                 from app.models.product_variant import ProductVariant
                 from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
                 from app.agents.jewelry_pricing import calculate_mikisi_price
-                for row in SilverbeneAdapter()._extract_variant_rows(json.loads(product.variants), product.category or ""):
+                _sb_adapter = SilverbeneAdapter()
+                for row in _sb_adapter._extract_variant_rows(json.loads(product.variants), product.category or ""):
                     option_id = str(row["option_id"]) if row["option_id"] is not None else None
                     base_price = float(row["base_price"] or 0)
                     if not option_id or not base_price:
@@ -155,7 +156,7 @@ def add_product_to_store(product_data):
                         supplier_name="Silverbene",
                         supplier_option_id=option_id,
                         size=row["size"],
-                        color=row["color"],
+                        color=_sb_adapter._finalize_variant_color(row["color"], product.description or ""),
                         raw_attributes=json.dumps(row["raw_attributes"]),
                         base_price=base_price,
                         final_price=calculate_mikisi_price(base_price)["final_price"],

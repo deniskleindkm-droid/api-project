@@ -479,9 +479,10 @@ def _reconcile_variant_rows(session, product, live_options: list) -> None:
         ).all()
     }
 
+    _sb_adapter = SilverbeneAdapter()
     variant_rows_by_id = {
         str(row["option_id"]): row
-        for row in SilverbeneAdapter()._extract_variant_rows(list(live_by_id.values()), product.category or "")
+        for row in _sb_adapter._extract_variant_rows(list(live_by_id.values()), product.category or "")
         if row["option_id"] is not None
     }
 
@@ -506,7 +507,7 @@ def _reconcile_variant_rows(session, product, live_options: list) -> None:
                 supplier_name="Silverbene",
                 supplier_option_id=oid,
                 size=vr.get("size"),
-                color=vr.get("color"),
+                color=_sb_adapter._finalize_variant_color(vr.get("color"), product.description or ""),
                 raw_attributes=json.dumps(vr.get("raw_attributes") or live_opt.get("attribute", [])),
                 base_price=base_price,
                 final_price=calculate_mikisi_price(base_price)["final_price"],

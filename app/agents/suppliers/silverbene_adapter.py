@@ -1246,6 +1246,32 @@ class SilverbeneAdapter(SupplierAdapter):
             for c in colors
         ]
 
+    def _finalize_variant_color(self, color: str, description: str) -> str:
+        """
+        Apply the exact same post-processing _to_standard() applies to
+        Product.colors (Step 1: _normalize_finish_terms — Rhodium -> this
+        product's declared display name; Step 2: a final catch-all
+        _normalize_color_final pass) to a SINGLE ProductVariant row's color.
+
+        Needed because _extract_variant_rows()'s own per-branch calls use
+        normalize_rhodium=False (deliberately, so _to_standard()'s Step 1 can
+        still see a literal "Rhodium" and decide Silver vs. this product's
+        own White Gold override — see that branch's comment) and some
+        branches (e.g. a measurement bundled into Color, "Pink_16+3cm") never
+        run a color through _normalize_color_final's _METAL_COLOR_NORMALIZE
+        lookup at all ("Pink" -> "Rose Gold") until this final pass. Skipping
+        this when building ProductVariant rows directly from
+        _extract_variant_rows() (backfill, new imports, stock-sync) left
+        variant rows under-normalized relative to the correctly-finished
+        Product.colors the customer actually sees — found live on product
+        833 ("Pink" in the row vs. "Rose Gold" in the chip).
+        """
+        if not color:
+            return color
+        rhodium_display = self._rhodium_display_name(description)
+        color = self._normalize_finish_terms([color], rhodium_display)[0]
+        return _normalize_color_final(color)
+
     def _extract_specs_from_desc(self, desc: str, category: str = "") -> dict:  # noqa: C901
         """
         Parse all product specs from Silverbene's raw HTML <li> items.
