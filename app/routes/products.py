@@ -258,9 +258,40 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
     Used by the frontend to update the displayed price when a customer
     selects a size or color.
 
-    Response: list of {option_id, size, color, final_price, stock, available}
+    Response: list of {id, option_id, size, color, final_price, stock, available}
+    `id` is the internal ProductVariant primary key — the canonical variant
+    identity going forward (see app.models.product_variant and
+    [[refactored-wobbling-rabin]]). `option_id` (Silverbene's own ID) is kept
+    for backward compatibility during the frontend transition.
     Only includes variants with a known base_price.
     """
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    _require_published_or_preview(product, preview_key)
+
+    from app.models.product_variant import ProductVariant
+    rows = session.exec(
+        select(ProductVariant)
+        .where(ProductVariant.product_id == product_id, ProductVariant.supplier_name == "Silverbene")
+        .order_by(ProductVariant.sort_order)
+    ).all()
+    if rows:
+        return [{
+            "id":          r.id,
+            "option_id":   r.supplier_option_id,
+            "size":        r.size,
+            "color":       r.color,
+            "base_price":  round(r.base_price, 2),
+            "final_price": r.final_price,
+            "stock":       r.stock,
+            "available":   r.available,
+        } for r in rows]
+
+    # Fallback for products not yet backfilled into ProductVariant (see the
+    # live-products-first backfill in /agents/backfill-product-variants) —
+    # unchanged hand-parsed logic, kept only until every product has real
+    # rows. Delete once the full-catalog backfill runs (Phase 6 cleanup).
     import re as _re
     import json as _json
     from app.agents.jewelry_pricing import calculate_mikisi_price
@@ -275,11 +306,6 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
         _WIDTH_MATERIAL_NAME_RE, _PURITY_LENGTH_RE, _PURITY_BARE_LENGTH_RE,
         _purity_length_chips,
     )
-
-    product = session.get(Product, product_id)
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-    _require_published_or_preview(product, preview_key)
 
     try:
         variants = _json.loads(product.variants or "[]")
@@ -442,6 +468,7 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
         color = color or None
 
         result.append({
+            "id":          None,   # not yet backfilled into ProductVariant — see fallback comment above
             "option_id":   v.get("option_id"),
             "size":        size,
             "color":       color,

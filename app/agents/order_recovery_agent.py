@@ -65,6 +65,20 @@ def run_order_recovery_agent():
                     failed.append({"order_id": order.id, "reason": "no option_id on product"})
                     continue
 
+                # The customer's actual selected variant (see app.models.
+                # product_variant.ProductVariant) — falls back to product.cj_sku
+                # (the product's default/first option) only for orders placed
+                # before Order.variant_id existed. Without this, every recovered
+                # order silently shipped whichever variant happened to be first,
+                # regardless of what the customer actually bought and paid for.
+                option_id = product.cj_sku
+                if order.variant_id:
+                    from app.models.product_variant import ProductVariant
+                    with Session(engine) as vsession:
+                        variant = vsession.get(ProductVariant, order.variant_id)
+                    if variant and variant.product_id == order.product_id:
+                        option_id = variant.supplier_option_id
+
                 parts = order.user_id.split("@")[0].split(".")
                 customer = {
                     "first_name": parts[0].capitalize(),
@@ -84,11 +98,11 @@ def run_order_recovery_agent():
                 }
 
                 result = sb.place_order(
-                    product_id=str(product.cj_sku),
+                    product_id=str(option_id),
                     customer=customer,
                     address=address,
                     quantity=order.quantity,
-                    option_id=str(product.cj_sku),
+                    option_id=str(option_id),
                 )
 
                 if result.get("success"):

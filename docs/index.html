@@ -1358,7 +1358,8 @@ let ppSelectedSize = null;
 let ppHasSizeChips = false;
 let ppSelectedColor = null;
 let ppSelectedColorRaw = null; // raw API value (before COLOR_LABEL mapping)
-let ppSelectedOptionId = null; // real Silverbene option_id resolved from /variant-prices — carried to checkout as-is
+let ppSelectedOptionId = null; // real Silverbene option_id resolved from /variant-prices — kept for backward compat during the variant-ID transition
+let ppSelectedVariantId = null; // the internal ProductVariant id — the primary field carried to checkout going forward
 let previewKey = null; // set from ?key= when opened via an admin preview link — lets an unpublished product's panel load exactly like a customer would see it once published
 let ppInvalidSelection = false; // true when the active chip(s) match no priced option — blocks Add to Cart instead of silently substituting a different variant
 let ppSelectedStone = null;
@@ -1366,8 +1367,8 @@ let ppSelectedWidth = null;
 let ppOpening = false; // guard — prevents double-click opening two panels
 let ppCurrentProduct = null;
 let ppBaseDesc = '';
-let ppVariantPrices = []; // [{option_id,size,color,final_price,stock}]
-let ppPresetOptionId = null; // set via ?option_id= (e.g. from an Instagram variant tag) — consumed once variant prices load
+let ppVariantPrices = []; // [{id,option_id,size,color,final_price,stock}] — id is the internal ProductVariant PK
+let ppPresetVariantId = null; // set via ?variant_id= or ?option_id= (e.g. from an Instagram variant tag) — consumed once variant prices load
 let ppBaseMaterial = null;
 let ppVariants = [];
 let ppBaseImages = [];
@@ -1499,7 +1500,11 @@ window.onload = async()=>{
     else{document.getElementById('success-banner').classList.add('show');setTimeout(()=>document.getElementById('success-banner').classList.remove('show'),10000);}
   }
   const prodMatch = window.location.pathname.match(/^\/products\/(\d+)$/);
-  if(prodMatch) openPP(Number(prodMatch[1]), p.get('option_id'));
+  // ?variant_id= (the internal ProductVariant id) is preferred; ?option_id=
+  // (Silverbene's own id) is still accepted since already-tagged Instagram
+  // posts and approved Meta catalog entries can't be changed retroactively —
+  // preselectFromVariantId() matches on either.
+  if(prodMatch) openPP(Number(prodMatch[1]), p.get('variant_id') || p.get('option_id'));
   // Admin preview link: /?preview=123&key=... — works with this static
   // hosting (no server-side routing needed, unlike the path form above,
   // which 404s here since there's no fallback for arbitrary paths).
@@ -2073,10 +2078,10 @@ function positionPPInline(productId){
   if(anchor.nextSibling!==ppEl) grid.insertBefore(ppEl,anchor.nextSibling);
 }
 
-async function openPP(id, presetOptionId=null){
+async function openPP(id, presetVariantId=null){
   if(ppOpening)return;  // already opening — ignore extra clicks
   ppOpening=true;
-  ppPresetOptionId = presetOptionId || null;
+  ppPresetVariantId = presetVariantId || null;
 
   let p = allProducts.find(x=>x.id===id);
   if(!p){
@@ -2145,9 +2150,9 @@ async function openPP(id, presetOptionId=null){
     // it's also how we resolve the exact option_id to carry through to checkout.
     ppVariantPrices=vp;
     updateVariantPrice();
-    if(ppPresetOptionId){
-      preselectFromOptionId(ppPresetOptionId);
-      ppPresetOptionId=null; // one-shot — prev/next navigation must not reapply it
+    if(ppPresetVariantId){
+      preselectFromVariantId(ppPresetVariantId);
+      ppPresetVariantId=null; // one-shot — prev/next navigation must not reapply it
     }
   }).catch(()=>{});
   document.getElementById('pp-desc').textContent=trunc(stripHtml(p.description||''),320);
@@ -2482,7 +2487,7 @@ async function openPP(id, presetOptionId=null){
     atcBtn.textContent='Added to Cart ✓';
     atcBtn.style.background='#22c55e';
     const effectiveColor=[ppSelectedColor,ppSelectedStone,ppSelectedWidth].filter(Boolean).join(' · ')||null;
-    addToCart(p.id, cleanName(p.name), ppSelectedSize, effectiveColor, ppSelectedOptionId);
+    addToCart(p.id, cleanName(p.name), ppSelectedSize, effectiveColor, ppSelectedOptionId, ppSelectedVariantId);
     setTimeout(()=>{
       if(!p.stock||p.stock===0)return;
       atcBtn.disabled=false;
@@ -2507,6 +2512,7 @@ async function openPP(id, presetOptionId=null){
   // Reset — resolved fresh by updateVariantPrice() once /variant-prices loads (or
   // immediately below if it's already cached from this product's own earlier fetch).
   ppSelectedOptionId = null;
+  ppSelectedVariantId = null;
   ppInvalidSelection = false;
   document.getElementById('pp-invalid-selection').style.display='none';
 
@@ -2633,7 +2639,7 @@ function applyChipAvailability(){
 
 function updateVariantPrice(){
   applyChipAvailability();
-  if(!ppVariantPrices.length){ ppSelectedOptionId=null; return; }
+  if(!ppVariantPrices.length){ ppSelectedOptionId=null; ppSelectedVariantId=null; return; }
   // True only when at least one priced Silverbene option actually carries a
   // size value. Some single-option bracelets/necklaces/anklets have no real
   // Size/Length attribute at all — Silverbene gave one plain option with just
@@ -2730,6 +2736,7 @@ function updateVariantPrice(){
   if(!match && !(ppHasSizeChips&&backendHasSize) && !wantParts.length) match = availablePrices[0];
   if(!match){
     ppSelectedOptionId=null;
+    ppSelectedVariantId=null;
     const _realSelectionActive = (ppHasSizeChips&&backendHasSize&&wantSize) || wantParts.length;
     if(_realSelectionActive){
       console.error(`[variant-price] no priced option matches the selected size/color for product ${ppCurrentProduct?.id} — size="${wantSize}" parts=${JSON.stringify(wantParts)}`);
@@ -2740,10 +2747,12 @@ function updateVariantPrice(){
   }
   ppInvalidSelection = false;
   updateAtcAvailability();
-  // This is the exact Silverbene option_id for the customer's current selection —
-  // carried straight through to cart/checkout so the backend never has to re-guess
-  // it from size/color text.
+  // ppSelectedVariantId (the internal ProductVariant id) is the primary field
+  // carried through to cart/checkout going forward — the backend never has to
+  // re-guess it from size/color text. ppSelectedOptionId (Silverbene's own id)
+  // is kept alongside for backward compat while the transition completes.
   ppSelectedOptionId = match.option_id!=null ? String(match.option_id) : null;
+  ppSelectedVariantId = match.id!=null ? match.id : null;
   const priceEl = document.getElementById('pp-price');
   const newPrice = `$${match.final_price.toFixed(2)}`;
   if(priceEl.textContent !== newPrice){
@@ -2767,19 +2776,31 @@ function selectChip(btn,type){
   updateVariantPrice();
 }
 
-// Pre-selects the size/color chips matching a specific Silverbene option_id
-// (e.g. from an Instagram variant tag's ?option_id= link) by clicking the
+// Pre-selects the size/color chips matching a specific variant (from an
+// Instagram/Meta deep link's ?variant_id= — or the legacy ?option_id= for
+// already-tagged posts/catalog entries predating that field) by clicking the
 // real chip buttons — reuses selectChip()'s existing price/image/description
-// update logic instead of re-deriving chip state here. Best-effort: if no
-// chip's text matches (e.g. a compound-variant product this doesn't cover),
-// the panel just falls back to its normal default selection, same as today.
-function preselectFromOptionId(optionId){
-  const v=ppVariantPrices.find(x=>String(x.option_id)===String(optionId));
+// update logic instead of re-deriving chip state here.
+//
+// Matches color/stone/width chips on btn.dataset.raw (the true backend
+// value /variant-prices' v.color is built from), never btn.textContent (the
+// chip's display label, which can be a friendly relabel of that raw value —
+// e.g. "Rose Gold" for a raw "Pink"). Comparing against the display label
+// was the actual bug: it silently never matched whenever a relabel applied,
+// so a customer opening a tagged variant from Instagram/Meta Shop always
+// landed on the panel's default chip instead of the one actually tagged.
+// Size chips have no relabeling layer, so textContent is already the raw
+// value there. Best-effort: if nothing matches (e.g. a compound-variant
+// product this doesn't cover), the panel just falls back to its normal
+// default selection, same as today.
+function preselectFromVariantId(variantId){
+  const v=ppVariantPrices.find(x=>String(x.id)===String(variantId)||String(x.option_id)===String(variantId));
   if(!v)return;
+  const colorParts=v.color?String(v.color).toLowerCase().split('·').map(s=>s.trim()):[];
   document.querySelectorAll('.pp-chip').forEach(btn=>{
-    const txt=btn.textContent.trim();
-    if(v.size && _normalizeSizeForMatch(txt)===String(v.size)) btn.click();
-    if(v.color && txt.toLowerCase()===String(v.color).toLowerCase()) btn.click();
+    const raw=(btn.dataset.raw!=null?btn.dataset.raw:btn.textContent).trim();
+    if(v.size && _normalizeSizeForMatch(btn.textContent.trim())===String(v.size)) btn.click();
+    if(colorParts.length && colorParts.includes(raw.toLowerCase())) btn.click();
   });
 }
 
@@ -2799,13 +2820,16 @@ function getGuestCart(){try{return JSON.parse(sessionStorage.getItem('mikisi_gue
 function setGuestCart(items){sessionStorage.setItem('mikisi_guest_cart',JSON.stringify(items));}
 
 // ── CART ──
-async function addToCart(productId, name, size=null, color=null, optionId=null){
+// variantId (the internal ProductVariant id) is the primary field carried
+// through to checkout going forward — optionId (Silverbene's own id) is kept
+// alongside for backward compat during the transition (see ppSelectedVariantId).
+async function addToCart(productId, name, size=null, color=null, optionId=null, variantId=null){
   if(!token){
     const variantNote=size||color?` · ${[color,size].filter(Boolean).join(', ')}`:'';
     const cart=getGuestCart();
     const existing=cart.find(i=>i.product_id===productId&&i.selected_size===(size||null)&&i.selected_color===(color||null));
-    if(existing){existing.quantity+=1;existing.subtotal=existing.price*existing.quantity;if(optionId)existing.selected_option_id=optionId;}
-    else{const p=allProducts.find(x=>x.id===productId);cart.push({product_id:productId,name:p?p.name:(name||'Product'),price:p?p.final_price:0,image_url:p?(p.content_image_url||p.image_url||null):null,quantity:1,subtotal:p?p.final_price:0,selected_size:size||null,selected_color:color||null,selected_option_id:optionId||null});}
+    if(existing){existing.quantity+=1;existing.subtotal=existing.price*existing.quantity;if(optionId)existing.selected_option_id=optionId;if(variantId)existing.variant_id=variantId;}
+    else{const p=allProducts.find(x=>x.id===productId);cart.push({product_id:productId,name:p?p.name:(name||'Product'),price:p?p.final_price:0,image_url:p?(p.content_image_url||p.image_url||null):null,quantity:1,subtotal:p?p.final_price:0,selected_size:size||null,selected_color:color||null,selected_option_id:optionId||null,variant_id:variantId||null});}
     setGuestCart(cart);
     document.getElementById('cart-count').textContent=cart.reduce((s,i)=>s+i.quantity,0);
     showToast(`Added${variantNote}`);
@@ -2823,6 +2847,7 @@ async function addToCart(productId, name, size=null, color=null, optionId=null){
     if(size)body.selected_size=size;
     if(color)body.selected_color=color;
     if(optionId)body.selected_option_id=optionId;
+    if(variantId)body.variant_id=variantId;
     const res=await fetch(`${API}/cart`,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
@@ -2834,7 +2859,7 @@ async function addToCart(productId, name, size=null, color=null, optionId=null){
       // Token expired — drop it, save to guest cart instead, no login popup
       token=null;localStorage.removeItem('token');
       badge.textContent=Math.max(0,parseInt(badge.textContent)-1);
-      addToCart(productId,name,size,color,optionId);
+      addToCart(productId,name,size,color,optionId,variantId);
     }else{
       badge.textContent=Math.max(0,parseInt(badge.textContent)-1);
       showToast('Could not add — try again');
@@ -2868,7 +2893,7 @@ async function loadCart(){
         }
       }catch{}
     }
-    cartItems=cart.map(i=>({cart_item_id:i.product_id,product_id:i.product_id,name:i.name,brand:'Mikisi',price:i.price,quantity:i.quantity,subtotal:i.subtotal,image_url:i.image_url,content_image_url:i.image_url,selected_size:i.selected_size,selected_color:i.selected_color,selected_option_id:i.selected_option_id,out_of_stock:i.out_of_stock||false}));
+    cartItems=cart.map(i=>({cart_item_id:i.product_id,product_id:i.product_id,name:i.name,brand:'Mikisi',price:i.price,quantity:i.quantity,subtotal:i.subtotal,image_url:i.image_url,content_image_url:i.image_url,selected_size:i.selected_size,selected_color:i.selected_color,selected_option_id:i.selected_option_id,variant_id:i.variant_id,out_of_stock:i.out_of_stock||false}));
     renderCart({items:cartItems,total:cart.filter(i=>!i.out_of_stock).reduce((s,i)=>s+i.subtotal,0)});
     return;
   }
@@ -2907,7 +2932,7 @@ function renderCart(data){
         <div class="qty-row">
           <button class="qty-btn" onclick="removeFromCart(${item.cart_item_id})">−</button>
           <span class="qty-n">${item.quantity}</span>
-          ${oos?'':'<button class="qty-btn" onclick="addToCart('+item.product_id+',\'\','+( item.selected_size?`'${item.selected_size}'`:'null')+','+( item.selected_color?`'${item.selected_color}'`:'null')+','+( item.selected_option_id?`'${item.selected_option_id}'`:'null')+')">+</button>'}
+          ${oos?'':'<button class="qty-btn" onclick="addToCart('+item.product_id+',\'\','+( item.selected_size?`'${item.selected_size}'`:'null')+','+( item.selected_color?`'${item.selected_color}'`:'null')+','+( item.selected_option_id?`'${item.selected_option_id}'`:'null')+','+( item.variant_id?item.variant_id:'null')+')">+</button>'}
         </div>
       </div>
     </div>`;
@@ -2973,7 +2998,7 @@ async function placeOrder(){
     const gCart=getGuestCart();
     if(!gCart.length){showCoMsg('Your cart is empty','error');btn.textContent='Pay Securely';btn.disabled=false;return;}
     try{
-      const res=await fetch(`${API}/payments/guest-checkout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:gCart.map(i=>({product_id:i.product_id,quantity:i.quantity,selected_size:i.selected_size||null,selected_color:i.selected_color||null,selected_option_id:i.selected_option_id||null})),email,first_name:fname,last_name:lname,shipping_address:address,shipping_method:shippingMethod})});
+      const res=await fetch(`${API}/payments/guest-checkout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:gCart.map(i=>({product_id:i.product_id,quantity:i.quantity,selected_size:i.selected_size||null,selected_color:i.selected_color||null,selected_option_id:i.selected_option_id||null,variant_id:i.variant_id||null})),email,first_name:fname,last_name:lname,shipping_address:address,shipping_method:shippingMethod})});
       const data=await res.json();
       if(res.ok){sessionStorage.removeItem('mikisi_guest_cart');window.location.href=data.checkout_url;}
       else{showCoMsg(data.detail||'Something went wrong','error');btn.textContent='Pay Securely';btn.disabled=false;}

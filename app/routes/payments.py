@@ -88,6 +88,7 @@ class GuestCartItem(BaseModel):
     selected_size: str = None
     selected_color: str = None
     selected_option_id: str = None
+    variant_id: int = None
 
 class GuestCheckoutRequest(BaseModel):
     items: list[GuestCartItem]
@@ -139,6 +140,7 @@ def create_guest_checkout_session(
             "selected_size": item.selected_size,
             "selected_color": item.selected_color,
             "selected_option_id": item.selected_option_id,
+            "variant_id": item.variant_id,
         })
 
     checkout_session = stripe.checkout.Session.create(
@@ -187,6 +189,7 @@ def process_order_background(checkout_data: dict):
                         sel_size  = item_data.get("selected_size")
                         sel_color = item_data.get("selected_color")
                         sel_option_id = item_data.get("selected_option_id")
+                        sel_variant_id = item_data.get("variant_id")
                         order_details.append({
                             "name": product.name,
                             "qty": qty,
@@ -201,6 +204,7 @@ def process_order_background(checkout_data: dict):
                             "selected_size": sel_size,
                             "selected_color": sel_color,
                             "selected_option_id": sel_option_id,
+                            "variant_id": sel_variant_id,
                         })
                         print(f"[Payments] Guest item: {product.name} — size={sel_size} color={sel_color}")
                         order = Order(
@@ -213,6 +217,7 @@ def process_order_background(checkout_data: dict):
                             status="paid",
                             shipping_address=shipping_address,
                             shipping_method=shipping_method,
+                            variant_id=sel_variant_id,
                         )
                         product.stock -= qty
                         session.add(order)
@@ -248,6 +253,7 @@ def process_order_background(checkout_data: dict):
                             "selected_size": item.selected_size,
                             "selected_color": item.selected_color,
                             "selected_option_id": item.selected_option_id,
+                            "variant_id": item.variant_id,
                         })
                         print(f"[Payments] Item: {product.name} — size={item.selected_size} color={item.selected_color}")
                         order = Order(
@@ -258,6 +264,7 @@ def process_order_background(checkout_data: dict):
                             status="paid",
                             shipping_address=shipping_address,
                             shipping_method=shipping_method,
+                            variant_id=item.variant_id,
                         )
                         product.stock -= item.quantity
                         session.add(order)
@@ -336,32 +343,49 @@ def process_order_background(checkout_data: dict):
             print(f"[Payments] Silverbene balance: {'${:.2f}'.format(sb_balance) if sb_balance >= 0 else 'unknown'} — proceed={balance_ok}")
 
             for i, d in enumerate(order_details):
-                # The frontend already resolved the exact option_id when the customer
-                # made their selection (from /variant-prices — real priced Silverbene
-                # options, not guessed text). Trust that id directly; only fall back to
-                # re-deriving it from size/color text for the rare cart item that
-                # somehow arrived without one (older client, direct API call, etc.).
-                #
-                # But never trust it blindly — a client-submitted option_id that
-                # doesn't actually belong to THIS product (spoofed, stale, or from a
-                # mismatched deep link) would place a real Silverbene order for the
-                # wrong item. This is the one point both the guest and logged-in
-                # checkout paths funnel through before the real supplier order call,
-                # so it's the last-chance gate to catch that before money moves.
-                option_id_from_cart = d.get("selected_option_id")
-                if option_id_from_cart and not _option_id_in_variants(d.get("variants"), option_id_from_cart):
-                    print(f"[Payments] selected_option_id={option_id_from_cart} does not belong to product {d.get('product_id')} — ignoring, re-resolving from size/color")
-                    option_id_from_cart = None
-                if option_id_from_cart:
-                    option_id, resolve_pass = option_id_from_cart, "client_selected"
-                else:
-                    resolved, resolve_pass = resolve_option_id(
-                        d.get("variants"),
-                        d.get("selected_size"),
-                        d.get("selected_color"),
-                        return_meta=True,
-                    ) or (None, "not_found")
-                    option_id = resolved or d.get("cj_sku")   # fallback: first variant
+                # The internal variant_id (the ProductVariant primary key) is the
+                # primary field going forward — resolved once by the frontend when
+                # the customer made their selection, carried straight through cart
+                # and checkout. Trust it directly, but never blindly: a client-
+                # submitted variant_id that doesn't actually belong to THIS product
+                # (spoofed, stale, or from a mismatched deep link) would place a
+                # real Silverbene order for the wrong item, so it's checked against
+                # the product before its supplier_option_id is ever used. This is
+                # the one point both the guest and logged-in checkout paths funnel
+                # through before the real supplier order call, so it's the
+                # last-chance gate to catch that before money moves.
+                option_id = None
+                resolve_pass = None
+                variant_id = d.get("variant_id")
+                if variant_id:
+                    from app.models.product_variant import ProductVariant
+                    with Session(engine) as vsession:
+                        variant = vsession.get(ProductVariant, variant_id)
+                    if variant and variant.product_id == d.get("product_id"):
+                        option_id, resolve_pass = variant.supplier_option_id, "variant_id"
+                    else:
+                        print(f"[Payments] variant_id={variant_id} does not belong to product {d.get('product_id')} — ignoring, falling back")
+
+                # Legacy fallback (older/direct-API clients that never sent a
+                # variant_id, or a straddling deploy where the browser tab loaded
+                # before this field existed) — same option_id/selected_option_id
+                # text-resolution path this always used, kept only until traffic
+                # on it is confirmed at zero (see [[refactored-wobbling-rabin]]).
+                if option_id is None:
+                    option_id_from_cart = d.get("selected_option_id")
+                    if option_id_from_cart and not _option_id_in_variants(d.get("variants"), option_id_from_cart):
+                        print(f"[Payments] selected_option_id={option_id_from_cart} does not belong to product {d.get('product_id')} — ignoring, re-resolving from size/color")
+                        option_id_from_cart = None
+                    if option_id_from_cart:
+                        option_id, resolve_pass = option_id_from_cart, "client_selected"
+                    else:
+                        resolved, resolve_pass = resolve_option_id(
+                            d.get("variants"),
+                            d.get("selected_size"),
+                            d.get("selected_color"),
+                            return_meta=True,
+                        ) or (None, "not_found")
+                        option_id = resolved or d.get("cj_sku")   # fallback: first variant
                 sku       = d.get("cj_product_id")
                 db_order_id = saved_orders[i].id if saved_orders and i < len(saved_orders) else (saved_orders[0].id if saved_orders else None)
                 print(f"[Payments] Forwarding to Silverbene: {d['name']} | size={d.get('selected_size')} color={d.get('selected_color')} | option_id={option_id}")

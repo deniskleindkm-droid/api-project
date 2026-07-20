@@ -16,6 +16,7 @@ class CartRequest(BaseModel):
     selected_size: Optional[str] = None
     selected_color: Optional[str] = None
     selected_option_id: Optional[str] = None
+    variant_id: Optional[int] = None
 
 @router.post("/cart")
 def add_to_cart(
@@ -39,22 +40,36 @@ def add_to_cart(
     if not product.is_published or product.category in get_hidden_categories():
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # Same product + same size + same color = increment quantity
-    # Same product + different variant = separate line item
-    query = select(CartItem).where(
-        CartItem.user_id == payload.get("sub"),
-        CartItem.product_id == item.product_id,
-        CartItem.selected_size == item.selected_size,
-        CartItem.selected_color == item.selected_color,
-    )
+    # Same product + same variant = increment quantity; different variant =
+    # separate line item. Matches on variant_id (the internal ProductVariant
+    # id, unambiguous) when the request carries one, falling back to the
+    # legacy size/color text match for older/direct-API clients that don't
+    # send it yet — two options that happen to share display text can never
+    # be confused with each other once variant_id is in play.
+    if item.variant_id:
+        query = select(CartItem).where(
+            CartItem.user_id == payload.get("sub"),
+            CartItem.product_id == item.product_id,
+            CartItem.variant_id == item.variant_id,
+        )
+    else:
+        query = select(CartItem).where(
+            CartItem.user_id == payload.get("sub"),
+            CartItem.product_id == item.product_id,
+            CartItem.selected_size == item.selected_size,
+            CartItem.selected_color == item.selected_color,
+        )
     existing = session.exec(query).first()
 
     if existing:
         existing.quantity += item.quantity
-        # A newer add-to-cart always carries a freshly-resolved option_id (or a
-        # more current one) — prefer it over whatever an older click stored.
+        # A newer add-to-cart always carries a freshly-resolved option_id/
+        # variant_id (or a more current one) — prefer it over whatever an
+        # older click stored.
         if item.selected_option_id:
             existing.selected_option_id = item.selected_option_id
+        if item.variant_id:
+            existing.variant_id = item.variant_id
         session.add(existing)
     else:
         session.add(CartItem(
@@ -64,6 +79,7 @@ def add_to_cart(
             selected_size=item.selected_size,
             selected_color=item.selected_color,
             selected_option_id=item.selected_option_id,
+            variant_id=item.variant_id,
         ))
 
     session.commit()
@@ -113,6 +129,7 @@ def get_cart(
             "selected_size": item.selected_size,
             "selected_color": item.selected_color,
             "selected_option_id": item.selected_option_id,
+            "variant_id": item.variant_id,
             "out_of_stock": out_of_stock,
         })
 

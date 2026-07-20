@@ -803,7 +803,15 @@ def silverbene_retry_order(order_id: int, master_key: str, session: Session = De
     if not product:
         raise HTTPException(status_code=404, detail=f"Product {order.product_id} not found")
 
+    # The customer's actual selected variant (see app.models.product_variant.
+    # ProductVariant) — falls back to product.cj_sku (the product's default/
+    # first option) only for orders placed before Order.variant_id existed.
     option_id = product.cj_sku
+    if order.variant_id:
+        from app.models.product_variant import ProductVariant
+        variant = session.get(ProductVariant, order.variant_id)
+        if variant and variant.product_id == order.product_id:
+            option_id = variant.supplier_option_id
     if not option_id:
         raise HTTPException(status_code=400, detail=f"Product has no Silverbene option_id (cj_sku)")
 
