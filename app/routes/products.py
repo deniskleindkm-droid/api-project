@@ -330,6 +330,7 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
         size = None
         _chain_suffix = _detect_option_suffix(attrs)
         _color_parts = []
+        _bundled_width = None
         for a in attrs:
             name = (a.get("name") or "").lower().strip()
             val  = (a.get("value") or "").strip()
@@ -349,6 +350,10 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
                     chips = parse_bracelet_size(val, _denom) or parse_necklace_length(val)
                     if chips:
                         size = chips[0]
+                    # A second real measurement alongside the length is a real
+                    # width (e.g. "1.5mm 35cm") — mirrors _extract_variants()'s
+                    # _bundled_width_this_option / attr_color()'s _bundled_width.
+                    _, _, _bundled_width = _split_color_and_size(val)
             elif name in ("chain length", "length") and val:
                 chips = parse_bracelet_size(val, _denom) or parse_necklace_length(val)
                 if chips:
@@ -359,8 +364,10 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
                     # width, bracelet extension) — split it the same way
                     # _extract_variants() does so size/color here always agree
                     # with what p.sizes/p.colors and the frontend chips show.
-                    color_part, size_chip = _split_color_and_size(val)
+                    color_part, size_chip, width_chip = _split_color_and_size(val)
                     part = _normalize_color_final(color_part, name)
+                    if width_chip:
+                        part = f"{part} · {width_chip}" if part else width_chip
                     if size_chip and not size:
                         size = size_chip
                 elif _is_compound_color_candidate(val):
@@ -411,6 +418,8 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
         # suffix only ever means anything attached to a real color — see
         # _extract_variants() for why a bare suffix must never stand in alone.
         color = ' · '.join(_color_parts)
+        if _bundled_width and color:
+            color = f'{color} · {_bundled_width}'
         if _chain_suffix and color:
             color = f'{color} · {_chain_suffix}'
         color = color or None

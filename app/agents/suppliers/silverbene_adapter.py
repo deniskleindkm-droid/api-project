@@ -830,7 +830,7 @@ class SilverbeneAdapter(SupplierAdapter):
                     # gets wrongly promoted to the product's only "size" below.
                     _has_dedicated_size_attr = True
                 elif _name in COLOR_ATTRIBUTE_NAMES and re.search(r'\d+\s*(mm|cm)', _value, re.I):
-                    _, _chip = _split_color_and_size(_value, category)
+                    _, _chip, _ = _split_color_and_size(_value, category)
                     if _chip:
                         _measurement_chips_seen.add(_chip)
         _measurement_chip_is_real = (
@@ -885,6 +885,14 @@ class SilverbeneAdapter(SupplierAdapter):
             # option carries and combine them into ONE chip below — never let a
             # later color-type attribute silently overwrite an earlier one.
             _color_parts_this_option: list = []
+            # A second real measurement bundled alongside a dedicated "Size"
+            # attribute's length (e.g. "1.5mm 35cm" under name="size", with a
+            # separate genuine Color attribute elsewhere on the same option)
+            # is a real, price-differentiating width — folded into the color
+            # chip after the loop, same as _chain_style_suffix. Found live on
+            # necklace 745: 1.5/1.8/2.0mm width x 8 lengths x 4 colors, width
+            # previously discarded entirely.
+            _bundled_width_this_option = None
             for attr in attrs:
                 name = attr.get("name", "").lower().strip()
                 value = attr.get("value", "").strip()
@@ -910,6 +918,8 @@ class SilverbeneAdapter(SupplierAdapter):
                         if chip not in seen_sizes:
                             seen_sizes.add(chip)
                             sizes.append(chip)
+                    if chips:
+                        _, _, _bundled_width_this_option = _split_color_and_size(value, category)
                 elif name in COLOR_ATTRIBUTE_NAMES and re.search(r'\d+\s*(mm|cm)', value, re.I):
                     # Measurement bundled into the Color attr (e.g. "16cm", "17+3",
                     # "Pink_16+3cm", "18K Yellow Gold 6mm" hoop diameter,
@@ -920,10 +930,12 @@ class SilverbeneAdapter(SupplierAdapter):
                     # rather than being discarded. Never drop the color half: Silverbene
                     # still prices color separately even when it shares an attribute
                     # with the size text.
-                    _color_part, _size_chip = _split_color_and_size(value, category)
+                    _color_part, _size_chip, _width_chip = _split_color_and_size(value, category)
                     if _size_chip and _measurement_chip_is_real and _size_chip not in seen_sizes:
                         seen_sizes.add(_size_chip)
                         sizes.append(_size_chip)
+                    if _width_chip:
+                        _color_part = f"{_color_part} · {_width_chip}" if _color_part else _width_chip
                     if _color_part:
                         _color_parts_this_option.append(_color_part)
                 elif name in SIZE_ATTRIBUTE_NAMES:
@@ -1048,6 +1060,8 @@ class SilverbeneAdapter(SupplierAdapter):
             # before _detect_option_suffix existed, not have the suffix text
             # itself masquerade as a fake color.
             display = ' · '.join(_color_parts_this_option)
+            if _bundled_width_this_option and display:
+                display = f'{display} · {_bundled_width_this_option}'
             if _chain_style_suffix and display:
                 display = f'{display} · {_chain_style_suffix}'
             if display and display not in seen_colors:
@@ -1528,7 +1542,7 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
             if a.get("name", "").lower() in COLOR_ATTRIBUTE_NAMES:
                 v = a.get("value", "").strip()
                 if re.search(r'\d+\s*(mm|cm)', v, re.I):
-                    _, size_chip = _split_color_and_size(v)
+                    _, size_chip, _ = _split_color_and_size(v)
                     if size_chip:
                         return size_chip
         return None
@@ -1536,7 +1550,15 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
     def attr_color(attrs):
         _suffix = _detect_option_suffix(attrs)
         parts = []
+        _bundled_width = None
         for a in attrs:
+            # A second real measurement bundled alongside a dedicated "Size"
+            # attribute's length (e.g. "1.5mm 35cm") is a real width — mirrors
+            # _extract_variants()'s _bundled_width_this_option.
+            if (a.get("name") or "").lower().strip() == "size":
+                _sv = (a.get("value") or "").strip()
+                if _sv and re.search(r'\d+\s*(mm|cm)', _sv, re.I):
+                    _, _schip, _bundled_width = _split_color_and_size(_sv)
             aname = a.get("name", "").lower().strip()
             v = a.get("value", "").strip()
             if not v:
@@ -1563,8 +1585,11 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
                 continue
             if aname not in COLOR_ATTRIBUTE_NAMES:
                 continue
+            _width_chip = None
             if re.search(r'\d+\s*(mm|cm)', v, re.I):
-                color_part, _ = _split_color_and_size(v)
+                color_part, _, _width_chip = _split_color_and_size(v)
+                if _width_chip:
+                    color_part = f"{color_part} · {_width_chip}" if color_part else _width_chip
             elif _is_compound_color_candidate(v):
                 color_part = _clean_compound_color(v)
             else:
@@ -1583,6 +1608,8 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
         # A suffix only ever means anything attached to a real color — see
         # _extract_variants() for why a bare suffix must never stand in alone.
         display = ' · '.join(parts)
+        if _bundled_width and display:
+            display = f'{display} · {_bundled_width}'
         if _suffix and display:
             display = f'{display} · {_suffix}'
         return display or None
@@ -2089,10 +2116,17 @@ def _split_color_and_size(value: str, category: str = ""):
     every matched measurement token is stripped before what's left is treated
     as a color name — so a stray leftover number never becomes a fake "color".
 
-    Returns (color_part: str, size_chip: str | None).
+    Returns (color_part: str, size_chip: str | None, width_chip: str | None).
+    width_chip is only ever populated when a SECOND real measurement sits
+    alongside the one chosen as size_chip (e.g. "1.5mm 35cm" — a chain width
+    next to its length) — a genuine, price-differentiating dimension that
+    was previously discarded entirely. None for every other shape (a single
+    measurement, a labeled length, a tube dimension) — callers must fold it
+    into the display chip themselves when present, same as color_part.
     """
     v = value.strip()
     size_chip = None
+    width_chip = None
     remainder = v
 
     m = _LABELED_LEN_RE.search(v)
@@ -2117,13 +2151,29 @@ def _split_color_and_size(value: str, category: str = ""):
                 matches = list(_BARE_DIM_RE.finditer(v))
                 if matches:
                     chosen_chip = None
-                    for cand in matches:
+                    chosen_idx = None
+                    for i, cand in enumerate(matches):
                         chips = parse_bracelet_size(cand.group(0)) or parse_necklace_length(cand.group(0))
                         if chips:
                             chosen_chip = chips[0]
+                            chosen_idx = i
                             break
                     first = matches[0]
                     size_chip = chosen_chip or f"{first.group(1)}{first.group(2).lower()}"
+                    # A second real measurement alongside the chosen length is a
+                    # genuine, price-differentiating width (chain/tube gauge) —
+                    # e.g. "1.5mm 35cm" prices 1.5mm/1.8mm/2.0mm as distinct
+                    # options at every length. Previously stripped as noise and
+                    # never surfaced anywhere (found live on necklaces 745, 746,
+                    # 481 — up to a $97 vs $22 price difference invisible to the
+                    # customer). Only ever the untaken match, so it's never the
+                    # same number as size_chip.
+                    if chosen_idx is not None and len(matches) > 1:
+                        _other = matches[1] if chosen_idx == 0 else matches[0]
+                        width_chip = f"{_other.group(1)}{_other.group(2).lower()}"
+                    elif chosen_idx is None and len(matches) > 1:
+                        _other = matches[1]
+                        width_chip = f"{_other.group(1)}{_other.group(2).lower()}"
                     # Strip every matched token (not just the one used for the
                     # chip) — a second, unrelated measurement (e.g. a width
                     # alongside the length) must never leak into the color name.
@@ -2152,7 +2202,7 @@ def _split_color_and_size(value: str, category: str = ""):
     # A leftover with no letters at all isn't a real color/finish name.
     if color_part and not re.search(r'[A-Za-z]', color_part):
         color_part = ''
-    return color_part, size_chip
+    return color_part, size_chip, width_chip
 
 
 _COLOR_NOISE_RE = re.compile(r'^(single(\s+piece)?|pair)$', re.I)
