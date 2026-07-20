@@ -1736,7 +1736,7 @@ function renderCollectionProducts(prods){
   grid.innerHTML = prods.map((p,i)=>{
     const imgA = p.content_image_url || p.image_url || getPlaceholder();
     const imgB = (p.image_url && p.content_image_url && p.image_url !== p.content_image_url) ? p.image_url : null;
-    const name = trunc(cleanName(p.name),55);
+    const name = cleanName(p.name);
     const outOfStock = !p.stock || p.stock === 0;
     let badge='';
     if(outOfStock) badge=`<div class="pcard-badge" style="background:var(--mid);letter-spacing:1px">Out of Stock</div>`;
@@ -1807,7 +1807,7 @@ function doSearch(val){
     <div class="sri" onclick="openPP(${p.id});document.getElementById('search-drop').classList.remove('open');document.getElementById('search-input').value=''">
       <div class="sri-img"><img src="${p.content_image_url||p.image_url||getPlaceholder()}" onerror="this.src='${getPlaceholder()}'"/></div>
       <div class="sri-text">
-        <span class="sri-name">${trunc(cleanName(p.name),42)}</span>
+        <span class="sri-name">${cleanName(p.name)}</span>
         <span class="sri-price">$${p.final_price.toFixed(2)}</span>
       </div>
     </div>`).join('');
@@ -2120,7 +2120,7 @@ async function openPP(id, presetOptionId=null){
   // ── Basic info ──
   ppVariantPrices=[];
   document.getElementById('pp-brand').textContent='Mikisi';
-  document.getElementById('pp-name').textContent=trunc(cleanName(p.name),70);
+  document.getElementById('pp-name').textContent=cleanName(p.name);
   document.getElementById('pp-price').textContent=`$${p.final_price.toFixed(2)}`;
   document.getElementById('pp-orig').textContent=p.original_price>p.final_price?`$${p.original_price.toFixed(2)}`:'';
   document.getElementById('pp-save').textContent=p.original_price>p.final_price?`Save $${(p.original_price-p.final_price).toFixed(2)}`:'';
