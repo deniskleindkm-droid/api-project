@@ -471,16 +471,23 @@ def _best_campaign_image(product: Product) -> str:
     """
     if product.content_lifestyle_url:
         return product.content_lifestyle_url
-    if product.images:
+    # Cloudinary-cached gallery preferred over raw Silverbene URLs — hotlinking
+    # their origin hit real intermittent 503s on carousel posts (2026-07-19),
+    # while RAWSHOT/Cloudinary-backed images had zero failures. See
+    # store_manager.py's image-caching docstring and
+    # [[project_cloudinary_gallery_caching]] — falls back to the raw gallery
+    # only for products not yet backfilled onto Cloudinary.
+    gallery_source = product.content_images or product.images
+    if gallery_source:
         try:
-            gallery = json.loads(product.images)
+            gallery = json.loads(gallery_source)
             if len(gallery) > 1:
                 return gallery[1]
             if gallery:
                 return gallery[0]
         except Exception:
             pass
-    return product.image_url or ""
+    return product.content_image_url or product.image_url or ""
 
 
 # ── INSTAGRAM GRAPH API ───────────────────────────────────────────────────────
@@ -892,7 +899,12 @@ def run_instagram_agent():
 
     print(f"[Instagram] {post_type.upper()} post: {product.name} (ID {product.id})")
 
-    image_url = _best_campaign_image(product) if post_type == "campaign" else product.image_url
+    # content_image_url (Cloudinary-cached) preferred over the raw Silverbene
+    # image_url for the same reason _best_campaign_image() prefers Cloudinary
+    # for campaign posts — hotlinking Silverbene's origin caused real
+    # intermittent posting failures (2026-07-19). This was the one posting
+    # path that never got that fix — only the campaign path did.
+    image_url = _best_campaign_image(product) if post_type == "campaign" else (product.content_image_url or product.image_url)
     if not image_url:
         print(f"[Instagram] No image available — skipping")
         return

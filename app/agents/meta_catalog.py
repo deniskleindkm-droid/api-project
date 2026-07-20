@@ -105,10 +105,23 @@ def resolve_meta_product_id(product_id: int) -> str:
             return ""
 
         meta_id = items[0]["id"]
+        # Only ever cache the FLAT-match result — that's the only case this
+        # function's own cache check (above) ever trusts. A split product's
+        # `items[0]` is arbitrarily just one of several per-variant catalog
+        # entries; caching it here was harmless while the product stayed
+        # split (is_split=True always bypasses the cache), but the moment it
+        # later simplified back down to a single real variant, the NEXT call
+        # would see is_split=False and silently trust this stale, arbitrary
+        # per-variant id as if it were the flat product's own — the mirror
+        # image of the flat->split staleness bug this function already
+        # guards against. Clear any pre-existing cached value in the split
+        # case too, so a product that goes split then back to flat is always
+        # forced into a fresh lookup rather than risking an even older
+        # pre-split cached id resurfacing.
         with Session(engine) as session:
             product = session.get(Product, product_id)
             if product:
-                product.meta_catalog_product_id = meta_id
+                product.meta_catalog_product_id = None if is_split else meta_id
                 session.add(product)
                 session.commit()
         return meta_id

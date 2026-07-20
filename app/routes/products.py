@@ -230,11 +230,18 @@ def _require_published_or_preview(product: Product, preview_key: Optional[str]):
     direct URL despite being "hidden". This is the one place both
     /products/{id} and /products/{id}/variant-prices funnel through, so
     fixing it here closes the gap for both without touching either route.
+
+    Also checks is_active: DELETE /products/{id} (soft-delete) and the
+    Silverbene stock sync's confirmed-gone path both set is_active=False,
+    but only the latter also flips is_published — a soft-deleted product
+    stayed is_published=True and was fully viewable/purchasable through
+    this endpoint despite being "deleted", the same gap cart.py's
+    add_to_cart had.
     """
     from app.agents.aria_security import verify_master_key
     is_preview = preview_key and verify_master_key(preview_key)
 
-    if not product.is_published and not is_preview:
+    if (not product.is_published or not product.is_active) and not is_preview:
         raise HTTPException(status_code=404, detail="Product not found")
 
     from app.agents.store_config import get_hidden_categories
@@ -568,7 +575,14 @@ def publish_products(data: PublishRequest, session: Session = Depends(get_sessio
         raise HTTPException(status_code=400, detail="Provide product_ids or category")
 
     products = session.exec(query).all()
-    eligible = [p for p in products if p.stock > 0]  # never publish OOS products
+    # Never publish OOS products, and never republish one Silverbene has
+    # confirmed no longer exists (is_active=False, set by the stock sync's
+    # confirmed-gone check — see silverbene_stock_agent.py) even if its
+    # last-known stock value is still positive. Without this, a bulk
+    # "republish this whole category" call could silently bring back a
+    # discontinued product — the customer could order it, but Silverbene
+    # would reject the order every time.
+    eligible = [p for p in products if p.stock > 0 and p.is_active]
     for p in eligible:
         p.is_published = True
         p.is_reviewed = True  # a deliberate decision was just made — no longer "New"

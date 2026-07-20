@@ -115,6 +115,7 @@ def run_silverbene_stock_agent(product_ids: list = None):
         stock_quantity_changes = []
 
         for product_id, option_ids in product_variants.items():
+          try:
             checked = {oid: live_stock[oid] for oid in option_ids if oid in live_stock}
             if not checked:
                 # No response for any option this cycle — inconclusive. Existence
@@ -175,6 +176,14 @@ def run_silverbene_stock_agent(product_ids: list = None):
                     stock_quantity_changes.append(
                         f"{product.name[:40]} ({old_qty} → {total_qty})"
                     )
+          except Exception as e:
+            # Isolates one product's failure from every other product in this
+            # cycle — without this, an unhandled exception here aborted the
+            # entire remaining stock-quantity loop (and, downstream, Step 4b's
+            # existence check never ran either since this loop had to finish
+            # first), silently skipping monitoring for the whole rest of the
+            # catalog until manually diagnosed.
+            print(f"[Silverbene Stock Agent] Stock update error for product {product_id}: {e}")
 
         total_checked = len(product_variants)
         print(f"[Silverbene Stock Agent] Stock: checked={total_checked} updated={updated} "
@@ -189,8 +198,10 @@ def run_silverbene_stock_agent(product_ids: list = None):
         recovered = 0
         newly_gone = []
         newly_recovered = []
+        zero_purchasable = []
 
         for product in all_products:
+          try:
             sku = product.cj_product_id
             if not sku:
                 continue
@@ -238,6 +249,27 @@ def run_silverbene_stock_agent(product_ids: list = None):
                         except Exception as e:
                             print(f"[Silverbene Stock Agent] ProductVariant reconcile error for {p.name[:40]}: {e}")
 
+                    # Cross-check: the product itself is still live (is_published,
+                    # confirmed to exist), but per-variant reconciliation above can
+                    # independently flag EVERY option unavailable one at a time
+                    # (each individually legitimate — a color discontinued here, a
+                    # size there) with nothing ever checking whether that leaves
+                    # the WHOLE product with zero purchasable options. A customer
+                    # would see a normal-looking product page with every chip
+                    # faded and Add to Cart permanently blocked — never previously
+                    # surfaced anywhere. Never auto-unpublishes (Silverbene may
+                    # restock any option next cycle) — just flags it for Dennis,
+                    # the same "alert, don't silently act" pattern used elsewhere
+                    # in this agent.
+                    if p.is_published:
+                        try:
+                            _variants_now = json.loads(p.variants) if p.variants else []
+                            _priced = [v for v in _variants_now if v.get("base_price") or v.get("price")]
+                            if _priced and not any(v.get("available", True) for v in _priced):
+                                zero_purchasable.append(p.name[:60])
+                        except Exception:
+                            pass
+
                     session.add(p)
                     session.commit()
                     if was_gone:
@@ -266,8 +298,19 @@ def run_silverbene_stock_agent(product_ids: list = None):
                     session.add(p)
                     session.commit()
             time.sleep(0.2)
+          except Exception as e:
+            # Isolates one product's failure (network hiccup, malformed data,
+            # an unexpected DB error) from every other product in this cycle —
+            # without this, an unhandled exception here aborted the entire
+            # remaining existence-check loop, silently skipping Step 4c/5 and
+            # the Step 6 STOCK_SYNC_COMPLETE heartbeat for the whole run, not
+            # just this one product.
+            print(f"[Silverbene Stock Agent] Existence check error for product {product.id} ({product.name[:40] if product.name else '?'}): {e}")
+            time.sleep(0.2)
 
         print(f"[Silverbene Stock Agent] Existence: newly_gone={gone_count} recovered={recovered}")
+        if zero_purchasable:
+            print(f"[Silverbene Stock Agent] {len(zero_purchasable)} published product(s) have zero purchasable variants: {zero_purchasable[:5]}")
 
         # ── Step 4c: Run discontinuation agent — reports + sweeps 7-day-old deletions ──
         try:
@@ -312,6 +355,7 @@ def run_silverbene_stock_agent(product_ids: list = None):
             "newly_restocked": newly_restocked,
             "newly_gone": newly_gone,
             "newly_recovered": newly_recovered,
+            "zero_purchasable": zero_purchasable,
         }
         try:
             from app.models.agent import AgentMemory
@@ -359,7 +403,8 @@ def run_silverbene_stock_agent(product_ids: list = None):
             len(newly_outofstock) > 0 or restocked > 0 or gone_count > 0 or recovered > 0 or
             updated > 0 or sizes_updated > 0 or names_updated > 0 or
             necklace_specs_updated > 0 or bracelet_specs_updated > 0 or
-            ring_specs_updated > 0 or anklet_specs_updated > 0 or ear_cuff_specs_updated > 0
+            ring_specs_updated > 0 or anklet_specs_updated > 0 or ear_cuff_specs_updated > 0 or
+            len(zero_purchasable) > 0
         )
         if any_change:
             _aria_sync_report(
@@ -387,6 +432,7 @@ def run_silverbene_stock_agent(product_ids: list = None):
                 anklet_specs_detail=anklet_specs_detail,
                 ear_cuff_specs_updated=ear_cuff_specs_updated,
                 ear_cuff_specs_detail=ear_cuff_specs_detail,
+                zero_purchasable=zero_purchasable,
             )
 
         return result
@@ -1260,7 +1306,8 @@ def _aria_sync_report(total_checked, updated, restocked, gone_count, recovered,
                       bracelet_specs_updated=0, bracelet_specs_detail=None,
                       ring_specs_updated=0, ring_specs_detail=None,
                       anklet_specs_updated=0, anklet_specs_detail=None,
-                      ear_cuff_specs_updated=0, ear_cuff_specs_detail=None):
+                      ear_cuff_specs_updated=0, ear_cuff_specs_detail=None,
+                      zero_purchasable=None):
     """
     ARIA reviews the full sync results and emails Dennis with everything
     that changed — stock levels, out-of-stock alerts, restocks, and size updates.
@@ -1301,6 +1348,15 @@ def _aria_sync_report(total_checked, updated, restocked, gone_count, recovered,
             parts.append(
                 f"\n{recovered} previously-gone product(s) reappeared at Silverbene within the "
                 f"7-day window and were moved to Unpublished for your review:\n{names}"
+            )
+
+        if zero_purchasable:
+            names = "\n".join(f"  - {n}" for n in zero_purchasable[:10])
+            parts.append(
+                f"\n{len(zero_purchasable)} product(s) are still published and confirmed to exist, "
+                f"but every one of their color/size options is currently unavailable — a customer "
+                f"can see the product page but can't actually buy anything. Not auto-unpublished "
+                f"(any option may come back in stock next cycle) — worth a look if this persists:\n{names}"
             )
 
         if updated > 0:

@@ -36,8 +36,14 @@ def add_to_cart(
     # category product to their cart just because they know its ID
     # (found live 2026-07-17: the product page itself was already gated,
     # but this endpoint had no idea and would accept any product_id).
+    # is_active also checked: DELETE /products/{id} (soft-delete) only ever
+    # sets is_active=False, never touches is_published — a product removed
+    # that way stayed fully addable-to-cart since this check only looked at
+    # is_published. get_cart()/validate_cart_items()/guest checkout already
+    # check both; this was the one gap letting a deleted product still be
+    # added in the first place.
     from app.agents.store_config import get_hidden_categories
-    if not product.is_published or product.category in get_hidden_categories():
+    if not product.is_published or not product.is_active or product.category in get_hidden_categories():
         raise HTTPException(status_code=404, detail="Product not found")
 
     # Same product + same variant = increment quantity; different variant =
