@@ -2246,6 +2246,50 @@ def meta_catalog_test(product_id: int, master_key: str, session: Session = Depen
     }
 
 
+@router.get("/admin/instagram/meta-catalog-variants-test")
+def meta_catalog_variants_test(product_id: int, master_key: str, session: Session = Depends(get_session)):
+    """
+    Admin — like meta-catalog-test, but for the multi-variant retailer_id
+    scheme (see meta_feed.py's _items_for()): "{product_id}-{variant_id}".
+    Checks review_status/availability/visibility per matched entry — used
+    right after switching that scheme from Silverbene's option_id to the
+    internal ProductVariant id (see [[refactored-wobbling-rabin]]), to watch
+    whether Meta treats the new-id entries as needing re-review.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    from app.models.product import Product
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    import os, requests
+    catalog_id = os.getenv("FACEBOOK_CATALOG_ID")
+    access_token = os.getenv("FACEBOOK_CATALOG_TOKEN") or os.getenv("FACEBOOK_ACCESS_TOKEN")
+    if not catalog_id or not access_token:
+        return {"product_id": product_id, "resolved": False, "reason": "FACEBOOK_CATALOG_ID or a catalog-capable token not set"}
+
+    r = requests.get(
+        f"https://graph.facebook.com/v18.0/{catalog_id}/products",
+        params={
+            "filter": f'{{"retailer_id":{{"i_contains":"{product_id}-"}}}}',
+            "fields": "id,retailer_id,name,review_status,availability,visibility",
+            "access_token": access_token,
+        },
+        timeout=15,
+    )
+    data = r.json()
+    items = data.get("data", [])
+    return {
+        "product_id": product_id,
+        "product_name": product.name,
+        "variant_entries_found": len(items),
+        "entries": items,
+        "raw_response": data if not items else None,
+    }
+
+
 @router.post("/admin/instagram/exchange-facebook-token")
 def exchange_facebook_token(short_lived_token: str, master_key: str):
     """
