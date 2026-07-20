@@ -804,18 +804,57 @@ class SilverbeneAdapter(SupplierAdapter):
             "is_pendant_only": pendant_only,
         }
 
-    def _extract_variants(self, options: list, category: str = "") -> tuple:  # noqa: C901
+    def _extract_variants(self, options: list, category: str = "") -> tuple:
         """
         Extract sizes and colors from Silverbene option attributes.
-        Returns (sizes_list, colors_list).
+        Returns (sizes_list, colors_list) — the deduped, customer-facing chip
+        lists (Product.sizes/Product.colors).
+
+        Thin wrapper over _extract_variant_rows(), which does the actual
+        per-option parsing — see that function for the real logic. This
+        function exists only to preserve the original two-list return shape
+        for its existing callers (_to_standard(), catalog_audit_agent.py,
+        silverbene_stock_agent.py), all of which only need the deduped chip
+        lists, not per-option identity.
+        """
+        rows = self._extract_variant_rows(options, category)
+        sizes, colors = [], []
+        seen_sizes, seen_colors = set(), set()
+        for r in rows:
+            if r["size"] and r["size"] not in seen_sizes:
+                seen_sizes.add(r["size"])
+                sizes.append(r["size"])
+            if r["color"] and r["color"] not in seen_colors:
+                seen_colors.add(r["color"])
+                colors.append(r["color"])
+        return sizes or None, colors or None
+
+    def _extract_variant_rows(self, options: list, category: str = "") -> list:  # noqa: C901
+        """
+        Parse Silverbene option attributes into one row per real, priced
+        option: {option_id, size, color, base_price, qty, available,
+        sort_order, raw_attributes}. This is the single source of truth for
+        variant identity — ProductVariant rows are built directly from this,
+        and _extract_variants() derives its deduped display lists from it too,
+        so the two can never disagree with each other the way independently
+        re-derived logic could.
+
+        size/color here are the exact same per-option values that always fed
+        the deduped lists below — this function changes nothing about HOW
+        those values are computed, only stops discarding the per-option
+        association once they're computed.
 
         Live option structure:
         [{"attribute": [{"name": "Color", "value": "Rhodium"}], "qty": 48, "price": 18.5, "option_id": 51583}]
         """
-        sizes = []
-        colors = []
-        seen_sizes = set()
-        seen_colors = set()
+        rows = []
+        # Kept exactly as before, unchanged — still the mechanism that decides
+        # what's genuinely a new, distinct size/color across this product's
+        # options. Per-option rows are captured alongside this, never instead
+        # of it, so the existing dedup behavior _extract_variants() depends on
+        # is provably untouched by this refactor.
+        sizes, colors = [], []
+        seen_sizes, seen_colors = set(), set()
         # Normally half-inch chips; escalates to quarter-inch only when two
         # genuinely different real sizes for THIS product would otherwise
         # collide into the same chip (see _bracelet_size_denom).
@@ -915,7 +954,7 @@ class SilverbeneAdapter(SupplierAdapter):
                         _purity_vals_seen.add(_norm)
         _purity_is_real = len(_purity_vals_seen) > 1
 
-        for opt in options:
+        for _idx, opt in enumerate(options):
             attrs = opt.get("attribute", [])
             _chain_style_suffix = _detect_option_suffix(attrs)
             # Some options carry TWO separate real color-type attributes at once
@@ -934,6 +973,17 @@ class SilverbeneAdapter(SupplierAdapter):
             # necklace 745: 1.5/1.8/2.0mm width x 8 lengths x 4 colors, width
             # previously discarded entirely.
             _bundled_width_this_option = None
+            # This option's own size chip, whichever branch below produces one —
+            # kept alongside (never instead of) the deduped `sizes` list so each
+            # row can carry its own real size instead of just contributing to a
+            # shared dedup set. In every real product exactly one size-yielding
+            # branch fires per option; if more than one somehow did, the last one
+            # wins, matching how _bundled_width_this_option already behaves.
+            _size_chip_this_option = None
+            # This option's raw bare-category Color value (e.g. "Anklet"), kept
+            # for the bare-category rescue pass after the loop — see that
+            # pass's comment for why this differs from _color_parts_this_option.
+            _bare_value_this_option = None
             for attr in attrs:
                 name = attr.get("name", "").lower().strip()
                 value = attr.get("value", "").strip()
@@ -943,6 +993,7 @@ class SilverbeneAdapter(SupplierAdapter):
                 if name in BRACELET_SIZE_ATTR_NAMES and re.search(r'\d+', value, re.I):
                     # Bracelet-specific attrs (wrist size, inner diameter, etc.)
                     for chip in parse_bracelet_size(value, _denom):
+                        _size_chip_this_option = chip
                         if chip not in seen_sizes:
                             seen_sizes.add(chip)
                             sizes.append(chip)
@@ -950,12 +1001,14 @@ class SilverbeneAdapter(SupplierAdapter):
                     # Try bracelet range first; fall through to necklace parser
                     chips = parse_bracelet_size(value, _denom) or parse_necklace_length(value)
                     for chip in chips:
+                        _size_chip_this_option = chip
                         if chip not in seen_sizes:
                             seen_sizes.add(chip)
                             sizes.append(chip)
                 elif name == "size" and re.search(r'\d+\s*(mm|cm)', value, re.I):
                     chips = parse_bracelet_size(value, _denom) or parse_necklace_length(value)
                     for chip in chips:
+                        _size_chip_this_option = chip
                         if chip not in seen_sizes:
                             seen_sizes.add(chip)
                             sizes.append(chip)
@@ -972,9 +1025,11 @@ class SilverbeneAdapter(SupplierAdapter):
                     # still prices color separately even when it shares an attribute
                     # with the size text.
                     _color_part, _size_chip, _width_chip = _split_color_and_size(value, category)
-                    if _size_chip and _measurement_chip_is_real and _size_chip not in seen_sizes:
-                        seen_sizes.add(_size_chip)
-                        sizes.append(_size_chip)
+                    if _size_chip and _measurement_chip_is_real:
+                        _size_chip_this_option = _size_chip
+                        if _size_chip not in seen_sizes:
+                            seen_sizes.add(_size_chip)
+                            sizes.append(_size_chip)
                     if _width_chip:
                         _color_part = f"{_color_part} · {_width_chip}" if _color_part else _width_chip
                     if _color_part:
@@ -1007,6 +1062,7 @@ class SilverbeneAdapter(SupplierAdapter):
                         # dimension — "Open Size" would misrepresent them the way
                         # it doesn't for a genuinely open/stretchable ring band.
                         value = 'Adjustable' if category == 'Bracelets' else 'Open Size / Adjustable'
+                    _size_chip_this_option = value
                     if value not in seen_sizes:
                         seen_sizes.add(value)
                         sizes.append(value)
@@ -1026,9 +1082,15 @@ class SilverbeneAdapter(SupplierAdapter):
                             else _normalize_color_final(_clean_plain_color(value), name, normalize_rhodium=False))
                     if part:
                         _color_parts_this_option.append(part)
-                    elif value.lower().strip() in _CATEGORY_PREFIXES and value not in _seen_bare:
-                        _seen_bare.add(value)
-                        _bare_category_values.append(value)
+                    elif value.lower().strip() in _CATEGORY_PREFIXES:
+                        # Kept per-option (not gated on _seen_bare) so THIS row's
+                        # rescue value is always available, regardless of whether
+                        # another option already contributed the same bare word to
+                        # the deduped _bare_category_values list below.
+                        _bare_value_this_option = value
+                        if value not in _seen_bare:
+                            _seen_bare.add(value)
+                            _bare_category_values.append(value)
                 elif name == "purity" and (_PURITY_LENGTH_RE.search(value) or _PURITY_BARE_LENGTH_RE.match(value)):
                     # The real per-option length hiding inside Purity text (see
                     # _PURITY_LENGTH_RE / _PURITY_BARE_LENGTH_RE / pre-scan comment
@@ -1037,6 +1099,7 @@ class SilverbeneAdapter(SupplierAdapter):
                     # "chain length"/"length" attributes are already handled elsewhere.
                     chips = _purity_length_chips(value, _denom)
                     for chip in chips:
+                        _size_chip_this_option = chip
                         if chip not in seen_sizes:
                             seen_sizes.add(chip)
                             sizes.append(chip)
@@ -1114,13 +1177,31 @@ class SilverbeneAdapter(SupplierAdapter):
                 seen_colors.add(display)
                 colors.append(display)
 
+            rows.append({
+                "option_id":      opt.get("option_id"),
+                "size":           _size_chip_this_option,
+                "color":          display or None,
+                "base_price":     opt.get("base_price", opt.get("price", 0)),
+                "qty":            opt.get("qty", 0),
+                "available":      opt.get("available", True),
+                "sort_order":     _idx,
+                "raw_attributes": attrs,
+                "_bare":          _bare_value_this_option,   # only used by the rescue pass below
+            })
+
         # Rescue: nothing else ever counted as a color, but this product's
         # Color attribute genuinely varies between real category words — that
         # variation IS the choice (see comment above), not noise to discard.
+        # Mirrored per-row: each row's own bare value replaces its (empty)
+        # `color`, the same way the deduped list gets fully replaced above.
         if not colors and len(_bare_category_values) >= 2:
-            colors = _bare_category_values
+            for row in rows:
+                row["color"] = row.pop("_bare")
+        else:
+            for row in rows:
+                row.pop("_bare", None)
 
-        return sizes or None, colors or None
+        return rows
 
     def _rhodium_display_name(self, desc: str) -> str:
         """
