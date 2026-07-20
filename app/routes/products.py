@@ -271,6 +271,7 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
         _detect_option_suffix,
         COLOR_ATTRIBUTE_NAMES, BRACELET_SIZE_ATTR_NAMES,
         parse_necklace_length, parse_bracelet_size,
+        _OPTION_HASH_NAME_RE, _OPTION_HASH_VALUE_RE, _MODEL_COLOR_NAME_RE,
     )
 
     product = session.get(Product, product_id)
@@ -303,6 +304,19 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
                 if _norm:
                     _purity_vals_seen.add(_norm)
     _purity_is_real = len(_purity_vals_seen) > 1
+
+    # Mirrors _extract_variants()'s _option_hash_is_real pre-scan — Silverbene's
+    # unnamed "Option <hash>" placeholder attribute is only a real selector
+    # when its value actually varies with genuine (non-placeholder) text.
+    _option_hash_vals_seen = set()
+    for _v in variants:
+        for _a in (_v.get("attribute") or _v.get("attributes") or []):
+            if not _OPTION_HASH_NAME_RE.match((_a.get("name") or "").strip()):
+                continue
+            _oval = (_a.get("value") or "").strip()
+            if _oval and not _OPTION_HASH_VALUE_RE.match(_oval):
+                _option_hash_vals_seen.add(_oval)
+    _option_hash_is_real = len(_option_hash_vals_seen) > 1
 
     result = []
     for v in variants:
@@ -364,6 +378,23 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
                     part = _normalize_color_final(_clean_plain_color(val), name) or val
                 if part:
                     _color_parts.append(part)
+            elif _OPTION_HASH_NAME_RE.match(name) and _option_hash_is_real and val and not _OPTION_HASH_VALUE_RE.match(val):
+                # Mirrors _extract_variants()'s "Option <hash>" branch — see
+                # that function's comment. Kept verbatim, never normalized as
+                # a color/finish, so a with/without-certificate (or similar)
+                # choice resolves to the exact option the customer picked
+                # instead of always the first/cheapest one.
+                _color_parts.append(val)
+            elif _MODEL_COLOR_NAME_RE.search(name) and val:
+                # Mirrors _extract_variants()'s "Model & Color" branch — the
+                # model word is guaranteed to match this product's category
+                # (mismatched options are excluded at import time), only the
+                # color half is a real choice.
+                _mparts = [x.strip() for x in _re.split(r'&', val) if x.strip()]
+                if len(_mparts) == 2:
+                    _mcpart = _normalize_color_final(_clean_plain_color(_mparts[1]), "color")
+                    if _mcpart:
+                        _color_parts.append(_mcpart)
             elif name == "purity" and _purity_is_real and val and _re.search(r'\b(gold|silver|platinum|plating|plated|rhodium)\b', val, _re.I):
                 # Mirrors _extract_variants()'s "purity" branch — Silverbene
                 # sometimes uses "Purity" for the plating/finish choice

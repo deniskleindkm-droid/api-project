@@ -71,7 +71,7 @@ def ensure_bangle_bracelet_naming(name: str, category: str, is_bangle: bool) -> 
 # Attribute names Silverbene uses per category type
 SIZE_ATTRIBUTE_NAMES = {"size", "ring size", "length", "bracelet size", "anklet size", "chain length"}
 BRACELET_SIZE_ATTR_NAMES = {"wrist size", "inner diameter", "bracelet size", "bracelet length"}
-COLOR_ATTRIBUTE_NAMES = {"color", "colour", "metal color", "metal finish", "finish", "main stone", "stone", "stone color", "stone type", "birthstone"}
+COLOR_ATTRIBUTE_NAMES = {"color", "colour", "metal color", "metal finish", "finish", "main stone", "stone", "stone color", "stone type", "birthstone", "letter"}
 _METAL_ATTR_NAMES = {"color", "colour", "metal color", "metal finish", "finish"}
 
 _SIZE_MEASURE_RE = re.compile(r'\d+\s*(mm|cm)', re.I)
@@ -83,6 +83,27 @@ _SIZE_MEASURE_RE = re.compile(r'\d+\s*(mm|cm)', re.I)
 # [[project_compound_variant_fix]]'s residual-gaps note) and must never be
 # treated as a size source in general.
 _PURITY_LENGTH_RE = re.compile(r'\blength\b\s*[:\-]?\s*\d+(?:\.\d+)?\s*(cm|mm)', re.I)
+
+# Silverbene occasionally bundles a model/type word with the metal color
+# under a "Model&Color"-style attribute name (e.g. "Anklet & Silver",
+# "Bracelet & Yellow Gold") — found live on product 865 (an Anklet) whose
+# one "Bracelet & Yellow Gold" option describes a DIFFERENT physical item
+# mistakenly mixed into this listing, not a real color choice on it.
+_MODEL_COLOR_NAME_RE = re.compile(r'model\s*&\s*color', re.I)
+
+# Silverbene sometimes has no human label at all for an attribute slot and
+# sends a placeholder name instead, e.g. "Option 6b36c6f7" — found live on 5
+# published products (a with/without-GRA-certificate choice, real price
+# difference) whose entire second axis was invisible: nothing recognized
+# this name, so every order silently resolved to whichever option Silverbene
+# listed first, regardless of what the customer picked.
+_OPTION_HASH_NAME_RE = re.compile(r'^option[\s_][0-9a-f]{6,}$', re.I)
+# Some products carry this same placeholder name but with an equally
+# unreadable placeholder VALUE (e.g. "Option_86ef1e85") — Silverbene gave us
+# no real human text at all in that case, so there's nothing genuine to
+# surface; confirmed live these are single-variant products anyway (no real
+# choice exists to lose). Never show a chip built from this kind of value.
+_OPTION_HASH_VALUE_RE = re.compile(r'^option_[0-9a-f]{6,}$', re.I)
 
 def sizes_are_variant_backed(variants_json) -> bool:
     """
@@ -590,6 +611,8 @@ class SilverbeneAdapter(SupplierAdapter):
                 bp = o.get("price", 0)
                 options.append({**o, "attribute": attrs, "base_price": bp})
 
+        options = _exclude_mismatched_model_options(options, category)
+
         cost_price = float(options[0].get("base_price", options[0].get("price", 0))) if options else 0.0
         stock = sum(int(o.get("qty", 0)) for o in options) if options else 999
 
@@ -824,6 +847,21 @@ class SilverbeneAdapter(SupplierAdapter):
         # value actually differs across this product's options (e.g. "18k
         # gold" vs "No plating" — a real plating choice with nothing else to
         # distinguish the two).
+        # Same "only real if it actually varies with genuine text" test as
+        # Purity above, applied to Silverbene's unnamed "Option <hash>" slot.
+        # Placeholder-looking values (_OPTION_HASH_VALUE_RE) never count as
+        # real text — a product where every option's value looks like that
+        # has nothing genuine to surface, same as Purity's boilerplate case.
+        _option_hash_vals_seen = set()
+        for _opt in options:
+            for _attr in _opt.get("attribute", []):
+                if not _OPTION_HASH_NAME_RE.match((_attr.get("name") or "").strip()):
+                    continue
+                _oval = (_attr.get("value") or "").strip()
+                if _oval and not _OPTION_HASH_VALUE_RE.match(_oval):
+                    _option_hash_vals_seen.add(_oval)
+        _option_hash_is_real = len(_option_hash_vals_seen) > 1
+
         _purity_vals_seen = set()
         for _opt in options:
             for _attr in _opt.get("attribute", []):
@@ -953,6 +991,32 @@ class SilverbeneAdapter(SupplierAdapter):
                             if chip not in seen_sizes:
                                 seen_sizes.add(chip)
                                 sizes.append(chip)
+                elif _MODEL_COLOR_NAME_RE.search(name):
+                    # "Model & Color" (e.g. "Anklet & Silver") — the model
+                    # word is guaranteed to match this product's own category
+                    # by now (_exclude_mismatched_model_options already ran
+                    # in _to_standard, before this function ever sees the
+                    # options list), so only the color half is a real
+                    # customer-facing choice on this listing.
+                    _parts = [x.strip() for x in re.split(r'&', value) if x.strip()]
+                    if len(_parts) == 2:
+                        _cpart = _normalize_color_final(_clean_plain_color(_parts[1]), "color")
+                        if _cpart:
+                            _color_parts_this_option.append(_cpart)
+                elif _OPTION_HASH_NAME_RE.match(name) and _option_hash_is_real and not _OPTION_HASH_VALUE_RE.match(value):
+                    # Silverbene's unnamed placeholder attribute (see
+                    # _OPTION_HASH_NAME_RE) carrying real, varying customer-
+                    # facing text — most commonly a with/without-certificate
+                    # choice ("Moissanite 6x8mm" vs "...(with certificate)"),
+                    # sometimes crossed with a second design code (two
+                    # distinct base values, each with its own certificate
+                    # variant — 4 real combos). Never run through the
+                    # metal/color normalization pipeline (_normalize_color_final
+                    # etc.) — this text isn't a color/finish at all, and that
+                    # pipeline would mangle it looking for gold/silver
+                    # keywords that don't apply. Kept as its own combined chip,
+                    # exactly as Silverbene priced each distinct combination.
+                    _color_parts_this_option.append(value)
                 elif name == "purity" and _purity_is_real and re.search(r'\b(gold|silver|platinum|plating|plated|rhodium)\b', value, re.I):
                     # "Purity" is overloaded — Silverbene also uses it for a
                     # pendant/chain-style choice ("Pendant Only" vs "Pendant +
@@ -1425,6 +1489,19 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
     # collide into the same chip.
     _denom = _bracelet_size_denom(variants)
 
+    # Mirror _extract_variants()'s _option_hash_is_real pre-scan (see that
+    # function's comment for why this exists) — computed once across all of
+    # this product's variants, same as _denom above.
+    _option_hash_vals_seen = set()
+    for _v in variants:
+        for _a in _v.get("attribute", []):
+            if not _OPTION_HASH_NAME_RE.match((_a.get("name") or "").strip()):
+                continue
+            _oval = (_a.get("value") or "").strip()
+            if _oval and not _OPTION_HASH_VALUE_RE.match(_oval):
+                _option_hash_vals_seen.add(_oval)
+    _option_hash_is_real = len(_option_hash_vals_seen) > 1
+
     def attr_size(attrs):
         for a in attrs:
             aname = a.get("name", "").lower()
@@ -1460,10 +1537,31 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
         _suffix = _detect_option_suffix(attrs)
         parts = []
         for a in attrs:
-            if a.get("name", "").lower() not in COLOR_ATTRIBUTE_NAMES:
-                continue
+            aname = a.get("name", "").lower().strip()
             v = a.get("value", "").strip()
             if not v:
+                continue
+            if _OPTION_HASH_NAME_RE.match(aname):
+                # Mirrors _extract_variants()'s "Option <hash>" branch — see
+                # that function's comment. Without this, a product whose
+                # ONLY selector is this unnamed attribute (e.g. a with/
+                # without-certificate choice, no real Color attribute at
+                # all) would return empty here for every option, so Pass 1-3
+                # below never match and every order silently falls through
+                # to Pass 4's first-variant fallback regardless of what the
+                # customer picked.
+                if _option_hash_is_real and not _OPTION_HASH_VALUE_RE.match(v):
+                    parts.append(v)
+                continue
+            if _MODEL_COLOR_NAME_RE.search(aname):
+                # Mirrors _extract_variants()'s "Model & Color" branch.
+                _mparts = [x.strip() for x in re.split(r'&', v) if x.strip()]
+                if len(_mparts) == 2:
+                    _mcpart = _normalize_color_final(_clean_plain_color(_mparts[1]), "color")
+                    if _mcpart:
+                        parts.append(_mcpart)
+                continue
+            if aname not in COLOR_ATTRIBUTE_NAMES:
                 continue
             if re.search(r'\d+\s*(mm|cm)', v, re.I):
                 color_part, _ = _split_color_and_size(v)
@@ -1939,6 +2037,36 @@ _COLOR_TYPO_FIXES = [
 ]
 
 
+def _exclude_mismatched_model_options(options: list, category: str = "") -> list:
+    """
+    Excludes any option whose "Model&Color"-style attribute (see
+    _MODEL_COLOR_NAME_RE) names a different physical item than this
+    product's own category — e.g. a "Bracelet & Yellow Gold" option sitting
+    inside an Anklet listing (found live on product 865). Runs before cost/
+    stock calculation and variant extraction, so a mismatched option is
+    excluded from every path (price, stock count, color chips, order
+    resolution) rather than merely hidden from the color chip — a customer
+    must never be able to reach the wrong physical item through any route.
+    No-op when this attribute name doesn't appear at all (the overwhelming
+    majority of products), or when category is blank.
+    """
+    if not category:
+        return options
+    category_singular = category.rstrip('s').lower()
+    kept = []
+    for o in options:
+        mismatched = False
+        for a in o.get("attribute", []):
+            if not _MODEL_COLOR_NAME_RE.search((a.get("name") or "").strip()):
+                continue
+            parts = [x.strip() for x in re.split(r'&', (a.get("value") or "").strip()) if x.strip()]
+            if len(parts) == 2 and parts[0].lower() != category_singular:
+                mismatched = True
+        if not mismatched:
+            kept.append(o)
+    return kept
+
+
 def _split_color_and_size(value: str, category: str = ""):
     """
     Split a Silverbene Color-attribute value that bundles a finish/metal name
@@ -2118,7 +2246,16 @@ def _detect_option_suffix(attrs: list) -> str | None:
     for a in attrs:
         name = (a.get("name") or "").lower().strip()
         val = (a.get("value") or "").strip()
-        if not val or name in _OPTION_SUFFIX_SKIP_NAMES:
+        # Skip the "Option <hash>" placeholder attribute here unconditionally —
+        # when it carries a real, varying choice (a with/without-certificate
+        # pick, etc.) it's already captured directly as the color chip itself
+        # (see _extract_variants()'s _OPTION_HASH_NAME_RE branch), so this
+        # function must never ALSO treat that same attribute as a "suffix" to
+        # tack onto it — found live on product 757, whose value "Moissanite
+        # 6x8mm" also happens to match _SPEC_VALUE_RE's bare "8mm" pattern,
+        # doubling the same text onto itself ("Moissanite 6x8mm · Moissanite
+        # 6x8mm") before this fix.
+        if not val or name in _OPTION_SUFFIX_SKIP_NAMES or _OPTION_HASH_NAME_RE.match(name):
             continue
         if _CHAIN_STYLE_ONLY_RE.search(val):
             return "Pendant Only"

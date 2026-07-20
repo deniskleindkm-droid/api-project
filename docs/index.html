@@ -1873,7 +1873,16 @@ function cmToInchDisplay(cm){
 // e.g. "3 mm wide, 18K gold, length: 16.5 cm, weight: 2 g"  OR  "Yellow Gold 2.2mm"
 const _COMPOUND_RE=/(\d+(?:\.\d+)?)\s*mm|length\s*[:\-]|weight\s*[:\-]/i;
 const _METAL_RE=/rhodium|18k|yellow\s+gold|rose\s+gold|white\s+gold|\bgold\b|silver|platinum/i;
-function isCompoundVariant(name){ return _COMPOUND_RE.test(name)&&_METAL_RE.test(name); }
+// A "·"-joined string is already a correctly-combined chip built server-side
+// (real Color attribute + a real second attribute like "Gauge Size"/"Post
+// Size", see _detect_option_suffix in silverbene_adapter.py) -- never
+// re-parse it as a single bundled compound value. Found live on staged
+// earring/ring products (e.g. "Yellow Gold · 1.0mm x 6mm Post" vs "...8mm
+// Post"): this function's width regex has no /g flag, so re-parsing such a
+// string only ever captured the first "mm" number (the gauge, identical
+// across both post lengths), silently collapsing the real differentiator
+// and leaving no way to select the 8mm-post variant at all.
+function isCompoundVariant(name){ return !name.includes('·') && _COMPOUND_RE.test(name)&&_METAL_RE.test(name); }
 
 // Parse one compound variant string into {metal, width, length_cm, weight}
 function parseCompoundVariant(name){
