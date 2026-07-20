@@ -100,44 +100,6 @@ def get_all_orders(master_key: str, session: Session = Depends(get_session)):
     return result
 
 
-class OrderRequest(BaseModel):
-    product_id: int
-    quantity: int = 1
-    shipping_address: str
-
-@router.post("/orders")
-def create_order(
-    order: OrderRequest,
-    session: Session = Depends(get_session),
-    token: str = Depends(oauth2_scheme)
-):
-    payload = verify_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    
-    product = session.get(Product, order.product_id)
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-    if product.stock < order.quantity:
-        raise HTTPException(status_code=400, detail="Not enough stock")
-    
-    total = product.final_price * order.quantity
-    
-    new_order = Order(
-        user_id=payload.get("sub"),
-        product_id=order.product_id,
-        quantity=order.quantity,
-        total_price=total,
-        status="pending"
-    )
-    
-    product.stock -= order.quantity
-    session.add(product)
-    session.add(new_order)
-    session.commit()
-    session.refresh(new_order)
-    return new_order
-
 @router.get("/orders")
 def get_my_orders(
     session: Session = Depends(get_session),
