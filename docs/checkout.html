@@ -207,19 +207,24 @@ function saveCart(items){sessionStorage.setItem(CART_KEY,JSON.stringify(items));
 
 function addToCart(product, qty, variant){
   const cart = getCart();
-  // Same variant used by the storefront's own cart everywhere else — carries
-  // the real Silverbene option_id straight through rather than leaving it
-  // null, matching how every other add-to-cart path on the site works (see
-  // resolve_option_id / _option_id_in_variants server-side checks, which
-  // this previously skipped entirely for anything landing via this bridge).
+  // variantId (the internal ProductVariant id) is the primary field carried
+  // through to checkout going forward — same as every other add-to-cart path
+  // on the site (see docs/index.html's addToCart). optionId (Silverbene's own
+  // id) is kept alongside for backward compat. Previously this bridge sent
+  // neither variant_id nor a real option_id anywhere useful, so any order
+  // placed via Instagram/Facebook Shop's native checkout always fell through
+  // to the server's legacy text-matching fallback regardless of how good the
+  // rest of the variant-ID plumbing got.
   const size = variant?.size || null;
   const color = variant?.color || null;
   const optionId = variant?.option_id != null ? String(variant.option_id) : null;
+  const variantId = variant?.id != null ? variant.id : null;
   const existing = cart.find(i => i.product_id === product.id && i.selected_size === size && i.selected_color === color);
   if(existing){
     existing.quantity += qty;
     existing.subtotal = existing.price * existing.quantity;
     if(optionId) existing.selected_option_id = optionId;
+    if(variantId) existing.variant_id = variantId;
   } else {
     cart.push({
       product_id: product.id,
@@ -231,6 +236,7 @@ function addToCart(product, qty, variant){
       selected_size: size,
       selected_color: color,
       selected_option_id: optionId,
+      variant_id: variantId,
     });
   }
   saveCart(cart);
@@ -244,13 +250,17 @@ async function fetchVariantPrices(id){
   }catch{ return []; }
 }
 
-// The variant actually reflected here is whichever one the customer's
-// real cart will resolve to by default (see updateVariantPrice()'s Pass 4
-// in index.html) — the first available, priced option — since Meta's own
-// checkout redirect only ever passes product_id + quantity through this
-// bridge, never a specific option_id.
-function pickDefaultVariant(variantPrices){
+// Prefers the exact variant Meta's redirect asked for (?variant_ids=, parsed
+// in parseProducts() below) when present. Falls back to "first available,
+// priced option" — the same fallback as before — only when no variant was
+// actually specified, rather than unconditionally defaulting for every
+// customer regardless of which variant they picked in Shop.
+function pickDefaultVariant(variantPrices, requestedVariantId){
   if(!variantPrices || !variantPrices.length) return null;
+  if(requestedVariantId != null){
+    const match = variantPrices.find(v => v.id === requestedVariantId);
+    if(match) return match;
+  }
   return variantPrices.find(v=>v.available!==false) || variantPrices[0];
 }
 
@@ -262,12 +272,23 @@ function hide(id){document.getElementById(id).classList.add('hidden');}
 
 function parseProducts(){
   const p = new URLSearchParams(window.location.search);
+  // Optional, parallel to either format below by index — the internal
+  // ProductVariant id for whichever variant Meta's own redirect is asking
+  // for, if it preserves one at all (unconfirmed whether Meta's checkout
+  // redirect carries query params through from the original deep link —
+  // this only takes effect when present; if Meta never sends it, every
+  // pair's variantId stays null and pickDefaultVariant()'s existing
+  // first-available fallback is unchanged).
+  const variantIdsParam = p.get('variant_ids');
+  const variantIds = variantIdsParam
+    ? variantIdsParam.split(',').map(s => { const n = parseInt(s.trim()); return isNaN(n) ? null : n; })
+    : [];
 
   // Primary format: products=504:2,689:3
   const productsParam = p.get('products');
   if(productsParam){
     return productsParam.split(',')
-      .map(pair => { const [id,qty] = pair.split(':'); return {id:parseInt(id),qty:parseInt(qty)||1}; })
+      .map((pair,i) => { const [id,qty] = pair.split(':'); return {id:parseInt(id),qty:parseInt(qty)||1,variantId:variantIds[i]??null}; })
       .filter(x => !isNaN(x.id) && x.id > 0);
   }
 
@@ -276,7 +297,7 @@ function parseProducts(){
   if(idsParam){
     const ids = idsParam.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n));
     const qtys = (p.get('quantities')||'').split(',').map(s=>parseInt(s.trim())||1);
-    return ids.map((id,i) => ({id, qty: qtys[i]||1}));
+    return ids.map((id,i) => ({id, qty: qtys[i]||1, variantId: variantIds[i]??null}));
   }
 
   return [];
@@ -322,11 +343,11 @@ async function run(){
   let added = 0;
   show('product-list');
 
-  for(const {id, qty} of pairs){
+  for(const {id, qty, variantId} of pairs){
     try{
       const [product, variantPrices] = await Promise.all([fetchProduct(id), fetchVariantPrices(id)]);
       if(product && product.id){
-        const variant = pickDefaultVariant(variantPrices);
+        const variant = pickDefaultVariant(variantPrices, variantId);
         addToCart(product, qty, variant);
         renderProductRow(product, qty, variant);
         hide('state-loading');
