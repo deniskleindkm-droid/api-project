@@ -17,6 +17,54 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 router = APIRouter()
 
 
+def _send_meta_capi_event(event_name: str, value: float, content_ids: list, email: str = None, event_id: str = None):
+    """
+    Server-side Meta Conversions API call — complements the browser Pixel
+    (docs/index.html) so the event still reaches Meta even when an ad
+    blocker or Safari ITP silently drops the client-side one. Shares
+    event_id with the matching client-side fbq() call (both use the Stripe
+    checkout session id) so Meta deduplicates the two instead of double-
+    counting the same purchase. Must never raise — this fires from the
+    order-processing path and a Meta API hiccup must never affect a real
+    order. No-ops quietly if META_PIXEL_ID/META_CONVERSIONS_API_TOKEN
+    aren't set (or the token is still Railway's placeholder text) — a bad
+    token just gets a failed request logged below, not a crash.
+    """
+    pixel_id = os.getenv("META_PIXEL_ID")
+    token = os.getenv("META_CONVERSIONS_API_TOKEN")
+    if not pixel_id or not token:
+        return
+    try:
+        import requests
+        import hashlib
+        import time
+        user_data = {}
+        if email:
+            user_data["em"] = [hashlib.sha256(email.strip().lower().encode()).hexdigest()]
+        resp = requests.post(
+            f"https://graph.facebook.com/v18.0/{pixel_id}/events",
+            params={"access_token": token},
+            json={"data": [{
+                "event_name": event_name,
+                "event_time": int(time.time()),
+                "action_source": "website",
+                "event_id": event_id,
+                "user_data": user_data,
+                "custom_data": {
+                    "value": round(value, 2),
+                    "currency": "usd",
+                    "content_ids": [str(c) for c in content_ids],
+                    "content_type": "product",
+                },
+            }]},
+            timeout=10,
+        )
+        if not resp.ok:
+            print(f"[Meta CAPI] {event_name} rejected: {resp.status_code} {resp.text[:300]}")
+    except Exception as e:
+        print(f"[Meta CAPI] Failed to send {event_name}: {e}")
+
+
 def _option_id_in_variants(variants_json, option_id) -> bool:
     """Whether option_id actually appears among this product's own variants."""
     try:
@@ -73,7 +121,13 @@ def create_checkout_session(
     # Pixel Purchase event (see docs/index.html) without a second lookup —
     # the total is already known here, before Stripe redirects the customer
     # away from our own domain.
-    success_params = f"payment=success&value={order_value:.2f}&currency=usd&content_ids={','.join(content_ids)}"
+    # {{CHECKOUT_SESSION_ID}} is Stripe's own literal placeholder syntax --
+    # Stripe substitutes it with the real session id before redirecting.
+    # The client (docs/index.html) reads it back out to pass as fbq()'s
+    # eventID, matching the event_id _send_meta_capi_event() uses server-side
+    # for the same Purchase, so Meta dedupes the two instead of double-
+    # counting one sale.
+    success_params = f"payment=success&value={order_value:.2f}&currency=usd&content_ids={','.join(content_ids)}&session_id={{CHECKOUT_SESSION_ID}}"
 
     checkout_session = stripe.checkout.Session.create(
         payment_method_types=["card"],
@@ -173,7 +227,13 @@ def create_guest_checkout_session(
     # Pixel Purchase event (see docs/index.html) without a second lookup —
     # the total is already known here, before Stripe redirects the customer
     # away from our own domain.
-    success_params = f"payment=success&value={order_value:.2f}&currency=usd&content_ids={','.join(content_ids)}"
+    # {{CHECKOUT_SESSION_ID}} is Stripe's own literal placeholder syntax --
+    # Stripe substitutes it with the real session id before redirecting.
+    # The client (docs/index.html) reads it back out to pass as fbq()'s
+    # eventID, matching the event_id _send_meta_capi_event() uses server-side
+    # for the same Purchase, so Meta dedupes the two instead of double-
+    # counting one sale.
+    success_params = f"payment=success&value={order_value:.2f}&currency=usd&content_ids={','.join(content_ids)}&session_id={{CHECKOUT_SESSION_ID}}"
 
     checkout_session = stripe.checkout.Session.create(
         payment_method_types=["card"],
@@ -326,6 +386,19 @@ def process_order_background(checkout_data: dict):
                 session.commit()
 
         print(f"[Payments] Order details collected: {len(order_details)} items, total ${total:.2f}")
+
+        # event_id = stripe_session_id, shared with the client-side fbq()
+        # Purchase call fired from the same checkout session's success_url
+        # (see docs/index.html) — Meta dedupes on event_id, so this must
+        # never fire without a real session id, or a webhook retry replaying
+        # a duplicate id would double-count real revenue.
+        if stripe_session_id:
+            _send_meta_capi_event(
+                "Purchase", total,
+                [d["product_id"] for d in order_details],
+                email=user_email,
+                event_id=stripe_session_id,
+            )
 
         # Auto-forward to Silverbene
         try:

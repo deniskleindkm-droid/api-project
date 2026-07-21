@@ -1535,7 +1535,14 @@ window.onload = async()=>{
     const _purchaseVal=p.get('value');
     if(typeof fbq==='function' && _purchaseVal && sessionStorage.getItem('mikisi_purchase_fired')!==window.location.search){
       const _ids=(p.get('content_ids')||'').split(',').filter(Boolean);
-      fbq('track','Purchase',{content_ids:_ids,content_type:'product',value:parseFloat(_purchaseVal),currency:(p.get('currency')||'USD').toUpperCase()});
+      // session_id (Stripe's own checkout session id, substituted server-
+      // side -- see payments.py) is passed as eventID so this client-side
+      // Purchase and the server-side Conversions API Purchase for the same
+      // order (_send_meta_capi_event in payments.py) share one event_id --
+      // Meta dedupes on that instead of counting the same sale twice.
+      const _sessionId=p.get('session_id');
+      const _eventOpts=_sessionId?{eventID:_sessionId}:undefined;
+      fbq('track','Purchase',{content_ids:_ids,content_type:'product',value:parseFloat(_purchaseVal),currency:(p.get('currency')||'USD').toUpperCase()},_eventOpts);
       sessionStorage.setItem('mikisi_purchase_fired', window.location.search);
     }
   }
