@@ -147,6 +147,31 @@ def _enforce_earring_description_style(description: str, raw_name: str, category
     return _swap_style_word(description, raw_style)
 
 
+_BRACELET_LIKE_CATEGORIES = {"Bracelets", "Anklets"}
+
+
+def _implausible_bracelet_length(category: str, sizes_json: str) -> bool:
+    """
+    True if a Bracelet/Anklet's resolved adjustable size range implies
+    necklace length (>12") -- found live 2026-07-21 (product 1182, "Rose
+    Quartz Pearl Beaded Bracelet" with an "Adjustable 19"-22"" range --
+    Dennis caught it immediately, genuinely a necklace). Flags for manual
+    review rather than auto-correcting the category, since the size alone
+    doesn't tell us WHICH category is right without a human glancing at it.
+    """
+    if category not in _BRACELET_LIKE_CATEGORIES or not sizes_json:
+        return False
+    try:
+        sizes = json.loads(sizes_json)
+    except Exception:
+        return False
+    for s in sizes:
+        for m in re.finditer(r'(\d+(?:\.\d+)?)\s*"', s or ""):
+            if float(m.group(1)) > 12:
+                return True
+    return False
+
+
 def _resolve_sizes(sizes_json: str, category: str) -> str:
     """
     Return sizes as-is if present.
@@ -609,7 +634,8 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
 
             # Flags
             is_premium    = material_key == "moissanite"
-            needs_review  = cost_price > 40
+            resolved_sizes = _resolve_sizes(product.get("sizes"), product.get("category", ""))
+            needs_review  = cost_price > 40 or _implausible_bracelet_length(product["category"], resolved_sizes)
 
             # SKU — Silverbene options have option_id, not variantSku
             cj_sku = ""
@@ -637,7 +663,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 "variants": _json.dumps(raw_variants) if raw_variants else None,
                 # Silverbene display fields
                 "material": product.get("material") or "",
-                "sizes": _resolve_sizes(product.get("sizes"), product.get("category", "")),
+                "sizes": resolved_sizes,
                 "colors": product.get("colors"),
                 "specs": product.get("specs") or None,
                 # Pricing internals
@@ -820,7 +846,8 @@ def run_browse_import(months_back: int = 8, limit: int = 300) -> dict:
             material_key = detect_material(product.get("name", ""), product.get("_options", raw_variants))
             pricing = calculate_mikisi_price(cost_price, material_key)
             is_premium = material_key == "moissanite"
-            needs_review = cost_price > 40
+            resolved_sizes = _resolve_sizes(product.get("sizes"), resolved_category)
+            needs_review = cost_price > 40 or _implausible_bracelet_length(resolved_category, resolved_sizes)
 
             cj_sku = ""
             if raw_variants and isinstance(raw_variants, list):
@@ -846,7 +873,7 @@ def run_browse_import(months_back: int = 8, limit: int = 300) -> dict:
                 "collection_id": collection_id,
                 "variants": _json.dumps(raw_variants) if raw_variants else None,
                 "material": product.get("material") or "",
-                "sizes": _resolve_sizes(product.get("sizes"), resolved_category),
+                "sizes": resolved_sizes,
                 "colors": product.get("colors"),
                 "specs": product.get("specs") or None,
                 "silverbene_cost": cost_price,
