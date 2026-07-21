@@ -1106,9 +1106,31 @@ def run_instagram_catchup_queue():
     credential in external cloud-agent config.
     """
     from app.agents.store_config import get_config, set_config
+    from datetime import datetime, timedelta
     index = int(get_config("instagram_catchup_index", default="0") or 0)
     if index >= len(INSTAGRAM_CATCHUP_QUEUE):
         return  # queue complete — nothing to do, job just no-ops from here on
+
+    # Self-regulating time guard — every job registered with next_run_time=
+    # utcnow() (see scheduler.py's "catch up the backlog on this deploy"
+    # pattern, used across several jobs) re-fires immediately on EVERY app
+    # restart, not just once. Found live 2026-07-21: this job would otherwise
+    # post the next queue item on every single deploy that happens while the
+    # queue is still running, rapid-firing through Dennis's explicitly-
+    # requested 1-hour spacing the moment two deploys land within an hour of
+    # each other. Tracked independently of APScheduler's own state (which is
+    # in-memory and doesn't survive a restart anyway) via a StoreConfig
+    # timestamp, so this self-regulates no matter how often the scheduler
+    # actually invokes it.
+    last_post_at = get_config("instagram_catchup_last_post_at", default="")
+    if last_post_at:
+        try:
+            elapsed = datetime.utcnow() - datetime.fromisoformat(last_post_at)
+            if elapsed < timedelta(minutes=55):
+                print(f"[Instagram Catchup] Skipping — only {elapsed} since last post, waiting for ~1h spacing")
+                return
+        except Exception:
+            pass
 
     fail_key = f"instagram_catchup_fail_count_{index}"
     fail_count = int(get_config(fail_key, default="0") or 0)
@@ -1126,6 +1148,7 @@ def run_instagram_catchup_queue():
     if result.get("success"):
         set_config("instagram_catchup_index", str(index + 1))
         set_config(fail_key, "0")
+        set_config("instagram_catchup_last_post_at", datetime.utcnow().isoformat())
         print(f"[Instagram Catchup] ✅ Item {index+1}/{len(INSTAGRAM_CATCHUP_QUEUE)} posted — product {item['product_id']}")
     else:
         fail_count += 1
@@ -1151,3 +1174,4 @@ def run_instagram_catchup_queue():
                 print(f"[Instagram Catchup] Failed to send skip-alert email: {e}")
             set_config("instagram_catchup_index", str(index + 1))
             set_config(fail_key, "0")
+            set_config("instagram_catchup_last_post_at", datetime.utcnow().isoformat())
