@@ -49,6 +49,8 @@ def create_checkout_session(
         raise HTTPException(status_code=400, detail="Cart is empty")
 
     line_items = []
+    content_ids = []
+    order_value = 0.0
     for item in items:
         product = session.get(Product, item.product_id)
         if product:
@@ -63,14 +65,21 @@ def create_checkout_session(
                 },
                 "quantity": item.quantity,
             })
+            content_ids.append(str(product.id))
+            order_value += product.final_price * item.quantity
 
     frontend_url = "https://deniskleindkm-droid.github.io/api-project"
+    # value/currency/content_ids let the success page fire an accurate Meta
+    # Pixel Purchase event (see docs/index.html) without a second lookup —
+    # the total is already known here, before Stripe redirects the customer
+    # away from our own domain.
+    success_params = f"payment=success&value={order_value:.2f}&currency=usd&content_ids={','.join(content_ids)}"
 
     checkout_session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         line_items=line_items,
         mode="payment",
-        success_url=f"{frontend_url}?payment=success",
+        success_url=f"{frontend_url}?{success_params}",
         cancel_url=f"{frontend_url}?payment=cancelled",
         customer_email=user_email,
         metadata={
@@ -122,6 +131,8 @@ def create_guest_checkout_session(
 
     line_items = []
     items_meta = []
+    content_ids = []
+    order_value = 0.0
     for item in request.items:
         product = session.get(Product, item.product_id)
         if not product or not product.is_active or not product.is_published:
@@ -155,12 +166,20 @@ def create_guest_checkout_session(
             "selected_option_id": item.selected_option_id,
             "variant_id": item.variant_id,
         })
+        content_ids.append(str(product.id))
+        order_value += product.final_price * item.quantity
+
+    # value/currency/content_ids let the success page fire an accurate Meta
+    # Pixel Purchase event (see docs/index.html) without a second lookup —
+    # the total is already known here, before Stripe redirects the customer
+    # away from our own domain.
+    success_params = f"payment=success&value={order_value:.2f}&currency=usd&content_ids={','.join(content_ids)}"
 
     checkout_session = stripe.checkout.Session.create(
         payment_method_types=["card"],
         line_items=line_items,
         mode="payment",
-        success_url="https://mikisi.co/?payment=success",
+        success_url=f"https://mikisi.co/?{success_params}",
         cancel_url="https://mikisi.co/",
         customer_email=request.email,
         metadata={

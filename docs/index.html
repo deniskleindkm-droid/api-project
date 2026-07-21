@@ -18,6 +18,22 @@
   if(m) history.replaceState(null, '', decodeURIComponent(m[1]));
 })();
 </script>
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window,document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '27057443190573495');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=27057443190573495&ev=PageView&noscript=1"/></noscript>
+<!-- End Meta Pixel Code -->
 <!-- Performance: preconnect to external origins so DNS+TLS is done before first request -->
 <link rel="preconnect" href="https://api-project-production-d424.up.railway.app" crossorigin/>
 <link rel="preconnect" href="https://silverbene.com"/>
@@ -1510,6 +1526,18 @@ window.onload = async()=>{
   if(p.get('payment')==='success'){
     if(!token){document.getElementById('guest-confirm-modal').classList.add('open');}
     else{document.getElementById('success-banner').classList.add('show');setTimeout(()=>document.getElementById('success-banner').classList.remove('show'),10000);}
+    // value/content_ids come from the Stripe success_url itself (see
+    // payments.py's create-checkout/guest-checkout) -- the order total is
+    // already known server-side before the redirect, so no extra lookup is
+    // needed here. Guarded so a page reload on the same URL (or someone
+    // revisiting a bookmarked success link) doesn't refire Purchase --
+    // eventID dedupes against sessionStorage per this browser tab.
+    const _purchaseVal=p.get('value');
+    if(typeof fbq==='function' && _purchaseVal && sessionStorage.getItem('mikisi_purchase_fired')!==window.location.search){
+      const _ids=(p.get('content_ids')||'').split(',').filter(Boolean);
+      fbq('track','Purchase',{content_ids:_ids,content_type:'product',value:parseFloat(_purchaseVal),currency:(p.get('currency')||'USD').toUpperCase()});
+      sessionStorage.setItem('mikisi_purchase_fired', window.location.search);
+    }
   }
   const prodMatch = window.location.pathname.match(/^\/products\/(\d+)$/);
   // ?variant_id= (the internal ProductVariant id) is preferred; ?option_id=
@@ -2150,6 +2178,12 @@ async function openPP(id, presetVariantId=null){
   document.getElementById('pp-price').textContent=`$${p.final_price.toFixed(2)}`;
   document.getElementById('pp-orig').textContent=p.original_price>p.final_price?`$${p.original_price.toFixed(2)}`:'';
   document.getElementById('pp-save').textContent=p.original_price>p.final_price?`Save $${(p.original_price-p.final_price).toFixed(2)}`:'';
+  // content_ids uses the plain product id (== the catalog's item_group_id
+  // for any multi-variant product, see meta_feed.py) rather than a specific
+  // variant row — Meta's dynamic/catalog ads match ViewContent against
+  // item_group_id for aggregated products, so this is the correct id to
+  // send even before a specific size/color is picked.
+  if(typeof fbq==='function') fbq('track','ViewContent',{content_ids:[String(p.id)],content_type:'product',content_name:p.name,content_category:p.category,value:p.final_price,currency:'USD'});
   // Fetch per-variant prices — update display when customer changes size/color.
   // Capture product ID so a stale fetch from a previously opened panel cannot
   // overwrite prices for a different product (race condition guard).
@@ -2836,6 +2870,10 @@ function setGuestCart(items){sessionStorage.setItem('mikisi_guest_cart',JSON.str
 // through to checkout going forward — optionId (Silverbene's own id) is kept
 // alongside for backward compat during the transition (see ppSelectedVariantId).
 async function addToCart(productId, name, size=null, color=null, optionId=null, variantId=null){
+  if(typeof fbq==='function'){
+    const _p=allProducts.find(x=>x.id===productId);
+    fbq('track','AddToCart',{content_ids:[String(productId)],content_type:'product',content_name:_p?_p.name:name,value:_p?_p.final_price:0,currency:'USD'});
+  }
   if(!token){
     const variantNote=size||color?` · ${[color,size].filter(Boolean).join(', ')}`:'';
     const cart=getGuestCart();
@@ -2971,6 +3009,15 @@ function openCheckout(){
   if(!cartItems.length){showToast('Your cart is empty');return;}
   document.getElementById('cart-sidebar').classList.remove('open');
   document.getElementById('cart-overlay').classList.remove('open');
+  if(typeof fbq==='function'){
+    fbq('track','InitiateCheckout',{
+      content_ids:cartItems.map(i=>String(i.product_id)),
+      content_type:'product',
+      num_items:cartItems.reduce((s,i)=>s+i.quantity,0),
+      value:cartItems.reduce((s,i)=>s+i.subtotal,0),
+      currency:'USD'
+    });
+  }
   if(!token){document.getElementById('checkout-entry-modal').classList.add('open');return;}
   _openCheckoutForm();
 }
