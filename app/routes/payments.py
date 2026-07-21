@@ -7,6 +7,7 @@ from app.database import get_session, engine
 from app.auth_utils import verify_token
 from app.routes.auth import oauth2_scheme
 from pydantic import BaseModel
+from typing import Optional
 import stripe
 import os
 import json
@@ -85,10 +86,22 @@ def create_checkout_session(
 class GuestCartItem(BaseModel):
     product_id: int
     quantity: int = 1
-    selected_size: str = None
-    selected_color: str = None
-    selected_option_id: str = None
-    variant_id: int = None
+    # Optional[...] is required, not just the "= None" default — Pydantic v2
+    # validates an explicit JSON `null` against the declared type, and a bare
+    # `str`/`int` annotation rejects it even though the default is None. The
+    # frontend (docs/index.html, docs/checkout.html) always sends these keys
+    # explicitly as `null` when a product has no color/size chip or hasn't
+    # been backfilled into ProductVariant yet — found live 2026-07-21: any
+    # guest checkout for a product with no selected_color (e.g. a single-
+    # finish ring, no color chip at all) got a silent 422 here, which the
+    # frontend's placeOrder() displayed as the literal text "[object Object]"
+    # (data.detail is FastAPI's validation-error array, not a string) —
+    # looked exactly like "Pay Securely" doing nothing no matter how many
+    # times it was clicked.
+    selected_size: Optional[str] = None
+    selected_color: Optional[str] = None
+    selected_option_id: Optional[str] = None
+    variant_id: Optional[int] = None
 
 class GuestCheckoutRequest(BaseModel):
     items: list[GuestCartItem]
