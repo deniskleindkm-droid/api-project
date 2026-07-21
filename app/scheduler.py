@@ -4,7 +4,36 @@ load_dotenv()
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
-from datetime import datetime
+from datetime import datetime, timedelta
+
+
+def _recently_ran(job_id: str, min_minutes: float) -> bool:
+    """
+    True if job_id completed within the last min_minutes. Several jobs below
+    are registered with next_run_time=utcnow() so they don't get perpetually
+    reset if the host restarts more often than their real interval (see each
+    job's registration comment) -- but that means EVERY deploy re-fires them
+    immediately, regardless of how recently they last actually ran. Found
+    live 2026-07-21: with 10+ deploys in one session, this silently re-ran
+    the full Silverbene-catalog stock sync and bulk-import pipeline (real
+    Silverbene + Anthropic API calls) on every single one, burning through
+    both APIs' usage far faster than the real "every N hours" cadence
+    implies. This is the shared guard -- call at the top of any job that
+    shouldn't just blindly re-run because the process restarted.
+    """
+    from app.agents.store_config import get_config
+    last = get_config(f"_last_run_{job_id}", default="")
+    if not last:
+        return False
+    try:
+        return datetime.utcnow() - datetime.fromisoformat(last) < timedelta(minutes=min_minutes)
+    except Exception:
+        return False
+
+
+def _mark_ran(job_id: str):
+    from app.agents.store_config import set_config
+    set_config(f"_last_run_{job_id}", datetime.utcnow().isoformat())
 
 
 def run_market_check():
@@ -85,9 +114,13 @@ def _heartbeat(agent_name: str, note: str = ""):
 
 def run_silverbene_stock_sync():
     """Delegates to the dedicated Silverbene Stock Agent."""
+    if _recently_ran("silverbene_stock_sync", min_minutes=300):
+        print("[Scheduler] Skipping silverbene_stock_sync — ran recently (deploy re-fire guard)")
+        return
     try:
         from app.agents.silverbene_stock_agent import run_silverbene_stock_agent
         run_silverbene_stock_agent()
+        _mark_ran("silverbene_stock_sync")
     except Exception as e:
         print(f"[Scheduler] Silverbene stock agent error: {e}")
 
@@ -297,33 +330,53 @@ def run_analytics_check():
 
 
 def run_bulk_import():
+    # Redundant with bulk_import_agent.py's own concurrency lock (which only
+    # guards against overlap), but that lock clears as soon as one run
+    # finishes -- this stops a second, non-overlapping full run from firing
+    # on a deploy that lands minutes after the last one completed.
+    if _recently_ran("bulk_import", min_minutes=1200):
+        print("[Scheduler] Skipping bulk_import — ran recently (deploy re-fire guard)")
+        return
     try:
         from app.agents.bulk_import_agent import run_bulk_import_agent
         run_bulk_import_agent()
+        _mark_ran("bulk_import")
     except Exception as e:
         print(f"[Scheduler] Bulk import error: {e}")
 
 
 def run_specs_backfill():
+    if _recently_ran("specs_backfill", min_minutes=1200):
+        print("[Scheduler] Skipping specs_backfill — ran recently (deploy re-fire guard)")
+        return
     try:
         from app.agents.specs_backfill_agent import run_specs_backfill
         run_specs_backfill()
+        _mark_ran("specs_backfill")
     except Exception as e:
         print(f"[Scheduler] Specs backfill error: {e}")
 
 
 def run_catalog_audit():
+    if _recently_ran("catalog_audit", min_minutes=1200):
+        print("[Scheduler] Skipping catalog_audit — ran recently (deploy re-fire guard)")
+        return
     try:
         from app.agents.catalog_audit_agent import run_catalog_audit as _audit
         _audit()
+        _mark_ran("catalog_audit")
     except Exception as e:
         print(f"[Scheduler] Catalog audit error: {e}")
 
 
 def run_db_cleanup():
+    if _recently_ran("db_cleanup", min_minutes=1200):
+        print("[Scheduler] Skipping db_cleanup — ran recently (deploy re-fire guard)")
+        return
     try:
         from app.agents.db_cleanup_agent import run_db_cleanup as _cleanup
         _cleanup()
+        _mark_ran("db_cleanup")
     except Exception as e:
         print(f"[Scheduler] DB cleanup error: {e}")
 
@@ -333,6 +386,9 @@ def run_balance_check():
     Daily check: if Silverbene store credit drops below $50, email Dennis.
     Runs at 09:05 UTC (just after the daily digest).
     """
+    if _recently_ran("balance_check", min_minutes=1200):
+        print("[Scheduler] Skipping balance_check — ran recently (deploy re-fire guard)")
+        return
     try:
         from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
         from app.agents.email_partner import send_email
@@ -340,6 +396,7 @@ def run_balance_check():
 
         sb = SilverbeneAdapter()
         balance = sb.check_balance()
+        _mark_ran("balance_check")
 
         if balance < 0:
             print("[Balance Check] Could not retrieve Silverbene balance — endpoint may not exist yet")
@@ -404,10 +461,13 @@ def run_instagram_engagement_pull():
 
 
 def run_order_recovery():
+    if _recently_ran("order_recovery", min_minutes=25):
+        return
     try:
         from app.agents.order_recovery_agent import run_order_recovery_agent
         run_order_recovery_agent()
         _heartbeat("order_recovery_agent", "order recovery cycle")
+        _mark_ran("order_recovery")
     except Exception as e:
         print(f"[Scheduler] Order recovery error: {e}")
 
