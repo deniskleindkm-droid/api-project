@@ -6,6 +6,18 @@
 <meta name="p:domain_verify" content="c1f64f6b15e635a2f8455b584182cbb3"/>
 <meta name="facebook-domain-verification" content="mptnv8dbnajp95fqgnfcebpiit1qrm"/>
 <title>Mikisi — Real Silver, Rare Finds</title>
+<script>
+// Restores the real path+query when arriving via docs/404.html's redirect
+// (GitHub Pages has no server-side routing for paths like /products/123 —
+// see docs/404.html). Must run before anything else reads
+// window.location.pathname/search — in particular window.onload's
+// prodMatch check further down — so a cold visit to /products/123 behaves
+// identically to how it always should have.
+(function(){
+  var m = /[?&]p=([^&]*)/.exec(window.location.search);
+  if(m) history.replaceState(null, '', decodeURIComponent(m[1]));
+})();
+</script>
 <!-- Performance: preconnect to external origins so DNS+TLS is done before first request -->
 <link rel="preconnect" href="https://api-project-production-d424.up.railway.app" crossorigin/>
 <link rel="preconnect" href="https://silverbene.com"/>

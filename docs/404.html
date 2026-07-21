@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Mikisi</title>
+<script>
+// GitHub Pages has no server-side routing — any path that isn't a real file
+// (e.g. Meta/Instagram catalog links and Google Shopping links of the form
+// /products/123?variant_id=456, built in app/routes/meta_feed.py) lands
+// here with a real 404 instead of the product page. Found live 2026-07-21:
+// this was silently breaking every Instagram/Facebook Shop tap-through.
+// Redirect to index.html with the original path+query+hash stashed in
+// ?p=..., which index.html's own restore script (top of its <head>) reads
+// via history.replaceState before any of its path-based routing
+// (window.onload's prodMatch check, ?variant_id=, etc.) ever runs.
+var loc = window.location;
+loc.replace('/?p=' + encodeURIComponent(loc.pathname + loc.search) + loc.hash);
+</script>
+</head>
+<body></body>
+</html>
