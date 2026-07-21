@@ -6,7 +6,7 @@ import json
 import re
 import time
 import anthropic
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.agents.store_config import get_config
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
@@ -893,6 +893,27 @@ def run_bulk_import_agent(max_per_collection: int = None):
     Batch rewrites with ARIA using Haiku (cheap).
     Imports accepted products with Mikisi identity.
     """
+    # Concurrency guard — found live 2026-07-21: this job's scheduler
+    # registration uses next_run_time=utcnow() (see scheduler.py) so it
+    # re-fires on every app restart, not just once daily. Combined with a
+    # manual trigger via /agents/run-bulk-import, three overlapping runs
+    # stacked up at once, all competing for the same Anthropic/Silverbene
+    # rate limits and taking far longer than any single run would (10+
+    # minutes with none completing, vs. ~5 min normally) — not a hang, just
+    # severe contention. Refuse to start a second run while one is still
+    # in flight; a stale lock (from a genuine crash) expires after 30
+    # minutes so this can never permanently wedge the job.
+    from app.agents.store_config import get_config as _gc, set_config as _sc
+    _lock = _gc("bulk_import_lock_started_at", default="")
+    if _lock:
+        try:
+            if datetime.utcnow() - datetime.fromisoformat(_lock) < timedelta(minutes=30):
+                print(f"[Bulk Import] Skipping — another run already in progress (started {_lock})")
+                return
+        except Exception:
+            pass
+    _sc("bulk_import_lock_started_at", datetime.utcnow().isoformat())
+
     print(f"\n[Bulk Import] 🚀 Starting bulk import — {datetime.utcnow()}")
 
     # Write start event — command center tracks this
@@ -1019,6 +1040,8 @@ def run_bulk_import_agent(max_per_collection: int = None):
 
     except Exception as e:
         print(f"[Bulk Import] ARIA reporting error: {e}")
+
+    _sc("bulk_import_lock_started_at", "")
 
     return {
         "total_imported": total_imported,
