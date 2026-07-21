@@ -1390,6 +1390,7 @@ let ppSelectedOptionId = null; // real Silverbene option_id resolved from /varia
 let ppSelectedVariantId = null; // the internal ProductVariant id — the primary field carried to checkout going forward
 let previewKey = null; // set from ?key= when opened via an admin preview link — lets an unpublished product's panel load exactly like a customer would see it once published
 let ppInvalidSelection = false; // true when the active chip(s) match no priced option — blocks Add to Cart instead of silently substituting a different variant
+let ppReadyToOrder = false; // true only once every real chip axis has been actively chosen and resolved to a priced variant — no preselection means Add to Cart stays disabled (silently, no error note) until this is true
 let ppSelectedStone = null;
 let ppSelectedWidth = null;
 let ppOpening = false; // guard — prevents double-click opening two panels
@@ -2309,14 +2310,14 @@ async function openPP(id, presetVariantId=null){
           document.getElementById('pp-colors-wrap').style.display='block';
           document.querySelector('#pp-colors-wrap .pp-section-title').textContent='Metal Finish';
           document.getElementById('pp-color-chips').innerHTML=uniqueMetals.map((m,i)=>
-            `<button class="pp-chip ${i===0?'active':''}" data-raw="${m}" onclick="selectChip(this,'color')">${COLOR_LABEL[m.toLowerCase().trim()]||m}</button>`
+            `<button class="pp-chip" data-raw="${m}" onclick="selectChip(this,'color')">${COLOR_LABEL[m.toLowerCase().trim()]||m}</button>`
           ).join('');
         }else document.getElementById('pp-colors-wrap').style.display='none';
         // Chain Width (only show if multiple options)
         if(uniqueWidths.length>=2){
           document.getElementById('pp-width-wrap').style.display='block';
           document.getElementById('pp-width-chips').innerHTML=uniqueWidths.map((w,i)=>
-            `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'width')">${w}</button>`
+            `<button class="pp-chip" onclick="selectChip(this,'width')">${w}</button>`
           ).join('');
         }else document.getElementById('pp-width-wrap').style.display='none';
         // Promote lengths into size section (converted to inches)
@@ -2328,14 +2329,14 @@ async function openPP(id, presetVariantId=null){
         document.getElementById('pp-colors-wrap').style.display='block';
         document.querySelector('#pp-colors-wrap .pp-section-title').textContent='Style';
         document.getElementById('pp-color-chips').innerHTML=part1.map((v,i)=>
-          `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'color')">${v}</button>`
+          `<button class="pp-chip" onclick="selectChip(this,'color')">${v}</button>`
         ).join('');
         document.getElementById('pp-width-wrap').style.display='none';
         if(part2.length>=2){
           document.getElementById('pp-stone-wrap').style.display='block';
           document.querySelector('#pp-stone-wrap .pp-section-title').textContent='Color';
           document.getElementById('pp-stone-chips').innerHTML=part2.map((v,i)=>
-            `<button class="pp-chip ${i===0?'active':''}" data-raw="${v}" onclick="selectChip(this,'stone')">${COLOR_LABEL[v.toLowerCase().trim()]||v}</button>`
+            `<button class="pp-chip" data-raw="${v}" onclick="selectChip(this,'stone')">${COLOR_LABEL[v.toLowerCase().trim()]||v}</button>`
           ).join('');
           stones=[];  // prevent duplicate stone section below
         }
@@ -2346,7 +2347,7 @@ async function openPP(id, presetVariantId=null){
         document.querySelector('#pp-colors-wrap .pp-section-title').textContent=isAllMetal?'Metal Finish':'Color';
         document.getElementById('pp-color-chips').innerHTML=realChips.map((c,i)=>{
           const label=COLOR_LABEL[c.toLowerCase().trim()]||c;
-          return `<button class="pp-chip ${i===0?'active':''}" data-raw="${c}" onclick="selectChip(this,'color')">${label}</button>`;
+          return `<button class="pp-chip" data-raw="${c}" onclick="selectChip(this,'color')">${label}</button>`;
         }).join('');
         document.getElementById('pp-width-wrap').style.display='none';
       }
@@ -2373,7 +2374,7 @@ async function openPP(id, presetVariantId=null){
   if(stones.length>=2){
     document.getElementById('pp-stone-wrap').style.display='block';
     document.getElementById('pp-stone-chips').innerHTML=stones.map((s,i)=>
-      `<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'stone')">${s}</button>`
+      `<button class="pp-chip" onclick="selectChip(this,'stone')">${s}</button>`
     ).join('');
   }else document.getElementById('pp-stone-wrap').style.display='none';
 
@@ -2477,7 +2478,7 @@ async function openPP(id, presetVariantId=null){
     }else if((sizes.length>=2||showSingle)&&p.size_display_mode==='selector'){
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
-      document.getElementById('pp-size-chips').innerHTML=sizes.map((s,i)=>`<button class="pp-chip ${i===0?'active':''}" onclick="selectChip(this,'size')">${s}</button>`).join('');
+      document.getElementById('pp-size-chips').innerHTML=sizes.map((s,i)=>`<button class="pp-chip" onclick="selectChip(this,'size')">${s}</button>`).join('');
       ppHasSizeChips=true;
     }else if(sizes.length>=2||showSingle){
       // Backend ground truth (size_display_mode, computed in _size_display_meta
@@ -2498,9 +2499,13 @@ async function openPP(id, presetVariantId=null){
     }
   }
 
-  // ── Material — derive initial finish from product's first stored color value
-  //   (never read from DOM chips — stale chips from a previous product cause wrong finish)
-  {const firstRawColor=colors.length?colors[0]:null;
+  // ── Material — only assume a specific finish when there's no real color
+  //   choice to make (a single stored color, nothing to preselect). When
+  //   real color chips exist, show the neutral base material line until the
+  //   customer actually picks one — no preselection means no default finish
+  //   claim either.
+  {const hasRealColorChoice=document.getElementById('pp-colors-wrap').style.display!=='none';
+  const firstRawColor=(!hasRealColorChoice&&colors.length)?colors[0]:null;
   renderMaterials(chipToFinishLabel(firstRawColor));}
 
   // ── Stock status — reflects live Silverbene sync (auto-updates every 6h) ──
@@ -2549,29 +2554,25 @@ async function openPP(id, presetVariantId=null){
     },2000);
   };
 
-  // Reset variant selection for this product
-  // Open/adjustable rings have no real size chip, but still carry a size (e.g. "US5-8")
-  // into the cart/order so the "Color · Size" pairing isn't silently dropped.
-  ppSelectedSize  = sizes.length ? sizes[0] : ringAdjustableSize;
-  // Read display text of first chip (post-COLOR_LABEL rename) so cart receives friendly name
-  const _firstColorChip = document.querySelector('#pp-color-chips .pp-chip');
-  ppSelectedColor    = document.getElementById('pp-colors-wrap').style.display!=='none'
-    ? (_firstColorChip?.textContent?.trim()||null) : null;
-  ppSelectedColorRaw = document.getElementById('pp-colors-wrap').style.display!=='none'
-    ? (_firstColorChip?.dataset?.raw||ppSelectedColor) : null;
-  ppSelectedStone = stones.length ? stones[0] : null;
-  ppSelectedWidth = document.getElementById('pp-width-wrap').style.display!=='none'
-    ? (document.getElementById('pp-width-chips').querySelector('.pp-chip')?.textContent||null) : null;
+  // Reset variant selection for this product — no preselection: every real,
+  // clickable chip axis starts unchosen (null) so nothing gets silently
+  // resolved/priced/added-to-cart before the customer actively picks
+  // something themselves. Open/adjustable rings and other single-option
+  // products with no real size chip are the one exception — there's no
+  // choice to make there, so the descriptive size text (e.g. "US5-8") still
+  // populates for display/cart purposes, same as before.
+  ppSelectedSize  = ppHasSizeChips ? null : (sizes.length ? sizes[0] : ringAdjustableSize);
+  ppSelectedColor    = null;
+  ppSelectedColorRaw = null;
+  ppSelectedStone    = null;
+  ppSelectedWidth    = null;
   // Reset — resolved fresh by updateVariantPrice() once /variant-prices loads (or
   // immediately below if it's already cached from this product's own earlier fetch).
   ppSelectedOptionId = null;
   ppSelectedVariantId = null;
   ppInvalidSelection = false;
+  ppReadyToOrder = false;
   document.getElementById('pp-invalid-selection').style.display='none';
-
-  // Apply material + description for the initially-selected chip
-  const initChip=document.querySelector('#pp-color-chips .pp-chip.active');
-  if(initChip)applyVariantUI(initChip.textContent.trim());
 
   updatePPGallery();
   positionPPInline(id);
@@ -2637,8 +2638,14 @@ function updateAtcAvailability(){
   const noteEl=document.getElementById('pp-invalid-selection');
   if(!atcBtn||!noteEl||!ppCurrentProduct)return;
   if(!ppCurrentProduct.stock||ppCurrentProduct.stock===0)return;
-  atcBtn.disabled=ppInvalidSelection;
-  atcBtn.style.cursor=ppInvalidSelection?'default':'';
+  // Disabled whenever no real variant is resolved yet — either a genuine
+  // invalid combination (ppInvalidSelection, shows the red note) or simply
+  // an incomplete selection with no preselection to fall back on
+  // (!ppReadyToOrder, disabled silently — nothing was chosen wrong, the
+  // customer just hasn't finished choosing).
+  const blocked = ppInvalidSelection || !ppReadyToOrder;
+  atcBtn.disabled=blocked;
+  atcBtn.style.cursor=blocked?'default':'';
   noteEl.style.display=ppInvalidSelection?'block':'none';
 }
 
@@ -2752,53 +2759,58 @@ function updateVariantPrice(){
   // use below — must never diverge from those or this and Pass 4 would
   // disagree about what counts as "a real size selection."
   const realSizeActive = !!(ppHasSizeChips && backendHasSize && wantSize);
+  // Whether a real, clickable non-size chip group exists for this product at
+  // all (color/stone chips share pp-colors-wrap; width has its own wrap) —
+  // independent of whether the customer has actually clicked one yet. No
+  // preselection happens anymore (see openPP()'s reset block — every
+  // ppSelected* starts null instead of defaulting to the first chip), so
+  // wantParts being empty no longer implies "this axis was never a real
+  // choice" the way it used to when a default was always pre-filled. Each
+  // axis's own hasXChips flag is what tells the two apart now.
+  const hasColorChips = document.getElementById('pp-colors-wrap').style.display!=='none'
+    || document.getElementById('pp-width-wrap').style.display!=='none';
+
+  // A required axis (real chips exist) blocks matching entirely until the
+  // customer actively picks something on it — this is the actual fix for
+  // "no preselection": previously a compound product's un-chosen color axis
+  // silently fell back to "size only" (Pass 2/3 below, now removed), quietly
+  // resolving and pricing a color the customer never clicked. sizeSatisfied/
+  // colorSatisfied are true either when that axis isn't real for this
+  // product (nothing to choose) or when the customer has actively chosen on
+  // it — only once every real axis is satisfied do we attempt a match at all.
+  const sizeSatisfied  = !(ppHasSizeChips && backendHasSize) || realSizeActive;
+  const colorSatisfied = !hasColorChips || wantParts.length > 0;
+
   let match = null;
-  // Pass 1: exact size + every active selector
-  if(realSizeActive && wantParts.length) match = availablePrices.find(v=>v.size===wantSize && colorEq(v));
-  // Pass 2: size only — gated on wantParts being EMPTY. Without this guard,
-  // a two-axis product (size + color both actively selected) whose exact
-  // combination just got excluded above as unavailable would silently fall
-  // through to a same-size-wrong-color match instead of correctly failing —
-  // found live testing product 634 (Silver+10mm silently resolved to Yellow
-  // Gold+10mm). Only meant as a fallback when color was never a real axis
-  // for this product at all.
-  if(!match && realSizeActive && !wantParts.length) match = availablePrices.find(v=>v.size===wantSize);
-  // Pass 3: every active selector, any size — gated on realSizeActive
-  // (not raw wantSize) for the same reason: a decorative, non-chip-backed
-  // ppSelectedSize must never block this fallback from matching on color
-  // alone — found live on real necklaces (e.g. product 1012, an adjustable-
-  // length necklace with real color chips but no real size chip): raw
-  // wantSize was truthy from the decorative badge text, so this pass never
-  // ran, and the customer's real color selection was wrongly rejected as
-  // "unavailable" even though a matching priced option existed.
-  if(!match && wantParts.length && !realSizeActive) match = availablePrices.find(v=>colorEq(v));
-  // Pass 4: nothing REAL to select at all (no clickable size chip backed by
-  // an actual priced size attribute, no color/stone/width chip rendered for
-  // this product) — the single variant IS the only real choice, not a guess.
-  // Gated on ppHasSizeChips&&backendHasSize rather than wantSize's
-  // truthiness: an open/adjustable ring, a bangle-diameter product, or a
-  // single-option bracelet/necklace/anklet with a decorative "Adjustable
-  // X–Y" range chip all carry a synthetic display string in ppSelectedSize
-  // that was never meant to match a priced option, so treating it as a
-  // "selection" here would wrongly flag every one of those products as
-  // broken. Never fires when a REAL chip backed by real size data is active
-  // but matched nothing — that means a chip is showing as selected that
-  // doesn't correspond to any real, priced Silverbene option (a data bug),
-  // and silently substituting a different variant's price/option_id here
-  // would check the customer out with an item they never actually chose.
-  if(!match && !(ppHasSizeChips&&backendHasSize) && !wantParts.length) match = availablePrices[0];
+  if(sizeSatisfied && colorSatisfied){
+    if(realSizeActive && wantParts.length) match = availablePrices.find(v=>v.size===wantSize && colorEq(v));
+    else if(realSizeActive) match = availablePrices.find(v=>v.size===wantSize);
+    else if(wantParts.length) match = availablePrices.find(v=>colorEq(v));
+    // Neither axis is real for this product at all — the single variant IS
+    // the only real choice, not a guess (open/adjustable rings, bangle-
+    // diameter products, single-option bracelets/necklaces/anklets with a
+    // decorative "Adjustable X–Y" badge that was never a real priced size).
+    else match = availablePrices[0];
+  }
+
   if(!match){
     ppSelectedOptionId=null;
     ppSelectedVariantId=null;
-    const _realSelectionActive = (ppHasSizeChips&&backendHasSize&&wantSize) || wantParts.length;
+    ppReadyToOrder = false;
+    // Only a genuine dead combination (every required axis actively chosen,
+    // yet nothing priced matches) is a real error worth logging/showing —
+    // an incomplete selection (customer just hasn't clicked a required axis
+    // yet) is expected and silent, not a bug.
+    const _realSelectionActive = sizeSatisfied && colorSatisfied;
     if(_realSelectionActive){
       console.error(`[variant-price] no priced option matches the selected size/color for product ${ppCurrentProduct?.id} — size="${wantSize}" parts=${JSON.stringify(wantParts)}`);
     }
-    ppInvalidSelection = !!_realSelectionActive;
+    ppInvalidSelection = _realSelectionActive;
     updateAtcAvailability();
     return;
   }
   ppInvalidSelection = false;
+  ppReadyToOrder = true;
   updateAtcAvailability();
   // ppSelectedVariantId (the internal ProductVariant id) is the primary field
   // carried through to cart/checkout going forward — the backend never has to
