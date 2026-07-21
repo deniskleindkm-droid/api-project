@@ -17,7 +17,7 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 router = APIRouter()
 
 
-def _send_meta_capi_event(event_name: str, value: float, content_ids: list, email: str = None, event_id: str = None):
+def _send_meta_capi_event(event_name: str, value: float, content_ids: list, email: str = None, event_id: str = None, test_event_code: str = None):
     """
     Server-side Meta Conversions API call — complements the browser Pixel
     (docs/index.html) so the event still reaches Meta even when an ad
@@ -41,28 +41,37 @@ def _send_meta_capi_event(event_name: str, value: float, content_ids: list, emai
         user_data = {}
         if email:
             user_data["em"] = [hashlib.sha256(email.strip().lower().encode()).hexdigest()]
+        payload = {"data": [{
+            "event_name": event_name,
+            "event_time": int(time.time()),
+            "action_source": "website",
+            "event_id": event_id,
+            "user_data": user_data,
+            "custom_data": {
+                "value": round(value, 2),
+                "currency": "usd",
+                "content_ids": [str(c) for c in content_ids],
+                "content_type": "product",
+            },
+        }]}
+        # test_event_code routes this event to Events Manager's "Test Events"
+        # tab instead of real reporting — used by the /admin/meta-capi-test
+        # diagnostic endpoint (app/routes/agents.py) so a verification call
+        # never pollutes real Purchase data with a fake order.
+        if test_event_code:
+            payload["test_event_code"] = test_event_code
         resp = requests.post(
             f"https://graph.facebook.com/v18.0/{pixel_id}/events",
             params={"access_token": token},
-            json={"data": [{
-                "event_name": event_name,
-                "event_time": int(time.time()),
-                "action_source": "website",
-                "event_id": event_id,
-                "user_data": user_data,
-                "custom_data": {
-                    "value": round(value, 2),
-                    "currency": "usd",
-                    "content_ids": [str(c) for c in content_ids],
-                    "content_type": "product",
-                },
-            }]},
+            json=payload,
             timeout=10,
         )
         if not resp.ok:
             print(f"[Meta CAPI] {event_name} rejected: {resp.status_code} {resp.text[:300]}")
+        return resp
     except Exception as e:
         print(f"[Meta CAPI] Failed to send {event_name}: {e}")
+        return None
 
 
 def _option_id_in_variants(variants_json, option_id) -> bool:

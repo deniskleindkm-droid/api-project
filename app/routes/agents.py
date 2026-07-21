@@ -2290,6 +2290,37 @@ def meta_catalog_variants_test(product_id: int, master_key: str, session: Sessio
     }
 
 
+@router.post("/admin/meta-capi-test")
+def meta_capi_test(master_key: str, test_event_code: str):
+    """
+    Admin — sends one synthetic Purchase event through the server-side Meta
+    Conversions API path (_send_meta_capi_event in payments.py), tagged with
+    a Test Events code from Events Manager's "Test Events" tab so it shows
+    up there instantly instead of polluting real Purchase reporting with a
+    fake order. Used to verify META_PIXEL_ID/META_CONVERSIONS_API_TOKEN are
+    both live and correct right after they're set in Railway, without
+    waiting for (or faking) a real checkout.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    import time
+    from app.routes.payments import _send_meta_capi_event
+    resp = _send_meta_capi_event(
+        "Purchase", 1.00, ["TEST-PRODUCT"],
+        email="capi-test@mikisi.co",
+        event_id=f"capi-test-{int(time.time())}",
+        test_event_code=test_event_code,
+    )
+    if resp is None:
+        return {"sent": False, "reason": "META_PIXEL_ID or META_CONVERSIONS_API_TOKEN not set, or the request raised — check Railway logs for '[Meta CAPI]'"}
+    try:
+        body = resp.json()
+    except Exception:
+        body = resp.text[:500]
+    return {"sent": resp.ok, "status_code": resp.status_code, "response": body}
+
+
 @router.post("/admin/instagram/exchange-facebook-token")
 def exchange_facebook_token(short_lived_token: str, master_key: str):
     """
