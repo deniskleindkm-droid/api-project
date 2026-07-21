@@ -278,6 +278,7 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
     _require_published_or_preview(product, preview_key)
 
     from app.models.product_variant import ProductVariant
+    from app.agents.suppliers.silverbene_adapter import _normalize_size_for_match
     rows = session.exec(
         select(ProductVariant)
         .where(ProductVariant.product_id == product_id, ProductVariant.supplier_name == "Silverbene")
@@ -287,7 +288,19 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
         return [{
             "id":          r.id,
             "option_id":   r.supplier_option_id,
-            "size":        r.size,
+            # ProductVariant.size is stored RAW (e.g. "US 5") — same value
+            # p.sizes/the chip display list uses, on purpose (see
+            # _extract_variant_rows). The frontend's chip-selection state
+            # (docs/index.html's wantSize) is normalized via the same
+            # _normalize_size_for_match before comparison, so this endpoint
+            # must normalize here too or every prefixed size (ring "US N",
+            # "Size N") permanently fails to match its own chip — this was
+            # the fallback branch's behavior below all along (see `size =
+            # _normalize_size_for_match(val)`); the ProductVariant fast path
+            # skipped it, silently reintroducing the exact "invalid
+            # selection" bug already fixed twice on the old code path, for
+            # every one of the 125 products backfilled into this table.
+            "size":        _normalize_size_for_match(r.size) if r.size else r.size,
             "color":       r.color,
             "base_price":  round(r.base_price, 2),
             "final_price": r.final_price,
