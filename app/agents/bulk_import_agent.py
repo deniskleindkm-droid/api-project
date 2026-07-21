@@ -275,14 +275,14 @@ Products below are from Silverbene. Accept all jewelry. For each product do exac
 
 2. CLEAN THE NAME — strip supplier jargon, model codes, "women", "for her", "S925", sizes. Max 6 words. Keep the essence. ALWAYS keep the jewelry type word in the name (necklace, bracelet, ring, earring, anklet, ear cuff). If the original name has "pendant" but no "necklace", the cleaned name must end with "Pendant Necklace", not just "Pendant". For earrings — NEVER decide or swap between "stud" and "hoop" yourself: keep whichever word (if any) the raw name already uses. If the raw name says neither, don't invent one.
 
-3. IDENTIFY MATERIAL — read raw name and material field. Write exactly what it is: "925 Sterling Silver", "18k Gold Plated 925 Silver", "Rhodium Plated", etc. This shows on the product page — be accurate.
+3. IDENTIFY MATERIAL — the "Colors available" field for each product is ground truth, taken directly from the supplier's own real priced options — it is never wrong. Your material text must name ONLY the metal/finish words that literally appear there (e.g. "Silver", "Yellow Gold", "Rhodium", "Rose Gold"). Do not substitute, invent, or guess a different metal/finish word than what's actually listed — a product whose real colors are ["Silver", "Yellow Gold"] must say "silver or gold", never "rhodium or gold" or any other word not present in that list. If "Colors available" is "not specified" or a single non-metal value (e.g. a bare product name or stone description), the piece has ONE real material — usually 925 sterling silver plus whatever the raw name/material field states — and must NEVER be described as having a plating choice it doesn't have.
 
-4. WRITE MIKISI DESCRIPTION — exactly 2 sentences. Intimate, empowering, elegant. Mention the actual material in the first sentence. If it mentions "stud" or "hoop", it must match the SAME style word you used in the cleaned name — never the other one.
+4. WRITE MIKISI DESCRIPTION — exactly 2 sentences. Intimate, empowering, elegant. Mention the actual material in the first sentence, using only the same metal words as your IDENTIFY MATERIAL step above — the description can never claim a finish the material step didn't. If it mentions "stud" or "hoop", it must match the SAME style word you used in the cleaned name — never the other one.
 
 FINISH RULE — critical for multi-variant products:
-- When a product has more than one finish option (e.g. gold + rhodium, gold + white gold), ALWAYS frame them as a customer choice: "available in 18K gold or rhodium" / "your choice of gold or rhodium plating".
+- When a product has more than one REAL finish option (per "Colors available" — e.g. Silver + Yellow Gold), ALWAYS frame them as a customer choice using those exact metal names: "available in silver or gold" / "your choice of silver or gold plating".
 - NEVER write both finishes as if simultaneously applied to one piece — never "rhodium-plated 18K gold" or "gold and rhodium finish". One physical piece has ONE finish; the customer chooses which.
-- If only one finish exists, simply state it: "rhodium-plated 925 sterling silver".
+- If only one real finish exists, simply state it using its real name — never frame a single-option product as if it offers a choice, and never mention a metal/finish word that isn't backed by "Colors available".
 
 PRODUCTS:
 {product_list}
