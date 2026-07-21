@@ -20,13 +20,24 @@ ENDPOINT_STORE_CREDIT      = "/api/dropshipping/store_credit"           # GET �
 # Search keywords per Mikisi collection
 CATEGORY_KEYWORDS = {
     "Rings":     ["ring", "925 ring", "adjustable ring", "silver statement ring",
-                  "sterling silver band ring", "925 silver gemstone ring", "women ring size"],
-    "Necklaces": ["necklace", "pendant", "chain", "lariat", "choker", "collar"],
+                  "sterling silver band ring", "925 silver gemstone ring", "women ring size",
+                  "moissanite ring", "cubic zirconia ring", "eternity ring", "cluster ring",
+                  "halo ring", "promise ring", "toe ring", "midi ring", "signet ring"],
+    "Necklaces": ["necklace", "pendant", "chain", "lariat", "choker", "collar",
+                  "layering necklace", "station necklace", "herringbone necklace",
+                  "box chain necklace", "cuban link necklace", "moissanite necklace",
+                  "initial necklace", "charm necklace"],
     "Bracelets": ["bracelet", "chain bracelet", "link bracelet", "tennis bracelet",
-                  "bangle", "bangle bracelet", "open bangle"],
-    "Earrings":  ["earring", "stud earring", "drop earring"],
-    "Anklets":   ["anklet"],
-    "Ear Cuffs": ["ear cuff", "cartilage earring", "no piercing ear"],
+                  "bangle", "bangle bracelet", "open bangle", "charm bracelet",
+                  "cuff bracelet", "wrap bracelet", "beaded bracelet", "moissanite bracelet",
+                  "herringbone bracelet", "cuban link bracelet"],
+    "Earrings":  ["earring", "stud earring", "drop earring", "hoop earring", "huggie earring",
+                  "dangle earring", "climber earring", "threader earring", "moissanite earring",
+                  "cubic zirconia earring", "cluster earring"],
+    "Anklets":   ["anklet", "ankle bracelet", "beaded anklet", "chain anklet",
+                  "charm anklet", "adjustable anklet"],
+    "Ear Cuffs": ["ear cuff", "cartilage earring", "no piercing ear",
+                  "conch cuff", "helix cuff", "wrap ear cuff"],
 }
 
 # Values Silverbene puts in the Color attribute that are actually product-type descriptors.
@@ -398,6 +409,75 @@ class SilverbeneAdapter(SupplierAdapter):
                 break
 
         print(f"[Silverbene] search '{keyword}': {len(result)} products across date windows")
+        return result
+
+    def browse_all(self, months_back: int = 8, limit: int = 400) -> list:
+        """
+        Keyword-less browse across recent date windows — returns whatever
+        Silverbene added in that span regardless of category, deduplicated
+        by SKU. Confirmed live (2026-07-21, /silverbene/ping): the SAME
+        2-month window returned 63 products with no keyword filter vs. 40
+        for the keyword "ring" alone — narrow per-category keyword lists
+        (CATEGORY_KEYWORDS) miss a real chunk of the catalog whose raw
+        title just never happens to contain one of our guessed phrases.
+        This is the "catch everything, sort it out after" counterpart to
+        search_by_category() — callers classify each result into a Mikisi
+        collection afterward (see bulk_import_agent.py's run_browse_import,
+        which reuses batch_rewrite_products()'s existing "VERIFY COLLECTION"
+        step for this instead of guessing here).
+        Recent-only (months_back, not the full 3-year history
+        search_by_category() walks) on purpose — this exists specifically to
+        catch NEW arrivals Silverbene adds on an ongoing basis, not to
+        re-mine years-old inventory the keyword passes have already found.
+        """
+        from datetime import datetime
+        result = []
+        seen = set()
+
+        # Same window-walking arithmetic as search() (proven correct there),
+        # just anchored months_back from now instead of a fixed 3 years.
+        now = datetime.utcnow()
+        start_months_total = now.year * 12 + (now.month - 1) - months_back
+        year, month = start_months_total // 12, start_months_total % 12 + 1
+        windows = []
+        while (year, month) <= (now.year, now.month):
+            if month + 2 <= 12:
+                end_month, end_year = month + 2, year
+            else:
+                end_month, end_year = (month + 2) % 12 or 12, year + 1
+            windows.append((f"{year}-{month:02d}", f"{end_year}-{end_month:02d}"))
+            month += 2
+            if month > 12:
+                month -= 12
+                year += 1
+
+        for start_str, end_str in reversed(windows):  # newest first
+            resp = self._get(ENDPOINT_PRODUCT_BY_DATE, {
+                "start_date": start_str,
+                "end_date": end_str,
+                "is_really_stock": 0,
+            })
+
+            if not isinstance(resp, dict) or resp.get("code") != 0:
+                continue
+
+            data = resp.get("data", {})
+            items = data.get("data", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                sku = item.get("sku", "")
+                if sku and sku not in seen:
+                    seen.add(sku)
+                    result.append(self._to_standard(item, category=""))
+                if len(result) >= limit:
+                    break
+
+            if len(result) >= limit:
+                break
+
+        print(f"[Silverbene] browse_all: {len(result)} products across {len(windows)} windows ({months_back} months back)")
         return result
 
     def search_by_category(self, category_name: str, limit: int = 50) -> list:

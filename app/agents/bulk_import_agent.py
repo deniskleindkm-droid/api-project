@@ -240,6 +240,27 @@ COLLECTION_STRATEGIES = {
 }
 
 
+def _drop_already_imported(candidates: list) -> list:
+    """
+    Filters out any candidate whose supplier_product_id already exists as a
+    Product.cj_product_id — cheap DB membership check, run before the
+    expensive LLM rewrite step so we never pay for rewriting a duplicate we
+    were always going to discard at save time anyway.
+    """
+    from sqlmodel import Session, select
+    from app.database import engine
+    from app.models.product import Product
+
+    ids = [c["supplier_product_id"] for c in candidates if c.get("supplier_product_id")]
+    if not ids:
+        return candidates
+    with Session(engine) as session:
+        existing = set(session.exec(
+            select(Product.cj_product_id).where(Product.cj_product_id.in_(ids))
+        ).all())
+    return [c for c in candidates if c.get("supplier_product_id") not in existing]
+
+
 # ============================================================
 # BATCH REWRITER
 # Sends 10 products per API call — 10x cheaper than 1 per call
@@ -505,6 +526,18 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
     unique = unique[:max_products]
     print(f"[Bulk Import] {len(unique)} unique products fetched from Silverbene for {collection_name}")
 
+    # Drop anything already in the store BEFORE paying for an LLM rewrite —
+    # previously this only happened at save time (add_product_to_store's
+    # "already_exists" return), which silently wasted a full ARIA rewrite
+    # call on every duplicate candidate every single run. Found live
+    # 2026-07-21: with 696 products already imported, most keyword-search
+    # hits across these 6 collections are re-finding the same already-owned
+    # SKUs — this was invisible in the reported imported/rejected counts
+    # (neither bucket counts "already_exists"), which is why "0 imported"
+    # kept showing even on runs that genuinely found real candidates.
+    unique = _drop_already_imported(unique)
+    print(f"[Bulk Import] {len(unique)} genuinely new (not already in store) for {collection_name}")
+
     # ── PHASE 2 & 3: Silverbene pass-through ──────────────────
     # Silverbene is a vetted fine jewelry supplier — all products are accepted.
     # No hard scoring rejections. Only skip products with no price or no images.
@@ -663,6 +696,192 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
 
 
 # ============================================================
+# BROWSE IMPORT — catch what per-category keyword search misses
+# ============================================================
+
+_UNSORTED_SENTINEL = "Unsorted"  # never a real Mikisi collection — guarantees
+# batch_rewrite_products()'s "VERIFY COLLECTION" correction step always fires,
+# since aria_collection (a real category) can never equal this on purpose.
+
+
+def run_browse_import(months_back: int = 8, limit: int = 300) -> dict:
+    """
+    Keyword-less counterpart to import_for_collection() — browses Silverbene's
+    recent additions directly (SilverbeneAdapter.browse_all()) instead of
+    guessing category keywords, then lets ARIA's existing "VERIFY COLLECTION"
+    rewrite step (batch_rewrite_products(), same as every other import path)
+    classify each result into a real Mikisi collection. Exists because the
+    per-category keyword search (CATEGORY_KEYWORDS) only finds products whose
+    raw title happens to contain one of a fixed set of guessed phrases —
+    confirmed live 2026-07-21 that a keyword-less browse of the same 2-month
+    window found 63 products vs. 40 for the keyword "ring" alone, meaning a
+    real chunk of Silverbene's catalog (including genuinely new arrivals) was
+    never being searched for at all.
+    """
+    from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+    from app.agents.jewelry_pricing import calculate_mikisi_price, detect_material
+    from app.agents.store_manager import add_product_to_store
+    from app.agents.store_config import get_config
+    import json as _json
+
+    print(f"\n[Bulk Import] 🔎 Browse import — last {months_back} months, up to {limit} candidates")
+    silverbene = SilverbeneAdapter()
+    raw_results = silverbene.browse_all(months_back=months_back, limit=limit)
+    print(f"[Bulk Import] Browse returned {len(raw_results)} raw candidates")
+
+    all_raw_products = []
+    for p in raw_results:
+        if not p.get("cost_price", 0):
+            continue
+        images = p.get("images", [])
+        if isinstance(images, str):
+            try:
+                images = json.loads(images)
+            except Exception:
+                images = [images] if images else []
+        image_url = p.get("image_url", images[0] if images else "")
+        all_raw_products.append({
+            "name": p.get("name", ""),
+            "category": _UNSORTED_SENTINEL,
+            "description": p.get("description", ""),
+            "image_url": image_url,
+            "images": images,
+            "supplier_product_id": p.get("supplier_product_id", ""),
+            "supplier_name": "Silverbene",
+            "supplier_rating": p.get("supplier_rating", 5.0),
+            "stock": p.get("stock", 999),
+            "raw_variants": p.get("variants", []),
+            "material": p.get("material", ""),
+            "sizes": p.get("sizes"),
+            "colors": p.get("colors"),
+            "specs": p.get("specs"),
+            "is_pendant_only": p.get("is_pendant_only", False),
+            "cost_price": p.get("cost_price", 0),
+        })
+
+    seen_ids, unique = set(), []
+    for p in all_raw_products:
+        sid = p["supplier_product_id"]
+        if sid and sid not in seen_ids:
+            seen_ids.add(sid)
+            unique.append(p)
+    unique = _drop_already_imported(unique)
+    print(f"[Bulk Import] {len(unique)} genuinely new (not already in store) from browse")
+
+    hard_rejected = 0
+    rejection_details = []
+    scored_candidates = []
+    for product in unique:
+        raw_variants = product.pop("raw_variants", [])
+        product["raw_variants_list"] = raw_variants
+        if not product.get("images") and not product.get("image_url"):
+            hard_rejected += 1
+            continue
+        product["_score"] = {
+            "score": 75, "auto_import": True, "needs_review": False, "rejected": False,
+            "rejection_reason": None, "quality_tier": "luxury",
+            "detected_metal": product.get("material", "925_silver"),
+            "detected_stone": None, "dimensions": {},
+        }
+        product["_needs_review"] = False
+        scored_candidates.append(product)
+
+    if not scored_candidates:
+        return {"collection": "Browse (all)", "imported": 0, "rejected": hard_rejected, "rejection_details": rejection_details}
+
+    batch_size = 10
+    rewrite_ready = []
+    for i in range(0, len(scored_candidates), batch_size):
+        batch = scored_candidates[i:i + batch_size]
+        rewritten = batch_rewrite_products(batch, _UNSORTED_SENTINEL, 0)
+        rewrite_ready.extend(rewritten)
+
+    imported = 0
+    for product in rewrite_ready:
+        try:
+            # Only ARIA's own real-collection correction can resolve a
+            # browse-mode item's collection — there is no valid "Unsorted"
+            # collection to fall back to. Reject rather than guess if it
+            # never got corrected (e.g. ARIA classified it as the defunct
+            # "Jewelry Sets" collection, which has no configured ID).
+            collection_id = product.get("_corrected_collection_id")
+            if not collection_id:
+                hard_rejected += 1
+                rejection_details.append(f"NO_COLLECTION_RESOLVED: {product.get('mikisi_name', product.get('name',''))[:50]}")
+                continue
+            resolved_category = product.get("category", _UNSORTED_SENTINEL)
+            if resolved_category == "Necklaces" and product.get("is_pendant_only"):
+                hard_rejected += 1
+                rejection_details.append(f"PENDANT_ONLY: {product['name'][:50]}")
+                continue
+
+            raw_variants = product.get("raw_variants_list", [])
+            cost_price = float(product["cost_price"])
+            material_key = detect_material(product.get("name", ""), product.get("_options", raw_variants))
+            pricing = calculate_mikisi_price(cost_price, material_key)
+            is_premium = material_key == "moissanite"
+            needs_review = cost_price > 40
+
+            cj_sku = ""
+            if raw_variants and isinstance(raw_variants, list):
+                first = raw_variants[0]
+                cj_sku = str(first.get("option_id", "")) or str(first.get("sku", ""))
+
+            product_data = {
+                "name": product["mikisi_name"],
+                "brand": "Mikisi",
+                "category": resolved_category,
+                "description": product["mikisi_description"] or product["name"],
+                "original_price": pricing["original_price"],
+                "discount_percent": pricing["discount_percent"],
+                "final_price": pricing["final_price"],
+                "image_url": product["image_url"],
+                "images": _json.dumps(product["images"]) if len(product.get("images", [])) > 1 else None,
+                "stock": product.get("stock", 999),
+                "shipping_days": 14,
+                "supplier_name": "Silverbene",
+                "supplier_url": "",
+                "cj_product_id": product["supplier_product_id"],
+                "cj_sku": cj_sku,
+                "collection_id": collection_id,
+                "variants": _json.dumps(raw_variants) if raw_variants else None,
+                "material": product.get("material") or "",
+                "sizes": _resolve_sizes(product.get("sizes"), resolved_category),
+                "colors": product.get("colors"),
+                "specs": product.get("specs") or None,
+                "silverbene_cost": cost_price,
+                "markup_used": pricing["markup_used"],
+                "shipping_cost": pricing["shipping_cost"],
+                "is_premium": is_premium,
+                "needs_review": needs_review,
+            }
+
+            p_obj, status = add_product_to_store(product_data)
+            if status in ("added", "price_updated"):
+                imported += 1
+                try:
+                    from app.agents.nervous_system import emit
+                    emit(
+                        signal_type="PRODUCT_NEEDS_REVIEW" if needs_review else "PRODUCT_IMPORTED",
+                        sender="bulk_import_agent",
+                        payload={
+                            "product_id": p_obj.id, "name": product["mikisi_name"],
+                            "collection_id": collection_id, "store_price": pricing["final_price"],
+                            "cost_price": cost_price, "material": material_key, "supplier": "Silverbene",
+                        },
+                        priority=5 if needs_review else 7,
+                    )
+                except Exception as e:
+                    print(f"[Bulk Import] Signal error: {e}")
+        except Exception as e:
+            print(f"[Bulk Import] Browse save error for {product.get('mikisi_name', '')}: {e}")
+
+    total_rejected = hard_rejected + (len(scored_candidates) - len(rewrite_ready))
+    print(f"[Bulk Import] ✅ Browse import — {imported} imported, {total_rejected} skipped")
+    return {"collection": "Browse (all)", "imported": imported, "rejected": total_rejected, "rejection_details": rejection_details}
+
+
+# ============================================================
 # MAIN BULK IMPORT AGENT
 # Runs every 24 hours from scheduler
 # ============================================================
@@ -708,6 +927,20 @@ def run_bulk_import_agent(max_per_collection: int = None):
         except Exception as e:
             print(f"[Bulk Import] Error on {collection_name}: {e}")
             results.append({"collection": collection_name, "imported": 0, "error": str(e)})
+
+    # Keyword-less browse pass — catches whatever the 6 fixed per-category
+    # keyword searches above miss (see run_browse_import's docstring for why
+    # this exists: confirmed live that most keyword-search hits were already-
+    # owned duplicates, silently invisible in imported/rejected counts, while
+    # a keyword-less browse of the same window found more raw candidates).
+    try:
+        browse_result = run_browse_import()
+        results.append(browse_result)
+        total_imported += browse_result.get("imported", 0)
+        total_rejected += browse_result.get("rejected", 0)
+    except Exception as e:
+        print(f"[Bulk Import] Error on browse import: {e}")
+        results.append({"collection": "Browse (all)", "imported": 0, "error": str(e)})
 
     print(f"\n[Bulk Import] ✅ Complete — {total_imported} imported, {total_rejected} rejected")
     print(f"[Bulk Import] Summary: {results}")

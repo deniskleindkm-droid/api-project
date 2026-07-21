@@ -138,12 +138,36 @@ def run_daily_digest():
                 .order_by(AgentMemory.id.desc()).limit(1)
             ).first()
 
+            # Bulk import runs in the last 24h — the daily digest previously
+            # had zero visibility into this agent's actual results at all
+            # (only last_product_imported's single product NAME, no counts).
+            # Found live 2026-07-21 when Dennis asked why ARIA always
+            # reported "0 imports" despite real imports sometimes happening —
+            # she genuinely had no real data to answer from.
+            import_runs_24h = session.exec(
+                select(AgentMemory)
+                .where(AgentMemory.agent_name == "bulk_import_agent", AgentMemory.memory_type == "import_run")
+                .where(AgentMemory.created_at >= datetime.utcnow() - timedelta(hours=24))
+                .order_by(AgentMemory.id.desc())
+            ).all()
+
         last_sync_ts = "never"
         if last_sync:
             try:
                 last_sync_ts = json.loads(last_sync.content).get("timestamp", "")[:16] + " UTC"
             except Exception:
                 pass
+
+        imports_24h = 0
+        rejects_24h = 0
+        for run in import_runs_24h:
+            try:
+                c = json.loads(run.content)
+                imports_24h += c.get("total_imported", 0)
+                rejects_24h += c.get("total_rejected", 0)
+            except Exception:
+                pass
+        import_summary = f"{imports_24h} imported, {rejects_24h} rejected across {len(import_runs_24h)} run(s)" if import_runs_24h else "no runs recorded"
 
         situation = (
             f"Daily Mikisi store digest for Dennis — {datetime.utcnow().strftime('%A %d %B %Y')}.\n\n"
@@ -155,7 +179,8 @@ def run_daily_digest():
             f"  Pinterest pinned: {pinned}/{total_active}\n"
             f"  Products flagged for review: {needs_review}\n"
             f"  Orders today: {orders_today}\n"
-            f"  Last stock sync: {last_sync_ts}\n\n"
+            f"  Last stock sync: {last_sync_ts}\n"
+            f"  Bulk imports (last 24h): {import_summary}\n\n"
             f"Write Dennis a clean, confident daily store digest. Mikisi tone — elegant and direct. "
             f"Highlight anything that needs attention. If everything looks good, say so clearly. "
             f"Keep it under 200 words."
