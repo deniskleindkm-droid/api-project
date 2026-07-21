@@ -1067,3 +1067,87 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
         print(f"[Instagram] ❌ Manual post failed: {result.get('reason')}")
 
     return {**preview, "dry_run": False, **result}
+
+
+# ── MANUAL CATCH-UP QUEUE (2026-07-21) ──
+# Dennis's exact 12-item posting order, re-approved 2026-07-21 after fixing
+# the real-variant-to-checkout bugs that made him delete the original posts
+# (see project memory: project_instagram_catchup_order, project_
+# guest_checkout_422_bug, project_size_chip_invalid_selection). He wants
+# these spaced ~1 hour apart and posted unattended — do not reorder or
+# substitute any item without his explicit say-so.
+INSTAGRAM_CATCHUP_QUEUE = [
+    {"product_id": 572,  "post_type": "product",  "image_count": 4},
+    {"product_id": 597,  "post_type": "product",  "image_count": 3},
+    {"product_id": 657,  "post_type": "product",  "image_count": 3},
+    {"product_id": 1121, "post_type": "campaign", "image_count": None},
+    {"product_id": 766,  "post_type": "product",  "image_count": 3},
+    {"product_id": 1085, "post_type": "product",  "image_count": 3},
+    {"product_id": 757,  "post_type": "product",  "image_count": 3},
+    {"product_id": 1012, "post_type": "campaign", "image_count": None},
+    {"product_id": 489,  "post_type": "product",  "image_count": 3},
+    {"product_id": 769,  "post_type": "product",  "image_count": 3},
+    {"product_id": 945,  "post_type": "product",  "image_count": 3},
+    {"product_id": 947,  "post_type": "campaign", "image_count": None},
+]
+
+
+def run_instagram_catchup_queue():
+    """
+    Posts the next not-yet-posted item in INSTAGRAM_CATCHUP_QUEUE, one per
+    call — scheduled hourly (see app/scheduler.py) so the 12 items go out
+    roughly 1 hour apart, unattended. Progress is tracked via StoreConfig
+    (instagram_catchup_index), the same pattern as instagram_post_counter —
+    deliberately NOT the generic InstagramPost history table, since that
+    could still contain stale rows from the original (since-deleted)
+    2026-07-19 batch and would make "already posted" checks ambiguous.
+    Runs entirely in-process (no HTTP call, no master_key needed) — this is
+    what lets it run unattended on a schedule without embedding any
+    credential in external cloud-agent config.
+    """
+    from app.agents.store_config import get_config, set_config
+    index = int(get_config("instagram_catchup_index", default="0") or 0)
+    if index >= len(INSTAGRAM_CATCHUP_QUEUE):
+        return  # queue complete — nothing to do, job just no-ops from here on
+
+    fail_key = f"instagram_catchup_fail_count_{index}"
+    fail_count = int(get_config(fail_key, default="0") or 0)
+
+    item = INSTAGRAM_CATCHUP_QUEUE[index]
+    print(f"[Instagram Catchup] Posting item {index+1}/{len(INSTAGRAM_CATCHUP_QUEUE)}: product {item['product_id']} ({item['post_type']})")
+
+    result = post_manually(
+        product_id=item["product_id"],
+        post_type=item["post_type"],
+        image_count=item["image_count"],
+        dry_run=False,
+    )
+
+    if result.get("success"):
+        set_config("instagram_catchup_index", str(index + 1))
+        set_config(fail_key, "0")
+        print(f"[Instagram Catchup] ✅ Item {index+1}/{len(INSTAGRAM_CATCHUP_QUEUE)} posted — product {item['product_id']}")
+    else:
+        fail_count += 1
+        set_config(fail_key, str(fail_count))
+        reason = result.get("reason", "unknown")
+        print(f"[Instagram Catchup] ❌ Item {index+1} failed (attempt {fail_count}): {reason}")
+        if fail_count >= 3:
+            # Give up on this item after 3 tries so the whole queue doesn't
+            # stall forever behind one bad product — alert Dennis since he
+            # explicitly won't be watching this run.
+            try:
+                from app.agents.email_partner import send_email
+                import os
+                dennis = os.getenv("DENNIS_EMAIL")
+                if dennis:
+                    send_email(
+                        to=dennis,
+                        subject=f"Instagram catch-up queue — item {index+1} skipped after 3 failures",
+                        body=f"<p>Product {item['product_id']} ({item['post_type']}) failed 3 times in a row: {reason}</p><p>Skipping it so the rest of the queue still goes out on schedule. Worth checking this one manually.</p>",
+                        is_html=True,
+                    )
+            except Exception as e:
+                print(f"[Instagram Catchup] Failed to send skip-alert email: {e}")
+            set_config("instagram_catchup_index", str(index + 1))
+            set_config(fail_key, "0")

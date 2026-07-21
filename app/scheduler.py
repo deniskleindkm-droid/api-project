@@ -347,6 +347,15 @@ def run_balance_check():
         print(f"[Scheduler] Balance check error: {e}")
 
 
+def run_instagram_catchup():
+    """Hourly: posts the next item in Dennis's 12-item manual catch-up queue, if any remain."""
+    try:
+        from app.agents.instagram_agent import run_instagram_catchup_queue
+        run_instagram_catchup_queue()
+    except Exception as e:
+        print(f"[Scheduler] Instagram catchup queue error: {e}")
+
+
 def run_instagram_posting():
     """Daily 16:00 UTC (10:00 AM CST): post one piece of content to Instagram."""
     try:
@@ -522,6 +531,20 @@ def start_scheduler():
         trigger=CronTrigger(hour=16, minute=0),
         id='instagram_posting',
         name='Instagram Content Agent — Daily Post (10:00 AM CST)',
+        replace_existing=True
+    )
+
+    # TEMPORARY — Dennis's 12-item manual catch-up batch, 2026-07-21. Posts
+    # one item per hour, unattended; self-terminates (no-ops) once all 12
+    # are done (see run_instagram_catchup_queue's docstring). Safe to remove
+    # this job once the queue is confirmed complete (check
+    # instagram_catchup_index in StoreConfig — done when it reaches 12).
+    scheduler.add_job(
+        run_instagram_catchup,
+        trigger=IntervalTrigger(hours=1),
+        id='instagram_catchup',
+        name='Instagram Manual Catch-Up Queue — 12 items, ~1/hour (TEMPORARY, 2026-07-21)',
+        next_run_time=datetime.utcnow(),   # post item 1 immediately on this deploy
         replace_existing=True
     )
 
