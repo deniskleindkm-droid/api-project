@@ -1580,6 +1580,13 @@ window.onload = async()=>{
       fbq('track','Purchase',{content_ids:_ids,content_type:'product',value:parseFloat(_purchaseVal),currency:(p.get('currency')||'USD').toUpperCase()},_eventOpts);
       sessionStorage.setItem('mikisi_purchase_fired', window.location.search);
     }
+    // Strip payment=success (and its Stripe-provided siblings) from the URL
+    // once handled -- without this, refreshing the tab reloads the exact
+    // same URL, this whole block re-runs, and the "order confirmed" modal
+    // reopens every single refresh (confirmed live 2026-07-22). The pixel
+    // fire above already had its own sessionStorage guard for this same
+    // reload case; the modal/banner never did.
+    history.replaceState(null, '', window.location.pathname);
   }
   const prodMatch = window.location.pathname.match(/^\/products\/(\d+)$/);
   // ?variant_id= (the internal ProductVariant id) is preferred; ?option_id=
