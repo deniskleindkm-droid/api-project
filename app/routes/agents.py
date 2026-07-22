@@ -2181,7 +2181,7 @@ def instagram_media_product_tags(media_id: str, master_key: str):
         return {"error": "INSTAGRAM_ACCESS_TOKEN not set"}
 
     r = requests.get(
-        f"https://graph.facebook.com/v18.0/{media_id}/media_product_tags",
+        f"https://graph.facebook.com/v18.0/{media_id}/product_tags",
         params={"access_token": access_token},
         timeout=15,
     )
