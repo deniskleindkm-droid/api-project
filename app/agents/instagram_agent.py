@@ -221,6 +221,25 @@ def _has_wrong_body_part(text: str, category: str) -> bool:
     return bool(_WORD_RE_CACHE[category].search(text))
 
 
+def _category_noun(category: str) -> str:
+    """Singular noun for a category string, e.g. "Necklaces" -> "necklace"."""
+    return category[:-1] if category.endswith("s") else category
+
+
+def _mentions_category(text: str, category: str) -> bool:
+    """
+    True if the caption actually names what kind of item this is (e.g.
+    "necklace") somewhere in the text, singular or plural — found live
+    2026-07-21: a scheduled post never once said what it even was, only
+    ever "piece"/"it"/"this". Word-boundary matched, same as
+    _has_wrong_body_part.
+    """
+    import re
+    words = {category.lower(), _category_noun(category).lower()}
+    pattern = r'\b(' + '|'.join(re.escape(w) for w in words) + r')\b'
+    return bool(re.search(pattern, text, re.I))
+
+
 def _fallback_caption(product: Product) -> str:
     return (
         f"{product.name} — {product.material or '925 Sterling Silver'}. "
@@ -256,13 +275,19 @@ def _generate_caption(product: Product, post_type: str) -> str:
     caption_rules = "\n".join(f"- {r}" for r in kb.get("caption_rules", []))
     bv = kb.get("brand_voice", brand_voice)
 
+    singular_category = _category_noun(product.category)
     body_part = CATEGORY_BODY_PART.get(product.category, "")
     body_part_rule = (
-        f"This is a {product.category[:-1] if product.category.endswith('s') else product.category} "
+        f"This is a {singular_category} "
         f"— worn on the {body_part}. Every physical/wearing reference MUST say "
         f"{body_part} or {body_part}s. NEVER mention any other body part "
         f"(wrist, ankle, neck/collarbone, ear/finger) unless {body_part} is that same part.\n"
         if body_part else ""
+    )
+    category_rule = (
+        f"You MUST explicitly call this item a '{singular_category}' (or "
+        f"'{product.category.lower()}') at least once in the caption — never "
+        f"refer to it only as 'piece'/'it'/'this'.\n"
     )
 
     def _build_prompt(correction: str = "") -> str:
@@ -283,6 +308,7 @@ def _generate_caption(product: Product, post_type: str) -> str:
                 f"Price: ${product.final_price:.0f}\n"
                 f"Description: {product.description[:400]}\n\n"
                 f"{body_part_rule}"
+                f"{category_rule}"
                 f"Caption rules:\n{caption_rules}\n\n"
                 f"Brand voice: {bv}\n\n"
                 f"Structure: Hook (10-12 words) → Body (2-3 sentences) → "
@@ -298,6 +324,7 @@ def _generate_caption(product: Product, post_type: str) -> str:
             f"Material: {product.material or '925 Sterling Silver'}\n"
             f"Description: {product.description[:400]}\n\n"
             f"{body_part_rule}"
+            f"{category_rule}"
             f"Caption rules:\n{caption_rules}\n\n"
             f"Brand voice: {bv}\n\n"
             f"This is a campaign post — speak to her identity, not the product specs.\n"
@@ -317,18 +344,31 @@ def _generate_caption(product: Product, post_type: str) -> str:
         )
         return _strip_stray_header(response.content[0].text.strip())
 
+    def _issues(text: str) -> list:
+        problems = []
+        if _has_wrong_body_part(text, product.category):
+            problems.append(
+                f"your previous draft incorrectly referenced the wrong body "
+                f"part. This is a {singular_category} — it goes on the "
+                f"{body_part}."
+            )
+        if not _mentions_category(text, product.category):
+            problems.append(
+                f"your previous draft never actually said what kind of item "
+                f"this is. You MUST call it a '{singular_category}' somewhere "
+                f"in the caption."
+            )
+        return problems
+
     try:
         text = _call_llm(_build_prompt())
-        if _has_wrong_body_part(text, product.category):
-            print(f"[Instagram] Caption mentioned the wrong body part for "
-                  f"{product.name} ({product.category}) — regenerating")
-            correction = (
-                f"\n\nIMPORTANT: your previous draft incorrectly referenced the "
-                f"wrong body part. This is a {product.category} — it goes on the "
-                f"{body_part}. Do not repeat that mistake."
-            )
+        problems = _issues(text)
+        if problems:
+            print(f"[Instagram] Caption issue(s) for {product.name} "
+                  f"({product.category}): {' '.join(problems)} — regenerating")
+            correction = "\n\nIMPORTANT: " + " ".join(problems) + " Do not repeat these mistakes."
             text = _call_llm(_build_prompt(correction))
-            if _has_wrong_body_part(text, product.category):
+            if _issues(text):
                 print(f"[Instagram] Still wrong after retry for {product.name} "
                       f"— using safe fallback caption")
                 return _fallback_caption(product)
