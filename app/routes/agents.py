@@ -2163,6 +2163,31 @@ def instagram_shop_eligibility(master_key: str):
     return r.json()
 
 
+@router.get("/admin/instagram/media-product-tags")
+def instagram_media_product_tags(media_id: str, master_key: str):
+    """
+    Admin — checks whether a published post actually landed a product tag
+    (GET /{media-id}/media_product_tags), rather than trusting the
+    post-now response's success:true — post_manually's reel path retries
+    once untagged if the tagged attempt fails, so a successful post is not
+    proof a tag is actually attached. Built 2026-07-21 to verify that.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    import os, requests
+    access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+    if not access_token:
+        return {"error": "INSTAGRAM_ACCESS_TOKEN not set"}
+
+    r = requests.get(
+        f"https://graph.facebook.com/v18.0/{media_id}/media_product_tags",
+        params={"access_token": access_token},
+        timeout=15,
+    )
+    return r.json()
+
+
 @router.get("/admin/instagram/catalog-product-search")
 def instagram_catalog_product_search(q: str, master_key: str):
     """
