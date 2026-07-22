@@ -723,25 +723,33 @@ def _post_reel_to_instagram(video_url: str, caption: str, hashtags: str,
     try:
         full_caption = f"{caption}\n\n{hashtags}"
 
-        container_params = {
-            "media_type":    "REELS",
-            "video_url":     video_url,
-            "caption":       full_caption,
-            "share_to_feed": "true",
-            "access_token":  access_token,
-        }
+        def _create_container(with_tag: bool) -> dict:
+            params = {
+                "media_type":    "REELS",
+                "video_url":     video_url,
+                "caption":       full_caption,
+                "share_to_feed": "true",
+                "access_token":  access_token,
+            }
+            if with_tag and meta_catalog_product_id:
+                # Video product tags take product_id only — the x/y
+                # position used on images is rejected on REELS (confirmed
+                # live 2026-07-21: subcode 2207035 "Invalid Position for
+                # Video Media").
+                params["product_tags"] = json.dumps([{"product_id": meta_catalog_product_id}])
+            r = requests.post(
+                f"https://graph.facebook.com/v18.0/{account_id}/media",
+                params=params,
+                timeout=30,
+            )
+            return r.json()
 
-        if meta_catalog_product_id:
-            container_params["product_tags"] = json.dumps([
-                {"product_id": meta_catalog_product_id, "x": 0.5, "y": 0.7}
-            ])
-
-        r = requests.post(
-            f"https://graph.facebook.com/v18.0/{account_id}/media",
-            params=container_params,
-            timeout=30,
-        )
-        container = r.json()
+        container = _create_container(with_tag=True)
+        if "id" not in container and meta_catalog_product_id:
+            # A broken/unsupported product tag should never block the post
+            # itself — same principle as skip_catalog_tag elsewhere. Retry
+            # once, untagged, before giving up entirely.
+            container = _create_container(with_tag=False)
         if "id" not in container:
             return {"success": False, "reason": _extract_error(container, "Container creation failed")}
 
