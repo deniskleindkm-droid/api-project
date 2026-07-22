@@ -41,6 +41,13 @@ import tempfile
 import shutil
 import requests
 
+# Cloudinary reads its API key/secret from the environment at import time
+# (module-level cloudinary.config() call in cloudinary_agent.py) — .env
+# must be loaded before that import happens, not after, or uploads silently
+# fail with "Must supply api_key" even though the zip still gets archived.
+from dotenv import load_dotenv
+load_dotenv()
+
 from app.agents.cloudinary_agent import store_product_image, store_product_video
 
 FOLDER = r"C:\Users\macho\OneDrive\Desktop\insta images"
@@ -173,6 +180,17 @@ def run_rawshot_import(master_key: str, folder: str = FOLDER, verbose: bool = Tr
 
             if fields:
                 _save_product(pid, fields)
+
+            upload_failed = (len(uploaded_image_urls) < len(images)) or (videos and not uploaded_video_url)
+            if upload_failed:
+                result["errors"].append({
+                    "file": fname, "product_id": pid,
+                    "error": "one or more uploads failed — left in place for retry, not archived",
+                    "fields": list(fields.keys()),
+                })
+                if verbose:
+                    print(f"[RAWSHOT Import]   NOT archiving (upload failure) — will retry next run")
+                continue
 
             shutil.move(zpath, os.path.join(processed_dir, fname))
             result["matched"].append({"file": fname, "product_id": pid, "fields": list(fields.keys())})

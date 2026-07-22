@@ -699,6 +699,71 @@ def _post_to_instagram_carousel(image_urls: list, caption: str, hashtags: str,
         return {"success": False, "reason": str(e)}
 
 
+def _post_reel_to_instagram(video_url: str, caption: str, hashtags: str,
+                             meta_catalog_product_id: str = "") -> dict:
+    """
+    Post a Reel to Instagram via Graph API. Same container -> poll ->
+    publish shape as _post_to_instagram, but media_type=REELS + video_url
+    instead of image_url, and a much longer poll window —  video
+    processing takes 30s to several minutes per Meta's own docs, vs.
+    images which finish in a few seconds (_wait_for_container_ready's
+    default 3s x 10 attempts is sized for images only).
+
+    share_to_feed=true so it also shows in the feed grid, not just the
+    Reels tab — matches how every other post_type here behaves (always
+    lands in the feed).
+    """
+    access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+    account_id = os.getenv("INSTAGRAM_ACCOUNT_ID")
+
+    if not access_token or not account_id:
+        print("[Instagram] Credentials not set — post skipped")
+        return {"success": False, "reason": "credentials_missing"}
+
+    try:
+        full_caption = f"{caption}\n\n{hashtags}"
+
+        container_params = {
+            "media_type":    "REELS",
+            "video_url":     video_url,
+            "caption":       full_caption,
+            "share_to_feed": "true",
+            "access_token":  access_token,
+        }
+
+        if meta_catalog_product_id:
+            container_params["product_tags"] = json.dumps([
+                {"product_id": meta_catalog_product_id, "x": 0.5, "y": 0.7}
+            ])
+
+        r = requests.post(
+            f"https://graph.facebook.com/v18.0/{account_id}/media",
+            params=container_params,
+            timeout=30,
+        )
+        container = r.json()
+        if "id" not in container:
+            return {"success": False, "reason": _extract_error(container, "Container creation failed")}
+
+        wait_err = _wait_for_container_ready(container["id"], access_token, max_attempts=40, delay=5.0)
+        if wait_err:
+            return {"success": False, "reason": wait_err}
+
+        r2 = requests.post(
+            f"https://graph.facebook.com/v18.0/{account_id}/media_publish",
+            params={"creation_id": container["id"], "access_token": access_token},
+            timeout=30,
+        )
+        pub = r2.json()
+        if "id" in pub:
+            return {"success": True, "post_id": pub["id"]}
+
+        return {"success": False, "reason": _extract_error(pub, "Publish failed")}
+
+    except Exception as e:
+        return {"success": False, "reason": str(e)}
+
+
 # ── STATE MANAGEMENT ──────────────────────────────────────────────────────────
 
 def _save_post(product_id: int, post_type: str, image_url: str,
@@ -977,7 +1042,8 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
 
     image_urls: explicit list, used verbatim in order — overrides
       image_count/post_type defaults entirely. Use this for a hand-picked
-      set of images.
+      set of images. Ignored for post_type="reel" (use image_urls[0] as
+      an explicit video_url override instead — see below).
     image_count: for post_type="product", takes the first N images from
       the product's own gallery (product.images) instead of just the
       primary image_url. Ignored if image_urls is given.
@@ -985,6 +1051,9 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
       product.content_lifestyle_url (the RAWSHOT photoshoot image, see
       rawshot_import_agent.py) — falls back to _best_campaign_image() if
       that's not set.
+    post_type="reel" posts product.video_url (the RAWSHOT photoshoot
+      video, see rawshot_import_agent.py) as an Instagram Reel. Pass a
+      single explicit video_url via image_urls[0] to override.
     skip_catalog_tag: post without attempting the Shopping tag at all —
       useful to isolate whether a failure is the tagging call itself
       (e.g. the account not yet approved for Instagram Shopping/
@@ -1000,8 +1069,47 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
         product = session.get(Product, product_id)
     if not product:
         return {"success": False, "reason": "product_not_found"}
-    if post_type not in ("product", "campaign"):
-        return {"success": False, "reason": "post_type must be 'product' or 'campaign'"}
+    if post_type not in ("product", "campaign", "reel"):
+        return {"success": False, "reason": "post_type must be 'product', 'campaign', or 'reel'"}
+
+    if post_type == "reel":
+        video_url = (image_urls[0] if image_urls else None) or product.video_url
+        if not video_url:
+            return {"success": False, "reason": "no_video_resolved"}
+
+        caption  = _generate_caption(product, post_type)
+        hashtags = _build_hashtags(product.category, product.material or "")
+
+        catalog_id = ""
+        if not skip_catalog_tag:
+            from app.agents.meta_catalog import resolve_meta_product_id
+            catalog_id = resolve_meta_product_id(product.id)
+
+        preview = {
+            "product_id":       product.id,
+            "product_name":     product.name,
+            "post_type":        post_type,
+            "video_url":        video_url,
+            "caption":          caption,
+            "hashtags":         hashtags,
+            "meta_catalog_tag": catalog_id or None,
+        }
+
+        if dry_run:
+            preview["dry_run"] = True
+            return preview
+
+        result = _post_reel_to_instagram(video_url, caption, hashtags, catalog_id)
+
+        if result.get("success"):
+            post_id = result.get("post_id", "")
+            _save_post(product.id, post_type, video_url, caption, hashtags, post_id)
+            _update_state(product, post_type)
+            print(f"[Instagram] ✅ Manually posted — reel — {product.name}")
+        else:
+            print(f"[Instagram] ❌ Manual post failed: {result.get('reason')}")
+
+        return {**preview, "dry_run": False, **result}
 
     if image_urls:
         images = [u for u in image_urls if u]

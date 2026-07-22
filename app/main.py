@@ -1,3 +1,13 @@
+import os
+from dotenv import load_dotenv
+
+# Must run before any app.routes/app.agents import below — several of those
+# modules read secrets (Stripe, Anthropic, Cloudinary, ...) at import time
+# via module-level os.getenv() calls, so .env has to be loaded first or
+# those clients silently initialize with a missing key (only bites local
+# dev; Railway injects real env vars directly, no .env file involved there).
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -16,11 +26,6 @@ from app.routes.tiktok_auth import router as tiktok_auth_router
 from app.routes.pinterest_auth import router as pinterest_auth_router
 from app.routes.meta_feed import router as meta_feed_router
 from app.routes.meta_checkout import router as meta_checkout_router
-
-from dotenv import load_dotenv
-import os
-
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 app = FastAPI(title=os.getenv("APP_NAME", "MyAPI"))
 
