@@ -2188,6 +2188,30 @@ def instagram_media_product_tags(media_id: str, master_key: str):
     return r.json()
 
 
+@router.get("/admin/instagram/location-search")
+def instagram_location_search(q: str, master_key: str):
+    """
+    Admin — searches Facebook Place pages by name (GET /search?type=place)
+    to find a location_id for tagging on a post. Used to pick a real,
+    taggable Place page ID before wiring it into post_manually's reel
+    path — location_id takes an actual Place page ID, not free text.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    import os, requests
+    access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+    if not access_token:
+        return {"error": "INSTAGRAM_ACCESS_TOKEN not set"}
+
+    r = requests.get(
+        "https://graph.facebook.com/v18.0/search",
+        params={"type": "place", "q": q, "fields": "name,location", "access_token": access_token},
+        timeout=15,
+    )
+    return r.json()
+
+
 @router.get("/admin/instagram/catalog-product-search")
 def instagram_catalog_product_search(q: str, master_key: str):
     """

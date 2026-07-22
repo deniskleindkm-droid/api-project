@@ -752,6 +752,20 @@ def _post_reel_to_instagram(video_url: str, caption: str, hashtags: str,
     share_to_feed=true so it also shows in the feed grid, not just the
     Reels tab — matches how every other post_type here behaves (always
     lands in the feed).
+
+    is_ai_generated=true always — every RAWSHOT photoshoot is AI-generated
+    (Dennis confirmed 2026-07-22), and Meta's own policy singles out
+    "realistic AI-generated content viewers could plausibly mistake for
+    real" as requiring disclosure regardless of ad status. No org-level
+    honor-system detection exists yet, but non-disclosure is a real
+    exposure the moment this content is ever boosted as an ad, so this
+    isn't optional/configurable — set unconditionally, not from a flag.
+
+    location_id, if set via StoreConfig("instagram_reel_location_id"),
+    tags a Facebook Place page (see /admin/instagram/location-search to
+    find one) — doesn't need to be the literal business address; tagging
+    a relevant/aspirational city is a real discovery lever since Reels
+    surface in that location's browse feed.
     """
     access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
     account_id = os.getenv("INSTAGRAM_ACCOUNT_ID")
@@ -762,15 +776,19 @@ def _post_reel_to_instagram(video_url: str, caption: str, hashtags: str,
 
     try:
         full_caption = f"{caption}\n\n{hashtags}"
+        location_id = get_config("instagram_reel_location_id", default="")
 
         def _create_container(with_tag: bool) -> dict:
             params = {
-                "media_type":    "REELS",
-                "video_url":     video_url,
-                "caption":       full_caption,
-                "share_to_feed": "true",
-                "access_token":  access_token,
+                "media_type":      "REELS",
+                "video_url":       video_url,
+                "caption":         full_caption,
+                "share_to_feed":   "true",
+                "is_ai_generated": "true",
+                "access_token":    access_token,
             }
+            if location_id:
+                params["location_id"] = location_id
             if with_tag and meta_catalog_product_id:
                 # Video product tags take product_id only — the x/y
                 # position used on images is rejected on REELS (confirmed
