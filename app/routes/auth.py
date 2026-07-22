@@ -6,7 +6,7 @@ from app.auth_utils import hash_password, verify_password, create_access_token, 
 from app.rate_limiter import rate_limit
 from app.database import get_session
 from fastapi import Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 import random
 import string
 from datetime import datetime, timedelta
@@ -17,6 +17,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 # In-memory verification store — fast, no extra DB table needed
 # { email: { code: "123456", expires: datetime, attempts: 0 } }
 _verification_store = {}
+
+# Separate store for password-reset codes — kept apart from
+# _verification_store so a live reset code can't collide with (or get
+# clobbered by) an unrelated pending email-verification code for the same
+# address.
+_reset_store = {}
 
 
 def generate_code():
@@ -77,6 +83,60 @@ def send_verification_email(email: str, code: str):
         print(f"[Auth] Email send error: {e}")
 
 
+def send_reset_email(email: str, code: str):
+    try:
+        from app.agents.email_partner import send_email
+        body = f"""
+<!DOCTYPE html>
+<html>
+<body style="font-family:'Georgia',serif;background:#fdf9f6;margin:0;padding:40px;">
+<div style="max-width:480px;margin:0 auto;background:white;padding:48px;">
+
+    <div style="text-align:center;margin-bottom:32px;">
+        <h1 style="font-family:'Georgia',serif;font-size:26px;font-weight:300;
+                   letter-spacing:6px;color:#0e0e0e;text-transform:uppercase;">
+            Mik<em style="color:#d4849c;font-style:italic;">i</em>si
+        </h1>
+    </div>
+
+    <h2 style="font-family:'Georgia',serif;font-size:22px;font-weight:300;
+               color:#0e0e0e;margin-bottom:12px;">
+        Reset your password
+    </h2>
+
+    <p style="font-size:14px;color:#6b6b6b;line-height:1.8;margin-bottom:32px;">
+        Enter this code to choose a new password for your Mikisi account.
+    </p>
+
+    <div style="background:#f7f2ed;padding:28px;text-align:center;margin-bottom:32px;">
+        <div style="font-family:'Georgia',serif;font-size:40px;font-weight:300;
+                    letter-spacing:16px;color:#0e0e0e;">
+            {code}
+        </div>
+        <div style="font-size:11px;color:#6b6b6b;margin-top:12px;letter-spacing:1px;">
+            This code expires in 10 minutes
+        </div>
+    </div>
+
+    <p style="font-size:12px;color:#d8d0c8;line-height:1.8;">
+        If you didn't request a password reset, you can safely ignore this email.
+    </p>
+
+    <div style="border-top:1px solid #ece5dd;margin-top:40px;padding-top:24px;text-align:center;">
+        <p style="font-size:11px;color:#d8d0c8;letter-spacing:2px;text-transform:uppercase;">
+            Look Elegant and Polished
+        </p>
+    </div>
+
+</div>
+</body>
+</html>"""
+        send_email(email, "Reset your Mikisi password", body, is_html=True)
+        print(f"[Auth] ✅ Reset code sent to {email}")
+    except Exception as e:
+        print(f"[Auth] Reset email send error: {e}")
+
+
 class VerifyRequest(BaseModel):
     email: str
     code: str
@@ -86,12 +146,43 @@ class ResendRequest(BaseModel):
     email: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    code: str
+    new_password: str
+
+    @field_validator("new_password")
+    def password_must_be_strong(cls, v):
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters")
+        return v
+
+
 @router.post("/register")
 def register(user: UserRequest, session: Session = Depends(get_session)):
     existing = session.exec(select(User).where(User.email == user.email)).first()
     if existing:
         if not existing.is_verified:
-            # Resend verification code — don't block them
+            # Re-registering an unverified email used to only resend the
+            # code and silently keep the FIRST attempt's password forever
+            # -- any retry (double-click, an actual second real attempt
+            # typing a different password) meant the account permanently
+            # locked to a password the customer never knew was in effect,
+            # with no way to reset it. Confirmed live 2026-07-22 (Dennis's
+            # own guest-checkout test account, dmlay@lineng.com) -- verified
+            # successfully but every login after kept failing "Incorrect
+            # password" for exactly this reason. Update password/name on
+            # every re-registration attempt so the LATEST one always wins.
+            existing.password = hash_password(user.password)
+            if user.full_name:
+                existing.full_name = user.full_name
+            session.add(existing)
+            session.commit()
+
             code = generate_code()
             _verification_store[user.email] = {
                 "code": code,
@@ -184,6 +275,66 @@ def resend_verification(request: ResendRequest, session: Session = Depends(get_s
     return {"message": "New verification code sent"}
 
 
+@router.post("/forgot-password")
+def forgot_password(request: ForgotPasswordRequest, session: Session = Depends(get_session)):
+    """
+    Emails a 6-digit reset code — same UX shape as email verification.
+    There was previously NO way for a customer to recover a locked-out
+    account (confirmed live 2026-07-22); this plus /reset-password is
+    that missing self-service path.
+    """
+    email = request.email.lower().strip()
+
+    user = session.exec(select(User).where(User.email == email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    code = generate_code()
+    _reset_store[email] = {
+        "code": code,
+        "expires": datetime.utcnow() + timedelta(minutes=10),
+        "attempts": 0
+    }
+    send_reset_email(email, code)
+
+    return {"message": "Password reset code sent to your email"}
+
+
+@router.post("/reset-password")
+def reset_password(request: ResetPasswordRequest, session: Session = Depends(get_session)):
+    email = request.email.lower().strip()
+    code = request.code.strip()
+
+    entry = _reset_store.get(email)
+    if not entry:
+        raise HTTPException(status_code=400, detail="No reset code found. Please request a new one.")
+
+    if datetime.utcnow() > entry["expires"]:
+        del _reset_store[email]
+        raise HTTPException(status_code=400, detail="Code has expired. Please request a new one.")
+
+    if entry["attempts"] >= 5:
+        raise HTTPException(status_code=400, detail="Too many attempts. Please request a new code.")
+
+    entry["attempts"] += 1
+
+    if entry["code"] != code:
+        raise HTTPException(status_code=400, detail="Invalid code. Please try again.")
+
+    user = session.exec(select(User).where(User.email == email)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.password = hash_password(request.new_password)
+    session.add(user)
+    session.commit()
+
+    del _reset_store[email]
+    print(f"[Auth] ✅ Password reset: {email}")
+
+    return {"message": "Password reset successfully"}
+
+
 @router.post("/login")
 def login(user: UserRequest, request: Request, session: Session = Depends(get_session), _=Depends(rate_limit)):
     db_user = session.exec(select(User).where(User.email == user.email)).first()
@@ -216,6 +367,14 @@ def get_profile(token: str = Depends(oauth2_scheme)):
 
 
 @router.get("/users")
-def get_users(session: Session = Depends(get_session)):
+def get_users(master_key: str, session: Session = Depends(get_session)):
+    """
+    Admin-only — this had NO auth at all until 2026-07-22, publicly
+    dumping every customer's email and name to anyone who hit the URL.
+    """
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
     users = session.exec(select(User)).all()
     return [{"id": user.id, "email": user.email, "full_name": user.full_name} for user in users]

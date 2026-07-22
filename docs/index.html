@@ -1202,7 +1202,40 @@ footer{background:var(--black);padding:52px 48px 36px;}
         <div class="m-group"><label>Email Address</label><input type="email" id="m-email" placeholder="your@email.com"/></div>
         <div class="m-group"><label>Password</label><input type="password" id="m-pw" placeholder="••••••••"/></div>
         <button class="m-btn" id="m-submit" onclick="submitAuth()">Sign In</button>
+        <div class="m-switch" id="m-forgot-link">Forgot your password? <a onclick="openForgotPassword()">Reset it</a></div>
         <div class="m-switch" id="m-switch">New to Mikisi? <a onclick="switchAuth()">Create account</a></div>
+      </div>
+    </div>
+    <div id="forgot-view" style="display:none">
+      <div class="modal-top">
+        <h2>Reset Password</h2>
+        <p>Enter your email and we'll send you a reset code</p>
+      </div>
+      <div class="modal-body">
+        <div id="fp-msg" class="m-msg"></div>
+        <div class="m-group"><label>Email Address</label><input type="email" id="fp-email" placeholder="your@email.com"/></div>
+        <button class="m-btn" id="fp-submit" onclick="submitForgotPassword()">Send Reset Code</button>
+        <div class="m-switch"><a onclick="resetAuth()">Back to Sign In</a></div>
+      </div>
+    </div>
+    <div id="reset-view" style="display:none">
+      <div class="modal-top">
+        <h2>Enter Reset Code</h2>
+        <p id="reset-sub">We sent a 6-digit code to your email</p>
+      </div>
+      <div class="modal-body">
+        <div id="rp-msg" class="m-msg"></div>
+        <div class="verify-inputs">
+          <input class="verify-digit" id="r0" maxlength="1" oninput="digitInput(this,1,'r')" onkeydown="digitBack(this,event,-1,'r')"/>
+          <input class="verify-digit" id="r1" maxlength="1" oninput="digitInput(this,2,'r')" onkeydown="digitBack(this,event,0,'r')"/>
+          <input class="verify-digit" id="r2" maxlength="1" oninput="digitInput(this,3,'r')" onkeydown="digitBack(this,event,1,'r')"/>
+          <input class="verify-digit" id="r3" maxlength="1" oninput="digitInput(this,4,'r')" onkeydown="digitBack(this,event,2,'r')"/>
+          <input class="verify-digit" id="r4" maxlength="1" oninput="digitInput(this,5,'r')" onkeydown="digitBack(this,event,3,'r')"/>
+          <input class="verify-digit" id="r5" maxlength="1" oninput="digitInput(this,-1,'r')" onkeydown="digitBack(this,event,4,'r')"/>
+        </div>
+        <div class="m-group"><label>New Password</label><input type="password" id="rp-pw" placeholder="••••••••"/></div>
+        <button class="m-btn" id="rp-submit" onclick="submitResetPassword()">Reset Password</button>
+        <div class="m-switch"><a onclick="resendResetCode()">Resend code</a></div>
       </div>
     </div>
     <div id="verify-view" style="display:none">
@@ -1375,6 +1408,7 @@ let ppNavIdx  = -1;
 let ppImages = [];
 let ppIdx = 0;
 let pendingVerifyEmail = '';
+let pendingResetEmail = '';
 let cartItems = [];
 let ppEnteredCollectionModeForPreview = false; // true when positionPPInline had to flip collection-mode on itself (no real collection was ever browsed into) — closePP() undoes it instead of leaving an empty collection-view showing
 let ppSelectedSize = null;
@@ -3098,11 +3132,14 @@ function closeAuth(){document.getElementById('auth-modal').classList.remove('ope
 function resetAuth(){
   document.getElementById('auth-view').style.display='block';
   document.getElementById('verify-view').style.display='none';
+  document.getElementById('forgot-view').style.display='none';
+  document.getElementById('reset-view').style.display='none';
   document.getElementById('m-title').textContent='Welcome Back';
   document.getElementById('m-sub').textContent='Sign in to your Mikisi account';
   document.getElementById('m-submit').textContent='Sign In';
   document.getElementById('m-switch').innerHTML="New to Mikisi? <a onclick='switchAuth()'>Create account</a>";
   document.getElementById('m-name-grp').style.display='none';
+  document.getElementById('m-forgot-link').style.display='block';
   document.getElementById('m-msg').style.display='none';
   document.getElementById('m-email').value='';
   document.getElementById('m-pw').value='';
@@ -3117,6 +3154,7 @@ function switchAuth(){
     document.getElementById('m-submit').textContent='Create Account';
     document.getElementById('m-switch').innerHTML="Already a member? <a onclick='switchAuth()'>Sign in</a>";
     document.getElementById('m-name-grp').style.display='block';
+    document.getElementById('m-forgot-link').style.display='none';
   }else resetAuth();
 }
 async function submitAuth(){
@@ -3152,13 +3190,19 @@ function showVerificationScreen(email){
   for(let i=0;i<6;i++)document.getElementById(`v${i}`).value='';
   document.getElementById('v0').focus();
 }
-function digitInput(el,nextIdx){
+function digitInput(el,nextIdx,prefix='v'){
   el.value=el.value.replace(/[^0-9]/g,'');
-  if(el.value&&nextIdx>=0)document.getElementById(`v${nextIdx}`).focus();
-  if(getVerifyCode().length===6)submitVerification();
+  if(el.value&&nextIdx>=0)document.getElementById(`${prefix}${nextIdx}`).focus();
+  // Reset flow has a New Password field after the code -- don't auto-submit
+  // on the 6th digit like verify-email does, the password is likely still
+  // empty at that point. Focus it instead so entering the code flows
+  // straight into typing the new password.
+  if(prefix==='r'&&getCode('r').length===6)document.getElementById('rp-pw').focus();
+  else if(prefix==='v'&&getCode('v').length===6)submitVerification();
 }
-function digitBack(el,e,prevIdx){if(e.key==='Backspace'&&!el.value&&prevIdx>=0)document.getElementById(`v${prevIdx}`).focus();}
-function getVerifyCode(){let c='';for(let i=0;i<6;i++)c+=document.getElementById(`v${i}`).value;return c;}
+function digitBack(el,e,prevIdx,prefix='v'){if(e.key==='Backspace'&&!el.value&&prevIdx>=0)document.getElementById(`${prefix}${prevIdx}`).focus();}
+function getCode(prefix){let c='';for(let i=0;i<6;i++)c+=document.getElementById(`${prefix}${i}`).value;return c;}
+function getVerifyCode(){return getCode('v');}
 async function submitVerification(){
   const code=getVerifyCode();
   if(code.length!==6){showVMsg('Please enter the complete 6-digit code','error');return;}
@@ -3198,6 +3242,67 @@ async function resendCode(){
 }
 function showMMsg(m,t){const el=document.getElementById('m-msg');el.textContent=m;el.className=`m-msg ${t}`;el.style.display='block';}
 function showVMsg(m,t){const el=document.getElementById('v-msg');el.textContent=m;el.className=`m-msg ${t}`;el.style.display='block';}
+function showFpMsg(m,t){const el=document.getElementById('fp-msg');el.textContent=m;el.className=`m-msg ${t}`;el.style.display='block';}
+function showRpMsg(m,t){const el=document.getElementById('rp-msg');el.textContent=m;el.className=`m-msg ${t}`;el.style.display='block';}
+
+// ── FORGOT / RESET PASSWORD ──
+function openForgotPassword(){
+  document.getElementById('auth-view').style.display='none';
+  document.getElementById('forgot-view').style.display='block';
+  document.getElementById('fp-msg').style.display='none';
+  document.getElementById('fp-email').value=document.getElementById('m-email').value.trim();
+}
+async function submitForgotPassword(){
+  const email=document.getElementById('fp-email').value.trim();
+  if(!email||!email.includes('@')){showFpMsg('Please enter a valid email address','error');return;}
+  const btn=document.getElementById('fp-submit');btn.disabled=true;btn.textContent='Sending…';
+  try{
+    const res=await fetch(`${API}/forgot-password`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+    const data=await res.json();
+    if(res.ok){pendingResetEmail=email;showResetScreen(email);}
+    else showFpMsg(data.detail||'Something went wrong','error');
+  }catch{showFpMsg('Connection error. Please try again.','error');}
+  finally{btn.disabled=false;btn.textContent='Send Reset Code';}
+}
+function showResetScreen(email){
+  document.getElementById('forgot-view').style.display='none';
+  document.getElementById('reset-view').style.display='block';
+  document.getElementById('reset-sub').textContent=`We sent a 6-digit code to ${email}`;
+  for(let i=0;i<6;i++)document.getElementById(`r${i}`).value='';
+  document.getElementById('rp-pw').value='';
+  document.getElementById('r0').focus();
+}
+async function submitResetPassword(){
+  const code=getCode('r');
+  const new_password=document.getElementById('rp-pw').value;
+  if(code.length!==6){showRpMsg('Please enter the complete 6-digit code','error');return;}
+  if(!new_password||new_password.length<6){showRpMsg('Password must be at least 6 characters','error');return;}
+  const btn=document.getElementById('rp-submit');btn.disabled=true;btn.textContent='Resetting…';
+  try{
+    const res=await fetch(`${API}/reset-password`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:pendingResetEmail,code,new_password})});
+    const data=await res.json();
+    if(res.ok){
+      showRpMsg('Password reset! Signing you in…','success');
+      setTimeout(async()=>{
+        try{
+          const lr=await fetch(`${API}/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:pendingResetEmail,password:new_password})});
+          const ld=await lr.json();
+          if(lr.ok){
+            token=ld.access_token;const dn=ld.full_name||pendingResetEmail.split('@')[0];
+            localStorage.setItem('token',token);localStorage.setItem('userEmail',pendingResetEmail);localStorage.setItem('userName',dn);
+            userEmail=pendingResetEmail;userName=dn;updateAuthUI();loadCart();closeAuth();
+            showToast(`Welcome back, ${dn.split(' ')[0]}`);
+          }else{closeAuth();showToast('Password reset — please sign in');}
+        }catch{closeAuth();showToast('Password reset — please sign in');}
+      },1500);
+    }else showRpMsg(data.detail||'Invalid code. Please try again.','error');
+  }catch{showRpMsg('Connection error','error');}
+  finally{btn.disabled=false;btn.textContent='Reset Password';}
+}
+async function resendResetCode(){
+  try{await fetch(`${API}/forgot-password`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:pendingResetEmail})});showRpMsg('New code sent','success');}
+  catch{showRpMsg('Could not resend. Try again.','error');}
+}
 
 function logout(){
   token=null;userEmail=null;userName=null;
