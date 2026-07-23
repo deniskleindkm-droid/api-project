@@ -2967,8 +2967,9 @@ async function addToCart(productId, name, size=null, color=null, optionId=null, 
     if(res.ok){
       loadCart();
     }else if(res.status===401){
-      // Token expired — drop it, save to guest cart instead, no login popup
-      token=null;localStorage.removeItem('token');
+      // Token expired — full logout (see _sessionExpired), then fall back
+      // to guest cart instead of leaving this item un-added.
+      _sessionExpired();
       badge.textContent=Math.max(0,parseInt(badge.textContent)-1);
       addToCart(productId,name,size,color,optionId,variantId);
     }else{
@@ -3015,6 +3016,9 @@ async function loadCart(){
       cartItems=d.items||[];
       renderCart(d);
       if(d.removed_count>0) showToast(`${d.removed_count} item${d.removed_count>1?'s':''} removed — no longer available`);
+    }else if(res.status===401){
+      _sessionExpired();
+      loadCart();
     }
   }catch{}
 }
@@ -3135,6 +3139,17 @@ async function placeOrder(){
   }
   try{
     const res=await fetch(`${API}/payments/create-checkout`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({shipping_address:address,shipping_method:shippingMethod,phone})});
+    if(res.status===401){
+      // Session died mid-checkout -- cart is safe server-side (tied to the
+      // account, not the token), so a fresh sign-in picks up right where
+      // this left off. Full logout + prompt instead of a confusing generic
+      // error on a form they just carefully filled in.
+      _sessionExpired();
+      closeCheckout();
+      openAuth();
+      btn.textContent='Pay Securely';btn.disabled=false;
+      return;
+    }
     const data=await res.json();
     if(res.ok)window.location.href=data.checkout_url;
     else{showCoMsg(data.detail||'Something went wrong','error');btn.textContent='Pay Securely';btn.disabled=false;}
@@ -3329,6 +3344,21 @@ function logout(){
   document.getElementById('cart-total').textContent='0.00';
   showToast('Signed out');
 }
+// A 401 on any authenticated call means the token is dead (expired, or
+// revoked) -- previously only addToCart noticed this, and even there it
+// only cleared the in-memory token, never userEmail/userName or the
+// greeting, so the UI kept showing "signed in" long after the session was
+// actually gone. Confirmed live 2026-07-23: that mismatch is exactly what
+// made checkout suddenly show the guest/sign-in choice to someone who
+// still looked logged in. This is the one place that does a REAL, full
+// logout in response -- every authenticated fetch call should route its
+// 401 handling through this instead of any partial cleanup of its own.
+function _sessionExpired(){
+  token=null;userEmail=null;userName=null;
+  localStorage.removeItem('token');localStorage.removeItem('userEmail');localStorage.removeItem('userName');
+  updateAuthUI();
+  showToast('Your session expired — please sign in again');
+}
 function updateAuthUI(){
   const g=document.getElementById('user-greeting'),ab=document.getElementById('auth-btn'),lb=document.getElementById('logout-btn'),ob=document.getElementById('orders-btn');
   if(token&&userEmail){const n=(userName||userEmail.split(' ')[0]).split(' ')[0];g.textContent=n;g.style.display='block';ab.style.display='none';lb.style.display='block';if(ob)ob.style.display='block';}
@@ -3489,6 +3519,12 @@ async function fetchOrders(){
   body.innerHTML='<div class="orders-loading">Loading your orders…</div>';
   try{
     const res=await fetch(`${API}/orders`,{headers:{Authorization:`Bearer ${token}`}});
+    if(res.status===401){
+      _sessionExpired();
+      closeOrders();
+      openAuth();
+      return;
+    }
     if(!res.ok) throw new Error('failed');
     renderOrders(await res.json());
   }catch(e){
