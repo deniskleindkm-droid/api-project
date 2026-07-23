@@ -2163,6 +2163,56 @@ def instagram_shop_eligibility(master_key: str):
     return r.json()
 
 
+@router.get("/admin/silverbene/probe-tracking-endpoints")
+def silverbene_probe_tracking_endpoints(order_id: int, master_key: str, session: Session = Depends(get_session)):
+    """
+    Admin — silverbene_adapter.get_tracking() is a stub ("endpoint to be
+    added when Silverbene shares it") because no documented tracking
+    endpoint has ever been confirmed. Tries a set of plausible endpoint
+    names (matching Silverbene's own /api/dropshipping/<verb>_<noun>
+    naming convention seen on every other confirmed endpoint) against a
+    real order's cj_order_id, so we find out definitively whether one
+    exists rather than continuing to guess.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    from app.models.order import OrderTracking
+    tracking = session.exec(select(OrderTracking).where(OrderTracking.order_id == order_id)).first()
+    if not tracking or not tracking.cj_order_id:
+        return {"error": f"No OrderTracking with a cj_order_id for order {order_id}"}
+
+    import os, requests
+    token = os.getenv("SILVERBENE_API_KEY", "")
+    base = "https://s.silverbene.com"
+    candidates = [
+        "/api/dropshipping/order_list",
+        "/api/dropshipping/order_status",
+        "/api/dropshipping/order_detail",
+        "/api/dropshipping/order_info",
+        "/api/dropshipping/get_order",
+        "/api/dropshipping/get_order_status",
+        "/api/dropshipping/tracking",
+        "/api/dropshipping/get_tracking",
+        "/api/dropshipping/order_tracking",
+        "/api/dropshipping/track_order",
+        "/api/dropshipping/order_track",
+    ]
+    results = {}
+    for path in candidates:
+        try:
+            r = requests.get(
+                f"{base}{path}",
+                params={"token": token, "order_id": tracking.cj_order_id},
+                timeout=15,
+            )
+            results[path] = {"status_code": r.status_code, "body": r.text[:300]}
+        except Exception as e:
+            results[path] = {"error": str(e)}
+
+    return {"cj_order_id": tracking.cj_order_id, "probes": results}
+
+
 @router.get("/admin/instagram/media-product-tags")
 def instagram_media_product_tags(media_id: str, master_key: str):
     """
