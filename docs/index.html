@@ -3113,7 +3113,7 @@ async function placeOrder(){
   // feedback for the common case, but the backend is the real gate since a
   // direct API call bypasses this entirely.
   const phoneDigits=phone.replace(/\D/g,'');
-  if(phoneDigits.length<7||new Set(phoneDigits).size===1){showCoMsg('Please enter a complete phone number — our supplier needs it to ship your order','error');return;}
+  if(phoneDigits.length<7||new Set(phoneDigits).size===1){showCoMsg('Please enter a complete phone number so we can deliver your order','error');return;}
   if(!street||!city||!state||!zip){showCoMsg('Please complete all address fields','error');return;}
   if(zip.length<3){showCoMsg('Please enter a valid postal code','error');return;}
   // NOTE the comma between state and zip -- without it these collapse into
