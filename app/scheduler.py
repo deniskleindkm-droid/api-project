@@ -258,8 +258,22 @@ def run_silverbene_shipping_monitor():
     """Every 2 hours: scan hello@mikisi.co for Silverbene shipping emails and auto-notify customers."""
     try:
         from app.agents.silverbene_shipping_monitor import run_silverbene_shipping_monitor as _monitor
-        _monitor()
-        _heartbeat("silverbene_shipping_monitor", "inbox scan complete")
+        result = _monitor()
+        # Previously always heartbeat("inbox scan complete") regardless of
+        # outcome -- a failed IMAP connection (bad/missing credentials) and
+        # a real successful scan looked identical in the logs, so a silent
+        # credential failure could run forever with no visible sign anything
+        # was wrong. Report what actually happened instead.
+        if not result.get("connected"):
+            _heartbeat("silverbene_shipping_monitor", "IMAP connection failed — check GMAIL_ADDRESS/GMAIL_APP_PASSWORD")
+        else:
+            _heartbeat(
+                "silverbene_shipping_monitor",
+                f"scanned {result.get('processed', 0)} email(s) — "
+                f"{len(result.get('matched', []))} matched, "
+                f"{len(result.get('unmatched', []))} unmatched, "
+                f"{len(result.get('skipped', []))} skipped"
+            )
     except Exception as e:
         _heartbeat("silverbene_shipping_monitor", f"error: {str(e)[:80]}")
         print(f"[Scheduler] Silverbene shipping monitor error: {e}")
