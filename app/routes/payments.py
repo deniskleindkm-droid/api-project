@@ -85,6 +85,7 @@ def _option_id_in_variants(variants_json, option_id) -> bool:
 class CheckoutRequest(BaseModel):
     shipping_address: str
     shipping_method: str = "usps"  # "fast_track" or "usps"
+    phone: str = ""
 
 @router.post("/payments/create-checkout")
 def create_checkout_session(
@@ -149,6 +150,7 @@ def create_checkout_session(
             "user_email": user_email,
             "shipping_address": request.shipping_address,
             "shipping_method": request.shipping_method,
+            "phone": request.phone,
         }
     )
 
@@ -182,6 +184,7 @@ class GuestCheckoutRequest(BaseModel):
     last_name: str
     shipping_address: str
     shipping_method: str = "usps"
+    phone: str = ""
 
 
 @router.post("/payments/guest-checkout")
@@ -257,6 +260,7 @@ def create_guest_checkout_session(
             "last_name":        request.last_name,
             "shipping_address": request.shipping_address,
             "shipping_method":  request.shipping_method,
+            "phone":            request.phone,
             "guest_items":      json.dumps(items_meta),
             "is_guest":         "true",
         },
@@ -269,6 +273,7 @@ def process_order_background(checkout_data: dict):
         user_email = checkout_data["metadata"]["user_email"]
         shipping_address = checkout_data["metadata"]["shipping_address"]
         shipping_method = checkout_data["metadata"].get("shipping_method", "usps")
+        phone = checkout_data["metadata"].get("phone", "")
         is_guest = checkout_data["metadata"].get("is_guest") == "true"
         first_name = checkout_data["metadata"].get("first_name", "")
         last_name = checkout_data["metadata"].get("last_name", "")
@@ -446,7 +451,13 @@ def process_order_background(checkout_data: dict):
                 "first_name": customer_first,
                 "last_name":  customer_last,
                 "email":      "hello@mikisi.co",  # never send real customer email to supplier
-                "phone":      "",
+                # Was hardcoded "" here -- every single order sent Silverbene
+                # place_order()'s "0000000000" placeholder instead of a real
+                # number, confirmed live 2026-07-23 via Dennis's own test
+                # purchase (Silverbene emailed saying they never got a phone
+                # number). Now threaded through from the checkout form via
+                # Stripe metadata, same path as shipping_address.
+                "phone":      phone,
             }
 
             # Get saved orders for tracking linkage
@@ -769,6 +780,7 @@ async def stripe_webhook(
             "user_email":       _stripe_meta(raw, "user_email"),
             "shipping_address": _stripe_meta(raw, "shipping_address"),
             "shipping_method":  _stripe_meta(raw, "shipping_method", "usps"),
+            "phone":            _stripe_meta(raw, "phone"),
             "is_guest":         _stripe_meta(raw, "is_guest"),
             "guest_items":      _stripe_meta(raw, "guest_items"),
             "first_name":       _stripe_meta(raw, "first_name"),
@@ -820,6 +832,7 @@ async def recover_missed_order(
             "user_email":       _stripe_meta(raw, "user_email"),
             "shipping_address": _stripe_meta(raw, "shipping_address"),
             "shipping_method":  _stripe_meta(raw, "shipping_method", "usps"),
+            "phone":            _stripe_meta(raw, "phone"),
             "is_guest":         _stripe_meta(raw, "is_guest"),
             "guest_items":      _stripe_meta(raw, "guest_items"),
             "first_name":       _stripe_meta(raw, "first_name"),

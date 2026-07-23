@@ -1275,6 +1275,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
         </div>
         <div class="m-group"><label>Email Address</label><input type="email" id="co-email" placeholder="you@example.com"/></div>
       </div>
+      <div class="m-group"><label>Phone Number</label><input type="tel" id="co-phone" placeholder="(555) 123-4567"/></div>
       <div class="m-group"><label>Street Address</label><input type="text" id="co-street" placeholder="123 Main Street"/></div>
       <div class="m-group"><label>City</label><input type="text" id="co-city" placeholder="City"/></div>
       <div class="m-row">
@@ -3098,13 +3099,21 @@ function closeGuestConfirm(){document.getElementById('guest-confirm-modal').clas
 function openRegister(){closeGuestConfirm();resetAuth();switchAuth();document.getElementById('auth-modal').classList.add('open');}
 
 async function placeOrder(){
+  const phone=document.getElementById('co-phone').value.trim();
   const street=document.getElementById('co-street').value.trim();
   const city=document.getElementById('co-city').value.trim();
   const state=document.getElementById('co-state').value.trim();
   const zip=document.getElementById('co-zip').value.trim();
   const country=document.getElementById('co-country').value;
+  if(!phone){showCoMsg('Please enter a phone number — our supplier needs it to ship your order','error');return;}
   if(!street||!city||!state||!zip){showCoMsg('Please complete all address fields','error');return;}
-  const address=`${street}, ${city}, ${state} ${zip}, ${country}`;
+  // NOTE the comma between state and zip -- without it these collapse into
+  // one segment ("NY 10001") and the backend's _parse_address (which splits
+  // on "," expecting 5 parts: street, city, state, zip, country) reads the
+  // country value as the postal code instead. Confirmed live 2026-07-23:
+  // Silverbene received "US" as the postcode on every single order,
+  // guest and logged-in alike, and flagged the shipping address as missing.
+  const address=`${street}, ${city}, ${state}, ${zip}, ${country}`;
   const shippingMethod='fast_track';
   const btn=document.getElementById('pay-btn');
   btn.textContent='Preparing payment…';btn.disabled=true;
@@ -3117,7 +3126,7 @@ async function placeOrder(){
     const gCart=getGuestCart();
     if(!gCart.length){showCoMsg('Your cart is empty','error');btn.textContent='Pay Securely';btn.disabled=false;return;}
     try{
-      const res=await fetch(`${API}/payments/guest-checkout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:gCart.map(i=>({product_id:i.product_id,quantity:i.quantity,selected_size:i.selected_size||null,selected_color:i.selected_color||null,selected_option_id:i.selected_option_id||null,variant_id:i.variant_id||null})),email,first_name:fname,last_name:lname,shipping_address:address,shipping_method:shippingMethod})});
+      const res=await fetch(`${API}/payments/guest-checkout`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:gCart.map(i=>({product_id:i.product_id,quantity:i.quantity,selected_size:i.selected_size||null,selected_color:i.selected_color||null,selected_option_id:i.selected_option_id||null,variant_id:i.variant_id||null})),email,first_name:fname,last_name:lname,shipping_address:address,shipping_method:shippingMethod,phone})});
       const data=await res.json();
       if(res.ok){sessionStorage.removeItem('mikisi_guest_cart');window.location.href=data.checkout_url;}
       else{showCoMsg(data.detail||'Something went wrong','error');btn.textContent='Pay Securely';btn.disabled=false;}
@@ -3125,7 +3134,7 @@ async function placeOrder(){
     return;
   }
   try{
-    const res=await fetch(`${API}/payments/create-checkout`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({shipping_address:address,shipping_method:shippingMethod})});
+    const res=await fetch(`${API}/payments/create-checkout`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({shipping_address:address,shipping_method:shippingMethod,phone})});
     const data=await res.json();
     if(res.ok)window.location.href=data.checkout_url;
     else{showCoMsg(data.detail||'Something went wrong','error');btn.textContent='Pay Securely';btn.disabled=false;}
