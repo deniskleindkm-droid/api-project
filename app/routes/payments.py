@@ -11,6 +11,7 @@ from typing import Optional
 import stripe
 import os
 import json
+import re
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -82,6 +83,64 @@ def _option_id_in_variants(variants_json, option_id) -> bool:
         return False
     return any(str(v.get("option_id")) == str(option_id) for v in variants)
 
+
+def _parse_address(addr_str: str) -> dict:
+    """
+    Parses the frontend's comma-joined "street, city, state, zip, country"
+    string into structured fields. Expects exactly 5 comma-separated parts
+    -- state and zip must each be their own segment (docs/index.html's
+    placeOrder() was previously joining them with a space instead of a
+    comma, which silently shifted every field after it and sent Silverbene
+    the country code as the postal code on every single order; fixed
+    2026-07-23, see that commit).
+    """
+    parts = [p.strip() for p in addr_str.split(",")]
+    return {
+        "line1":        parts[0] if len(parts) > 0 else "",
+        "city":         parts[1] if len(parts) > 1 else "",
+        "state":        parts[2] if len(parts) > 2 else "",
+        "state_code":   parts[2][:2].upper() if len(parts) > 2 else "",
+        "postal_code":  parts[3].strip() if len(parts) > 3 else "",
+        "country_code": parts[4].strip().upper() if len(parts) > 4 else "US",
+    }
+
+
+def _validate_phone(phone: str) -> Optional[str]:
+    """
+    Returns an error message if `phone` isn't a real, complete phone
+    number, else None. Built 2026-07-23 after Silverbene emailed saying
+    they'd never received a phone number for an order -- the checkout
+    form previously had no phone field at all, so the backend sent
+    Silverbene's own "0000000000" placeholder on every order. This is
+    the actual gate: reject before Stripe checkout is ever created, not
+    just a frontend nicety a direct API call could skip.
+    """
+    digits = re.sub(r"\D", "", phone or "")
+    if len(digits) < 7:
+        return "Please enter a complete phone number"
+    if len(set(digits)) == 1:
+        # Catches exactly the "0000000000" placeholder class of input --
+        # a real phone number is never every digit the same.
+        return "Please enter a valid phone number"
+    return None
+
+
+def _validate_shipping_address(shipping_address: str) -> Optional[str]:
+    """
+    Returns an error message if the parsed address is missing a real
+    street, city, state, or postal code, else None. Validates the
+    PARSED result (not just that the raw string is non-empty) so a
+    future format regression in how the frontend joins the string gets
+    caught here too, not just by the one bug already fixed today.
+    """
+    addr = _parse_address(shipping_address)
+    if not addr["line1"] or not addr["city"] or not addr["state"] or not addr["postal_code"]:
+        return "Please enter a complete shipping address"
+    if len(addr["postal_code"]) < 3:
+        return "Please enter a valid postal code"
+    return None
+
+
 class CheckoutRequest(BaseModel):
     shipping_address: str
     shipping_method: str = "usps"  # "fast_track" or "usps"
@@ -96,6 +155,13 @@ def create_checkout_session(
     payload = verify_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+    phone_error = _validate_phone(request.phone)
+    if phone_error:
+        raise HTTPException(status_code=400, detail=phone_error)
+    address_error = _validate_shipping_address(request.shipping_address)
+    if address_error:
+        raise HTTPException(status_code=400, detail=address_error)
 
     user_email = payload.get("sub")
 
@@ -194,6 +260,13 @@ def create_guest_checkout_session(
 ):
     if not request.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
+
+    phone_error = _validate_phone(request.phone)
+    if phone_error:
+        raise HTTPException(status_code=400, detail=phone_error)
+    address_error = _validate_shipping_address(request.shipping_address)
+    if address_error:
+        raise HTTPException(status_code=400, detail=address_error)
 
     line_items = []
     items_meta = []
@@ -432,19 +505,9 @@ def process_order_background(checkout_data: dict):
                 customer_first = customer_name_parts[0].capitalize()
                 customer_last  = customer_name_parts[1].capitalize() if len(customer_name_parts) > 1 else "Customer"
 
-            # Parse shipping_address string into structured fields
-            # Expected format: "123 Street, City, State, ZIP, Country"
-            def _parse_address(addr_str: str) -> dict:
-                parts = [p.strip() for p in addr_str.split(",")]
-                return {
-                    "line1":        parts[0] if len(parts) > 0 else "",
-                    "city":         parts[1] if len(parts) > 1 else "",
-                    "state":        parts[2] if len(parts) > 2 else "",
-                    "state_code":   parts[2][:2].upper() if len(parts) > 2 else "",
-                    "postal_code":  parts[3].strip() if len(parts) > 3 else "",
-                    "country_code": parts[4].strip().upper() if len(parts) > 4 else "US",
-                }
-
+            # _parse_address is now the module-level function (see top of
+            # file) shared with the checkout-time validation that rejects
+            # an incomplete address before Stripe checkout is ever created.
             address = _parse_address(shipping_address)
 
             customer = {
