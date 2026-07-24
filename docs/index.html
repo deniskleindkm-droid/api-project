@@ -3433,14 +3433,7 @@ function _anyOverlayOpen(){
 function _updateBackToColVisibility(){
   const inCollection = document.body.classList.contains('collection-mode');
   const overlayOpen = _anyOverlayOpen();
-  // Product detail (#pp-inline) renders INSIDE collection-view, so
-  // inCollection stays true while it's open -- this fixed bottom-right
-  // button then sits on top of the detail panel's right column (price,
-  // Materials, etc, confirmed live 2026-07-24 at multiple scroll
-  // positions). The panel already has its own "← All Collections" link
-  // inline, so the floating one is redundant there anyway -- just hide it.
-  const ppOpen = document.getElementById('pp-inline')?.style.display === 'block';
-  if(inCollection && window.scrollY > 320 && !overlayOpen && !ppOpen){
+  if(inCollection && window.scrollY > 320 && !overlayOpen){
     _backBtn.classList.add('visible');
   } else {
     _backBtn.classList.remove('visible');
