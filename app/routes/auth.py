@@ -358,6 +358,26 @@ def login(user: UserRequest, request: Request, session: Session = Depends(get_se
     }
 
 
+@router.post("/refresh")
+def refresh_token(token: str = Depends(oauth2_scheme)):
+    """
+    Reissues a fresh 1-hour token from a still-valid one. Called by
+    docs/index.html every few minutes WHILE the customer is actively using
+    the site, so an active session never dies mid-use even though the
+    underlying token only lives 1 hour -- but a customer who goes inactive
+    stops getting refreshed and lands on a naturally-expired token, which
+    the existing 401 handling (_sessionExpired()) catches on their next
+    action. An already-expired token fails verify_token()'s own exp check
+    below and gets 401'd here too -- inactivity logout is only reversible
+    by signing in again, same as any expired session.
+    """
+    payload = verify_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    new_token = create_access_token({"sub": payload.get("sub"), "name": payload.get("name")})
+    return {"access_token": new_token, "token_type": "bearer"}
+
+
 @router.get("/profile")
 def get_profile(token: str = Depends(oauth2_scheme)):
     payload = verify_token(token)

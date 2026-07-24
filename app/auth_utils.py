@@ -5,13 +5,16 @@ import os
 
 SECRET_KEY = os.getenv("SECRET_KEY", "mysupersecretkey")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours -- was 30 minutes with no
-# refresh mechanism, so any session older than that had a dead token while
-# the UI still showed the user as signed in (only one of several
-# token-bearing fetch calls, addToCart, actually noticed a 401 and reacted
-# -- and even that only cleared the token, never the visible logged-in
-# state). Confirmed live 2026-07-23: checkout showed the guest/sign-in
-# choice to an already-"signed in" customer for exactly this reason.
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour -- per Dennis 2026-07-24: sessions
+# should end 1 hour after the customer goes INACTIVE, not stay alive for a
+# flat 24h regardless of activity (that was the previous fix, 2026-07-23,
+# for a different bug -- see git history). This 60-minute token lifetime is
+# only half the mechanism: docs/index.html tracks real user activity and
+# calls POST /refresh (see routes/auth.py) every few minutes to reissue
+# a fresh 1-hour token WHILE the customer is active. If they go quiet, no
+# refresh call fires, this token expires on schedule, and the 401 handling
+# already wired into every authenticated fetch (_sessionExpired(), added
+# 2026-07-23) logs them out cleanly on their next action.
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

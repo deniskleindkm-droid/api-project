@@ -3364,6 +3364,30 @@ function _sessionExpired(){
   updateAuthUI();
   showToast('Your session expired — please sign in again');
 }
+// Sessions should end 1 hour after the customer goes INACTIVE, not just
+// 1 hour after login -- the token itself (auth_utils.py) only lives 60
+// minutes, so this is the other half: while there's real activity, quietly
+// refresh it in the background so an engaged customer is never logged out
+// mid-session. Stop clicking/typing for the full window and no refresh
+// fires -- the token then expires on schedule and the next authenticated
+// action hits the existing _sessionExpired() flow above, same as any
+// other dead token.
+let _lastActivity=Date.now();
+['click','keydown','mousemove','scroll','touchstart'].forEach(evt=>
+  document.addEventListener(evt,()=>{_lastActivity=Date.now();},{passive:true})
+);
+const _REFRESH_INTERVAL_MS=5*60*1000;      // check every 5 minutes
+const _ACTIVE_WITHIN_MS=10*60*1000;        // "active" = something happened in the last 10 minutes
+async function _refreshSessionIfActive(){
+  if(!token) return;
+  if(Date.now()-_lastActivity>_ACTIVE_WITHIN_MS) return;  // inactive -- let the token expire naturally
+  try{
+    const res=await fetch(`${API}/refresh`,{method:'POST',headers:{Authorization:`Bearer ${token}`}});
+    if(res.status===401){_sessionExpired();return;}
+    if(res.ok){const d=await res.json();token=d.access_token;localStorage.setItem('token',token);}
+  }catch{} // a network blip shouldn't log anyone out -- next tick tries again
+}
+setInterval(_refreshSessionIfActive,_REFRESH_INTERVAL_MS);
 function updateAuthUI(){
   const g=document.getElementById('user-greeting'),ab=document.getElementById('auth-btn'),lb=document.getElementById('logout-btn'),ob=document.getElementById('orders-btn');
   if(token&&userEmail){const n=(userName||userEmail.split(' ')[0]).split(' ')[0];g.textContent=n;g.style.display='block';ab.style.display='none';lb.style.display='block';if(ob)ob.style.display='block';}
@@ -3548,11 +3572,28 @@ function renderOrders(orders){
     const date=new Date(o.created_at).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});
     const badge=o.status||'pending';
     const label=statusLabel[badge]||badge;
-    const trackHtml=o.tracking_number
-      ?`<div class="order-tracking"><span class="order-tracking-label">Tracking</span><a href="https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(o.tracking_number)}" target="_blank" rel="noopener">${o.tracking_number}</a></div>`
-      :(badge==='shipped'||badge==='delivered'?'<div class="order-tracking"><span class="order-tracking-label">Tracking</span><span style="color:var(--mid)">Number on its way</span></div>':'');
+    // Lead with plain language, not the raw tracking number -- a customer
+    // clicking this row wants to know "did it ship / arrive," not decode a
+    // carrier code. The number itself is still one tap away via "Track
+    // package" (17track.net auto-detects the carrier from the number's
+    // format -- needed because these aren't always real USPS numbers;
+    // dropship orders route through an international freight-forwarder
+    // first, so linking straight to USPS's own tracker would tell the
+    // customer "not found" for a package that's genuinely on its way.
+    // See order #21, 2026-07-24).
+    const fmtDate=iso=>iso?new Date(iso).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}):'';
+    const deliveredDate=fmtDate(o.delivered_at),shippedDate=fmtDate(o.shipped_at);
+    const statusMsg=badge==='delivered'
+      ?`Your order has been delivered${deliveredDate?' on '+deliveredDate:''} ✨`
+      :(badge==='shipped'?`Your order has been shipped${shippedDate?' on '+shippedDate:''} 📦`:'');
+    const trackLink=o.tracking_number?` · <a href="https://t.17track.net/en#nums=${encodeURIComponent(o.tracking_number)}" target="_blank" rel="noopener">Track package</a>`:'';
+    const trackHtml=statusMsg
+      ?`<div class="order-tracking"><span>${statusMsg}${trackLink}</span></div>`
+      :'';
+    const itemHtml=o.product_name?`<div class="order-item">${o.product_name}</div>`:'';
     return`<div class="order-card">
       <div class="order-header"><span class="order-num">Order #${o.id}</span><span class="order-badge ${badge}">${label}</span></div>
+      ${itemHtml}
       <div class="order-meta">${date} · ${o.quantity} item${o.quantity>1?'s':''} · $${Number(o.total_price).toFixed(2)}</div>
       ${trackHtml}
     </div>`;

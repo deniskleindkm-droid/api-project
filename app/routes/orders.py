@@ -108,11 +108,27 @@ def get_my_orders(
     payload = verify_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
-    
+
     orders = session.exec(
         select(Order).where(Order.user_id == payload.get("sub"))
     ).all()
-    return orders
+    # Order only stores product_id -- the frontend order card has no other
+    # way to show what was actually bought, so join the name here. Also
+    # join OrderTracking's shipped_at/delivered_at so the order history can
+    # say e.g. "shipped on Jul 24, 2026" instead of just "Shipped" with no
+    # date -- Order.status alone can't answer "since when."
+    result = []
+    for o in orders:
+        data = o.model_dump()
+        product = session.get(Product, o.product_id)
+        data["product_name"] = product.name if product else None
+        tracking = session.exec(
+            select(OrderTracking).where(OrderTracking.order_id == o.id)
+        ).first()
+        data["shipped_at"] = tracking.shipped_at if tracking else None
+        data["delivered_at"] = tracking.delivered_at if tracking else None
+        result.append(data)
+    return result
 
 @router.get("/orders/{order_id}")
 def get_order(
