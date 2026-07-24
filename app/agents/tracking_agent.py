@@ -62,6 +62,13 @@ def check_order_status(tracking):
             return None
 
         result = supplier.get_tracking(tracking.cj_order_id)
+        # "unknown" means the adapter has no real answer (Silverbene has no
+        # tracking API at all; CJ falls back to it when auth fails) -- treat
+        # it as "no new information" rather than letting the caller write it
+        # over a real, already-confirmed status like "dispatched". This was
+        # silently regressing order #21's status every 6 hours until fixed.
+        if not result or result.get("status") == "unknown":
+            return None
         return result
 
     except Exception as e:
@@ -69,10 +76,39 @@ def check_order_status(tracking):
         return None
 
 
+def _get_order_item_summary(order_id) -> str:
+    """
+    Looks up what was actually ordered so shipping/delivery emails can name
+    the product instead of reading as a generic notice. Returns "" (and lets
+    the caller omit the row) rather than raising if the order/product can't
+    be found -- a missing product name shouldn't block a shipping email.
+    """
+    try:
+        with Session(engine) as session:
+            order = session.get(Order, order_id)
+            if not order:
+                return ""
+            from app.models.product import Product
+            product = session.get(Product, order.product_id)
+            if not product:
+                return ""
+            qty = f" (x{order.quantity})" if order.quantity and order.quantity > 1 else ""
+            return f"{product.name}{qty}"
+    except Exception as e:
+        print(f"[Tracking] Could not look up order item for order {order_id}: {e}")
+        return ""
+
+
 def send_shipping_email(tracking):
     """Email customer when order ships."""
     try:
         from app.agents.email_partner import send_email
+
+        item_summary = _get_order_item_summary(tracking.order_id)
+        item_row = f"""
+        <p style="font-size: 14px; color: #0e0e0e; margin-bottom: 4px;">
+            <strong>Item:</strong> {item_summary}
+        </p>""" if item_summary else ""
 
         subject = "Your Mikisi order has shipped! 📦"
         body = f"""
@@ -99,12 +135,9 @@ def send_shipping_email(tracking):
 
     <div style="background: #f7f2ed; padding: 24px; margin-bottom: 32px;">
         <p style="font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
-                  color: #c9a96e; margin-bottom: 8px;">Tracking Information</p>
-        <p style="font-size: 14px; color: #0e0e0e; margin-bottom: 4px;">
-            <strong>Tracking Number:</strong> {tracking.tracking_number or 'Being updated'}
-        </p>
+                  color: #c9a96e; margin-bottom: 8px;">Order Information</p>{item_row}
         <p style="font-size: 14px; color: #0e0e0e;">
-            <strong>Carrier:</strong> {tracking.carrier or 'CJ Logistics'}
+            <strong>Tracking Number:</strong> {tracking.tracking_number or 'Being updated'}
         </p>
     </div>
 
@@ -138,6 +171,14 @@ def send_delivery_email(tracking):
     try:
         from app.agents.email_partner import send_email
 
+        item_summary = _get_order_item_summary(tracking.order_id)
+        item_block = f"""
+    <div style="background: #f7f2ed; padding: 20px 24px; margin-bottom: 32px;">
+        <p style="font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+                  color: #c9a96e; margin-bottom: 8px;">Delivered</p>
+        <p style="font-size: 14px; color: #0e0e0e;"><strong>{item_summary}</strong></p>
+    </div>""" if item_summary else ""
+
         subject = "Your Mikisi order has been delivered! ✨"
         body = f"""
 <!DOCTYPE html>
@@ -161,7 +202,7 @@ def send_delivery_email(tracking):
         Your Mikisi order has been delivered. We hope you love it as much as
         we loved curating it for you.
     </p>
-
+{item_block}
     <div style="background: #f9eef2; padding: 24px; margin-bottom: 32px;
                 text-align: center;">
         <p style="font-size: 14px; color: #d4849c; font-style: italic;">

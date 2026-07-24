@@ -14,6 +14,22 @@ from app.models.order import Order
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
+# Supplier/ops senders that share this inbox but aren't customers -- these
+# have their own dedicated agents (e.g. silverbene_shipping_monitor) that
+# know how to read them properly and route action items to Dennis directly.
+# Without this exclusion, this agent's hourly *unfiltered* UNSEEN scan reaches
+# them first (it's more frequent than silverbene_shipping_monitor's 2-hour
+# scan) and marks them \Seen after misclassifying them as generic customer
+# mail -- which is exactly what buried two real "please send the correct
+# shipping address" requests from Silverbene behind a low-urgency internal
+# signal instead of an alert to Dennis (see order #21, 2026-07-22/23).
+_SUPPLIER_SENDER_DOMAINS = ["silverbene.com", "cjdropship.com", "cjdropshipping.com"]
+
+
+def _is_supplier_email(sender: str) -> bool:
+    sender_lower = sender.lower()
+    return any(domain in sender_lower for domain in _SUPPLIER_SENDER_DOMAINS)
+
 
 # ============================================================
 # EMAIL INBOX — IMAP
@@ -73,6 +89,13 @@ def fetch_unread_emails(limit=10):
 
                 # Get sender
                 sender = msg.get("From", "")
+
+                if _is_supplier_email(sender):
+                    # Leave unread (no \Seen) and don't classify -- this
+                    # belongs to a supplier-specific agent, not the generic
+                    # customer pipeline.
+                    print(f"[Customer] Skipping supplier email from {sender!r} -- not a customer, leaving for its own agent")
+                    continue
 
                 # Get body
                 body = ""

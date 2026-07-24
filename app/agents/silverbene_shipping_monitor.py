@@ -158,6 +158,36 @@ def _find_matching_order(silverbene_order_id: str, text: str) -> "OrderTracking 
     return None
 
 
+def _alert_dennis_action_needed(etype: str, sb_order_id: str, subject: str, body: str):
+    """
+    Emails Dennis directly for Silverbene emails that block dispatch and need
+    a human reply (missing_customer_info, payment_required). Never raises --
+    a failed alert send shouldn't take down the scan.
+    """
+    try:
+        from app.agents.email_partner import send_email
+        dennis_email = os.getenv("DENNIS_EMAIL", "hello@mikisi.co")
+        label = {
+            "missing_customer_info": "Silverbene needs the correct shipping address/phone",
+            "payment_required": "Silverbene order needs extra payment",
+        }.get(etype, etype)
+        send_email(
+            dennis_email,
+            f"ACTION NEEDED — {label}" + (f" (order {sb_order_id})" if sb_order_id else ""),
+            f"""<html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+<h2 style="color:#c0392b;">{label}</h2>
+<p>Silverbene sent an email that needs a reply before this order can ship{f" (Silverbene order <strong>{sb_order_id}</strong>)" if sb_order_id else ""}.</p>
+<p><strong>Subject:</strong> {subject}</p>
+<p><strong>Body:</strong></p>
+<p style="white-space:pre-wrap;color:#555;">{body[:1000]}</p>
+</body></html>""",
+            is_html=True,
+        )
+        print(f"[ShippingMonitor] 🚨 Alerted Dennis — {label}")
+    except Exception as e:
+        print(f"[ShippingMonitor] Failed to alert Dennis: {e}")
+
+
 def run_silverbene_shipping_monitor():
     """
     Main entry point — called by the scheduler every 2 hours.
@@ -214,6 +244,14 @@ def run_silverbene_shipping_monitor():
                 if etype != "shipping_notification":
                     print(f"[ShippingMonitor] Recognized as '{etype}' — not automated yet, left unread for manual review")
                     result["skipped"].append({"subject": subject, "type": etype})
+                    # "Left unread for manual review" only works if a human is
+                    # actually watching the inbox -- order #21 proved they
+                    # aren't always: Silverbene asked twice for a corrected
+                    # address (missing_customer_info) and it sat unanswered
+                    # until they emailed again. For the two types that block
+                    # dispatch, push an active alert instead of a passive one.
+                    if etype in ("missing_customer_info", "payment_required"):
+                        _alert_dennis_action_needed(etype, sb_order_id=classification.get("silverbene_order_id"), subject=subject, body=body)
                     continue
 
                 sb_order_id = (classification.get("silverbene_order_id") or "").strip()
