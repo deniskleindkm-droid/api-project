@@ -148,8 +148,6 @@ def send_shipping_email(tracking):
 
     <div style="border-top: 1px solid #ece5dd; margin-top: 40px; padding-top: 24px;
                 text-align: center;">
-        <p style="font-size: 11px; color: #d8d0c8; letter-spacing: 2px;
-                  text-transform: uppercase;">Look Elegant and Polished</p>
     </div>
 
 </div>
@@ -203,13 +201,6 @@ def send_delivery_email(tracking):
         we loved curating it for you.
     </p>
 {item_block}
-    <div style="background: #f9eef2; padding: 24px; margin-bottom: 32px;
-                text-align: center;">
-        <p style="font-size: 14px; color: #d4849c; font-style: italic;">
-            "Look Elegant and Polished"
-        </p>
-    </div>
-
     <p style="font-size: 13px; color: #6b6b6b; line-height: 1.8;">
         If you have any questions about your order, simply reply to this email.
         We'd love to hear what you think.

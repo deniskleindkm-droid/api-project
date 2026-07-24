@@ -69,9 +69,6 @@ def send_verification_email(email: str, code: str):
     </p>
 
     <div style="border-top:1px solid #ece5dd;margin-top:40px;padding-top:24px;text-align:center;">
-        <p style="font-size:11px;color:#d8d0c8;letter-spacing:2px;text-transform:uppercase;">
-            Look Elegant and Polished
-        </p>
     </div>
 
 </div>
@@ -123,9 +120,6 @@ def send_reset_email(email: str, code: str):
     </p>
 
     <div style="border-top:1px solid #ece5dd;margin-top:40px;padding-top:24px;text-align:center;">
-        <p style="font-size:11px;color:#d8d0c8;letter-spacing:2px;text-transform:uppercase;">
-            Look Elegant and Polished
-        </p>
     </div>
 
 </div>

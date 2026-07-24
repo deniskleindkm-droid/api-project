@@ -2742,19 +2742,26 @@ function applyChipAvailability(){
 function updateVariantPrice(){
   applyChipAvailability();
   if(!ppVariantPrices.length){ ppSelectedOptionId=null; ppSelectedVariantId=null; return; }
-  // True only when at least one priced Silverbene option actually carries a
-  // size value. Some single-option bracelets/necklaces/anklets have no real
-  // Size/Length attribute at all — Silverbene gave one plain option with just
-  // Color/Purity — but p.sizes still holds a descriptive range synthesized
-  // from the product's raw text (e.g. "Adjustable 6.5\"–8\"", "9.5\""),
-  // which renders as a real <button> chip (ppHasSizeChips=true) because it's
-  // not one of the literal ADJUSTABLE_VALS phrases. That chip can never match
-  // any v.size here since the backend never had a size attribute to extract —
-  // gate the mismatch logic on this too, or every one of those products would
-  // wrongly show "invalid selection" and a disabled Add to Cart on load, with
-  // no click involved (the sibling case to the ring fix above: a decorative
-  // size string mistaken for a real, matchable one).
-  const backendHasSize = ppVariantPrices.some(v=>v.size!=null);
+  // True only when there's more than one DISTINCT size value among this
+  // product's priced options — i.e. a real choice to make, not just a
+  // non-null field. Originally this checked `v.size!=null`, which correctly
+  // handled the case Silverbene never had a size attribute at all (v.size
+  // stays null for every option), but missed the sibling case where a
+  // single-option product's one and only variant still carries a
+  // descriptive size string (e.g. "Adjustable 16\"–18\"", synthesized from
+  // raw text — see p.sizes). That non-null-but-singular value still
+  // rendered a real, clickable <button> chip (ppHasSizeChips=true), so the
+  // old check saw backendHasSize=true and required the customer to click a
+  // chip with no other option before Add to Cart would ever un-block —
+  // silently, no error shown, confirmed live 2026-07-24 (product #721,
+  // Emerald Rectangular Halo Pendant Necklace): the click never fired
+  // anything, the button never actually added the item. Requiring genuine
+  // plurality fixes both the "backend never had size" case (0 distinct
+  // values) and this one (1 distinct value) the same way, while a real
+  // multi-size product (2+ distinct values) still correctly blocks until
+  // chosen.
+  const distinctSizes = new Set(ppVariantPrices.map(v=>v.size).filter(v=>v!=null));
+  const backendHasSize = distinctSizes.size > 1;
   const wantSize = ppSelectedSize ? _normalizeSizeForMatch(ppSelectedSize) : null;
   // Every non-size selector the customer has currently made. The product panel
   // can show up to three independent selector groups beyond size — Color
@@ -3426,7 +3433,14 @@ function _anyOverlayOpen(){
 function _updateBackToColVisibility(){
   const inCollection = document.body.classList.contains('collection-mode');
   const overlayOpen = _anyOverlayOpen();
-  if(inCollection && window.scrollY > 320 && !overlayOpen){
+  // Product detail (#pp-inline) renders INSIDE collection-view, so
+  // inCollection stays true while it's open -- this fixed bottom-right
+  // button then sits on top of the detail panel's right column (price,
+  // Materials, etc, confirmed live 2026-07-24 at multiple scroll
+  // positions). The panel already has its own "← All Collections" link
+  // inline, so the floating one is redundant there anyway -- just hide it.
+  const ppOpen = document.getElementById('pp-inline')?.style.display === 'block';
+  if(inCollection && window.scrollY > 320 && !overlayOpen && !ppOpen){
     _backBtn.classList.add('visible');
   } else {
     _backBtn.classList.remove('visible');

@@ -767,7 +767,6 @@ def process_order_background(checkout_data: dict):
 <html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#fdf9f6;">
 <div style="text-align:center;padding:32px 0;">
     <h1 style="font-family:Georgia,serif;color:#0e0e0e;letter-spacing:4px;text-transform:uppercase;font-size:28px;font-weight:300;">Mik<em style="color:#d4849c;">i</em>si</h1>
-    <p style="font-size:11px;color:#888;letter-spacing:3px;text-transform:uppercase;">Look Elegant and Polished</p>
 </div>
 <div style="background:white;padding:32px;border:1px solid #ece5dd;">
     <h2 style="font-family:Georgia,serif;font-weight:300;font-size:24px;color:#0e0e0e;margin-bottom:8px;">Your order is confirmed.</h2>
@@ -793,7 +792,7 @@ def process_order_background(checkout_data: dict):
 </div>
 <div style="text-align:center;padding:32px 0;">
     <p style="font-size:11px;color:#bbb;letter-spacing:1px;">Questions? Contact us at hello@mikisi.co</p>
-    <p style="font-size:10px;color:#ccc;margin-top:8px;letter-spacing:1px;">© 2026 Mikisi · Look Elegant and Polished</p>
+    <p style="font-size:10px;color:#ccc;margin-top:8px;letter-spacing:1px;">© 2026 Mikisi</p>
 </div>
 </body></html>""",
                 is_html=True
