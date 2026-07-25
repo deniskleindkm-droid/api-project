@@ -2163,6 +2163,44 @@ def instagram_shop_eligibility(master_key: str):
     return r.json()
 
 
+@router.get("/admin/instagram/ads-eligibility")
+def instagram_ads_eligibility(master_key: str):
+    """
+    Admin — read-only check of what's actually available for running paid
+    Meta ads, before any Marketing API integration gets built. Checks
+    (a) whether the existing FACEBOOK_ACCESS_TOKEN carries ads_management/
+    ads_read scope at all (it was originally granted for Instagram
+    posting + catalog sync, not ads), and (b) whether any ad account is
+    reachable through it, with its funding/billing status. Never creates
+    or spends anything — pure discovery, per Dennis 2026-07-25 not
+    wanting ad infrastructure built blind before confirming what's real.
+    """
+    if not verify_master_key(master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    import os, requests
+    token = os.getenv("FACEBOOK_ACCESS_TOKEN")
+    if not token:
+        return {"error": "FACEBOOK_ACCESS_TOKEN not set"}
+
+    result = {}
+
+    perms = requests.get(
+        "https://graph.facebook.com/v18.0/me/permissions",
+        params={"access_token": token}, timeout=15,
+    )
+    result["token_permissions"] = perms.json()
+
+    accounts = requests.get(
+        "https://graph.facebook.com/v18.0/me/adaccounts",
+        params={"fields": "account_id,name,account_status,currency,funding_source,business",
+                "access_token": token}, timeout=15,
+    )
+    result["ad_accounts"] = accounts.json()
+
+    return result
+
+
 @router.get("/admin/silverbene/probe-tracking-endpoints")
 def silverbene_probe_tracking_endpoints(order_id: int, master_key: str, session: Session = Depends(get_session)):
     """
