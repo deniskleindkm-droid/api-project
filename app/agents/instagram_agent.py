@@ -288,7 +288,15 @@ def _strip_stray_header(text: str) -> str:
     label_re = re.compile(r'^\*\*[A-Za-z][A-Za-z ]{0,20}:?\*\*$')
     lines = [ln for ln in lines if not label_re.match(ln.strip())]
     result = "\n".join(lines).strip()
-    return re.sub(r'\n{3,}', '\n\n', result)
+    result = re.sub(r'\n{3,}', '\n\n', result)
+    # Instagram renders no markdown at all — "**word**"/"*word*" show up
+    # as literal asterisks in a live post. Unwrap rather than strip the
+    # word itself, since the LLM sometimes uses bold/italic for emphasis
+    # on an otherwise-fine sentence (seen live 2026-07-25: a hook line
+    # wrapped in "**...**" and a closing "*you*").
+    result = re.sub(r'\*\*(.+?)\*\*', r'\1', result)
+    result = re.sub(r'(?<!\*)\*([^*\n]+?)\*(?!\*)', r'\1', result)
+    return result
 
 
 def _generate_caption(product: Product, post_type: str) -> str:
