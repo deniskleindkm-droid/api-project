@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import anthropic
 from app.agents.store_config import get_config
 
@@ -110,7 +111,7 @@ ACCEPTANCE RULES:
 - Description makes a woman feel something — not a feature list
 
 FINISH RULE — critical for multi-variant products:
-- When a product has more than one finish option (e.g. gold + rhodium, gold + white gold), ALWAYS frame them as "available in [finish A] or [finish B]" — e.g. "available in polished silver or an 18K gold-plated finish". This exact "available in ___" construction is the required phrasing, not just an example.
+- When a product has more than one finish option (e.g. gold + rhodium, gold + white gold), ALWAYS frame them as "available in [finish A] or [finish B]" — e.g. "available in polished silver or an 18K gold-plated finish". This exact "available in ___" construction is the required phrasing, not just an example. THREE OR MORE options: list every one of them, never just two — "available in [A], [B], or [C]".
 - NEVER write "with optional gold plating" — state both options directly.
 - NEVER write both finishes as if simultaneously applied — never "rhodium-plated 18K gold". One piece has ONE finish; the customer chooses which.
 - If only one finish exists, state it directly using the same construction: "available in rhodium-plated 925 sterling silver".
@@ -206,19 +207,63 @@ _FINISH_BANNED_PHRASES = [
 ]
 
 
+def build_finish_clause(colors: list) -> str | None:
+    """
+    Deterministic — NO LLM. The single source of truth for what a product's
+    finish clause should say, computed directly from its real color/variant
+    data. Returns None when there's no genuine metal-finish choice at all
+    (e.g. colors describing a gemstone/certificate, not a plating) — silver
+    is the only solid metal this catalog sells, everything else is a
+    plating, but a product can also have ZERO real finish choice (single
+    material, no alternative), which must never be dressed up as a choice.
+
+    Built after fix_finish_wording()'s first version let an LLM freely
+    decide both WHICH finishes exist and how to word them — it fabricated
+    a "silver or 18K gold-plated" choice on a Moissanite ring that only
+    ever had one material (colors=["Moissanite · 9 Stones · with GRA
+    Certificate"] — a gemstone/certificate descriptor, not a finish at
+    all), and separately under-counted a real 3-finish ring (Rose/Yellow/
+    White Gold) down to just two. Confirmed live, both cases, 2026-07-25.
+    Grounding the actual finish list here, and only ever handing the LLM
+    an exact pre-computed phrase to place (see fix_finish_wording below),
+    removes that failure mode entirely — the LLM can no longer invent or
+    drop an option, only decide where a fixed sentence goes.
+    """
+    metal_map = [
+        (re.compile(r'rose\s*gold', re.I), 'rose gold-plated'),
+        (re.compile(r'white\s*gold', re.I), 'white gold-plated'),
+        (re.compile(r'\bgold\b', re.I), '18K gold-plated'),
+        (re.compile(r'black\s*rhodium', re.I), 'black rhodium-plated'),
+        (re.compile(r'\brhodium\b', re.I), 'rhodium-plated'),
+        (re.compile(r'\bplatinum\b', re.I), 'platinum-plated'),
+        (re.compile(r'\bsilver\b', re.I), 'silver'),
+    ]
+    finishes = []
+    for c in colors or []:
+        for part in str(c).split('·'):
+            part = part.strip()
+            for pattern, label in metal_map:
+                if pattern.search(part):
+                    if label not in finishes:
+                        finishes.append(label)
+                    break
+    if not finishes:
+        return None
+    if len(finishes) == 1:
+        return f"available in {finishes[0]}"
+    if len(finishes) == 2:
+        return f"available in {finishes[0]} or {finishes[1]}"
+    return "available in " + ", ".join(finishes[:-1]) + f", or {finishes[-1]}"
+
+
 def fix_finish_wording(description: str, colors_json: str) -> str | None:
     """
-    Narrow, targeted rewrite for EXISTING product descriptions written
-    before the FINISH RULE above required "available in [A] or [B]" with
-    every plated finish saying "-plated" — see rewrite_product()'s FINISH
-    RULE for why bare "gold"/"Rose Gold"/"Black Rhodium" reads as solid
-    metal to a customer when silver is the only solid metal this catalog
-    sells; everything else is a plating. Not gold-specific — per Dennis
-    2026-07-25, this applies to any plated finish color (gold, rose gold,
-    white gold, rhodium, or otherwise), not just gold. Originally built for
-    Green Cactus Flower Ring, product #597: "925 sterling silver blooms
-    with green cubic zirconia, offering 18k gold or silver finish" ->
-    "available in silver or 18K gold-plated finish".
+    Narrow, targeted rewrite for EXISTING product descriptions — corrects
+    only the finish/material sentence, using build_finish_clause() above as
+    the exact, non-negotiable ground truth for what it must say. The LLM's
+    only job here is placement/grammar (fit the exact phrase naturally into
+    the existing sentence, or remove an existing false claim if there's no
+    real finish choice) — never deciding what the finish options are.
 
     Deliberately does NOT touch the emotional/brand-voice sentence, name,
     or collection — only the finish clause, so this is safe to run against
@@ -234,14 +279,31 @@ def fix_finish_wording(description: str, colors_json: str) -> str | None:
     except Exception:
         colors = []
 
-    prompt = f"""You are ARIA, copy editor for Mikisi, a luxury jewelry brand.
+    clause = build_finish_clause(colors)
+    if clause:
+        instruction = (
+            f'The description must state the finish EXACTLY as: "{clause}" — '
+            f'use this exact phrase verbatim, do not reword it. Fix the sentence '
+            f'containing the finish mention to use this exact phrase naturally; '
+            f'leave every other word unchanged.'
+        )
+    else:
+        instruction = (
+            'This product has no real metal finish choice (the color/variant data '
+            'describes something else, e.g. a gemstone or certificate — not a '
+            'metal plating). Remove any claim of a finish/plating choice from the '
+            'description entirely — do not invent one. Leave every other word unchanged.'
+        )
 
-This product description states its finish/color options ambiguously (implying solid metal). Rewrite ONLY the sentence containing the finish/material information so it reads naturally and uses this construction somewhere in it: "available in [finish A] or [finish B]". Silver (925 sterling silver) is the only SOLID metal this catalog sells — every other finish (gold, rose gold, white gold, rhodium, black rhodium, or any other plating color) must say "-plated" or "plating" (e.g. "18K gold-plated", "Rose Gold-plated", "Black Rhodium-plated") — never state a non-silver finish bare. Keep the emotional/brand-voice sentence that follows exactly as it is, word for word. Do not introduce any of these banned phrases: {", ".join(f'"{p}"' for p in _FINISH_BANNED_PHRASES)}.
+    prompt = f"""Fix ONLY the finish/material sentence in this jewelry description.
+
+{instruction}
+
+Do not introduce any of these banned phrases: {", ".join(f'"{p}"' for p in _FINISH_BANNED_PHRASES)}.
 
 Current description: {description}
-Actual finish options for this product: {json.dumps(colors)}
 
-Return JSON only: {{"description": "the corrected description, natural phrasing, only the finish sentence changed"}}"""
+Return ONLY valid JSON, no other text: {{"description": "corrected description"}}"""
 
     try:
         message = client.messages.create(
@@ -250,13 +312,14 @@ Return JSON only: {{"description": "the corrected description, natural phrasing,
             messages=[{"role": "user", "content": prompt}],
         )
         text = message.content[0].text.strip()
-        if text.startswith("```"):
-            parts = text.split("```")
-            if len(parts) >= 2:
-                text = parts[1]
-                if text.startswith("json"):
-                    text = text[4:]
-        result = json.loads(text.strip())
+        m = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.S)
+        if m:
+            text = m.group(1)
+        else:
+            m2 = re.search(r'(\{.*\})', text, re.S)
+            if m2:
+                text = m2.group(1)
+        result = json.loads(text)
         new_desc = result.get("description", "").strip()
         if not new_desc or any(p in new_desc.lower() for p in _FINISH_BANNED_PHRASES):
             return None

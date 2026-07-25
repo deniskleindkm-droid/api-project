@@ -326,9 +326,10 @@ Products below are from Silverbene. Accept all jewelry. For each product do exac
 4. WRITE MIKISI DESCRIPTION — exactly 2 sentences. Intimate, empowering, elegant. Mention the actual material in the first sentence, using only the same metal words as your IDENTIFY MATERIAL step above — the description can never claim a finish the material step didn't. If it mentions "stud" or "hoop", it must match the SAME style word you used in the cleaned name — never the other one.
 
 FINISH RULE — critical for multi-variant products:
-- When a product has more than one REAL finish option (per "Colors available" — e.g. Silver + Yellow Gold), ALWAYS frame them as a customer choice using those exact metal names: "available in silver or gold" / "your choice of silver or gold plating".
+- When a product has more than one REAL finish option (per "Colors available"), ALWAYS frame them with this exact construction and no other: "available in [finish A] or [finish B]" (or "available in [A], [B], or [C]" when there are three or more — list EVERY real option, never just two of three). This is the only accepted phrasing — never "your choice of X or Y plating" or any other variant.
+- Every finish word except silver MUST say "-plated" — silver (925 sterling silver) is the only solid metal this catalog sells, every other finish (gold, rose gold, white gold, rhodium, black rhodium, etc.) is always a plating. "available in silver or gold" is WRONG (bare "gold" reads as solid) — it must say "available in silver or 18K gold-plated".
 - NEVER write both finishes as if simultaneously applied to one piece — never "rhodium-plated 18K gold" or "gold and rhodium finish". One physical piece has ONE finish; the customer chooses which.
-- If only one real finish exists, simply state it using its real name — never frame a single-option product as if it offers a choice, and never mention a metal/finish word that isn't backed by "Colors available".
+- If only one real finish exists, state it the same way: "available in [that one finish]" — never frame a single-option product as if it offers a choice, and never mention a metal/finish word that isn't backed by "Colors available".
 
 PRODUCTS:
 {product_list}
