@@ -384,15 +384,23 @@ def _generate_caption(product: Product, post_type: str) -> str:
     try:
         text = _call_llm(_build_prompt())
         problems = _issues(text)
-        if problems:
+        # Up to 2 correction attempts before giving up — a single retry
+        # wasn't enough for products whose natural campaign angle (e.g.
+        # "own your imperfections") strongly pulls the LLM back toward a
+        # banned cliché phrase; seen live 2026-07-25 falling back 3/3 times
+        # on one product until a second correction pass was tried.
+        attempts = 0
+        while problems and attempts < 2:
             print(f"[Instagram] Caption issue(s) for {product.name} "
                   f"({product.category}): {' '.join(problems)} — regenerating")
             correction = "\n\nIMPORTANT: " + " ".join(problems) + " Do not repeat these mistakes."
             text = _call_llm(_build_prompt(correction))
-            if _issues(text):
-                print(f"[Instagram] Still wrong after retry for {product.name} "
-                      f"— using safe fallback caption")
-                return _fallback_caption(product)
+            problems = _issues(text)
+            attempts += 1
+        if problems:
+            print(f"[Instagram] Still wrong after {attempts} retries for {product.name} "
+                  f"— using safe fallback caption")
+            return _fallback_caption(product)
         return text
     except Exception as e:
         print(f"[Instagram] Caption generation error: {e}")
