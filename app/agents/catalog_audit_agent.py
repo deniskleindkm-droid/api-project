@@ -60,6 +60,7 @@ import re
 from sqlmodel import Session, select
 from app.database import engine
 from app.models.product import Product
+from app.models.product_variant import ProductVariant
 
 # Every attribute name any extraction path in silverbene_adapter.py actually
 # recognizes today. Kept as a local mirror (not an import) deliberately —
@@ -137,15 +138,49 @@ def _load_sizes_colors(raw_json_str):
         return []
 
 
-def _audit_unknown_attributes(products):
+def _raw_options_by_product(session, product_ids) -> dict:
+    """
+    Rebuilds the raw Silverbene option shape ([{"attribute": [...], "qty":
+    N, "price": N, "option_id": N}]) from ProductVariant rows instead of
+    the legacy Product.variants JSON blob -- ProductVariant.raw_attributes
+    stores exactly the same per-option {name,value} list this audit needs
+    (see that column's docstring: "audit/debug only"), so this is a
+    like-for-like replacement, not an approximation. Part of consolidating
+    onto ProductVariant as the single source of truth (Dennis, 2026-07-25) --
+    Product.variants stays around for now (other readers/writers not yet
+    migrated) but this audit no longer depends on it.
+
+    One bulk query for every product in scope, not one query per product --
+    the per-product version timed out past 120s against the real catalog
+    (~690 products, each its own round-trip). Returns {product_id: [options]}.
+    """
+    rows = session.exec(
+        select(ProductVariant).where(
+            ProductVariant.product_id.in_(list(product_ids)),
+            ProductVariant.supplier_name == "Silverbene",
+        )
+    ).all()
+    by_product = {}
+    for v in rows:
+        try:
+            attrs = json.loads(v.raw_attributes) if v.raw_attributes else []
+        except Exception:
+            attrs = []
+        by_product.setdefault(v.product_id, []).append({
+            "option_id": v.supplier_option_id,
+            "attribute": attrs,
+            "qty": v.stock,
+            "price": v.base_price,
+        })
+    return by_product
+
+
+def _audit_unknown_attributes(products, options_by_product):
     """Check 1 — attribute names no extraction path recognizes, with a
     suspicious-looking value. Returns {attr_name: [(product_id, name, value), ...]}."""
     findings = {}
     for p in products:
-        try:
-            options = json.loads(p.variants or "[]")
-        except Exception:
-            continue
+        options = options_by_product.get(p.id, [])
         for opt in options:
             for attr in opt.get("attribute", []):
                 name = (attr.get("name") or "").lower().strip()
@@ -183,7 +218,7 @@ def _audit_suspicious_chips(products):
     return findings
 
 
-def _audit_stale_data(products):
+def _audit_stale_data(products, options_by_product):
     """
     Check 3 — stored sizes/colors vs what current code would produce right
     now, from _extract_variants() alone.
@@ -207,10 +242,7 @@ def _audit_stale_data(products):
 
     findings = []
     for p in products:
-        try:
-            options = json.loads(p.variants or "[]")
-        except Exception:
-            continue
+        options = options_by_product.get(p.id, [])
         if not options:
             continue
         try:
@@ -258,9 +290,11 @@ def run_catalog_audit(verbose: bool = True) -> dict:
             )
         ).all()
 
-    unknown_attrs = _audit_unknown_attributes(products)
+        options_by_product = _raw_options_by_product(session, [p.id for p in products])
+        unknown_attrs = _audit_unknown_attributes(products, options_by_product)
+        stale = _audit_stale_data(products, options_by_product)
+
     suspicious_chips = _audit_suspicious_chips(products)
-    stale = _audit_stale_data(products)
     name_category_mismatches = _audit_name_category_mismatch(products)
 
     report = {
