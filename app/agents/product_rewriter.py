@@ -229,10 +229,24 @@ def build_finish_clause(colors: list) -> str | None:
     removes that failure mode entirely — the LLM can no longer invent or
     drop an option, only decide where a fixed sentence goes.
     """
+    # Order matters -- more specific patterns (named gold colors) must be
+    # checked before the bare "gold" fallback. Every named color keeps its
+    # own qualifier (rose/white/yellow) for consistency -- a product with
+    # colors ["Rose Gold", "Yellow Gold", "White Gold"] must read "rose
+    # gold-plated, yellow gold-plated, or white gold-plated", never drop
+    # "Yellow" to a generic label while Rose/White stay named (confirmed
+    # live as confusing -- Dennis 2026-07-25: "which is which?" on product
+    # #578). Bare "Gold" with no color name at all also maps to "yellow
+    # gold-plated", not a separate "18K gold-plated" label -- Silverbene's
+    # own raw data confirms "Yellow Gold" is their dominant term for this
+    # (354 occurrences vs 24 for bare "Gold"), and gold's natural color is
+    # yellow by convention; the same unification is mirrored in the
+    # frontend's adaptDescForVariant() (docs/index.html) so the description
+    # never says something different before vs after a chip click.
     metal_map = [
         (re.compile(r'rose\s*gold', re.I), 'rose gold-plated'),
         (re.compile(r'white\s*gold', re.I), 'white gold-plated'),
-        (re.compile(r'\bgold\b', re.I), '18K gold-plated'),
+        (re.compile(r'(?:yellow\s*gold|\bgold\b)', re.I), 'yellow gold-plated'),
         (re.compile(r'black\s*rhodium', re.I), 'black rhodium-plated'),
         (re.compile(r'\brhodium\b', re.I), 'rhodium-plated'),
         (re.compile(r'\bplatinum\b', re.I), 'platinum-plated'),

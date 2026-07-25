@@ -1482,8 +1482,13 @@ function adaptDescForVariant(baseDesc, chipLabel){
   if(!baseDesc||!chipLabel) return baseDesc;
   const chip=chipLabel.toLowerCase().trim();
   let newFinishPlated;
+  // Bare/yellow gold maps to "yellow gold-plated", not "18K gold-plated" --
+  // matches the backend's build_finish_clause() (product_rewriter.py) so a
+  // description never says something different before vs after a chip
+  // click. Silverbene's own raw data confirms "Yellow Gold" is their
+  // dominant term for this (354 occurrences vs 24 for bare "Gold").
   if(chip.includes('18k')||(chip.includes('gold')&&!chip.includes('rose')&&!chip.includes('white'))){
-    newFinishPlated='18K gold-plated';
+    newFinishPlated='yellow gold-plated';
   }else if(chip.includes('rose')||chip.includes('pink gold')){
     newFinishPlated='rose gold-plated';
   }else if(chip.includes('white gold')||chip.includes('rhodium')){
