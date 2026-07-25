@@ -2180,23 +2180,34 @@ def instagram_ads_eligibility(master_key: str):
 
     import os, requests
     token = os.getenv("FACEBOOK_ACCESS_TOKEN")
+    app_id = os.getenv("FACEBOOK_APP_ID")
+    app_secret = os.getenv("FACEBOOK_APP_SECRET")
     if not token:
         return {"error": "FACEBOOK_ACCESS_TOKEN not set"}
 
     result = {}
 
-    perms = requests.get(
-        "https://graph.facebook.com/v18.0/me/permissions",
-        params={"access_token": token}, timeout=15,
-    )
-    result["token_permissions"] = perms.json()
+    # /me/permissions and /me/adaccounts both require a USER token — this
+    # token was minted for Page posting/catalog, so /me resolves to the
+    # Page itself and those edges don't exist on it. debug_token works for
+    # any token type and reveals what it actually is (scopes, PAGE vs
+    # USER, the underlying user id if any) without guessing.
+    if app_id and app_secret:
+        debug = requests.get(
+            "https://graph.facebook.com/v18.0/debug_token",
+            params={"input_token": token, "access_token": f"{app_id}|{app_secret}"},
+            timeout=15,
+        )
+        result["token_debug"] = debug.json()
+    else:
+        result["token_debug"] = {"error": "FACEBOOK_APP_ID/FACEBOOK_APP_SECRET not set"}
 
     accounts = requests.get(
         "https://graph.facebook.com/v18.0/me/adaccounts",
         params={"fields": "account_id,name,account_status,currency,funding_source,business",
                 "access_token": token}, timeout=15,
     )
-    result["ad_accounts"] = accounts.json()
+    result["ad_accounts_via_page_token"] = accounts.json()
 
     return result
 
