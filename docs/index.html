@@ -583,6 +583,15 @@ nav{
   opacity:0.4;color:var(--mid);cursor:not-allowed;pointer-events:none;
   background:linear-gradient(to top right, transparent calc(50% - 1px), currentColor 50%, transparent calc(50% + 1px));
 }
+/* Out of stock — distinct from chip-unavailable (delisted at Silverbene,
+   gone for good): this one's still a real, listed option that might
+   restock, so it stays CLICKABLE (no pointer-events:none, no slash) so the
+   "Out of stock — please choose a different option" message can still show
+   on click (see updateAtcAvailability/ppOutOfStockVariant). Just faded as
+   the visual cue. */
+.pp-chip.chip-out-of-stock{
+  opacity:0.45;color:var(--mid);
+}
 .pp-desc{font-size:13px;font-weight:300;color:var(--mid);line-height:1.9;}
 .pp-mat-body{display:flex;flex-direction:column;gap:10px;padding:8px 0 14px;}
 .pp-mat-desc{font-size:13px;font-weight:300;color:var(--charcoal);line-height:1.85;}
@@ -2744,9 +2753,16 @@ function applyChipAvailability(){
       matches=ppVariantPrices.filter(v=>v.color && v.color.toLowerCase().split('·').map(s=>s.trim()).includes(want));
     }
 
-    if(!matches.length){ btn.classList.remove('chip-unavailable'); return; }
+    if(!matches.length){ btn.classList.remove('chip-unavailable'); btn.classList.remove('chip-out-of-stock'); return; }
     const anyAvailable=matches.some(v=>v.available!==false);
     btn.classList.toggle('chip-unavailable', !anyAvailable);
+    // Out-of-stock fade is its own, separate signal from chip-unavailable
+    // (delisted at Silverbene) — only applies when the chip IS otherwise
+    // available but every matching option is at 0 stock right now.
+    // Skipped entirely once already unavailable, so the two classes never
+    // fight over the same chip.
+    const anyInStock = matches.some(v=>v.available!==false && v.stock>0);
+    btn.classList.toggle('chip-out-of-stock', anyAvailable && !anyInStock);
   });
 }
 

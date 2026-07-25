@@ -143,6 +143,28 @@ def _validate_shipping_address(shipping_address: str) -> Optional[str]:
     return None
 
 
+def _decrement_variant_stock(session: Session, variant_id: Optional[int], qty: int):
+    """
+    Mirrors product.stock -= qty for the specific ProductVariant row that
+    was actually bought -- without this, a completed purchase only updates
+    the aggregate Product.stock, leaving ProductVariant.stock (the number
+    the PDP's chip-fade/"Out of stock" message actually reads, see
+    docs/index.html's applyChipAvailability) stale by exactly the quantity
+    just sold until the next 6-hourly sync. Per Dennis 2026-07-25: every
+    piece that touches stock needs to stay connected to the same picture,
+    not drift independently. Floored at 0 -- never goes negative even under
+    a webhook retry or race with the 6-hourly sync. Silent no-op if
+    variant_id is None (older orders / products not yet backfilled into
+    ProductVariant) or the row can't be found.
+    """
+    if not variant_id:
+        return
+    variant = session.get(ProductVariant, variant_id)
+    if variant:
+        variant.stock = max(0, variant.stock - qty)
+        session.add(variant)
+
+
 def _resolve_option_id_for_stock_check(product, explicit_option_id: str = None) -> Optional[str]:
     """Best-effort option_id to ask Silverbene about — prefers the customer's
     actual selection, falls back to whatever identifies this product at all.
@@ -514,6 +536,7 @@ def process_order_background(checkout_data: dict):
                             stripe_session_id=stripe_session_id,
                         )
                         product.stock -= qty
+                        _decrement_variant_stock(session, sel_variant_id, qty)
                         session.add(order)
                         session.add(product)
                 session.commit()
@@ -562,6 +585,7 @@ def process_order_background(checkout_data: dict):
                             stripe_session_id=stripe_session_id,
                         )
                         product.stock -= item.quantity
+                        _decrement_variant_stock(session, item.variant_id, item.quantity)
                         session.add(order)
                         session.add(product)
                         session.delete(item)
