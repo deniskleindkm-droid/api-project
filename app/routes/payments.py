@@ -2,12 +2,14 @@ from fastapi import APIRouter, HTTPException, Depends, Request, BackgroundTasks
 from sqlmodel import Session, select
 from app.models.cart import CartItem
 from app.models.product import Product
+from app.models.product_variant import ProductVariant
 from app.models.order import Order
 from app.database import get_session, engine
 from app.auth_utils import verify_token
 from app.routes.auth import oauth2_scheme
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 import stripe
 import os
 import json
@@ -141,6 +143,87 @@ def _validate_shipping_address(shipping_address: str) -> Optional[str]:
     return None
 
 
+def _resolve_option_id_for_stock_check(product, explicit_option_id: str = None) -> Optional[str]:
+    """Best-effort option_id to ask Silverbene about — prefers the customer's
+    actual selection, falls back to whatever identifies this product at all.
+    Returns None if nothing usable is found (caller must skip the check, not
+    block checkout on a product we can't even identify to Silverbene)."""
+    if explicit_option_id:
+        return str(explicit_option_id)
+    if product.cj_sku:
+        return str(product.cj_sku)
+    if product.variants:
+        try:
+            variants = json.loads(product.variants)
+            if variants:
+                oid = variants[0].get("option_id")
+                if oid:
+                    return str(oid)
+        except Exception:
+            pass
+    return None
+
+
+def _live_stock_check(product, explicit_option_id: str = None) -> Optional[str]:
+    """
+    Asks Silverbene directly, right now, whether this item is actually still
+    in stock -- our own stock numbers are only ever as fresh as the last
+    6-hourly sync (silverbene_stock_agent.py), so a customer could otherwise
+    pay for something that sold out at Silverbene hours ago. Added per
+    Dennis 2026-07-25.
+
+    Returns an error message if Silverbene CONFIRMS it's out of stock, else
+    None (including on any timeout/error/unknown-product case) -- this must
+    never be the reason checkout breaks. A slow or down Silverbene means we
+    just fall back to trusting our own last-synced stock number, same as
+    before this existed.
+
+    Also opportunistically writes the live number back to our own DB (per
+    Dennis: "adjust our internal stock before sync runs again") -- but only
+    to ProductVariant.stock for the exact option checked, and to the
+    Product.stock aggregate ONLY when this product has exactly one variant
+    total. Product.stock is a SUM across every variant and drives
+    collection-page filtering/badges and cart display site-wide (routes/
+    products.py, routes/cart.py) -- overwriting it here with just one
+    option's count would wrongly mark a multi-variant product in/out of
+    stock based on a single variant. Only the full 6-hourly sync
+    recomputes that true sum; this write-back never touches it for
+    multi-variant products, only keeps the per-variant record fresh.
+    """
+    option_id = _resolve_option_id_for_stock_check(product, explicit_option_id)
+    if not option_id:
+        return None
+    try:
+        from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+        qty = SilverbeneAdapter().get_stock(option_id, timeout=4)
+    except Exception as e:
+        print(f"[Payments] Live stock check error for {product.name[:40]} (non-fatal): {e}")
+        return None
+
+    try:
+        with Session(engine) as sync_session:
+            all_variants = sync_session.exec(
+                select(ProductVariant).where(ProductVariant.product_id == product.id)
+            ).all()
+            variant = next((v for v in all_variants if v.supplier_option_id == option_id), None)
+            if variant and variant.stock != qty:
+                variant.stock = qty
+                variant.last_synced_at = datetime.utcnow()
+                sync_session.add(variant)
+                if len(all_variants) <= 1:
+                    prod = sync_session.get(Product, product.id)
+                    if prod and prod.stock != qty:
+                        prod.stock = qty
+                        sync_session.add(prod)
+                sync_session.commit()
+    except Exception as e:
+        print(f"[Payments] Live stock write-back error for {product.name[:40]} (non-fatal): {e}")
+
+    if qty == 0:
+        return f"'{product.name[:40]}' just sold out — sorry! Please remove it to continue."
+    return None
+
+
 class CheckoutRequest(BaseModel):
     shipping_address: str
     shipping_method: str = "usps"  # "fast_track" or "usps"
@@ -171,6 +254,16 @@ def create_checkout_session(
 
     if not items:
         raise HTTPException(status_code=400, detail="Cart is empty")
+
+    # Live stock check — right before Stripe, not just our own last-synced
+    # number (see _live_stock_check's docstring). Runs for every line item
+    # so nothing in the cart can slip through; still fails open per-item.
+    for item in items:
+        product = session.get(Product, item.product_id)
+        if product:
+            stock_error = _live_stock_check(product, item.selected_option_id)
+            if stock_error:
+                raise HTTPException(status_code=400, detail=stock_error)
 
     line_items = []
     content_ids = []
@@ -286,6 +379,9 @@ def create_guest_checkout_session(
             raise HTTPException(status_code=404, detail=f"Product {item.product_id} is no longer available")
         if product.stock == 0:
             raise HTTPException(status_code=400, detail=f"'{product.name[:40]}' is out of stock")
+        stock_error = _live_stock_check(product, item.selected_option_id)
+        if stock_error:
+            raise HTTPException(status_code=400, detail=stock_error)
         line_items.append({
             "price_data": {
                 "currency": "usd",

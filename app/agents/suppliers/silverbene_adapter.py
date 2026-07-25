@@ -314,11 +314,11 @@ class SilverbeneAdapter(SupplierAdapter):
             "Accept": "application/json",
         })
 
-    def _get(self, endpoint: str, params: dict = None) -> dict:
+    def _get(self, endpoint: str, params: dict = None, timeout: int = 30) -> dict:
         p = params or {}
         p["token"] = self.token
         try:
-            r = self.session.get(f"{self.base}{endpoint}", params=p, timeout=30)
+            r = self.session.get(f"{self.base}{endpoint}", params=p, timeout=timeout)
             r.raise_for_status()
             return r.json()
         except Exception as e:
@@ -530,9 +530,17 @@ class SilverbeneAdapter(SupplierAdapter):
     def get_product(self, product_id: str) -> Optional[dict]:
         return self.get_by_sku(product_id)
 
-    def get_stock(self, option_id: str) -> int:
-        """Get current stock for one or more option_ids (comma-separated)."""
-        resp = self._get(ENDPOINT_OPTION_QTY, {"option_id": option_id})
+    def get_stock(self, option_id: str, timeout: int = 30) -> int:
+        """
+        Get current stock for one or more option_ids (comma-separated).
+        timeout is overridable (short, e.g. 4s) for the checkout-time live
+        check in payments.py, where this sits in the hot path right before
+        Stripe -- a slow Silverbene response must never stall checkout for
+        anywhere near the default 30s. Fails open either way: any timeout,
+        network error, or unexpected response shape returns 999 ("assume
+        plenty"), never blocks a sale on our own inability to ask.
+        """
+        resp = self._get(ENDPOINT_OPTION_QTY, {"option_id": option_id}, timeout=timeout)
         if resp.get("code") == 0:
             items = resp.get("data", [])
             if items and isinstance(items, list):

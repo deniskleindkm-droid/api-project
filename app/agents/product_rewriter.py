@@ -110,10 +110,11 @@ ACCEPTANCE RULES:
 - Description makes a woman feel something — not a feature list
 
 FINISH RULE — critical for multi-variant products:
-- When a product has more than one finish option (e.g. gold + rhodium, gold + white gold), ALWAYS frame them as a customer choice: "in 18K gold or rhodium plating" / "your choice of gold or rhodium".
+- When a product has more than one finish option (e.g. gold + rhodium, gold + white gold), ALWAYS frame them as "available in [finish A] or [finish B]" — e.g. "available in polished silver or an 18K gold-plated finish". This exact "available in ___" construction is the required phrasing, not just an example.
 - NEVER write "with optional gold plating" — state both options directly.
 - NEVER write both finishes as if simultaneously applied — never "rhodium-plated 18K gold". One piece has ONE finish; the customer chooses which.
-- If only one finish exists, state it directly: "rhodium-plated 925 sterling silver".
+- If only one finish exists, state it directly using the same construction: "available in rhodium-plated 925 sterling silver".
+- Every mention of ANY plated finish MUST say "-plated" or "plating" — silver (925 sterling silver) is the only SOLID metal this catalog sells; every other finish word (gold, rose gold, white gold, rhodium, black rhodium, or any other plating color) is always a plating over base metal, never solid, and writing it bare reads as solid to a customer. This applies to every finish color, not just gold — "Rose Gold" must say "Rose Gold-plated", "Black Rhodium" must say "Black Rhodium-plated", etc. Only "silver" itself is ever stated bare.
 - NEVER write "18K YellowGold" — always space it: "18K Yellow Gold".
 
 DESCRIPTION TONE RULES — strictly enforced:
@@ -194,3 +195,72 @@ Return JSON only:
                 "confidence": 0.5
             }
         return {"accepted": False, "rejection_reason": f"Rewriter error: {e}"}
+
+
+_FINISH_BANNED_PHRASES = [
+    "for the woman who", "unapologetically you", "unapologetically yours",
+    "choose yourself", "you are the source", "permission to be",
+    "be everything at once", "carries her own sunshine", "declare yourself",
+    "effortlessly you", "your story", "on your terms", "knows her worth",
+    "refuses to be understated", "in every hue", "writes her own story",
+]
+
+
+def fix_finish_wording(description: str, colors_json: str) -> str | None:
+    """
+    Narrow, targeted rewrite for EXISTING product descriptions written
+    before the FINISH RULE above required "available in [A] or [B]" with
+    every plated finish saying "-plated" — see rewrite_product()'s FINISH
+    RULE for why bare "gold"/"Rose Gold"/"Black Rhodium" reads as solid
+    metal to a customer when silver is the only solid metal this catalog
+    sells; everything else is a plating. Not gold-specific — per Dennis
+    2026-07-25, this applies to any plated finish color (gold, rose gold,
+    white gold, rhodium, or otherwise), not just gold. Originally built for
+    Green Cactus Flower Ring, product #597: "925 sterling silver blooms
+    with green cubic zirconia, offering 18k gold or silver finish" ->
+    "available in silver or 18K gold-plated finish".
+
+    Deliberately does NOT touch the emotional/brand-voice sentence, name,
+    or collection — only the finish clause, so this is safe to run against
+    the live catalog without the risk full rewrite_product() would carry
+    (re-scoring/re-collection-assigning/renaming products that already
+    have real order history and live product pages).
+
+    Returns the corrected description, or None if nothing changed / on
+    error (caller should skip saving in that case).
+    """
+    try:
+        colors = json.loads(colors_json) if colors_json else []
+    except Exception:
+        colors = []
+
+    prompt = f"""You are ARIA, copy editor for Mikisi, a luxury jewelry brand.
+
+This product description states its finish/color options ambiguously (implying solid metal). Rewrite ONLY the sentence containing the finish/material information so it reads naturally and uses this construction somewhere in it: "available in [finish A] or [finish B]". Silver (925 sterling silver) is the only SOLID metal this catalog sells — every other finish (gold, rose gold, white gold, rhodium, black rhodium, or any other plating color) must say "-plated" or "plating" (e.g. "18K gold-plated", "Rose Gold-plated", "Black Rhodium-plated") — never state a non-silver finish bare. Keep the emotional/brand-voice sentence that follows exactly as it is, word for word. Do not introduce any of these banned phrases: {", ".join(f'"{p}"' for p in _FINISH_BANNED_PHRASES)}.
+
+Current description: {description}
+Actual finish options for this product: {json.dumps(colors)}
+
+Return JSON only: {{"description": "the corrected description, natural phrasing, only the finish sentence changed"}}"""
+
+    try:
+        message = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = message.content[0].text.strip()
+        if text.startswith("```"):
+            parts = text.split("```")
+            if len(parts) >= 2:
+                text = parts[1]
+                if text.startswith("json"):
+                    text = text[4:]
+        result = json.loads(text.strip())
+        new_desc = result.get("description", "").strip()
+        if not new_desc or any(p in new_desc.lower() for p in _FINISH_BANNED_PHRASES):
+            return None
+        return new_desc
+    except Exception as e:
+        print(f"[Rewriter] fix_finish_wording error: {e}")
+        return None

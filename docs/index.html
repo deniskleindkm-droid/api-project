@@ -1425,6 +1425,7 @@ let ppSelectedOptionId = null; // real Silverbene option_id resolved from /varia
 let ppSelectedVariantId = null; // the internal ProductVariant id — the primary field carried to checkout going forward
 let previewKey = null; // set from ?key= when opened via an admin preview link — lets an unpublished product's panel load exactly like a customer would see it once published
 let ppInvalidSelection = false; // true when the active chip(s) match no priced option — blocks Add to Cart instead of silently substituting a different variant
+let ppOutOfStockVariant = false; // true when the active chip(s) resolve to a REAL, existing variant (unlike ppInvalidSelection) whose stock is 0 — distinct message, same Add to Cart block. Per Dennis 2026-07-25: only evaluated once a variant is actually selected, chips are never pre-faded for this.
 let ppReadyToOrder = false; // true only once every real chip axis has been actively chosen and resolved to a priced variant — no preselection means Add to Cart stays disabled (silently, no error note) until this is true
 let ppSelectedStone = null;
 let ppSelectedWidth = null;
@@ -2613,6 +2614,7 @@ async function openPP(id, presetVariantId=null){
   ppSelectedOptionId = null;
   ppSelectedVariantId = null;
   ppInvalidSelection = false;
+  ppOutOfStockVariant = false;
   ppReadyToOrder = false;
   document.getElementById('pp-invalid-selection').style.display='none';
 
@@ -2681,14 +2683,23 @@ function updateAtcAvailability(){
   if(!atcBtn||!noteEl||!ppCurrentProduct)return;
   if(!ppCurrentProduct.stock||ppCurrentProduct.stock===0)return;
   // Disabled whenever no real variant is resolved yet — either a genuine
-  // invalid combination (ppInvalidSelection, shows the red note) or simply
-  // an incomplete selection with no preselection to fall back on
-  // (!ppReadyToOrder, disabled silently — nothing was chosen wrong, the
-  // customer just hasn't finished choosing).
-  const blocked = ppInvalidSelection || !ppReadyToOrder;
+  // invalid combination (ppInvalidSelection, shows the red note), a real
+  // variant that's just out of stock right now (ppOutOfStockVariant, its
+  // own message), or simply an incomplete selection with no preselection
+  // to fall back on (!ppReadyToOrder, disabled silently — nothing was
+  // chosen wrong, the customer just hasn't finished choosing).
+  const blocked = ppInvalidSelection || ppOutOfStockVariant || !ppReadyToOrder;
   atcBtn.disabled=blocked;
   atcBtn.style.cursor=blocked?'default':'';
-  noteEl.style.display=ppInvalidSelection?'block':'none';
+  if(ppOutOfStockVariant){
+    noteEl.textContent='Out of stock — please choose a different option.';
+    noteEl.style.display='block';
+  }else if(ppInvalidSelection){
+    noteEl.textContent="Please pick a valid option — this selection isn't available.";
+    noteEl.style.display='block';
+  }else{
+    noteEl.style.display='none';
+  }
 }
 
 // Mirrors the backend's _normalize_size_for_match (silverbene_adapter.py) —
@@ -2846,6 +2857,7 @@ function updateVariantPrice(){
     ppSelectedOptionId=null;
     ppSelectedVariantId=null;
     ppReadyToOrder = false;
+    ppOutOfStockVariant = false;
     // Only a genuine dead combination (every required axis actively chosen,
     // yet nothing priced matches) is a real error worth logging/showing —
     // an incomplete selection (customer just hasn't clicked a required axis
@@ -2860,6 +2872,15 @@ function updateVariantPrice(){
   }
   ppInvalidSelection = false;
   ppReadyToOrder = true;
+  // A real, existing, correctly-matched variant can still have 0 stock right
+  // now (Silverbene still lists it — available!==false already let it reach
+  // `match` above — just temporarily sold out). Distinct from ppInvalidSelection:
+  // this is a valid selection, not a dead combination, so it gets its own
+  // "Out of Stock" message rather than "this selection isn't available".
+  // match.stock comes straight from /variant-prices, refreshed by both the
+  // 6-hourly sync and the live checkout-time check (payments.py) — no extra
+  // request needed here.
+  ppOutOfStockVariant = (match.stock === 0);
   updateAtcAvailability();
   // ppSelectedVariantId (the internal ProductVariant id) is the primary field
   // carried through to cart/checkout going forward — the backend never has to
