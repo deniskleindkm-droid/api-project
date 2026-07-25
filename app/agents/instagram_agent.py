@@ -270,11 +270,25 @@ def _strip_stray_header(text: str) -> str:
     forbids hashtags in the caption body (those come from _build_hashtags
     separately), so a real caption never legitimately starts with a "#"
     line.
+
+    Same failure mode also shows up as bolded structure labels sprinkled
+    through the body ("**Hook:**", "**Body:**", "**CTA:**") instead of
+    just a leading title line — seen live 2026-07-25 on a campaign
+    caption that echoed the prompt's own "Hook → Body → CTA" structure
+    guidance back as literal text. Stripped anywhere in the caption (not
+    just the first line), since it showed up mid-body ahead of the CTA
+    too. Narrowly matched — only a line that is ENTIRELY a short bolded
+    label, optionally with a trailing colon — so real bolded emphasis
+    inside an actual sentence is never touched.
     """
+    import re
     lines = text.split("\n")
     if lines and lines[0].strip().startswith("#"):
-        return "\n".join(lines[1:]).strip()
-    return text
+        lines = lines[1:]
+    label_re = re.compile(r'^\*\*[A-Za-z][A-Za-z ]{0,20}:?\*\*$')
+    lines = [ln for ln in lines if not label_re.match(ln.strip())]
+    result = "\n".join(lines).strip()
+    return re.sub(r'\n{3,}', '\n\n', result)
 
 
 def _generate_caption(product: Product, post_type: str) -> str:
