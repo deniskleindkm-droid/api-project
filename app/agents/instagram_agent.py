@@ -240,6 +240,20 @@ def _mentions_category(text: str, category: str) -> bool:
     return bool(re.search(pattern, text, re.I))
 
 
+def _caption_banned_phrases(text: str) -> list:
+    """
+    Same cliché-empowerment phrases banned from product descriptions (see
+    product_rewriter.py's DESCRIPTION TONE RULES / _FINISH_BANNED_PHRASES)
+    — captions are equally public brand voice and were never actually
+    checked against this list before now. Caught live 2026-07-25: a
+    campaign caption said "unapologetically yours" verbatim, and a product
+    caption stacked "for the woman who" + "your story" in one draft.
+    """
+    from app.agents.product_rewriter import _FINISH_BANNED_PHRASES
+    low = text.lower()
+    return [p for p in _FINISH_BANNED_PHRASES if p in low]
+
+
 def _fallback_caption(product: Product) -> str:
     return (
         f"{product.name} — {product.material or '925 Sterling Silver'}. "
@@ -357,6 +371,13 @@ def _generate_caption(product: Product, post_type: str) -> str:
                 f"your previous draft never actually said what kind of item "
                 f"this is. You MUST call it a '{singular_category}' somewhere "
                 f"in the caption."
+            )
+        banned = _caption_banned_phrases(text)
+        if banned:
+            problems.append(
+                f"your previous draft used banned cliché phrase(s): "
+                f"{', '.join(repr(p) for p in banned)}. Never use these or "
+                f"close variants of them."
             )
         return problems
 
