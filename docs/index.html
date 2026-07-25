@@ -1482,17 +1482,34 @@ function adaptDescForVariant(baseDesc, chipLabel){
   if(!baseDesc||!chipLabel) return baseDesc;
   const chip=chipLabel.toLowerCase().trim();
   let newFinishPlated;
-  // Bare/yellow gold maps to "yellow gold-plated", not "18K gold-plated" --
-  // matches the backend's build_finish_clause() (product_rewriter.py) so a
+  // Mirrors the backend's build_finish_clause() (product_rewriter.py) so a
   // description never says something different before vs after a chip
-  // click. Silverbene's own raw data confirms "Yellow Gold" is their
-  // dominant term for this (354 occurrences vs 24 for bare "Gold").
-  if(chip.includes('18k')||(chip.includes('gold')&&!chip.includes('rose')&&!chip.includes('white'))){
-    newFinishPlated='yellow gold-plated';
+  // click. Bare/yellow gold with no karat specified maps to generic
+  // "yellow gold-plated" -- Silverbene's own raw data confirms "Yellow
+  // Gold" is their dominant term (354 occurrences vs 24 for bare "Gold").
+  // When the chip DOES specify a karat ("14K Yellow Gold"), that real
+  // karat is preserved instead of being dropped to the generic label --
+  // some products are genuinely 14K-only with no 18K alternative at all
+  // (confirmed live, product #596 and others -- a customer clicking a
+  // chip that says 14K must not then read a description claiming an
+  // unspecified/generic gold, let alone a wrong karat).
+  const karatMatch=chip.match(/\b(\d{1,2})k\b/);
+  // Bare "yellow" alone does NOT imply gold -- a stone-color chip like
+  // "Yellow Cubic Zirconia" would otherwise be misread as a yellow-gold
+  // finish (this chip can legitimately be a stone color, not just a metal
+  // finish -- see ppSelectedColor's other real values like "Pink Cubic
+  // Zirconia"). Only a literal "gold" word, or a karat number directly
+  // attached to "yellow" (Silverbene's own "18K Yellow" shorthand, no
+  // "Gold" word at all), counts.
+  const isYellowGold=chip.includes('gold')||/\b\d{1,2}k\s*yellow\b/.test(chip);
+  if(chip.includes('champagne')){
+    newFinishPlated='champagne gold-plated';
   }else if(chip.includes('rose')||chip.includes('pink gold')){
     newFinishPlated='rose gold-plated';
   }else if(chip.includes('white gold')||chip.includes('rhodium')){
     newFinishPlated='white gold-plated';
+  }else if(isYellowGold){
+    newFinishPlated=karatMatch?`${karatMatch[1]}K gold-plated`:'yellow gold-plated';
   }else if(chip==='silver'){
     newFinishPlated=null;
   }else{

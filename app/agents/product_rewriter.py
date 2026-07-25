@@ -229,38 +229,64 @@ def build_finish_clause(colors: list) -> str | None:
     removes that failure mode entirely — the LLM can no longer invent or
     drop an option, only decide where a fixed sentence goes.
     """
-    # Order matters -- more specific patterns (named gold colors) must be
-    # checked before the bare "gold" fallback. Every named color keeps its
-    # own qualifier (rose/white/yellow) for consistency -- a product with
+    # Order matters -- more specific named colors must be checked before the
+    # generic yellow/bare-gold fallback. Every named color keeps its own
+    # qualifier (rose/white/champagne) for consistency -- a product with
     # colors ["Rose Gold", "Yellow Gold", "White Gold"] must read "rose
-    # gold-plated, yellow gold-plated, or white gold-plated", never drop
-    # "Yellow" to a generic label while Rose/White stay named (confirmed
-    # live as confusing -- Dennis 2026-07-25: "which is which?" on product
-    # #578). Bare "Gold" with no color name at all also maps to "yellow
-    # gold-plated", not a separate "18K gold-plated" label -- Silverbene's
-    # own raw data confirms "Yellow Gold" is their dominant term for this
-    # (354 occurrences vs 24 for bare "Gold"), and gold's natural color is
-    # yellow by convention; the same unification is mirrored in the
-    # frontend's adaptDescForVariant() (docs/index.html) so the description
-    # never says something different before vs after a chip click.
-    metal_map = [
+    # gold-plated, yellow gold-plated, or white gold-plated", never drop a
+    # name to a generic label while others stay named (confirmed live as
+    # confusing -- Dennis 2026-07-25: "which is which?" on product #578).
+    # "Champagne Gold" is its own real, distinct color at Silverbene (seen
+    # live alongside "18K Yellow" and "14K Gold" as separate options on the
+    # same product, #739) -- it must never collapse into generic yellow gold.
+    named_patterns = [
         (re.compile(r'rose\s*gold', re.I), 'rose gold-plated'),
         (re.compile(r'white\s*gold', re.I), 'white gold-plated'),
-        (re.compile(r'(?:yellow\s*gold|\bgold\b)', re.I), 'yellow gold-plated'),
+        (re.compile(r'champagne\s*gold', re.I), 'champagne gold-plated'),
         (re.compile(r'black\s*rhodium', re.I), 'black rhodium-plated'),
         (re.compile(r'\brhodium\b', re.I), 'rhodium-plated'),
         (re.compile(r'\bplatinum\b', re.I), 'platinum-plated'),
         (re.compile(r'\bsilver\b', re.I), 'silver'),
     ]
+    # Yellow/bare gold, checked only when none of the above matched --
+    # PRESERVES the real karat when Silverbene's own data specifies one
+    # (e.g. "14K Yellow Gold" -> "14K gold-plated") instead of always
+    # defaulting to a generic label. Confirmed live: some products are
+    # genuinely 14K-only (no 18K alternative exists for them at all --
+    # products #596, #968, #823), so claiming a karat we don't know, OR
+    # silently dropping a karat we DO know, are both real accuracy losses
+    # (Dennis 2026-07-25, product #596 Starfish Pearl Drop Earrings: chip
+    # said "14K Yellow Gold", description said generic "yellow gold-plated"
+    # with no karat at all). Also matches "18K Yellow" with no "Gold" word
+    # at all (seen live on #739) -- karat + "Yellow" implies gold in this
+    # catalog even when the word itself is dropped.
+    karat_re = re.compile(r'\b(\d{1,2})K\b', re.I)
+    # Bare "yellow" alone is NOT enough to imply gold -- confirmed live, a
+    # stone-color entry like "Yellow CZ" or "Yellow Jade" would otherwise be
+    # misread as a yellow-gold finish claim (product #863). Only a literal
+    # "gold" word, or a karat number directly attached to "Yellow" (matching
+    # Silverbene's own abbreviated "18K Yellow" shorthand, seen live on
+    # product #739 with no "Gold" word at all), counts as gold.
+    yellow_or_gold_re = re.compile(r'\bgold\b|\b\d{1,2}K\s*Yellow\b', re.I)
+
     finishes = []
     for c in colors or []:
         for part in str(c).split('·'):
             part = part.strip()
-            for pattern, label in metal_map:
+            matched = False
+            for pattern, label in named_patterns:
                 if pattern.search(part):
                     if label not in finishes:
                         finishes.append(label)
+                    matched = True
                     break
+            if matched:
+                continue
+            if yellow_or_gold_re.search(part):
+                km = karat_re.search(part)
+                label = f"{km.group(1)}K gold-plated" if km else "yellow gold-plated"
+                if label not in finishes:
+                    finishes.append(label)
     if not finishes:
         return None
     if len(finishes) == 1:
