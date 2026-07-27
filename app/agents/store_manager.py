@@ -7,6 +7,18 @@ from app.models.agent import AgentMemory, AgentTask
 from app.models.product import Product
 
 
+def _safe_name_truncate(name: str, max_len: int = 100) -> str:
+    """Cuts at the last whole word instead of mid-word — see the same helper
+    in bulk_import_agent.py for why a blind name[:max_len] is unsafe here."""
+    if len(name) <= max_len:
+        return name
+    cut = name[:max_len]
+    last_space = cut.rfind(" ")
+    if last_space > 0:
+        cut = cut[:last_space]
+    return cut.rstrip(" ,-")
+
+
 def get_pending_tasks():
     with Session(engine) as session:
         tasks = session.exec(
@@ -251,14 +263,14 @@ def import_product_from_supplier(standard_product: dict, markup: float = None) -
                 return {"success": False, "reason": reason, "rejected": True}
 
             # Use Mikisi identity
-            mikisi_name = rewrite_result.get("mikisi_name", name)[:100]
+            mikisi_name = _safe_name_truncate(rewrite_result.get("mikisi_name", name))
             mikisi_description = rewrite_result.get("mikisi_description", description)
             collection_id = rewrite_result.get("collection_id")
             print(f"[Store Manager] ✍️ Rewritten: '{name[:40]}' → '{mikisi_name}'")
 
         except Exception as e:
             print(f"[Store Manager] Rewriter failed — using raw data: {e}")
-            mikisi_name = name[:100]
+            mikisi_name = _safe_name_truncate(name)
             mikisi_description = description
             collection_id = None
 

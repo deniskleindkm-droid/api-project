@@ -1440,7 +1440,6 @@ let ppSelectedStone = null;
 let ppSelectedWidth = null;
 let ppOpening = false; // guard — prevents double-click opening two panels
 let ppCurrentProduct = null;
-let ppBaseDesc = '';
 let ppVariantPrices = []; // [{id,option_id,size,color,final_price,stock}] — id is the internal ProductVariant PK
 let ppPresetVariantId = null; // set via ?variant_id= or ?option_id= (e.g. from an Instagram variant tag) — consumed once variant prices load
 let ppBaseMaterial = null;
@@ -1476,57 +1475,16 @@ function getVariantMaterial(variantLabel,baseMaterial){
   return baseMaterial;
 }
 
-// Descriptions are written finish-neutral ("in 925 sterling silver or 18K gold plating")
-// and must never be mutated per-variant — "925 sterling silver" is the base metal, not a
-function adaptDescForVariant(baseDesc, chipLabel){
-  if(!baseDesc||!chipLabel) return baseDesc;
-  const chip=chipLabel.toLowerCase().trim();
-  let newFinishPlated;
-  // Mirrors the backend's build_finish_clause() (product_rewriter.py) so a
-  // description never says something different before vs after a chip
-  // click. Bare/yellow gold with no karat specified maps to generic
-  // "yellow gold-plated" -- Silverbene's own raw data confirms "Yellow
-  // Gold" is their dominant term (354 occurrences vs 24 for bare "Gold").
-  // When the chip DOES specify a karat ("14K Yellow Gold"), that real
-  // karat is preserved instead of being dropped to the generic label --
-  // some products are genuinely 14K-only with no 18K alternative at all
-  // (confirmed live, product #596 and others -- a customer clicking a
-  // chip that says 14K must not then read a description claiming an
-  // unspecified/generic gold, let alone a wrong karat).
-  const karatMatch=chip.match(/\b(\d{1,2})k\b/);
-  // Bare "yellow" alone does NOT imply gold -- a stone-color chip like
-  // "Yellow Cubic Zirconia" would otherwise be misread as a yellow-gold
-  // finish (this chip can legitimately be a stone color, not just a metal
-  // finish -- see ppSelectedColor's other real values like "Pink Cubic
-  // Zirconia"). Only a literal "gold" word, or a karat number directly
-  // attached to "yellow" (Silverbene's own "18K Yellow" shorthand, no
-  // "Gold" word at all), counts.
-  const isYellowGold=chip.includes('gold')||/\b\d{1,2}k\s*yellow\b/.test(chip);
-  if(chip.includes('champagne')){
-    newFinishPlated='champagne gold-plated';
-  }else if(chip.includes('rose')||chip.includes('pink gold')){
-    newFinishPlated='rose gold-plated';
-  }else if(chip.includes('white gold')||chip.includes('rhodium')){
-    newFinishPlated='white gold-plated';
-  }else if(isYellowGold){
-    newFinishPlated=karatMatch?`${karatMatch[1]}K gold-plated`:'yellow gold-plated';
-  }else if(chip==='silver'){
-    newFinishPlated=null;
-  }else{
-    return baseDesc;
-  }
-  const SILVER_RE=/\b(?:s?925\s+)?sterling\s+silver\b|\b925\s+silver\b/gi;
-  const PH='\x00SLV\x00';
-  let desc=baseDesc.replace(SILVER_RE,PH);
-  const FINISH_RE=/\b(18k\s+(?:yellow\s+)?gold|yellow\s+gold|rose\s+gold|white\s+gold|rhodium|black\s+rhodium|gold)\s*[-–]?\s*plated\b/gi;
-  desc=newFinishPlated===null?desc.replace(FINISH_RE,'silver'):desc.replace(FINISH_RE,newFinishPlated);
-  desc=desc
-    .replace(/,?\s*or choose the gold[\s-]plated version\.?/gi,'')
-    .replace(/,?\s*with optional\s+(?:18k\s+)?gold\s*plating\.?/gi,'')
-    .replace(/,?\s*for added warmth\.?/gi,'')
-    .replace(/YellowGold/g,'Yellow Gold').replace(/RoseGold/g,'Rose Gold').replace(/WhiteGold/g,'White Gold');
-  return desc.replace(/\x00SLV\x00/g,'925 sterling silver').replace(/\s{2,}/g,' ').trim();
-}
+// The product description is written once, up front, to already cover every
+// real finish option ("available in white gold-plated or yellow gold-plated")
+// per the import pipeline's finish rule — it must show the same text
+// regardless of which chip the customer clicks. A previous per-click rewrite
+// here (adaptDescForVariant) did a global find/replace of every finish phrase
+// in the description with whichever chip was selected, which corrupted a
+// correct two-option sentence into a duplicated one (e.g. clicking "Yellow
+// Gold" on a white/yellow gold product turned "available in white
+// gold-plated or yellow gold-plated" into "...yellow gold-plated or yellow
+// gold-plated"). Removed — see applyVariantUI, which no longer touches pp-desc.
 
 function findVariantImage(chipLabel){
   for(const opt of ppVariants){
@@ -1580,7 +1538,6 @@ function applyVariantUI(chipLabel){
     },150);
   }
   renderMaterials(chipToFinishLabel(chipLabel));
-  document.getElementById('pp-desc').textContent=adaptDescForVariant(ppBaseDesc,chipLabel);
 }
 
 // ── INIT ──
@@ -2248,7 +2205,6 @@ async function openPP(id, presetVariantId=null){
 
   // ── Variant context — store for dynamic updates on chip selection ──
   ppCurrentProduct=p;
-  ppBaseDesc=trunc(stripHtml(p.description||''),320);
   ppBaseMaterial=getMaterialLabel(p);
   try{ppVariants=p.variants?JSON.parse(p.variants):[];}catch{ppVariants=[];}
   ppBaseImages=[...ppImages];
@@ -2549,7 +2505,12 @@ async function openPP(id, presetVariantId=null){
       const _fitsWord=colName==='anklets'?'ankles':'wrists';
       document.getElementById('pp-size-chips').innerHTML=
         `<div class="pp-open-size-note" style="font-size:12px;color:var(--black);letter-spacing:0.3px;">Adjustable — fits most ${_fitsWord}</div>`;
-    }else if((sizes.length>=2||showSingle)&&p.size_display_mode==='selector'){
+    }else if(sizes.length>=2&&p.size_display_mode==='selector'){
+      // Require genuine plurality before rendering a clickable <button> —
+      // a single value is never a real choice to make, even when it's
+      // backed by a real priced option (e.g. a bangle with exactly one
+      // priced diameter, or a necklace whose one option's Color value
+      // bundles "40+5 cm"). Falls through to the plain-text badge below.
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
       document.getElementById('pp-size-chips').innerHTML=sizes.map((s,i)=>`<button class="pp-chip" onclick="selectChip(this,'size')">${s}</button>`).join('');
@@ -2563,6 +2524,8 @@ async function openPP(id, presetVariantId=null){
       // fallback because Silverbene priced this product by color only). Real,
       // useful information — just never a clickable/matchable choice, so show
       // it as plain text instead of a <button> (ppHasSizeChips stays false).
+      // Also catches the single-real-value case (showSingle) even when
+      // size_display_mode IS 'selector' — see the branch above.
       document.getElementById('pp-sizes-wrap').style.display='block';
       document.querySelector('#pp-sizes-wrap .pp-section-title').textContent=sizeLabel;
       document.getElementById('pp-size-chips').innerHTML=

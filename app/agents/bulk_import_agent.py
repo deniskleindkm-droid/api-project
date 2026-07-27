@@ -39,6 +39,26 @@ _CATEGORY_APPEND_WORD = {
 }
 
 
+def _safe_name_truncate(name: str, max_len: int = 100) -> str:
+    """
+    Cuts a name down to max_len without ever slicing mid-word. ARIA's own
+    rewrites are always short ("max 6 words") and never need this — it only
+    ever fires on the raw-supplier-title fallback path (ARIA returned no
+    usable mikisi_name for that item), where a raw Silverbene title can run
+    150-200+ characters of keyword-stuffed SEO text. A blind name[:100]
+    there chops a word in half (e.g. "...Minimalist Co" from "...Minimalist
+    Collarbone Chain..."), which is worse than just stopping one word
+    earlier — trim back to the last whole word instead.
+    """
+    if len(name) <= max_len:
+        return name
+    cut = name[:max_len]
+    last_space = cut.rfind(" ")
+    if last_space > 0:
+        cut = cut[:last_space]
+    return cut.rstrip(" ,-")
+
+
 def _ensure_category_in_name(name: str, category: str) -> str:
     """
     Guarantee the category type word appears in the product name.
@@ -404,13 +424,19 @@ Return ONLY valid JSON array. No other text."""
                 product = products[i].copy()
                 _name = _ensure_category_in_name(product.get("name", ""), collection_name)
                 _name = _ensure_bangle_naming(_name, collection_name, product.get("name", ""), product.get("description", ""))
-                product["mikisi_name"] = _name[:100]
+                product["mikisi_name"] = _safe_name_truncate(_name)
                 product["mikisi_description"] = ""
                 product["accepted"] = True
+                product["_rewrite_failed"] = True
                 rewritten.append(product)
                 continue
 
             product = products[i].copy()
+            # ARIA gave us a dict but no usable name for this item — same raw-title
+            # fallback as the null branch above, so flag it the same way (see
+            # _rewrite_failed use at save time: forces needs_review so this doesn't
+            # ship silently with an untranslated supplier title).
+            product["_rewrite_failed"] = not bool((result.get("mikisi_name") or "").strip())
             raw_name = (result.get("mikisi_name") or product.get("name", ""))
             # Guarantee the category type word is always present — ARIA sometimes strips it
             aria_cat = (result.get("correct_collection") or "").strip() or collection_name
@@ -435,7 +461,7 @@ Return ONLY valid JSON array. No other text."""
             if _implied and _implied != aria_cat:
                 print(f"[Bulk Import] '{raw_name[:50]}' implies {_implied} but category is {aria_cat} — using raw title instead")
                 raw_name = _ensure_category_in_name(product.get("name", ""), aria_cat)
-            product["mikisi_name"] = raw_name[:100]
+            product["mikisi_name"] = _safe_name_truncate(raw_name)
             product["mikisi_description"] = _enforce_earring_description_style(
                 result.get("mikisi_description", ""), product.get("name", ""), aria_cat, product.get("description", "")
             )
@@ -465,11 +491,11 @@ Return ONLY valid JSON array. No other text."""
         traceback.print_exc()
         # On error — preserve products with raw names, don't lose them
         return [{**p,
-                 "mikisi_name": _ensure_bangle_naming(
+                 "mikisi_name": _safe_name_truncate(_ensure_bangle_naming(
                      _ensure_category_in_name(p.get("name", ""), collection_name),
                      collection_name, p.get("name", ""), p.get("description", ""),
-                 )[:100],
-                 "mikisi_description": "", "accepted": True} for p in products]
+                 )),
+                 "mikisi_description": "", "accepted": True, "_rewrite_failed": True} for p in products]
 
 
 # ============================================================
@@ -636,7 +662,7 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
             # Flags
             is_premium    = material_key == "moissanite"
             resolved_sizes = _resolve_sizes(product.get("sizes"), product.get("category", ""))
-            needs_review  = cost_price > 40 or _implausible_bracelet_length(product["category"], resolved_sizes)
+            needs_review  = cost_price > 40 or _implausible_bracelet_length(product["category"], resolved_sizes) or product.get("_rewrite_failed", False)
 
             # SKU — Silverbene options have option_id, not variantSku
             cj_sku = ""
@@ -848,7 +874,7 @@ def run_browse_import(months_back: int = 8, limit: int = 300) -> dict:
             pricing = calculate_mikisi_price(cost_price, material_key)
             is_premium = material_key == "moissanite"
             resolved_sizes = _resolve_sizes(product.get("sizes"), resolved_category)
-            needs_review = cost_price > 40 or _implausible_bracelet_length(resolved_category, resolved_sizes)
+            needs_review = cost_price > 40 or _implausible_bracelet_length(resolved_category, resolved_sizes) or product.get("_rewrite_failed", False)
 
             cj_sku = ""
             if raw_variants and isinstance(raw_variants, list):
