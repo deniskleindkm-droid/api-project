@@ -52,12 +52,13 @@ CATEGORY_HASHTAGS = {
 # (index 3, the most specific variant) so there's one source of truth.
 _CATEGORY_HASHTAG_PRIMARY = {cat: tags[-1] for cat, tags in CATEGORY_HASHTAGS.items()}
 
-# Mid-volume (5K-500K posts) community/discovery tags — sweet spot per
-# research: big enough for active search traffic, small enough a post
-# isn't buried in seconds. Replaces the old #jewelry/#silverjewelry/
-# #jewelrylovers (10M+ posts each — too broad to be useful, not banned,
-# just no real reach at that volume).
-_NICHE_DISCOVERY_TAGS = ["#handmadejewelry", "#jewelrymaker", "#artisanjewelry"]
+# Dennis's requested discovery/locale tags (2026-07-27), replacing the old
+# #handmadejewelry/#jewelrymaker/#artisanjewelry pool — still fills whatever
+# slots remain after #mikisi + category + material within the 5-tag total
+# (see _build_hashtags and the hard-cap comment above _CATEGORY_HASHTAG_PRIMARY).
+# #nyc ordered first per his explicit priority ("especially Nyc").
+_NICHE_DISCOVERY_TAGS = ["#nyc", "#sterlingsilver", "#silver925", "#silversmith",
+                         "#chicago", "#summer", "#jewelries", "#necklaces"]
 
 
 # ── DEFAULTS ──────────────────────────────────────────────────────────────────
@@ -1152,7 +1153,7 @@ def run_instagram_agent():
 
 def post_manually(product_id: int, post_type: str, image_count: Optional[int] = None,
                    image_urls: Optional[list] = None, dry_run: bool = True,
-                   skip_catalog_tag: bool = False) -> dict:
+                   skip_catalog_tag: bool = False, caption_override: Optional[str] = None) -> dict:
     """
     Post one specific product on command — the manual counterpart to
     run_instagram_agent()'s automatic picker.
@@ -1175,6 +1176,12 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
       useful to isolate whether a failure is the tagging call itself
       (e.g. the account not yet approved for Instagram Shopping/
       instagram_shopping_tag_products) vs. something in the base post.
+    caption_override: use this exact text instead of calling
+      _generate_caption() — for when Dennis has workshopped the caption
+      by hand (e.g. a collection-level Reel covering several pieces, not
+      just the one tagged product) and wants that exact wording posted,
+      not a fresh LLM draft. Hashtags are still auto-built via
+      _build_hashtags() either way.
 
     dry_run=True (the default — deliberately, given how much review this
     launch has had) generates the real caption/hashtags/catalog-tag
@@ -1194,7 +1201,7 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
         if not video_url:
             return {"success": False, "reason": "no_video_resolved"}
 
-        caption  = _generate_caption(product, post_type)
+        caption  = caption_override if caption_override is not None else _generate_caption(product, post_type)
         hashtags = _build_hashtags(product.category, product.material or "")
 
         catalog_id = ""
@@ -1255,7 +1262,7 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
     if not images:
         return {"success": False, "reason": "no_images_resolved"}
 
-    caption  = _generate_caption(product, post_type)
+    caption  = caption_override if caption_override is not None else _generate_caption(product, post_type)
     hashtags = _build_hashtags(product.category, product.material or "")
 
     catalog_id = ""
