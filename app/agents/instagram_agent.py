@@ -891,6 +891,22 @@ def _post_reel_to_instagram(video_url: str, caption: str, hashtags: str,
 
 # ── STATE MANAGEMENT ──────────────────────────────────────────────────────────
 
+def _cloudinary_only(urls: list) -> list:
+    """
+    content_images is supposed to mean "Cloudinary-cached," but
+    image_cdn_agent.py's backfill_product_galleries() stores the raw
+    Silverbene URL as a fallback for any single slot that failed to upload
+    ("keep original as fallback rather than drop the slot") — so the field
+    can silently contain a mix. Confirmed live 2026-08-02 on products 1120
+    (3/3 raw) and 1245 (1/3 raw): posting those as-is risks the exact
+    Instagram media-fetcher rejection (subcode 2207052) the content_images-
+    only rule was built to prevent in the first place. Filters to only
+    actual Cloudinary URLs — a shorter-than-requested carousel beats a
+    carousel that risks failing outright.
+    """
+    return [u for u in urls if u and "res.cloudinary.com" in u]
+
+
 def _save_post(product_id: int, post_type: str, image_url: str,
                caption: str, hashtags: str, instagram_post_id: str = ""):
     with Session(engine) as session:
@@ -1164,6 +1180,7 @@ def run_instagram_agent():
             gallery = json.loads(product.content_images) if product.content_images else []
         except Exception:
             gallery = []
+        gallery = _cloudinary_only(gallery)
         for url in gallery[:3]:
             if url and url not in images:
                 images.append(url)
@@ -1348,6 +1365,7 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
                 gallery = json.loads(product.content_images)
             except Exception:
                 gallery = []
+        gallery = _cloudinary_only(gallery)
         if image_count and gallery:
             images = gallery[:image_count]
         else:
