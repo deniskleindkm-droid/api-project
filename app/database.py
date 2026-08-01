@@ -87,6 +87,15 @@ def create_db():
         conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS variant_id integer'))
         # Stripe webhook idempotency key — see Order.stripe_session_id's docstring.
         conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS stripe_session_id varchar(200)'))
+        # Real per-order supplier cost detail for tax/bookkeeping — see
+        # OrderTracking's docstring. Silverbene has no order-detail API to
+        # backfill this from later, so it's captured once at place_order() time.
+        conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS supplier_product_cost float"))
+        conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS supplier_shipping_cost float"))
+        conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS supplier_shipping_carrier varchar(200)"))
+        conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS supplier_total_charged float"))
+        conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS supplier_currency varchar(10)"))
+        conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS supplier_raw_response text"))
         conn.commit()
 
     _setup_defaults()

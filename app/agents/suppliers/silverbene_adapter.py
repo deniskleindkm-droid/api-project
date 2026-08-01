@@ -645,9 +645,24 @@ class SilverbeneAdapter(SupplierAdapter):
 
         print(f"[Silverbene] create_order response: code={code} order_id={order_id} payment_required={payment_required}")
 
+        # Real per-order cost detail for tax/bookkeeping (see OrderTracking's
+        # docstring) — captured here regardless of outcome, since Silverbene
+        # has no order-detail API to look this up after the fact (confirmed
+        # 2026-08-01, every plausible endpoint 404s). raw_response is the
+        # full create_order payload, kept as a complete audit trail even
+        # though today's known fields are only a subset of it.
+        import json as _json
+        cost_detail = {
+            "shipping_cost":    cheapest.get("price"),
+            "shipping_carrier": cheapest.get("title", carrier_code),
+            "total_charged":    data.get("amount_due") or data.get("total_price"),
+            "currency":         result.get("currency", "USD"),
+            "raw_response":     _json.dumps(result),
+        }
+
         # Case 1 — credit covered the full amount, order is processing
         if code == 0 and order_id and not payment_required:
-            return self.standard_order(success=True, supplier_order_id=order_id, reason="paid_from_credit")
+            return self.standard_order(success=True, supplier_order_id=order_id, reason="paid_from_credit", **cost_detail)
 
         # Case 2 — order created but credit didn't fully cover it, Silverbene needs extra payment
         if code == 0 and order_id and payment_required:
@@ -665,7 +680,7 @@ class SilverbeneAdapter(SupplierAdapter):
                 ),
             )
             # Return success=True so the order moves to 'processing' — it exists at Silverbene
-            return self.standard_order(success=True, supplier_order_id=order_id, reason="pending_payment_shortfall")
+            return self.standard_order(success=True, supplier_order_id=order_id, reason="pending_payment_shortfall", **cost_detail)
 
         # Case 3 — insufficient credit, order was NOT created
         message = result.get("message", "unknown error")
@@ -681,7 +696,7 @@ class SilverbeneAdapter(SupplierAdapter):
                 f"(jackyli@silverbene.com).</p>"
             ),
         )
-        return self.standard_order(success=False, supplier_order_id="", reason=f"insufficient_credit: {message}")
+        return self.standard_order(success=False, supplier_order_id="", reason=f"insufficient_credit: {message}", **cost_detail)
 
     def check_balance(self) -> float:
         """Returns the current Silverbene store credit balance in USD, or -1 on error."""

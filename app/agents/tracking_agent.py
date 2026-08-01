@@ -20,8 +20,18 @@ def get_orders_needing_tracking():
 
 
 def create_tracking_entry(order_id, cj_order_id, customer_email,
-                          customer_name, supplier_name="CJDropshipping"):
-    """Create a tracking entry when an order is forwarded to supplier."""
+                          customer_name, supplier_name="CJDropshipping",
+                          supplier_product_cost=None, supplier_shipping_cost=None,
+                          supplier_shipping_carrier=None, supplier_total_charged=None,
+                          supplier_currency=None, supplier_raw_response=None):
+    """
+    Create a tracking entry when an order is forwarded to supplier.
+
+    The supplier_* args are real per-order cost detail (see OrderTracking's
+    docstring) — pass place_order()'s result fields straight through when
+    available, for tax/bookkeeping. All optional so existing callers that
+    don't have this data yet keep working unchanged.
+    """
     with Session(engine) as session:
         existing = session.exec(
             select(OrderTracking).where(
@@ -40,7 +50,13 @@ def create_tracking_entry(order_id, cj_order_id, customer_email,
             customer_email=customer_email,
             customer_name=customer_name,
             status="pending",
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
+            supplier_product_cost=supplier_product_cost,
+            supplier_shipping_cost=supplier_shipping_cost,
+            supplier_shipping_carrier=supplier_shipping_carrier,
+            supplier_total_charged=supplier_total_charged,
+            supplier_currency=supplier_currency,
+            supplier_raw_response=supplier_raw_response,
         )
         session.add(tracking)
         session.commit()

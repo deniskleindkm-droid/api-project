@@ -520,6 +520,7 @@ def process_order_background(checkout_data: dict):
                             "selected_color": sel_color,
                             "selected_option_id": sel_option_id,
                             "variant_id": sel_variant_id,
+                            "silverbene_cost": product.silverbene_cost,
                         })
                         print(f"[Payments] Guest item: {product.name} — size={sel_size} color={sel_color}")
                         order = Order(
@@ -571,6 +572,7 @@ def process_order_background(checkout_data: dict):
                             "selected_color": item.selected_color,
                             "selected_option_id": item.selected_option_id,
                             "variant_id": item.variant_id,
+                            "silverbene_cost": product.silverbene_cost,
                         })
                         print(f"[Payments] Item: {product.name} — size={item.selected_size} color={item.selected_color}")
                         order = Order(
@@ -760,7 +762,15 @@ def process_order_background(checkout_data: dict):
                         cj_order_id=silverbene_order_id,
                         customer_email=user_email,
                         customer_name=f"{customer_first} {customer_last}",
-                        supplier_name="Silverbene"
+                        supplier_name="Silverbene",
+                        # Real per-order cost detail for tax/bookkeeping — see
+                        # OrderTracking's docstring.
+                        supplier_product_cost=d.get("silverbene_cost"),
+                        supplier_shipping_cost=result.get("shipping_cost"),
+                        supplier_shipping_carrier=result.get("shipping_carrier"),
+                        supplier_total_charged=result.get("total_charged"),
+                        supplier_currency=result.get("currency"),
+                        supplier_raw_response=result.get("raw_response"),
                     )
                     with Session(engine) as session:
                         order_rec = session.get(Order, db_order_id)

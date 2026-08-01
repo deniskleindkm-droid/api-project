@@ -48,4 +48,16 @@ class OrderTracking(SQLModel, table=True):
     customer_name: Optional[str] = None
     shipping_notified: bool = Field(default=False)
     delivery_notified: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)    
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    # Real per-order supplier cost detail, captured at place_order() time —
+    # Dennis needs this for tax/bookkeeping (COGS + shipping expense per
+    # order); Silverbene has no order-detail API to look this up after the
+    # fact (confirmed 2026-08-01, every candidate endpoint 404s), so this is
+    # the only durable record of what was actually paid, not what the
+    # customer paid or what the catalog assumes.
+    supplier_product_cost:    Optional[float] = None   # wholesale cost of the item(s) at order time
+    supplier_shipping_cost:   Optional[float] = None   # real cheapest-carrier cost place_order() selected
+    supplier_shipping_carrier: Optional[str] = None    # e.g. "USPS(8-10 workdays...)"
+    supplier_total_charged:   Optional[float] = None   # amount_due/total_price from Silverbene's response, if present
+    supplier_currency:        Optional[str] = None
+    supplier_raw_response:    Optional[str] = None     # full JSON dump of create_order's response — complete audit trail

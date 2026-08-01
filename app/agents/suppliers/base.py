@@ -62,12 +62,17 @@ class SupplierAdapter(ABC):
 
     def standard_order(self, **kwargs) -> dict:
         """
-        Standard order response format.
+        Standard order response format. success/supplier_order_id/reason are
+        the required core fields every caller can rely on; any extra kwargs
+        (e.g. Silverbene's real cost-detail fields — see place_order()) pass
+        through as-is so a supplier can enrich its response without every
+        other adapter needing to know about those fields.
         """
         return {
             "success": kwargs.get("success", False),
             "supplier_order_id": kwargs.get("supplier_order_id", ""),
             "reason": kwargs.get("reason", ""),
+            **{k: v for k, v in kwargs.items() if k not in ("success", "supplier_order_id", "reason")},
         }
 
     def standard_tracking(self, **kwargs) -> dict:

@@ -852,7 +852,13 @@ def silverbene_retry_order(order_id: int, master_key: str, session: Session = De
             cj_order_id=result.get("supplier_order_id", ""),
             customer_email=order.user_id,
             customer_name=f"{customer['first_name']} {customer['last_name']}",
-            supplier_name="Silverbene"
+            supplier_name="Silverbene",
+            supplier_product_cost=product.silverbene_cost,
+            supplier_shipping_cost=result.get("shipping_cost"),
+            supplier_shipping_carrier=result.get("shipping_carrier"),
+            supplier_total_charged=result.get("total_charged"),
+            supplier_currency=result.get("currency"),
+            supplier_raw_response=result.get("raw_response"),
         )
         with DBSession(engine) as s:
             o = s.get(Order, order_id)
