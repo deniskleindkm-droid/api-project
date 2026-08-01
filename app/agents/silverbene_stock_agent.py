@@ -540,7 +540,11 @@ def _reconcile_variant_rows(session, product, live_options: list) -> None:
             row.available = True
             if base_price:
                 row.base_price = base_price
-                row.final_price = calculate_mikisi_price(base_price)["final_price"]
+                # Reuse the real per-product shipping quote already on file
+                # (captured at import time) instead of re-querying Silverbene's
+                # shipping API for every variant on every 6h sync — that's the
+                # same real cost, just avoids hundreds of live lookups per run.
+                row.final_price = calculate_mikisi_price(base_price, shipping_cost=product.shipping_cost)["final_price"]
             row.last_synced_at = datetime.utcnow()
             session.add(row)
         elif base_price:
@@ -556,7 +560,7 @@ def _reconcile_variant_rows(session, product, live_options: list) -> None:
                 color=_sb_adapter._finalize_variant_color(vr.get("color"), product.description or ""),
                 raw_attributes=json.dumps(vr.get("raw_attributes") or live_opt.get("attribute", [])),
                 base_price=base_price,
-                final_price=calculate_mikisi_price(base_price)["final_price"],
+                final_price=calculate_mikisi_price(base_price, shipping_cost=product.shipping_cost)["final_price"],
                 stock=int(live_opt.get("qty", 0)),
                 available=True,
                 sort_order=vr.get("sort_order", len(existing)),

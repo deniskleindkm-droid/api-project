@@ -656,19 +656,21 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 product.get("_options", raw_variants)
             )
 
-            # Pricing
-            pricing = calculate_mikisi_price(cost_price, material_key)
-
-            # Flags
-            is_premium    = material_key == "moissanite"
-            resolved_sizes = _resolve_sizes(product.get("sizes"), product.get("category", ""))
-            needs_review  = cost_price > 40 or _implausible_bracelet_length(product["category"], resolved_sizes) or product.get("_rewrite_failed", False)
-
             # SKU — Silverbene options have option_id, not variantSku
             cj_sku = ""
             if raw_variants and isinstance(raw_variants, list):
                 first = raw_variants[0]
                 cj_sku = str(first.get("option_id", "")) or str(first.get("sku", ""))
+
+            # Pricing — option_id lets this price against Silverbene's real
+            # shipping quote for this exact product, not a flat assumption
+            # (see jewelry_pricing.get_real_shipping_cost)
+            pricing = calculate_mikisi_price(cost_price, material_key, option_id=cj_sku)
+
+            # Flags
+            is_premium    = material_key == "moissanite"
+            resolved_sizes = _resolve_sizes(product.get("sizes"), product.get("category", ""))
+            needs_review  = cost_price > 40 or _implausible_bracelet_length(product["category"], resolved_sizes) or product.get("_rewrite_failed", False)
 
             product_data = {
                 "name": product["mikisi_name"],
@@ -871,15 +873,19 @@ def run_browse_import(months_back: int = 8, limit: int = 300) -> dict:
             raw_variants = product.get("raw_variants_list", [])
             cost_price = float(product["cost_price"])
             material_key = detect_material(product.get("name", ""), product.get("_options", raw_variants))
-            pricing = calculate_mikisi_price(cost_price, material_key)
-            is_premium = material_key == "moissanite"
-            resolved_sizes = _resolve_sizes(product.get("sizes"), resolved_category)
-            needs_review = cost_price > 40 or _implausible_bracelet_length(resolved_category, resolved_sizes) or product.get("_rewrite_failed", False)
 
             cj_sku = ""
             if raw_variants and isinstance(raw_variants, list):
                 first = raw_variants[0]
                 cj_sku = str(first.get("option_id", "")) or str(first.get("sku", ""))
+
+            # option_id lets this price against Silverbene's real shipping
+            # quote for this exact product, not a flat assumption (see
+            # jewelry_pricing.get_real_shipping_cost)
+            pricing = calculate_mikisi_price(cost_price, material_key, option_id=cj_sku)
+            is_premium = material_key == "moissanite"
+            resolved_sizes = _resolve_sizes(product.get("sizes"), resolved_category)
+            needs_review = cost_price > 40 or _implausible_bracelet_length(resolved_category, resolved_sizes) or product.get("_rewrite_failed", False)
 
             product_data = {
                 "name": product["mikisi_name"],

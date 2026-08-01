@@ -1,14 +1,51 @@
 """
 Mikisi pricing engine — single source of truth for import and bulk repricing.
 Tiered flat-profit model: fixed dollar profit per wholesale cost band.
-USPS shipping and packaging are absorbed into the retail price.
+Real per-product shipping cost (see get_real_shipping_cost) and packaging
+are absorbed into the retail price.
 """
 import math
 
-USPS_SHIPPING = 9.51
+USPS_SHIPPING = 9.51  # fallback only — used when a real per-option quote can't be fetched
 PACKAGING     = 3.00
 STRIPE_RATE   = 0.029
 STRIPE_FIXED  = 0.30
+
+# Reference US address used to price shipping at import time — no real
+# customer address exists yet, so this stands in purely to get a
+# representative Silverbene quote for the product/option itself.
+_REFERENCE_POSTCODE = "10001"
+_REFERENCE_CITY     = "New York"
+
+
+def get_real_shipping_cost(option_id: str) -> float:
+    """
+    Real cheapest Silverbene shipping cost for this option, or USPS_SHIPPING
+    if the lookup fails/returns nothing.
+
+    Why this exists: the flat $9.51 USPS assumption baked into every tier
+    was wrong whenever Silverbene doesn't offer USPS for a product (not a
+    clean price cutoff — confirmed live 2026-08-01 that a $40 item can lose
+    USPS eligibility while $50-58 items keep it, so it can't be predicted
+    from cost alone). When that happens, the real cheapest option is
+    DHL/FedEx at $58-88, not $9.51 — order #22 shipped at $53.12 real cost
+    against a $9.51 budget and kept only ~$4 of a stated $45 profit tier.
+    Querying Silverbene's real quote per product at import time closes that
+    gap for every tier, not just premium.
+    """
+    if not option_id:
+        return USPS_SHIPPING
+    try:
+        from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+        methods = SilverbeneAdapter().get_shipping_methods(
+            "US", option_id=str(option_id), qty=1,
+            postcode=_REFERENCE_POSTCODE, city=_REFERENCE_CITY,
+        )
+        if methods:
+            return min(m.get("price", USPS_SHIPPING) for m in methods)
+    except Exception as e:
+        print(f"[Pricing] Shipping cost lookup failed for option_id={option_id}: {e}")
+    return USPS_SHIPPING
 
 # Checked in priority order — moissanite first so it wins over silver keywords
 MATERIAL_KEYWORDS = {
@@ -75,7 +112,9 @@ def elegant_round(price: float) -> float:
 
 
 def calculate_mikisi_price(silverbene_cost: float, material: str = None,
-                           discount_percent: float = 0.0) -> dict:
+                           discount_percent: float = 0.0,
+                           option_id: str = None,
+                           shipping_cost: float = None) -> dict:
     """
     Calculate final Mikisi retail price from Silverbene wholesale cost.
 
@@ -85,11 +124,29 @@ def calculate_mikisi_price(silverbene_cost: float, material: str = None,
       statement $30–$60      → +$60
       premium   > $60        → +cost × 2
 
-    USPS ($9.51) + packaging ($3.00) + Stripe (2.9% + $0.30) all absorbed.
+    Real shipping cost (see get_real_shipping_cost) + packaging ($3.00) +
+    Stripe (2.9% + $0.30) all absorbed.
+
+    Two ways to supply the real cost, checked in this order:
+      shipping_cost — an already-known real quote (e.g. Product.shipping_cost,
+        captured once at import time). Use this for recurring resyncs
+        (stock sync, price drift checks) so they reuse the real number
+        already on file instead of re-querying Silverbene's shipping API
+        on every cycle for every variant — that doesn't scale (hundreds of
+        products, every 6h).
+      option_id — fetches a fresh real quote via get_real_shipping_cost.
+        Use this only at the one-time pricing decision (new import, or a
+        genuine cost-change resync where no prior shipping_cost exists
+        yet) since it's a live API call.
+    Falls back to the flat $9.51 USPS assumption only if neither is given
+    — without one of these, every tier is exposed to the same profit-eating
+    gap that hit order #22 (see get_real_shipping_cost's docstring).
     `material` is kept for backward compatibility but no longer affects pricing.
     """
+    if shipping_cost is None:
+        shipping_cost = get_real_shipping_cost(option_id) if option_id else USPS_SHIPPING
     profit, tier = profit_tier(silverbene_cost)
-    base   = silverbene_cost + USPS_SHIPPING + PACKAGING + profit
+    base   = silverbene_cost + shipping_cost + PACKAGING + profit
     retail = elegant_round((base + STRIPE_FIXED) / (1 - STRIPE_RATE))
 
     if discount_percent > 0:
@@ -101,7 +158,7 @@ def calculate_mikisi_price(silverbene_cost: float, material: str = None,
         "final_price":      retail,
         "original_price":   original_price,
         "discount_percent": discount_percent,
-        "shipping_cost":    USPS_SHIPPING,
+        "shipping_cost":    shipping_cost,
         "markup_used":      profit,
         "material":         material or "silver",
         "tier":             tier,

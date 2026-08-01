@@ -372,7 +372,11 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
         if not bp:
             continue
         bp = float(bp)
-        final_price = calculate_mikisi_price(bp)["final_price"]
+        # Reuse the real shipping quote already stored on the product
+        # (set at import time) instead of a live per-request Silverbene
+        # call on every product-page view — this runs synchronously in an
+        # HTTP request, not a background job.
+        final_price = calculate_mikisi_price(bp, shipping_cost=product.shipping_cost)["final_price"]
 
         attrs = v.get("attribute") or v.get("attributes") or []
         size = None

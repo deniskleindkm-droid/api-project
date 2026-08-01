@@ -1738,7 +1738,10 @@ def backfill_product_variants(master_key: str, published_only: bool = True, sess
                     color=adapter._finalize_variant_color(row["color"], product.description or ""),
                     raw_attributes=json.dumps(row["raw_attributes"]),
                     base_price=base_price,
-                    final_price=calculate_mikisi_price(base_price)["final_price"],
+                    # option_id -> real Silverbene shipping quote for this
+                    # variant, not the flat $9.51 fallback (same gap fixed in
+                    # store_manager.py's live import path).
+                    final_price=calculate_mikisi_price(base_price, option_id=option_id)["final_price"],
                     stock=int(row["qty"] or 0),
                     available=bool(row["available"]),
                     sort_order=row["sort_order"],

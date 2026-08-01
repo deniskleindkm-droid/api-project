@@ -84,7 +84,7 @@ def add_product_to_store(product_data):
                 if new_cost and old_cost and abs(new_cost - old_cost) / old_cost > 0.05:
                     from app.agents.jewelry_pricing import calculate_mikisi_price, detect_material
                     material_key = detect_material(existing.name, [])
-                    pricing = calculate_mikisi_price(new_cost, material_key)
+                    pricing = calculate_mikisi_price(new_cost, material_key, option_id=existing.cj_sku)
                     existing.silverbene_cost  = new_cost
                     existing.final_price      = pricing["final_price"]
                     existing.original_price   = pricing["original_price"]
@@ -171,7 +171,12 @@ def add_product_to_store(product_data):
                         color=_sb_adapter._finalize_variant_color(row["color"], product.description or ""),
                         raw_attributes=json.dumps(row["raw_attributes"]),
                         base_price=base_price,
-                        final_price=calculate_mikisi_price(base_price)["final_price"],
+                        # option_id -> real Silverbene shipping quote for THIS
+                        # variant, not the flat $9.51 fallback. This is the
+                        # price get_variant_prices() actually serves to
+                        # checkout, so this was the real gap — the product-level
+                        # final_price above is mostly cosmetic once variants exist.
+                        final_price=calculate_mikisi_price(base_price, option_id=option_id)["final_price"],
                         stock=int(row["qty"] or 0),
                         available=bool(row["available"]),
                         sort_order=row["sort_order"],
