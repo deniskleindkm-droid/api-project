@@ -1124,6 +1124,15 @@ class SilverbeneAdapter(SupplierAdapter):
                 value = attr.get("value", "").strip()
                 if not value:
                     continue
+                # Cleaned once here, at the single point every branch below
+                # reads `value` from — the certificate phrase turns up under
+                # a real "Color" attribute just as often as under the
+                # Option-hash placeholder (see _clean_certificate_text), so
+                # fixing only one branch left most of the 60 affected
+                # products unfixed (confirmed live 2026-08-01: a per-branch
+                # fix touched only 4/60). Safe to apply unconditionally —
+                # values with no certificate wording pass through unchanged.
+                value = _clean_certificate_text(value)
 
                 if name in BRACELET_SIZE_ATTR_NAMES and re.search(r'\d+', value, re.I):
                     # Bracelet-specific attrs (wrist size, inner diameter, etc.)
@@ -1271,10 +1280,10 @@ class SilverbeneAdapter(SupplierAdapter):
                     # etc.) — this text isn't a color/finish at all, and that
                     # pipeline would mangle it looking for gold/silver
                     # keywords that don't apply. Kept as its own combined chip,
-                    # exactly as Silverbene priced each distinct combination —
-                    # only the certificate wording itself is cleaned up (see
-                    # _clean_certificate_text).
-                    _color_parts_this_option.append(_clean_certificate_text(value))
+                    # exactly as Silverbene priced each distinct combination
+                    # (certificate wording already cleaned up-front, see the
+                    # top of this loop).
+                    _color_parts_this_option.append(value)
                 elif name == "purity" and _purity_is_real and re.search(r'\b(gold|silver|platinum|plating|plated|rhodium)\b', value, re.I):
                     # "Purity" is overloaded — Silverbene also uses it for a
                     # pendant/chain-style choice ("Pendant Only" vs "Pendant +
