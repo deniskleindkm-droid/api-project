@@ -1248,16 +1248,23 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
         images = [product.content_lifestyle_url] if product.content_lifestyle_url else \
                  ([_best_campaign_image(product)] if _best_campaign_image(product) else [])
     else:
-        # Prefer the Cloudinary-cached gallery (content_images) over raw
-        # Silverbene URLs (images) — hotlinking Silverbene's gallery directly
-        # hit real intermittent 503s from their CDN on real posts (2026-07-19).
-        # Falls back to raw images only for products not yet backfilled (see
-        # image_cdn_agent.py's backfill_product_galleries).
+        # Carousels only ever pull from the Cloudinary-cached gallery
+        # (content_images) — never from raw Silverbene URLs (images).
+        # Confirmed live 2026-08-01 posting product 493: a raw-gallery
+        # carousel got a flat "media download has failed... doesn't meet
+        # our requirements" from Instagram's own fetcher (subcode 2207052)
+        # on an image that curled a clean 200 OK — not a transient CDN
+        # 503 (see 2026-07-19 note this replaced), a real rejection that a
+        # retry doesn't clear. Most of the catalog still has no
+        # content_images (backfill_product_galleries in image_cdn_agent.py
+        # is admin-triggered only, never scheduled — see memory:
+        # project_instagram_gallery_backfill_gap), so until a product's
+        # gallery is backfilled this always falls back to the single
+        # Cloudinary-cached primary image instead of risking the carousel.
         gallery = []
-        gallery_source = product.content_images or product.images
-        if gallery_source:
+        if product.content_images:
             try:
-                gallery = json.loads(gallery_source)
+                gallery = json.loads(product.content_images)
             except Exception:
                 gallery = []
         if image_count and gallery:
