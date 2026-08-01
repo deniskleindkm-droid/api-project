@@ -132,6 +132,28 @@ _OPTION_HASH_NAME_RE = re.compile(r'^option[\s_][0-9a-f]{6,}$', re.I)
 # choice exists to lose). Never show a chip built from this kind of value.
 _OPTION_HASH_VALUE_RE = re.compile(r'^option_[0-9a-f]{6,}$', re.I)
 
+# Silverbene mixes the real with/without-certificate distinction into free
+# text in wildly inconsistent ways — "(With Certificate)", "with GRA
+# certificate", "Including certificates", "Certificate Included" all found
+# live across 60 products / 312 variant rows (2026-08-01) — which reads as
+# unpolished on a storefront chip (Dennis: "it doesn't look good"). Collapsed
+# to a single clean "Certified" marker in place of whichever verbose phrase
+# appears. Deliberately a substitution, not a deletion — two options that
+# differ ONLY by this phrase (e.g. "R13210" vs "R13210(With Certificate)")
+# would otherwise become literal duplicate chip text and silently collide in
+# _extract_variant_rows()'s seen_colors dedup, hiding the priced certificate
+# option entirely. Keeps any OTHER real qualifier in the same value (e.g.
+# "and box") intact so those stay distinguishable too.
+_CERTIFICATE_TEXT_RE = re.compile(
+    r'(?:with\s+|including\s+)?(?:gra\s+)?certificates?(?:\s+included)?',
+    re.I,
+)
+
+
+def _clean_certificate_text(value: str) -> str:
+    cleaned = _CERTIFICATE_TEXT_RE.sub('Certified', value)
+    return re.sub(r'\s{2,}', ' ', cleaned).strip()
+
 
 def _purity_length_chips(value: str, denom: int = 2) -> list:
     """
@@ -1249,8 +1271,10 @@ class SilverbeneAdapter(SupplierAdapter):
                     # etc.) — this text isn't a color/finish at all, and that
                     # pipeline would mangle it looking for gold/silver
                     # keywords that don't apply. Kept as its own combined chip,
-                    # exactly as Silverbene priced each distinct combination.
-                    _color_parts_this_option.append(value)
+                    # exactly as Silverbene priced each distinct combination —
+                    # only the certificate wording itself is cleaned up (see
+                    # _clean_certificate_text).
+                    _color_parts_this_option.append(_clean_certificate_text(value))
                 elif name == "purity" and _purity_is_real and re.search(r'\b(gold|silver|platinum|plating|plated|rhodium)\b', value, re.I):
                     # "Purity" is overloaded — Silverbene also uses it for a
                     # pendant/chain-style choice ("Pendant Only" vs "Pendant +
