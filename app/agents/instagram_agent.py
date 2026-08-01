@@ -60,6 +60,14 @@ _CATEGORY_HASHTAG_PRIMARY = {cat: tags[-1] for cat, tags in CATEGORY_HASHTAGS.it
 _NICHE_DISCOVERY_TAGS = ["#nyc", "#sterlingsilver", "#silver925", "#silversmith",
                          "#chicago", "#summer", "#jewelries", "#necklaces"]
 
+# Reels get extra discovery tags on top of the 5-tag feed-post set (Dennis,
+# 2026-08-02) — short-form video benefits from video-specific discovery
+# differently than a static post, and Instagram's real cap is 30 tags, not
+# 5 (the 5-tag rule above is a deliberate brand-consistency choice for feed
+# posts, not a platform limit) — so reels can afford to add a few more
+# without displacing the base set.
+_REEL_DISCOVERY_TAGS = ["#reels", "#reelsinstagram", "#jewelryreels"]
+
 
 # ── DEFAULTS ──────────────────────────────────────────────────────────────────
 
@@ -123,12 +131,14 @@ def _init_defaults():
 
 # ── HASHTAG BUILDER ───────────────────────────────────────────────────────────
 
-def _build_hashtags(category: str, material: str) -> str:
+def _build_hashtags(category: str, material: str, post_type: str = "product") -> str:
     """
-    Exactly 5 hashtags, in priority order — Instagram's hard cap (see
-    module-level comment above _CATEGORY_HASHTAG_PRIMARY). Mix per
+    Exactly 5 hashtags, in priority order — a deliberate brand-consistency
+    choice for feed posts (see module-level comment above
+    _CATEGORY_HASHTAG_PRIMARY), not Instagram's actual cap (30). Mix per
     research: 1 branded + 1 category/style + 1 material + up to 2 niche
-    discovery tags, never generic broad ones.
+    discovery tags, never generic broad ones. post_type="reel" appends
+    video-discovery tags on top of that base 5 (see _REEL_DISCOVERY_TAGS).
     """
     tags = ["#mikisi"]
     tags.append(_CATEGORY_HASHTAG_PRIMARY.get(category, "#jewelrygram"))
@@ -164,7 +174,13 @@ def _build_hashtags(category: str, material: str) -> str:
             seen.add(t)
             unique.append(t)
 
-    return " ".join(unique[:5])
+    base = unique[:5]
+    if post_type == "reel":
+        for t in _REEL_DISCOVERY_TAGS:
+            if t not in seen:
+                seen.add(t)
+                base.append(t)
+    return " ".join(base)
 
 
 # ── CAPTION GENERATION ────────────────────────────────────────────────────────
@@ -1307,7 +1323,7 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
             return {"success": False, "reason": "no_video_resolved"}
 
         caption  = caption_override if caption_override is not None else _generate_caption(product, post_type)
-        hashtags = _build_hashtags(product.category, product.material or "")
+        hashtags = _build_hashtags(product.category, product.material or "", post_type="reel")
 
         catalog_id = ""
         if not skip_catalog_tag:
