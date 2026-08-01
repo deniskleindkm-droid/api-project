@@ -383,6 +383,27 @@ def run_catalog_audit():
         print(f"[Scheduler] Catalog audit error: {e}")
 
 
+def run_image_cdn_backfill():
+    # Was admin-endpoint-only (limit=20/call) with nobody triggering it at
+    # scale — found live 2026-08-01 with 656 of 735 active products still
+    # missing content_images, which forces Instagram posts onto raw
+    # Silverbene gallery URLs that its own media fetcher can flatly reject
+    # (see memory: project_instagram_gallery_backfill_gap). Runs hourly,
+    # cheap to re-run since each call only touches products still missing
+    # content_image_url/content_images.
+    if _recently_ran("image_cdn_backfill", min_minutes=50):
+        print("[Scheduler] Skipping image_cdn_backfill — ran recently (deploy re-fire guard)")
+        return
+    try:
+        from app.agents.image_cdn_agent import backfill_product_images, backfill_product_galleries
+        primary = backfill_product_images(limit=30, verbose=True)
+        gallery = backfill_product_galleries(limit=30, verbose=True)
+        print(f"[Scheduler] Image CDN backfill — primary: {primary}, gallery: {gallery}")
+        _mark_ran("image_cdn_backfill")
+    except Exception as e:
+        print(f"[Scheduler] Image CDN backfill error: {e}")
+
+
 def run_db_cleanup():
     if _recently_ran("db_cleanup", min_minutes=1200):
         print("[Scheduler] Skipping db_cleanup — ran recently (deploy re-fire guard)")
@@ -602,6 +623,15 @@ def start_scheduler():
         id='catalog_audit',
         name='Catalog Audit — flag unrecognized attributes, suspicious chips, stale size/color data',
         next_run_time=datetime.utcnow(),
+        replace_existing=True
+    )
+
+    scheduler.add_job(
+        run_image_cdn_backfill,
+        trigger=IntervalTrigger(hours=1),
+        id='image_cdn_backfill',
+        name='Image CDN Backfill — Cloudinary-cache product primary + gallery images',
+        next_run_time=datetime.utcnow(),   # start working through the 656-product backlog immediately
         replace_existing=True
     )
 
