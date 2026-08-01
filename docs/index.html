@@ -2480,7 +2480,18 @@ async function openPP(id, presetVariantId=null){
         // ── Normal color / metal chips ──
         document.getElementById('pp-colors-wrap').style.display='block';
         const isAllMetal=realChips.every(c=>metalKeys.has(c.toLowerCase().trim()));
-        document.querySelector('#pp-colors-wrap .pp-section-title').textContent=isAllMetal?'Metal Finish':'Color';
+        // Stone-size + certificate combos (e.g. "5mm(Certified)") never
+        // pass the earlier bare-measurement check (isMeasureOnly requires
+        // the WHOLE string to be just "5mm" — the certificate annotation
+        // breaks that exact match), so they fell through to a generic
+        // "Color" label — confusing on a product like the Luxury Moissanite
+        // Adjustable Bracelet, whose real choice is stone width, not color
+        // (found live 2026-08-02). Not promoted into the Size section like
+        // isMeasureOnly does — that path converts mm to inches for chain
+        // LENGTH, which would misrepresent a stone WIDTH — just relabeled.
+        const isStoneSize=realChips.every(c=>/^\d+(?:\.\d+)?\s*(mm|cm)\b/i.test(c.trim()));
+        document.querySelector('#pp-colors-wrap .pp-section-title').textContent=
+          isAllMetal?'Metal Finish':(isStoneSize?'Stone Size':'Color');
         document.getElementById('pp-color-chips').innerHTML=realChips.map((c,i)=>{
           const label=COLOR_LABEL[c.toLowerCase().trim()]||c;
           return `<button class="pp-chip" data-raw="${c}" onclick="selectChip(this,'color')">${label}</button>`;
