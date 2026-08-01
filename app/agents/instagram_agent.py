@@ -1142,26 +1142,54 @@ def run_instagram_agent():
 
     print(f"[Instagram] {post_type.upper()} post: {product.name} (ID {product.id})")
 
-    # content_image_url (Cloudinary-cached) preferred over the raw Silverbene
-    # image_url for the same reason _best_campaign_image() prefers Cloudinary
-    # for campaign posts — hotlinking Silverbene's origin caused real
-    # intermittent posting failures (2026-07-19). This was the one posting
-    # path that never got that fix — only the campaign path did.
-    image_url = _best_campaign_image(product) if post_type == "campaign" else (product.content_image_url or product.image_url)
-    if not image_url:
-        print(f"[Instagram] No image available — skipping")
-        return
+    if post_type == "campaign":
+        # content_image_url (Cloudinary-cached) preferred over the raw
+        # Silverbene image_url — hotlinking Silverbene's origin caused real
+        # intermittent posting failures (2026-07-19).
+        image_url = _best_campaign_image(product)
+        if not image_url:
+            print(f"[Instagram] No image available — skipping")
+            return
+        images = [image_url]
+    else:
+        # Standing style (Dennis, 2026-08-02): lead with the RAWSHOT model/
+        # lifestyle shot when one exists, then real product detail photos
+        # after it, as one carousel — not a single flat product shot. Detail
+        # photos only ever come from content_images (Cloudinary-cached),
+        # never raw Silverbene images — see the same rule in post_manually()
+        # (confirmed live 2026-08-01: raw gallery URLs get flatly rejected
+        # by Instagram's own media fetcher).
+        images = [product.content_lifestyle_url] if product.content_lifestyle_url else []
+        try:
+            gallery = json.loads(product.content_images) if product.content_images else []
+        except Exception:
+            gallery = []
+        for url in gallery[:3]:
+            if url and url not in images:
+                images.append(url)
+        if not images:
+            # No lifestyle shot and no cached gallery yet — same single-image
+            # fallback this path always had before this style existed.
+            fallback = product.content_image_url or product.image_url
+            if fallback:
+                images = [fallback]
+        if not images:
+            print(f"[Instagram] No image available — skipping")
+            return
 
     caption  = _generate_caption(product, post_type)
     hashtags = _build_hashtags(product.category, product.material or "")
 
     from app.agents.meta_catalog import resolve_meta_product_id
     catalog_id = resolve_meta_product_id(product.id)
-    result = _post_to_instagram(image_url, caption, hashtags, catalog_id)
+    if len(images) > 1:
+        result = _post_to_instagram_carousel(images, caption, hashtags, catalog_id)
+    else:
+        result = _post_to_instagram(images[0], caption, hashtags, catalog_id)
 
     if result.get("success"):
         post_id = result.get("post_id", "")
-        _save_post(product.id, post_type, image_url, caption, hashtags, post_id)
+        _save_post(product.id, post_type, images[0], caption, hashtags, post_id)
         _update_state(product, post_type)
 
         try:
@@ -1324,6 +1352,11 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
             images = gallery[:image_count]
         else:
             images = [product.content_image_url or product.image_url] if (product.content_image_url or product.image_url) else []
+        # Standing style (Dennis, 2026-08-02): lead with the RAWSHOT model/
+        # lifestyle shot when one exists, ahead of the product detail
+        # photos — one carousel, model shot first, not a separate post style.
+        if product.content_lifestyle_url and product.content_lifestyle_url not in images:
+            images = [product.content_lifestyle_url] + images
 
     images = [u for u in images if u]
     if not images:
