@@ -66,7 +66,7 @@ _NICHE_DISCOVERY_TAGS = ["#nyc", "#sterlingsilver", "#silver925", "#silversmith"
 # 5 (the 5-tag rule above is a deliberate brand-consistency choice for feed
 # posts, not a platform limit) — so reels can afford to add a few more
 # without displacing the base set.
-_REEL_DISCOVERY_TAGS = ["#reels", "#reelsinstagram", "#jewelryreels"]
+_REEL_DISCOVERY_TAGS = ["#reels", "#reelsinstagram", "#jewelryreels", "#usa"]
 
 
 # ── DEFAULTS ──────────────────────────────────────────────────────────────────
