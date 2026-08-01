@@ -135,14 +135,21 @@ def _build_hashtags(category: str, material: str) -> str:
 
     if material:
         m = material.lower()
-        if "rose" in m and "gold" in m:
+        # Every piece in this catalog is genuine 925 sterling silver at its
+        # core — gold/rose-gold/rhodium plating is always an optional finish
+        # choice on top of that, never the base metal. Checking silver FIRST
+        # (Dennis, 2026-07-27: caught #goldplated crowding out #sterlingsilver
+        # on a plain sterling item that also offers a gold-plated option)
+        # keeps the brand's actual material claim in the tag, not whichever
+        # finish word happened to appear in the text.
+        if "925" in m or "sterling" in m:
+            tags.append("#sterlingsilverjewelry")
+        elif "rose" in m and "gold" in m:
             tags.append("#rosegold")
         elif "gold" in m:
             tags.append("#goldplated")
         elif "rhodium" in m:
             tags.append("#rhodiumplated")
-        elif "925" in m or "sterling" in m:
-            tags.append("#sterlingsilverjewelry")
 
     seen, unique = set(), []
     for t in tags:
