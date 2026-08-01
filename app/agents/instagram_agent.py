@@ -906,6 +906,59 @@ def _save_post(product_id: int, post_type: str, image_url: str,
         session.commit()
 
 
+# ── DELETING A PUBLISHED POST (2026-08-02) ──
+# Built for silverbene_discontinuation_agent.py: a discontinued product that
+# was ever posted to Instagram must have that post removed, not left live
+# pointing at something no longer for sale. Confirmed live 2026-08-02 that
+# the current INSTAGRAM_ACCESS_TOKEN does NOT have the instagram_manage_
+# contents scope this requires (granted scopes are posting/insights/
+# shopping-tag only — see debug_token output from /admin/instagram/
+# ads-eligibility) — so this will fail with a permissions error until the
+# app is re-authorized with that scope added. Callers must never assume
+# success; always fall back to alerting Dennis for manual removal.
+
+def get_instagram_post_permalink(media_id: str) -> str:
+    """Best-effort permalink lookup so a manual-removal alert can link
+    directly to the post — returns "" on any failure, never raises."""
+    access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+    if not access_token or not media_id:
+        return ""
+    try:
+        resp = requests.get(
+            f"https://graph.facebook.com/v18.0/{media_id}",
+            params={"fields": "permalink", "access_token": access_token},
+            timeout=15,
+        )
+        return resp.json().get("permalink", "")
+    except Exception:
+        return ""
+
+
+def delete_instagram_post(media_id: str) -> dict:
+    """
+    Deletes a published post/reel via the Graph API. Requires
+    instagram_manage_contents — this app's token doesn't have it yet (see
+    module comment above), so this is expected to fail with a permissions
+    error until that's granted. Irreversible once it does succeed.
+    """
+    access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+    if not access_token or not media_id:
+        return {"success": False, "reason": "missing_token_or_media_id"}
+    try:
+        resp = requests.delete(
+            f"https://graph.facebook.com/v18.0/{media_id}",
+            params={"access_token": access_token},
+            timeout=15,
+        )
+        data = resp.json()
+        if data.get("success"):
+            return {"success": True, "deleted_id": data.get("deleted_id", media_id)}
+        reason = data.get("error", {}).get("message", "unknown error")
+        return {"success": False, "reason": reason}
+    except Exception as e:
+        return {"success": False, "reason": str(e)}
+
+
 def _update_state(product: Product, post_type: str):
     counter = int(get_config("instagram_post_counter", default="0") or 0)
 
