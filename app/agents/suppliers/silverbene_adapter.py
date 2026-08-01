@@ -605,7 +605,17 @@ class SilverbeneAdapter(SupplierAdapter):
         if not methods:
             print(f"[Silverbene] No shipping methods returned for option_id={use_option} — cannot place order")
             return self.standard_order(success=False, supplier_order_id="", reason="No shipping methods available")
-        carrier_code = methods[0].get("carrier_code", "")
+
+        # Always the cheapest option, never methods[0] — Silverbene's own
+        # ordering isn't a price ranking (order #22, 2026-08-01: methods[0]
+        # picked DHL Express at $53.12 over USPS at $7.24 for the exact same
+        # address/product, a $45.88 hit that ate nearly this store's entire
+        # margin on an $86.90 sale). shipping_method ("fast_track"/"usps")
+        # is a checkout-facing label only and was never actually wired to a
+        # carrier choice, so cost is the only signal we have to optimize on.
+        cheapest = min(methods, key=lambda m: m.get("price", float("inf")))
+        carrier_code = cheapest.get("carrier_code", "")
+        print(f"[Silverbene] Selected cheapest shipping method: {cheapest.get('title', carrier_code)} (${cheapest.get('price', '?')})")
 
         order_option_id = option_id or product_id
         admin_email = "hello@mikisi.co"  # Silverbene must never have the customer's real email
