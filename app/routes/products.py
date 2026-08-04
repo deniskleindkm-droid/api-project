@@ -360,7 +360,7 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
         parse_necklace_length, parse_bracelet_size,
         _OPTION_HASH_NAME_RE, _OPTION_HASH_VALUE_RE, _MODEL_COLOR_NAME_RE,
         _WIDTH_MATERIAL_NAME_RE, _PURITY_LENGTH_RE, _PURITY_BARE_LENGTH_RE,
-        _purity_length_chips,
+        _PURITY_INCH_APPROX_RE, _purity_length_chips,
     )
 
     try:
@@ -496,7 +496,7 @@ def get_variant_prices(product_id: int, preview_key: Optional[str] = None, sessi
                 _wm = _re.search(r'(\d+(?:\.\d+)?)\s*mm', val, _re.I)
                 if _wm:
                     _color_parts.append(f"{_wm.group(1)}mm")
-            elif name == "purity" and val and (_PURITY_LENGTH_RE.search(val) or _PURITY_BARE_LENGTH_RE.match(val)):
+            elif name == "purity" and val and (_PURITY_LENGTH_RE.search(val) or _PURITY_BARE_LENGTH_RE.match(val) or _PURITY_INCH_APPROX_RE.match(val)):
                 # Mirrors _extract_variants()'s purity-length branch (products
                 # 1138, 736) — checked before the finish/plating branch below
                 # so a value like "925 Silver, Length 16.5CM" (which also

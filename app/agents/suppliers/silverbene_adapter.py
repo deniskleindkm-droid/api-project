@@ -104,6 +104,17 @@ _PURITY_LENGTH_RE = re.compile(r'\blength\b\s*[:\-]?\s*\d+(?:\.\d+)?\s*(cm|mm)',
 # a "+" alongside real material wording.
 _PURITY_BARE_LENGTH_RE = re.compile(r'^\d+(?:\.\d+)?\s*\+\s*\d+(?:\.\d+)?\s*(cm|mm)$', re.I)
 
+# A third shape of the same overloaded-"Purity" problem: an inch value
+# followed by its approximate cm/mm equivalent, no "Length" word at all
+# (e.g. "6inch Approx 15.24cm") — found live 2026-08-03 on the Moissanite
+# Halo Tennis Bracelet, 4 real lengths (6"-7.5") hidden this way with
+# nothing else on the option to distinguish them; every option showed the
+# identical stone-size color text otherwise. _purity_length_chips()
+# already extracts this correctly via its generic bare-cm/mm fallback —
+# this regex only exists to widen the gate that decides a Purity value is
+# a real length source in the first place.
+_PURITY_INCH_APPROX_RE = re.compile(r'^\d+(?:\.\d+)?\s*inch(?:es)?\b.*\d+(?:\.\d+)?\s*(cm|mm)', re.I)
+
 # Silverbene occasionally bundles a model/type word with the metal color
 # under a "Model&Color"-style attribute name (e.g. "Anklet & Silver",
 # "Bracelet & Yellow Gold") — found live on product 865 (an Anklet) whose
@@ -1032,7 +1043,7 @@ class SilverbeneAdapter(SupplierAdapter):
                     continue
                 if _name in SIZE_ATTRIBUTE_NAMES or _name in BRACELET_SIZE_ATTR_NAMES:
                     _has_dedicated_size_attr = True
-                elif _name == "purity" and (_PURITY_LENGTH_RE.search(_value) or _PURITY_BARE_LENGTH_RE.match(_value)):
+                elif _name == "purity" and (_PURITY_LENGTH_RE.search(_value) or _PURITY_BARE_LENGTH_RE.match(_value) or _PURITY_INCH_APPROX_RE.match(_value)):
                     # Silverbene occasionally buries the real, price-differentiating
                     # bracelet/necklace length inside "Purity" alongside the material
                     # text (e.g. "925 Silver, Length 16.5CM") or as a bare base+
@@ -1235,7 +1246,7 @@ class SilverbeneAdapter(SupplierAdapter):
                         if value not in _seen_bare:
                             _seen_bare.add(value)
                             _bare_category_values.append(value)
-                elif name == "purity" and (_PURITY_LENGTH_RE.search(value) or _PURITY_BARE_LENGTH_RE.match(value)):
+                elif name == "purity" and (_PURITY_LENGTH_RE.search(value) or _PURITY_BARE_LENGTH_RE.match(value) or _PURITY_INCH_APPROX_RE.match(value)):
                     # The real per-option length hiding inside Purity text (see
                     # _PURITY_LENGTH_RE / _PURITY_BARE_LENGTH_RE / pre-scan comment
                     # above). Shared with resolve_option_id() and get_variant_prices()
@@ -1849,7 +1860,7 @@ def resolve_option_id(variants_json: str, selected_size: str, selected_color: st
                     return chips[0]
             if aname == "purity":
                 v = a.get("value", "").strip()
-                if v and (_PURITY_LENGTH_RE.search(v) or _PURITY_BARE_LENGTH_RE.match(v)):
+                if v and (_PURITY_LENGTH_RE.search(v) or _PURITY_BARE_LENGTH_RE.match(v) or _PURITY_INCH_APPROX_RE.match(v)):
                     # Mirrors _extract_variants()'s purity-length branch — see
                     # _purity_length_chips() for why this exists (products 1138, 736).
                     chips = _purity_length_chips(v, _denom)
