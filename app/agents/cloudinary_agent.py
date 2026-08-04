@@ -79,9 +79,16 @@ def _upload_video(url: str, public_id: str, tags: list) -> str:
         public_id=public_id,
         overwrite=True,
         resource_type="video",
-        # Cloudinary transcodes to H.264 + AAC, normalises bitrate for mobile
+        # Cloudinary transcodes to H.264 + AAC, normalises bitrate for mobile.
+        # No audio_codec param — Cloudinary's "auto" isn't a valid value for
+        # audio (only video_codec accepts it; passing it throws "Unsupported
+        # codec auto for format mp4"). Omitting the param preserves whatever
+        # audio track the source has (e.g. a manually music-scored Reel
+        # export) and is a no-op when there isn't one (silent RAWSHOT clips)
+        # — the previous audio_codec="none" force-stripped audio
+        # unconditionally, which silently muted a Dennis-added music track
+        # (confirmed 2026-08-04, LOVE Letter Script Ring reel).
         video_codec="auto",
-        audio_codec="none",           # jewelry videos have no audio
         quality="auto",
         tags=tags,
     )
