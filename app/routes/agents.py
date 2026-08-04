@@ -2546,7 +2546,7 @@ def exchange_facebook_token(short_lived_token: str, master_key: str):
 
 class ManualPostRequest(BaseModel):
     product_id: int
-    post_type: str  # "product", "campaign", or "reel"
+    post_type: str  # "product", "campaign", "reel", or "video"
     master_key: str
     image_count: Optional[int] = None   # first N images from the product's gallery
     image_urls: Optional[list] = None   # explicit list, overrides image_count entirely

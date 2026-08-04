@@ -814,6 +814,69 @@ def _post_to_instagram_carousel(image_urls: list, caption: str, hashtags: str,
         return {"success": False, "reason": str(e)}
 
 
+def _post_video_to_instagram(video_url: str, caption: str, hashtags: str,
+                              meta_catalog_product_id: str = "") -> dict:
+    """
+    Post a video as a plain feed post (media_type=VIDEO) — deliberately NOT
+    a Reel. Dennis's use case: post untagged so he can manually remix/
+    convert it into a Reel in the app afterward to add a licensed music
+    track, which the Graph API has no equivalent for (see post_manually's
+    "video" post_type docstring). No share_to_feed (REELS-only param) and
+    no is_ai_generated flag suppression — same AI-disclosure requirement
+    applies regardless of feed vs. Reels placement.
+    """
+    access_token = os.getenv("INSTAGRAM_ACCESS_TOKEN")
+    account_id = os.getenv("INSTAGRAM_ACCOUNT_ID")
+
+    if not access_token or not account_id:
+        print("[Instagram] Credentials not set — post skipped")
+        return {"success": False, "reason": "credentials_missing"}
+
+    try:
+        full_caption = f"{caption}\n\n{hashtags}"
+
+        def _create_container(with_tag: bool) -> dict:
+            params = {
+                "media_type":      "VIDEO",
+                "video_url":       video_url,
+                "caption":         full_caption,
+                "is_ai_generated": "true",
+                "access_token":    access_token,
+            }
+            if with_tag and meta_catalog_product_id:
+                params["product_tags"] = json.dumps([{"product_id": meta_catalog_product_id}])
+            r = requests.post(
+                f"https://graph.facebook.com/v18.0/{account_id}/media",
+                params=params,
+                timeout=30,
+            )
+            return r.json()
+
+        container = _create_container(with_tag=True)
+        if "id" not in container and meta_catalog_product_id:
+            container = _create_container(with_tag=False)
+        if "id" not in container:
+            return {"success": False, "reason": _extract_error(container, "Container creation failed")}
+
+        wait_err = _wait_for_container_ready(container["id"], access_token, max_attempts=40, delay=5.0)
+        if wait_err:
+            return {"success": False, "reason": wait_err}
+
+        r2 = requests.post(
+            f"https://graph.facebook.com/v18.0/{account_id}/media_publish",
+            params={"creation_id": container["id"], "access_token": access_token},
+            timeout=30,
+        )
+        pub = r2.json()
+        if "id" in pub:
+            return {"success": True, "post_id": pub["id"]}
+
+        return {"success": False, "reason": _extract_error(pub, "Publish failed")}
+
+    except Exception as e:
+        return {"success": False, "reason": str(e)}
+
+
 def _post_reel_to_instagram(video_url: str, caption: str, hashtags: str,
                              meta_catalog_product_id: str = "") -> dict:
     """
@@ -1293,6 +1356,13 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
     post_type="reel" posts product.video_url (the RAWSHOT photoshoot
       video, see rawshot_import_agent.py) as an Instagram Reel. Pass a
       single explicit video_url via image_urls[0] to override.
+    post_type="video" posts product.video_url as a plain feed video post
+      (media_type=VIDEO, not REELS) — for when Dennis wants to manually
+      remix it into a Reel afterward in the app to add a licensed music
+      track, since the Graph API has no equivalent for Instagram's music
+      library. Caption/hashtags use the "product" voice/tag set, not the
+      reel-discovery one. Pass a single explicit video_url via
+      image_urls[0] to override product.video_url.
     skip_catalog_tag: post without attempting the Shopping tag at all —
       useful to isolate whether a failure is the tagging call itself
       (e.g. the account not yet approved for Instagram Shopping/
@@ -1314,8 +1384,47 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
         product = session.get(Product, product_id)
     if not product:
         return {"success": False, "reason": "product_not_found"}
-    if post_type not in ("product", "campaign", "reel"):
-        return {"success": False, "reason": "post_type must be 'product', 'campaign', or 'reel'"}
+    if post_type not in ("product", "campaign", "reel", "video"):
+        return {"success": False, "reason": "post_type must be 'product', 'campaign', 'reel', or 'video'"}
+
+    if post_type == "video":
+        video_url = (image_urls[0] if image_urls else None) or product.video_url
+        if not video_url:
+            return {"success": False, "reason": "no_video_resolved"}
+
+        caption  = caption_override if caption_override is not None else _generate_caption(product, "product")
+        hashtags = _build_hashtags(product.category, product.material or "", post_type="product")
+
+        catalog_id = ""
+        if not skip_catalog_tag:
+            from app.agents.meta_catalog import resolve_meta_product_id
+            catalog_id = resolve_meta_product_id(product.id)
+
+        preview = {
+            "product_id":       product.id,
+            "product_name":     product.name,
+            "post_type":        post_type,
+            "video_url":        video_url,
+            "caption":          caption,
+            "hashtags":         hashtags,
+            "meta_catalog_tag": catalog_id or None,
+        }
+
+        if dry_run:
+            preview["dry_run"] = True
+            return preview
+
+        result = _post_video_to_instagram(video_url, caption, hashtags, catalog_id)
+
+        if result.get("success"):
+            post_id = result.get("post_id", "")
+            _save_post(product.id, post_type, video_url, caption, hashtags, post_id)
+            _update_state(product, post_type)
+            print(f"[Instagram] ✅ Manually posted — video — {product.name}")
+        else:
+            print(f"[Instagram] ❌ Manual post failed: {result.get('reason')}")
+
+        return {**preview, "dry_run": False, **result}
 
     if post_type == "reel":
         video_url = (image_urls[0] if image_urls else None) or product.video_url
