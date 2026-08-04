@@ -81,6 +81,42 @@ def _size_display_meta(p) -> dict:
 
     sizes_lower = [s.lower() for s in sizes]
 
+    # Stone size masquerading as the piece's own length/width: Silverbene
+    # sometimes bundles the individual gemstone's diameter into the same
+    # Color attribute as the metal (e.g. "3.0mm White Gold"), which
+    # extraction promotes into `sizes` looking identical to real chain/
+    # band-width data. If the product's own specs mention the exact same
+    # mm values under a stone/pendant-named key (seen so far: stone_qty,
+    # substone_material, stone_size, pendant_size — the exact key varies,
+    # so matching on "stone"/"pendant" in the key name beats guessing one
+    # fixed name), these are stone sizes, not the bracelet's wearable
+    # dimension — "Bracelet Length: 3.0mm" is nonsense (found live
+    # 2026-08-03: product 1252, three moissanite stone tiers 3/4/5mm;
+    # product 1328, three CZ tiers 1/2/3mm under "pendant_size").
+    # Deliberately NOT matching on every spec value — that produced a
+    # false positive on product 490, whose genuine chain_length spec
+    # ("7\"") trivially matches its own sizes value. Also restricted to
+    # mm/cm-only size values (never inches) and full-token substring
+    # matching, not bare digits — bare "18" from a size like 18" matched
+    # inside unrelated specs text like "14.57mm * 18.43mm" or "18mm *
+    # 18mm" (products 1171, 482) purely by digit coincidence. Inches
+    # always mean a genuine chain/bracelet length in this codebase;
+    # stone sizes are always expressed in mm.
+    is_stone_size = False
+    if category in ("Bracelets", "Necklaces", "Anklets") and all(
+        _re.fullmatch(r'\d+(?:\.\d+)?\s*(mm|cm)', s.strip(), _re.I) for s in sizes
+    ):
+        try:
+            specs = _json.loads(p.specs or "{}")
+        except Exception:
+            specs = {}
+        stone_text = " ".join(
+            str(v) for k, v in specs.items() if "stone" in k.lower() or "pendant" in k.lower()
+        ).lower()
+        if stone_text and all(s.strip().lower() in stone_text for s in sizes):
+            label = "Stone Size"
+            is_stone_size = True
+
     if category == "Rings" and any("open" in s for s in sizes_lower):
         from app.agents.suppliers.silverbene_adapter import open_ring_size_text
         try:
@@ -118,7 +154,7 @@ def _size_display_meta(p) -> dict:
 
     return {
         "size_label":        label,
-        "size_hint":         _SIZE_HINTS.get(category),
+        "size_hint":         None if is_stone_size else _SIZE_HINTS.get(category),
         "size_display_mode": "selector",
     }
 
