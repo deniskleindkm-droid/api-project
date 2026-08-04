@@ -2248,6 +2248,14 @@ function positionPPInline(productId){
     if(!document.body.classList.contains('collection-mode')){
       document.body.classList.add('collection-mode');
       ppEnteredCollectionModeForPreview=true;
+      // No real collection was opened, so there's no name to show — the
+      // markup's hardcoded default ("Necklaces") would otherwise leak
+      // through and make this look like the customer browsed into the
+      // Necklaces collection (e.g. clicking a Style Guide card). The
+      // breadcrumb is forced visible by the same body.collection-mode CSS,
+      // so give it an honest label too instead of showing a stale one.
+      document.getElementById('cv-title').textContent='';
+      document.getElementById('bc-current').textContent='Style Guide';
     }
     grid.appendChild(ppEl);
     return;
@@ -3596,6 +3604,15 @@ function scrollToCollectionTop(){
   document.getElementById('breadcrumb').style.display='none';
   document.getElementById('collection-view').style.display='none';
   document.getElementById('collections-title').textContent='Discover New Finds';
+  if(ppEnteredCollectionModeForPreview){
+    // This "collection" was never real (e.g. opened from a Style Guide
+    // card on the homepage) — there's no collection to go "back" to, so
+    // take the customer all the way home instead of the mid-page
+    // collections picker, same as goHome().
+    ppEnteredCollectionModeForPreview=false;
+    window.scrollTo({top:0,behavior:'smooth'});
+    return;
+  }
   // Unlike goHome() (used by the logo/"Home" breadcrumb, which should reset
   // all the way to the hero), this button's job is to return to the
   // collections picker specifically — not the top of the page.
