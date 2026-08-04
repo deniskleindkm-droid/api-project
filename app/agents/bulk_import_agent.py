@@ -372,9 +372,23 @@ Return ONLY valid JSON array. No other text."""
     try:
         message = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=4096,
+            max_tokens=8192,
             messages=[{"role": "user", "content": prompt}]
         )
+
+        # Found live 2026-08-03: a 10-item batch's response can get cut off
+        # mid-array by max_tokens (was 4096, raised to 8192 above as the
+        # root-cause fix) -- when that happens, json.loads() on the
+        # truncated-but-bracket-matched text still parses successfully with
+        # FEWER than len(products) entries, and nothing downstream ever
+        # noticed: total_rejected counted the gap correctly (see
+        # run_browse_import's total_rejected formula) but rejection_details
+        # stayed empty, because no code path here ever logged which specific
+        # products got silently dropped. One real day's run: 97 candidates,
+        # 1 imported, 96 "rejected" with zero explanation anywhere.
+        if getattr(message, "stop_reason", None) == "max_tokens":
+            print(f"[Bulk Import] ⚠️ Rewrite response hit max_tokens for a "
+                  f"{len(products)}-item batch — response may be truncated")
 
         if not message.content or message.content[0] is None:
             raise ValueError("Empty API response")
@@ -482,6 +496,27 @@ Return ONLY valid JSON array. No other text."""
 
             product["accepted"] = True
             rewritten.append(product)
+
+        # The LLM returning fewer objects than products given (truncation,
+        # or it just skipped some) must never silently vanish real products
+        # from the pipeline — same raw-data fallback as the except branch
+        # below, applied per-item instead of for the whole batch, so a
+        # partial response doesn't cost more than the items it actually
+        # dropped.
+        if len(results) < len(products):
+            missing = products[len(results):]
+            print(f"[Bulk Import] ⚠️ Rewrite response had {len(results)} objects for "
+                  f"{len(products)} products — {len(missing)} dropped, using raw names: "
+                  f"{[p.get('name','')[:40] for p in missing]}")
+            for p in missing:
+                product = p.copy()
+                _name = _ensure_category_in_name(product.get("name", ""), collection_name)
+                _name = _ensure_bangle_naming(_name, collection_name, product.get("name", ""), product.get("description", ""))
+                product["mikisi_name"] = _safe_name_truncate(_name)
+                product["mikisi_description"] = ""
+                product["accepted"] = True
+                product["_rewrite_failed"] = True
+                rewritten.append(product)
 
         return rewritten
 
