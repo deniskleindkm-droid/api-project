@@ -276,9 +276,67 @@ def _audit_name_category_mismatch(products):
     return findings
 
 
+def _audit_indistinguishable_variants(session, product_ids) -> list:
+    """
+    Check 5 — real, differently-priced Silverbene variants that collapse
+    into an identical customer-facing (size, color) combination, so the
+    storefront can only ever show ONE selectable option among several real
+    ones. Found live 2026-08-03 on product 1250 (Moissanite Halo Tennis
+    Bracelet): 4 variants spanning $135-$237.90, all showing size "3mm"
+    (the stone size) / color "Moissanite Certified" — the real
+    differentiator (6"-7.5" length) was hidden in a Purity-attribute shape
+    nothing recognized, so a customer had no way to choose which one they
+    were even buying; whichever the frontend's matching defaulted to would
+    silently win regardless of what was displayed or intended.
+
+    This doesn't try to guess WHY the differentiator went missing (a new
+    Purity shape, a new bundled-attribute pattern, anything not yet seen)
+    — it just catches the symptom directly from the ProductVariant table
+    itself, the actual source checkout resolves against, so it catches
+    every future cause of this same class of bug, not just this one.
+
+    One bulk query for every product in scope, matching
+    _raw_options_by_product's pattern — not one query per product.
+    Price difference must exceed $1 to ignore trivial rounding noise
+    between otherwise-identical options.
+    """
+    rows = session.exec(
+        select(ProductVariant).where(
+            ProductVariant.product_id.in_(list(product_ids)),
+            ProductVariant.supplier_name == "Silverbene",
+            ProductVariant.available == True,
+        )
+    ).all()
+    by_product = {}
+    for v in rows:
+        by_product.setdefault(v.product_id, []).append(v)
+
+    findings = []
+    for pid, variants in by_product.items():
+        if len(variants) < 2:
+            continue
+        groups = {}
+        for v in variants:
+            sig = ((v.size or "").strip().lower(), (v.color or "").strip().lower())
+            groups.setdefault(sig, []).append(v)
+        issues = []
+        for (size, color), group in groups.items():
+            if len(group) < 2:
+                continue
+            prices = [g.final_price for g in group if g.final_price is not None]
+            if prices and max(prices) - min(prices) > 1.0:
+                issues.append(
+                    f"{len(group)} variants all show size={size!r} color={color!r} "
+                    f"but price ${min(prices):.2f}-${max(prices):.2f} — real differentiator is missing"
+                )
+        if issues:
+            findings.append((pid, issues))
+    return findings
+
+
 def run_catalog_audit(verbose: bool = True) -> dict:
     """
-    Runs all four checks against every active Silverbene product.
+    Runs all five checks against every active Silverbene product.
     Returns a dict report; also prints it when verbose (default — matches
     every other agent in this codebase, which report via print()).
     """
@@ -293,6 +351,7 @@ def run_catalog_audit(verbose: bool = True) -> dict:
         options_by_product = _raw_options_by_product(session, [p.id for p in products])
         unknown_attrs = _audit_unknown_attributes(products, options_by_product)
         stale = _audit_stale_data(products, options_by_product)
+        indistinguishable = _audit_indistinguishable_variants(session, [p.id for p in products])
 
     suspicious_chips = _audit_suspicious_chips(products)
     name_category_mismatches = _audit_name_category_mismatch(products)
@@ -303,6 +362,7 @@ def run_catalog_audit(verbose: bool = True) -> dict:
         "suspicious_chips": suspicious_chips,
         "stale_data": stale,
         "name_category_mismatches": name_category_mismatches,
+        "indistinguishable_variants": indistinguishable,
     }
 
     if verbose:
@@ -339,6 +399,14 @@ def run_catalog_audit(verbose: bool = True) -> dict:
                 print(f"[Catalog Audit]   #{pid} {pname!r}: category={actual_cat} but title implies {implied_cat}")
         else:
             print("[Catalog Audit] No product titles conflict with their assigned category")
+
+        if indistinguishable:
+            print(f"[Catalog Audit] {len(indistinguishable)} product(s) with real variants a customer can't tell apart:")
+            for pid, issues in indistinguishable:
+                for issue in issues:
+                    print(f"[Catalog Audit]   #{pid}: {issue}")
+        else:
+            print("[Catalog Audit] Every product's variants are all distinguishable by size/color")
 
     return report
 
