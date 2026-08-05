@@ -101,6 +101,7 @@ def create_db():
         conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS delivery_preference_requested boolean NOT NULL DEFAULT false"))
         conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS dhl_odd_link varchar(1000)"))
         conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS delivery_alert_sent boolean NOT NULL DEFAULT false"))
+        conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS delay_alerted boolean NOT NULL DEFAULT false"))
         conn.commit()
 
     _setup_defaults()

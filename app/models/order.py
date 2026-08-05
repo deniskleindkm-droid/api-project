@@ -70,3 +70,9 @@ class OrderTracking(SQLModel, table=True):
     delivery_preference_requested: bool = Field(default=False)
     dhl_odd_link:                  Optional[str] = None   # DHL's On Demand Delivery portal link for this waybill
     delivery_alert_sent:           bool = Field(default=False)
+
+    # Shipping-delay alert dedup -- check_for_delays() re-runs every 6h tracking
+    # cycle; without this, a genuinely slow order (see order #21, 2026-08-05:
+    # 12+ days and still hadn't left China) would re-emit ORDER_DELAYED every
+    # cycle once the underlying bug that made this silent was fixed.
+    delay_alerted: bool = Field(default=False)

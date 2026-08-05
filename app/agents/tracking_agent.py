@@ -335,15 +335,67 @@ def update_tracking_status(tracking_id, status, tracking_number=None,
 
 
 def check_for_delays(tracking):
-    """Check if order is delayed beyond acceptable threshold."""
-    from app.agents.store_config import get_config
-    max_days = int(get_config("max_shipping_days", default=30))
+    """
+    Check if order is delayed beyond acceptable threshold.
 
-    if tracking.status in ["pending", "processing"]:
+    Two bugs fixed here 2026-08-05 (found via order #21 sitting 12+ days
+    without leaving China, completely unflagged):
+    1. This read "max_shipping_days" but the store's actual config key is
+       "shipping_max_days" (see database.py/shipping_agent.py) -- the typo
+       meant the intended 12-day threshold was silently ignored in favor
+       of this function's own 30-day fallback.
+    2. Only "pending"/"processing" were checked -- once an order flips to
+       "dispatched" it dropped out of delay-checking entirely, so a shipment
+       that goes quiet after leaving the warehouse was never caught. Now
+       "dispatched" counts too, still measured from the original order date
+       (not shipped_at), since shipping_max_days is meant to represent total
+       acceptable time from order to delivery.
+    """
+    from app.agents.store_config import get_config
+    max_days = int(get_config("shipping_max_days", default=12))
+
+    if tracking.status in ["pending", "processing", "dispatched"]:
         days_since_order = (datetime.utcnow() - tracking.created_at).days
         if days_since_order > max_days:
             return True
     return False
+
+
+def maybe_alert_delay(tracking_id, days_since_order):
+    """
+    Emails Dennis once per order when it crosses the delay threshold --
+    check_for_delays() re-runs every 6h tracking cycle, and without this
+    guard the same delayed order would re-alert every cycle forever.
+    """
+    with Session(engine) as session:
+        t = session.get(OrderTracking, tracking_id)
+        if not t or t.delay_alerted:
+            return
+        # Captured before commit() expires t's attributes below.
+        order_id, status, supplier_name, tracking_number, carrier, customer_name, customer_email = (
+            t.order_id, t.status, t.supplier_name, t.tracking_number, t.carrier, t.customer_name, t.customer_email
+        )
+        t.delay_alerted = True
+        session.add(t)
+        session.commit()
+
+    try:
+        from app.agents.email_partner import send_email
+        dennis_email = os.getenv("DENNIS_EMAIL", "hello@mikisi.co")
+        send_email(
+            dennis_email,
+            f"⚠️ Order #{order_id} shipping delay — {days_since_order} days",
+            f"""<html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+<h2 style="color:#c0392b;">Order #{order_id} is running late</h2>
+<p><strong>{days_since_order} days</strong> since it was placed, status is still <strong>{status}</strong>.</p>
+<p><strong>Supplier:</strong> {supplier_name} &nbsp; <strong>Tracking:</strong> {tracking_number or 'none yet'} &nbsp; <strong>Carrier:</strong> {carrier or 'unknown'}</p>
+<p><strong>Customer:</strong> {customer_name or 'n/a'} ({customer_email or 'n/a'})</p>
+</body></html>""",
+            is_html=True,
+        )
+        print(f"[Tracking] ⚠️ Delay alert emailed for order {order_id}")
+    except Exception as e:
+        print(f"[Tracking] Delay alert email error: {e}")
 
 
 def run_tracking_agent():
@@ -370,6 +422,7 @@ def run_tracking_agent():
             if not result:
                 # Check for delays even without status update
                 if check_for_delays(tracking):
+                    days_since_order = (datetime.utcnow() - tracking.created_at).days
                     from app.agents.nervous_system import emit
                     emit(
                         signal_type="ORDER_DELAYED",
@@ -377,11 +430,12 @@ def run_tracking_agent():
                         payload={
                             "order_id": tracking.order_id,
                             "cj_order_id": tracking.cj_order_id,
-                            "days_pending": (datetime.utcnow() - tracking.created_at).days,
+                            "days_pending": days_since_order,
                             "supplier": tracking.supplier_name
                         },
                         priority=2
                     )
+                    maybe_alert_delay(tracking.id, days_since_order)
                 continue
 
             new_status = result.get("status", "pending").lower()
@@ -455,6 +509,7 @@ def run_tracking_agent():
 
             # Check for delays
             if check_for_delays(tracking):
+                days_since_order = (datetime.utcnow() - tracking.created_at).days
                 from app.agents.nervous_system import emit
                 emit(
                     signal_type="ORDER_DELAYED",
@@ -463,10 +518,11 @@ def run_tracking_agent():
                         "order_id": tracking.order_id,
                         "cj_order_id": tracking.cj_order_id,
                         "status": new_status,
-                        "days_since_order": (datetime.utcnow() - tracking.created_at).days
+                        "days_since_order": days_since_order
                     },
                     priority=2
                 )
+                maybe_alert_delay(tracking.id, days_since_order)
 
         except Exception as e:
             print(f"[Tracking] Error processing order {tracking.order_id}: {e}")
