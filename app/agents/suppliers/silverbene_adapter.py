@@ -621,7 +621,16 @@ class SilverbeneAdapter(SupplierAdapter):
         """
         Place a dropship order with Silverbene.
         product_id = Silverbene option_id (NOT sku — orders use option_id).
-        use_credit: true charges our store credit balance automatically.
+
+        use_credit is deliberately False (2026-08-05, Dennis) -- orders no
+        longer auto-pay and auto-complete from store credit. Every order
+        now lands as Case 2 (payment_required) below: created at Silverbene
+        but left pending, with an alert emailed to Dennis containing the
+        pay_url so he finishes it himself on Silverbene's own checkout page
+        (where he can also review/choose the shipping method) while the
+        DHL branding/dropshipper-info question with Jacky gets sorted out.
+        Revert to True once that's resolved and full automation is wanted
+        back.
 
         IMPORTANT: We use our admin email (not customer email) in the Silverbene
         shipping address so any Silverbene payment/status emails go to us, never
@@ -656,7 +665,7 @@ class SilverbeneAdapter(SupplierAdapter):
         payload = {
             "products": [{"option_id": str(order_option_id), "qty": quantity}],
             "shipping_method": carrier_code,
-            "use_credit": True,
+            "use_credit": False,
             "shipping_address": {
                 "firstname":  customer.get("first_name", ""),
                 "lastname":   customer.get("last_name", ""),
@@ -693,27 +702,31 @@ class SilverbeneAdapter(SupplierAdapter):
             "raw_response":     _json.dumps(result),
         }
 
-        # Case 1 — credit covered the full amount, order is processing
+        # Case 1 — kept for the day use_credit goes back to True; shouldn't
+        # normally trigger while it's forced False above.
         if code == 0 and order_id and not payment_required:
             return self.standard_order(success=True, supplier_order_id=order_id, reason="paid_from_credit", **cost_detail)
 
-        # Case 2 — order created but credit didn't fully cover it, Silverbene needs extra payment
+        # Case 2 — the expected path now: order created at Silverbene but
+        # deliberately left pending (use_credit=False) for Dennis to finish
+        # himself on Silverbene's own checkout page, where he can also
+        # review/change the shipping method -- see place_order's docstring.
         if code == 0 and order_id and payment_required:
             pay_url  = data.get("pay_url", "")
             amount   = data.get("amount_due") or data.get("total_price", "?")
-            print(f"[Silverbene] ⚠️  Credit shortfall — order {order_id} needs ${amount} payment. URL: {pay_url}")
+            print(f"[Silverbene] Order {order_id} created, pending manual completion — ${amount}. URL: {pay_url}")
             self._alert_low_credit(
-                subject=f"⚠️ Silverbene order {order_id} needs payment — credit shortfall",
+                subject=f"Order {order_id} ready to fire — Silverbene checkout",
                 body=(
-                    f"<p>Order <b>{order_id}</b> was created at Silverbene but your store credit "
-                    f"didn't fully cover it.</p>"
+                    f"<p>Order <b>{order_id}</b> was created at Silverbene and is waiting for you to "
+                    f"complete it yourself.</p>"
                     f"<p><b>Amount due:</b> ${amount}</p>"
-                    f"<p><b>Pay here:</b> <a href='{pay_url}'>{pay_url}</a></p>"
-                    f"<p>Top up your Silverbene balance to avoid this in future orders.</p>"
+                    f"<p><b>Finish here:</b> <a href='{pay_url}'>{pay_url}</a></p>"
+                    f"<p>Review/choose the shipping method there before paying.</p>"
                 ),
             )
             # Return success=True so the order moves to 'processing' — it exists at Silverbene
-            return self.standard_order(success=True, supplier_order_id=order_id, reason="pending_payment_shortfall", **cost_detail)
+            return self.standard_order(success=True, supplier_order_id=order_id, reason="pending_manual_completion", **cost_detail)
 
         # Case 3 — insufficient credit, order was NOT created
         message = result.get("message", "unknown error")

@@ -277,27 +277,32 @@ Return ONLY valid JSON, no markdown fences:
 def _handle_delivery_preference_reply(tracking: "OrderTracking", subject: str, body: str) -> bool:
     """
     Stores the customer's delivery preference and acknowledges receipt.
-    Returns True if this email was actually a delivery-preference reply
-    (caller should skip generic classification either way once matched --
-    even a non-instruction reply on this thread isn't a fresh support case).
+    Returns True only when the reply actually contained a delivery
+    instruction. A reply on this same thread that ISN'T one (e.g. a
+    complaint, or "actually I want to return this") must fall through to
+    classify_email() instead of being silently dropped -- returning True
+    unconditionally here previously ate any non-preference reply with no
+    acknowledgment and no escalation.
     """
     instruction = _extract_delivery_preference(body)
-    if instruction:
-        with Session(engine) as session:
-            t = session.get(OrderTracking, tracking.id)
-            if t:
-                t.delivery_preference = instruction
-                session.add(t)
-                session.commit()
-        print(f"[Customer] 📦 Delivery preference captured for order {tracking.order_id}: {instruction!r}")
+    if not instruction:
+        return False
 
-        from app.agents.tracking_agent import maybe_send_delivery_relay_alert
-        maybe_send_delivery_relay_alert(tracking.id)
+    with Session(engine) as session:
+        t = session.get(OrderTracking, tracking.id)
+        if t:
+            t.delivery_preference = instruction
+            session.add(t)
+            session.commit()
+    print(f"[Customer] 📦 Delivery preference captured for order {tracking.order_id}: {instruction!r}")
 
-        send_customer_reply(
-            tracking.customer_email,
-            f"Re: {subject}",
-            f"""<html><body style="font-family:'Georgia',serif;background:#fdf9f6;padding:40px;">
+    from app.agents.tracking_agent import maybe_send_delivery_relay_alert
+    maybe_send_delivery_relay_alert(tracking.id)
+
+    send_customer_reply(
+        tracking.customer_email,
+        f"Re: {subject}",
+        f"""<html><body style="font-family:'Georgia',serif;background:#fdf9f6;padding:40px;">
 <div style="max-width:600px;margin:0 auto;background:white;padding:32px;">
 <p style="font-size:14px;color:#0e0e0e;line-height:1.8;">Got it — we've passed your delivery instructions along to the courier:</p>
 <p style="font-size:14px;color:#6b6b6b;font-style:italic;">"{instruction}"</p>
@@ -443,8 +448,7 @@ def run_customer_agent():
             # Delivery-preference replies are handled separately, before
             # generic classification -- see _find_pending_delivery_preference_order.
             pending_tracking = _find_pending_delivery_preference_order(subject)
-            if pending_tracking:
-                _handle_delivery_preference_reply(pending_tracking, subject, body)
+            if pending_tracking and _handle_delivery_preference_reply(pending_tracking, subject, body):
                 continue
 
             # Classify email
