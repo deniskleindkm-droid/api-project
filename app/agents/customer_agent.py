@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
+import re
 import json
 import imaplib
 import email
@@ -10,7 +11,7 @@ from email.header import decode_header
 from datetime import datetime, timedelta
 from sqlmodel import Session, select
 from app.database import engine
-from app.models.order import Order
+from app.models.order import Order, OrderTracking
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -23,7 +24,11 @@ client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 # mail -- which is exactly what buried two real "please send the correct
 # shipping address" requests from Silverbene behind a low-urgency internal
 # signal instead of an alert to Dennis (see order #21, 2026-07-22/23).
-_SUPPLIER_SENDER_DOMAINS = ["silverbene.com", "cjdropship.com", "cjdropshipping.com"]
+# "dhl" (substring, not just "dhl.com") deliberately casts wide -- DHL sends
+# On Demand Delivery / shipment notices from several subdomains, and a false
+# exclusion here just means the dedicated dhl_monitor sees it instead, while
+# a missed exclusion means the exact order #21-style misclassification bug.
+_SUPPLIER_SENDER_DOMAINS = ["silverbene.com", "cjdropship.com", "cjdropshipping.com", "dhl"]
 
 
 def _is_supplier_email(sender: str) -> bool:
@@ -202,6 +207,107 @@ Never offer refunds without ARIA approval."""
 
 
 # ============================================================
+# DELIVERY PREFERENCE REPLIES
+# ============================================================
+# Shipping-confirmation emails (tracking_agent.send_shipping_email) invite
+# the customer to reply with where to leave their package. Their reply lands
+# here as "Re: Your Mikisi order #<id> has shipped! 📦" -- the order number
+# survives standard mail-client "Re:" quoting, which is what lets this match
+# back to the OrderTracking record without any other correlation id. This
+# must run BEFORE classify_email(), since the generic classifier has no
+# concept of "delivery preference" and would misfile a one-line "leave it in
+# the garage" reply as a vague "question" or "other".
+
+_ORDER_ID_IN_SUBJECT = re.compile(r"order\s*#(\d+)", re.IGNORECASE)
+
+
+def _find_pending_delivery_preference_order(subject: str) -> "OrderTracking | None":
+    """
+    Looks up the OrderTracking record a reply is about, via the order id
+    embedded in the shipping email's subject line. Only matches orders that
+    actually asked for a preference (delivery_preference_requested) -- a
+    reply to some unrelated "order #22" mention shouldn't be swallowed here.
+    """
+    match = _ORDER_ID_IN_SUBJECT.search(subject or "")
+    if not match:
+        return None
+    order_id = int(match.group(1))
+    with Session(engine) as session:
+        return session.exec(
+            select(OrderTracking).where(
+                OrderTracking.order_id == order_id,
+                OrderTracking.delivery_preference_requested == True,
+            )
+        ).first()
+
+
+def _extract_delivery_preference(body: str) -> str | None:
+    """
+    Reads a reply like a person would and pulls out the actual delivery
+    instruction, if there is one. Returns None (not "none" or "") when the
+    reply isn't really a delivery preference -- e.g. someone replying to
+    ask an unrelated question on the same thread -- so callers can tell
+    "nothing to store" apart from a real, empty-string instruction.
+    """
+    prompt = f"""A customer replied to a Mikisi shipping-confirmation email that asked:
+"Want your package left somewhere specific, or don't need a signature? Just reply and let us know."
+
+Their reply:
+{body[:1000]}
+
+Extract ONLY the delivery instruction itself (e.g. "Leave in the garage, between the two doors" or "No signature needed, leave at front door"), written as a clean instruction for a courier. If the reply doesn't actually contain a delivery instruction (e.g. it's a question, thanks, or unrelated), return null.
+
+Return ONLY valid JSON, no markdown fences:
+{{"instruction": "<the instruction, or null>"}}"""
+    try:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=200,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.content[0].text.strip()
+        text = re.sub(r'^```(json)?|```$', '', text, flags=re.MULTILINE).strip()
+        data = json.loads(text)
+        return data.get("instruction") or None
+    except Exception as e:
+        print(f"[Customer] Delivery preference extraction error: {e}")
+        return None
+
+
+def _handle_delivery_preference_reply(tracking: "OrderTracking", subject: str, body: str) -> bool:
+    """
+    Stores the customer's delivery preference and acknowledges receipt.
+    Returns True if this email was actually a delivery-preference reply
+    (caller should skip generic classification either way once matched --
+    even a non-instruction reply on this thread isn't a fresh support case).
+    """
+    instruction = _extract_delivery_preference(body)
+    if instruction:
+        with Session(engine) as session:
+            t = session.get(OrderTracking, tracking.id)
+            if t:
+                t.delivery_preference = instruction
+                session.add(t)
+                session.commit()
+        print(f"[Customer] 📦 Delivery preference captured for order {tracking.order_id}: {instruction!r}")
+
+        from app.agents.tracking_agent import maybe_send_delivery_relay_alert
+        maybe_send_delivery_relay_alert(tracking.id)
+
+        send_customer_reply(
+            tracking.customer_email,
+            f"Re: {subject}",
+            f"""<html><body style="font-family:'Georgia',serif;background:#fdf9f6;padding:40px;">
+<div style="max-width:600px;margin:0 auto;background:white;padding:32px;">
+<p style="font-size:14px;color:#0e0e0e;line-height:1.8;">Got it — we've passed your delivery instructions along to the courier:</p>
+<p style="font-size:14px;color:#6b6b6b;font-style:italic;">"{instruction}"</p>
+<p style="font-size:13px;color:#6b6b6b;line-height:1.8;">Thank you for choosing Mikisi.</p>
+</div></body></html>""",
+        )
+    return True
+
+
+# ============================================================
 # EMAIL SENDING
 # ============================================================
 
@@ -333,6 +439,13 @@ def run_customer_agent():
             body = email_data["body"]
 
             print(f"[Customer] Processing: {subject} from {sender}")
+
+            # Delivery-preference replies are handled separately, before
+            # generic classification -- see _find_pending_delivery_preference_order.
+            pending_tracking = _find_pending_delivery_preference_order(subject)
+            if pending_tracking:
+                _handle_delivery_preference_reply(pending_tracking, subject, body)
+                continue
 
             # Classify email
             classification = classify_email(subject, body, sender)

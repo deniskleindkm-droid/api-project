@@ -96,6 +96,11 @@ def create_db():
         conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS supplier_total_charged float"))
         conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS supplier_currency varchar(10)"))
         conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS supplier_raw_response text"))
+        # Delivery-preference relay — see OrderTracking's docstring.
+        conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS delivery_preference text"))
+        conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS delivery_preference_requested boolean NOT NULL DEFAULT false"))
+        conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS dhl_odd_link varchar(1000)"))
+        conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS delivery_alert_sent boolean NOT NULL DEFAULT false"))
         conn.commit()
 
     _setup_defaults()

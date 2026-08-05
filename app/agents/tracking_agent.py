@@ -126,7 +126,10 @@ def send_shipping_email(tracking):
             <strong>Item:</strong> {item_summary}
         </p>""" if item_summary else ""
 
-        subject = "Your Mikisi order has shipped! 📦"
+        # Order number in the subject survives into "Re:" replies, which is
+        # how _match_delivery_preference_reply (customer_agent.py) correlates
+        # a reply back to this specific OrderTracking record.
+        subject = f"Your Mikisi order #{tracking.order_id} has shipped! 📦"
         body = f"""
 <!DOCTYPE html>
 <html>
@@ -157,6 +160,15 @@ def send_shipping_email(tracking):
         </p>
     </div>
 
+    <div style="background: #fdf6f8; border: 1px solid #f3dbe3; padding: 20px 24px; margin-bottom: 32px;">
+        <p style="font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+                  color: #d4849c; margin-bottom: 8px;">Delivery Preferences</p>
+        <p style="font-size: 14px; color: #0e0e0e; line-height: 1.7; margin: 0;">
+            Want your package left somewhere specific, or don't need a signature?
+            Just reply to this email and let us know — we'll pass it along to the courier for you.
+        </p>
+    </div>
+
     <p style="font-size: 13px; color: #6b6b6b; line-height: 1.8;">
         You'll receive another email once your order is delivered.
         Thank you for choosing Mikisi.
@@ -173,6 +185,12 @@ def send_shipping_email(tracking):
         sent = send_email(tracking.customer_email, subject, body, is_html=True)
         if sent:
             print(f"[Tracking] ✅ Shipping email sent to {tracking.customer_email}")
+            with Session(engine) as session:
+                t = session.get(OrderTracking, tracking.id)
+                if t:
+                    t.delivery_preference_requested = True
+                    session.add(t)
+                    session.commit()
         return sent
 
     except Exception as e:
@@ -240,6 +258,55 @@ def send_delivery_email(tracking):
     except Exception as e:
         print(f"[Tracking] Delivery email error: {e}")
         return False
+
+
+def maybe_send_delivery_relay_alert(tracking_id):
+    """
+    Sends Dennis a one-click alert once BOTH halves of the delivery-relay
+    loop exist for an order: the customer's stated delivery_preference
+    (captured via customer_agent's reply parsing) and DHL's dhl_odd_link
+    (captured via dhl_monitor). Neither piece alone is actionable -- there's
+    nothing to relay without a preference, and no portal to relay it into
+    without the link -- so this is called after either one is stored, and
+    is a no-op until both are present. delivery_alert_sent guards against
+    re-alerting every time either agent runs afterward.
+
+    We deliberately don't auto-submit DHL's own portal form here -- that
+    would mean scripting a bot against a third party's consumer-facing site
+    we have no partnership with, likely fighting anti-bot protections. The
+    click itself stays a human step; this just makes it a 10-second one.
+    """
+    with Session(engine) as session:
+        t = session.get(OrderTracking, tracking_id)
+        if not t or t.delivery_alert_sent:
+            return
+        if not (t.delivery_preference and t.dhl_odd_link):
+            return
+
+        try:
+            from app.agents.email_partner import send_email
+            dennis_email = os.getenv("DENNIS_EMAIL", "hello@mikisi.co")
+            sent = send_email(
+                dennis_email,
+                f"Apply delivery instructions — order #{t.order_id}",
+                f"""<html><body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+<h2 style="color:#d4849c;">One click to apply — order #{t.order_id}</h2>
+<p><strong>{t.customer_name or 'Customer'}</strong> asked us to pass this along to the courier:</p>
+<p style="font-size:16px;color:#0e0e0e;font-style:italic;background:#f7f2ed;padding:16px;">"{t.delivery_preference}"</p>
+<p>Open DHL's delivery page and enter it: <a href="{t.dhl_odd_link}">{t.dhl_odd_link}</a></p>
+<p><strong>Waybill:</strong> {t.tracking_number or 'n/a'}</p>
+</body></html>""",
+                is_html=True,
+            )
+        except Exception as e:
+            print(f"[Tracking] Delivery relay alert error: {e}")
+            sent = False
+
+        if sent:
+            t.delivery_alert_sent = True
+            session.add(t)
+            session.commit()
+            print(f"[Tracking] ✅ Delivery relay alert sent for order {t.order_id}")
 
 
 def update_tracking_status(tracking_id, status, tracking_number=None,

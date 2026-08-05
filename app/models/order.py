@@ -61,3 +61,12 @@ class OrderTracking(SQLModel, table=True):
     supplier_total_charged:   Optional[float] = None   # amount_due/total_price from Silverbene's response, if present
     supplier_currency:        Optional[str] = None
     supplier_raw_response:    Optional[str] = None     # full JSON dump of create_order's response — complete audit trail
+
+    # Delivery-preference relay (see silverbene_shipping_monitor / dhl_monitor) —
+    # lets the customer tell Mikisi (not DHL) where to leave the package, since
+    # DHL's own "On Demand Delivery" portal link goes to hello@mikisi.co, never
+    # the customer directly (see project_customer_phone_not_masked_decision memory).
+    delivery_preference:           Optional[str] = None   # customer's stated instruction, extracted from their reply
+    delivery_preference_requested: bool = Field(default=False)
+    dhl_odd_link:                  Optional[str] = None   # DHL's On Demand Delivery portal link for this waybill
+    delivery_alert_sent:           bool = Field(default=False)

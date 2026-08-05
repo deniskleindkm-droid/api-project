@@ -279,6 +279,26 @@ def run_silverbene_shipping_monitor():
         print(f"[Scheduler] Silverbene shipping monitor error: {e}")
 
 
+def run_dhl_monitor():
+    """Every 2 hours: scan hello@mikisi.co for DHL-direct emails (shipment notices,
+    On Demand Delivery confirmations) and relay tracking/delivery-link info onto orders."""
+    try:
+        from app.agents.dhl_monitor import run_dhl_monitor as _monitor
+        result = _monitor()
+        if not result.get("connected"):
+            _heartbeat("dhl_monitor", "IMAP connection failed — check GMAIL_ADDRESS/GMAIL_APP_PASSWORD")
+        else:
+            _heartbeat(
+                "dhl_monitor",
+                f"scanned {result.get('processed', 0)} email(s) — "
+                f"{len(result.get('matched', []))} matched, "
+                f"{len(result.get('unmatched', []))} unmatched"
+            )
+    except Exception as e:
+        _heartbeat("dhl_monitor", f"error: {str(e)[:80]}")
+        print(f"[Scheduler] DHL monitor error: {e}")
+
+
 def run_tiktok_token_refresh():
     """
     Daily refresh of the TikTok access token using the stored refresh token.
@@ -745,6 +765,15 @@ def start_scheduler():
         replace_existing=True
     )
 
+    scheduler.add_job(
+        run_dhl_monitor,
+        trigger=IntervalTrigger(hours=2),
+        id='dhl_monitor',
+        name='DHL Monitor — Tracking + delivery-preference relay',
+        next_run_time=datetime.utcnow(),
+        replace_existing=True
+    )
+
     scheduler.start()
     print("[Scheduler] ✅ ARIA scheduler started with jobs:")
     print("[Scheduler]   → Market check: every 6 hours")
@@ -752,6 +781,7 @@ def start_scheduler():
     print("[Scheduler]   → Tracking agent: every 6 hours")
     print("[Scheduler]   → Posting agent: every 1 hour")
     print("[Scheduler]   → Customer agent: every 1 hour")
+    print("[Scheduler]   → DHL monitor: every 2 hours")
     print("[Scheduler]   → Analytics agent: every 6 hours")
     print("[Scheduler]   → Bulk import: every 24 hours")
     print("[Scheduler]   → ARIA self-check: every 30 minutes")
