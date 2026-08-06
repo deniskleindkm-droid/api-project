@@ -67,51 +67,47 @@ nav{
   letter-spacing:0.3px;max-width:480px;margin:0 auto;line-height:1.7;
 }
 
-/* ── DISCOVER YOUR STONE ── */
-.stone-section{padding:56px 48px 8px;text-align:center;}
-.section-eyebrow{
-  font-size:10px;letter-spacing:3px;text-transform:uppercase;
-  color:var(--gold-deep);margin-bottom:10px;font-weight:500;
-}
+/* ── DISCOVER BY STONE ── */
+.stone-section{padding:88px 48px 16px;text-align:center;}
 .section-title{
-  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;
-  font-size:clamp(22px,3vw,30px);color:var(--black);margin-bottom:36px;
+  font-family:'Cormorant Garamond',serif;font-weight:400;
+  font-size:clamp(26px,3.2vw,34px);letter-spacing:0.5px;color:var(--black);margin-bottom:14px;
+}
+.section-intro{
+  font-size:13px;color:var(--mid);font-weight:300;letter-spacing:0.2px;
+  max-width:440px;margin:0 auto 52px;line-height:1.8;
 }
 .stone-grid{
   display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:20px;max-width:1100px;margin:0 auto;
+  gap:36px;max-width:1100px;margin:0 auto;
 }
-.stone-card{
-  position:relative;aspect-ratio:3/4;overflow:hidden;
-  cursor:pointer;border:1px solid var(--border);
-  transition:transform 0.4s ease;
+.stone-card{cursor:pointer;text-align:left;}
+.stone-card-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);margin-bottom:18px;}
+.stone-card-img img{
+  width:100%;height:100%;object-fit:cover;display:block;
+  transition:transform 0.7s ease;
 }
-.stone-card img{
-  width:100%;height:100%;object-fit:cover;
-  transition:transform 0.6s ease;
-}
-.stone-card:hover img{transform:scale(1.06);}
-.stone-card::after{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(180deg,transparent 40%,rgba(14,14,14,0.72) 100%);
-}
-.stone-card-label{
-  position:absolute;left:0;right:0;bottom:0;padding:22px 18px;z-index:2;
-  color:white;text-align:left;
-}
-.stone-card-symbol{font-size:13px;color:var(--gold-light);margin-bottom:4px;display:block;}
+.stone-card:hover .stone-card-img img{transform:scale(1.05);}
 .stone-card-name{
-  font-family:'Cormorant Garamond',serif;font-weight:400;
-  font-size:22px;letter-spacing:0.5px;margin-bottom:4px;
+  font-family:'Jost',sans-serif;font-weight:500;
+  font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--black);
+  margin-bottom:8px;
+  padding-bottom:10px;border-bottom:1px solid var(--border);
+  transition:border-color 0.3s;
 }
-.stone-card-tag{font-size:11px;font-weight:300;opacity:0.85;letter-spacing:0.3px;}
-.stone-card.active{outline:2px solid var(--pink);outline-offset:-2px;}
+.stone-card:hover .stone-card-name,
+.stone-card.active .stone-card-name{border-color:var(--gold);}
+.stone-card-tag{
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;
+  font-size:15px;color:var(--mid);line-height:1.55;
+}
+.stone-card.active .stone-card-tag{color:var(--pink-deep);}
 
-/* ── METAL FINISH ── */
+/* ── REFINE BY FINISH ── */
 .metal-section{
-  padding:44px 48px;text-align:center;
+  padding:56px 48px;text-align:center;
   border-top:1px solid var(--border);border-bottom:1px solid var(--border);
-  margin-top:48px;
+  margin-top:80px;
 }
 .metal-chips{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;}
 .metal-chip{
@@ -125,38 +121,40 @@ nav{
 .metal-chip.active{background:var(--black);border-color:var(--black);color:white;}
 
 /* ── PRODUCT GRID ── */
-.grid-section{padding:48px 48px 100px;}
+.grid-section{padding:80px 48px 100px;}
 .grid-heading{
-  display:flex;justify-content:space-between;align-items:baseline;
-  max-width:1400px;margin:0 auto 28px;padding-bottom:16px;
-  border-bottom:1px solid var(--border);
+  text-align:center;
+  max-width:1400px;margin:0 auto 44px;
 }
-.grid-count{
-  font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;color:var(--black);
+.grid-title{
+  font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:400;color:var(--black);
+  margin-bottom:8px;
+}
+.grid-sub{
+  font-size:12px;color:var(--mid);font-weight:300;letter-spacing:0.5px;
 }
 .grid-clear{
+  display:block;margin-top:10px;
   font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
   color:var(--pink-deep);cursor:pointer;text-decoration:underline;
-  display:none;
+  visibility:hidden;
 }
-.grid-clear.show{display:inline;}
+.grid-clear.show{visibility:visible;}
 .pgrid{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:2px;
-  background:var(--border);border:1px solid var(--border);
+  display:grid;grid-template-columns:repeat(4,1fr);gap:28px;
   max-width:1400px;margin:0 auto;
 }
-.pcard{background:white;transition:background 0.2s;}
-.pcard:hover{background:var(--pink-mist);}
-.pcard-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);}
-.pcard-img img{width:100%;height:100%;object-fit:cover;transition:transform 0.4s;}
+.pcard{cursor:pointer;}
+.pcard-img{aspect-ratio:4/5;overflow:hidden;background:var(--ivory);margin-bottom:14px;}
+.pcard-img img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
 .pcard:hover .pcard-img img{transform:scale(1.04);}
-.pcard-info{padding:14px 12px 18px;}
+.pcard-info{text-align:center;}
 .pcard-name{
   font-size:12px;font-weight:300;color:var(--charcoal);
-  margin-bottom:6px;line-height:1.4;
+  margin-bottom:5px;line-height:1.4;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
-.pcard-price{font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--black);}
+.pcard-price{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--black);}
 .pcard.hidden{display:none;}
 
 .load-more-wrap{text-align:center;margin-top:40px;}
@@ -208,19 +206,20 @@ nav{
 </div>
 
 <div class="stone-section">
-  <div class="section-eyebrow">Discover Your Stone</div>
-  <div class="section-title">Find the sparkle that speaks to you</div>
+  <div class="section-title">Discover by Stone</div>
+  <div class="section-intro">Every stone tells a different story. Explore the collection that speaks to you.</div>
   <div class="stone-grid" id="stone-grid"><!-- filled by JS --></div>
 </div>
 
 <div class="metal-section">
-  <div class="section-eyebrow" style="margin-bottom:18px;">Metal Finish</div>
+  <div class="section-title" style="margin-bottom:24px;">Refine by Finish</div>
   <div class="metal-chips" id="metal-chips"><!-- filled by JS --></div>
 </div>
 
 <div class="grid-section">
   <div class="grid-heading">
-    <div class="grid-count" id="grid-count">Showing 70 Rings</div>
+    <div class="grid-title" id="grid-title">Rings</div>
+    <div class="grid-sub" id="grid-sub">70 pieces, curated for you</div>
     <div class="grid-clear" id="grid-clear" onclick="clearFilter()">Clear selection</div>
   </div>
   <div class="pgrid" id="pgrid"><!-- filled by JS --></div>
@@ -244,10 +243,10 @@ nav{
 const PRODUCTS = [{"id": 628, "name": "Geometric T Bar Open Ring", "price": 52.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922702/mikisi/products/628_primary.jpg", "mat": "gold"}, {"id": 525, "name": "Olive Leaf Zirconia Ring", "price": 54.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784918931/mikisi/products/525_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1157, "name": "Geometric Diamond Ring", "price": 55.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316789/mikisi/products/1157_primary.jpg", "mat": "silver"}, {"id": 622, "name": "Geometric Baguette Round Ring", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921725/mikisi/products/622_primary.jpg", "mat": "gold"}, {"id": 1213, "name": "Dual Pear Moissanite Ring", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785567590/mikisi/products/1213_primary.jpg", "mat": "moissanite"}, {"id": 1187, "name": "Brushed Star Pattern Ring", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785036545/mikisi/products/1187_primary.jpg", "mat": "silver"}, {"id": 620, "name": "Hugging Hands Open Ring", "price": 74.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922580/mikisi/products/620_primary.jpg", "mat": "gold"}, {"id": 625, "name": "Twisted Band Geometric Ring", "price": 75.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922712/mikisi/products/625_primary.jpg", "mat": "gold"}, {"id": 626, "name": "Square Cushion Cluster Ring", "price": 75.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920019/mikisi/products/626_primary.jpg", "mat": "gold"}, {"id": 597, "name": "Green Cactus Flower Ring", "price": 76.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1780941576/mikisi/products/597_clean.jpg", "mat": "gold"}, {"id": 1154, "name": "Crescent Moon and Eight Point Star Ring", "price": 76.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316789/mikisi/products/1154_primary.jpg", "mat": "white_gold"}, {"id": 656, "name": "Heart Halo Ring", "price": 78.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921736/mikisi/products/656_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1301, "name": "LOVE Letter Script Ring", "price": 79.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644469/mikisi/products/1301_primary.jpg", "mat": "silver"}, {"id": 699, "name": "Spinning Beads CZ Ring", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921132/mikisi/products/699_primary.jpg", "mat": "cubic_zirconia"}, {"id": 657, "name": "Brilliant Cut Stone Ring", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921460/mikisi/products/657_primary.jpg", "mat": "silver"}, {"id": 1169, "name": "Sun Moon Portrait Signet Ring", "price": 81.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784663061/mikisi/products/1169_primary.jpg", "mat": "gold"}, {"id": 701, "name": "Linear CZ Round Ring", "price": 81.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921949/mikisi/products/701_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1214, "name": "Round Moissanite Six Prong Ring", "price": 81.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560452/mikisi/products/1214_primary.jpg", "mat": "moissanite"}, {"id": 1310, "name": "Three Stone Moissanite Ring", "price": 81.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644672/mikisi/products/1310_primary.jpg", "mat": "moissanite"}, {"id": 1297, "name": "Pear Cut Moissanite Curved Wave Ring", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644378/mikisi/products/1297_primary.jpg", "mat": "moissanite"}, {"id": 623, "name": "Minimalist Geometric Wave Ring", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919812/mikisi/products/623_primary.jpg", "mat": "gold"}, {"id": 704, "name": "Wave & Flower Statement Ring", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921663/mikisi/products/704_primary.jpg", "mat": "silver"}, {"id": 698, "name": "Star & Crescent Moon Ring", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921905/mikisi/products/698_primary.jpg", "mat": "gold"}, {"id": 710, "name": "Sunflower CZ Ring", "price": 83.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922751/mikisi/products/710_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1258, "name": "Oval Six Prong Moissanite Ring", "price": 83.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643434/mikisi/products/1258_primary.jpg", "mat": "moissanite"}, {"id": 624, "name": "Multicolor Geometric Statement Ring", "price": 84.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784918885/mikisi/products/624_primary.jpg", "mat": "gold"}, {"id": 1291, "name": "Marquise Openwork Bypass Ring", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644267/mikisi/products/1291_primary.jpg", "mat": "gold"}, {"id": 1224, "name": "Pear Shaped Moissanite Solitaire Ring", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553304/mikisi/products/1224_primary.jpg", "mat": "moissanite"}, {"id": 1231, "name": "Alternating Round Square Eternity Ring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560465/mikisi/products/1231_primary.jpg", "mat": "moissanite"}, {"id": 1318, "name": "Green Marquise Moissanite Ring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644806/mikisi/products/1318_primary.jpg", "mat": "moissanite"}, {"id": 1233, "name": "Marquise Cut Moissanite Halo Ring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553310/mikisi/products/1233_primary.jpg", "mat": "moissanite"}, {"id": 615, "name": "Geometric Cubic Zirconia Multi Band", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921727/mikisi/products/615_primary.jpg", "mat": "cubic_zirconia"}, {"id": 712, "name": "Green Epoxy Snake Ring", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924658/mikisi/products/712_primary.jpg", "mat": "silver"}, {"id": 1299, "name": "Vintage Pear Cut Crown Ring", "price": 87.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644430/mikisi/products/1299_primary.jpg", "mat": "moissanite"}, {"id": 1305, "name": "Five Stone Crown Ring", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644546/mikisi/products/1305_primary.jpg", "mat": "moissanite"}, {"id": 571, "name": "Double Marquise Interlaced Ring", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1780941613/mikisi/products/571_clean.jpg", "mat": "white_gold"}, {"id": 1215, "name": "Oval Moissanite Three Stone Ring", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560470/mikisi/products/1215_primary.jpg", "mat": "moissanite"}, {"id": 1117, "name": "Vintage Faith Letter Cross Open Ring", "price": 89.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919156/mikisi/products/1117_primary.jpg", "mat": "gold"}, {"id": 1222, "name": "Geometric Four Stone Moissanite Ring", "price": 90.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553301/mikisi/products/1222_primary.jpg", "mat": "moissanite"}, {"id": 1292, "name": "Marquise Double Band Ring", "price": 104.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644287/mikisi/products/1292_primary.jpg", "mat": "gold"}, {"id": 1288, "name": "Blue Green Moissanite Stack Ring", "price": 104.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644202/mikisi/products/1288_primary.jpg", "mat": "moissanite"}, {"id": 1321, "name": "Geometric Multi-Stone Moissanite Ring", "price": 104.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644873/mikisi/products/1321_primary.jpg", "mat": "moissanite"}, {"id": 1290, "name": "Pear Cut Moissanite Ring", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644237/mikisi/products/1290_primary.jpg", "mat": "moissanite"}, {"id": 1122, "name": "Crown Wave Pear Moissanite Ring", "price": 107.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919889/mikisi/products/1122_primary.jpg", "mat": "moissanite"}, {"id": 720, "name": "Baguette Cubic Zirconia Statement Ring", "price": 107.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919469/mikisi/products/720_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1225, "name": "Oval Blue Green Moissanite Ring", "price": 108.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785567574/mikisi/products/1225_primary.jpg", "mat": "moissanite"}, {"id": 1289, "name": "Full Band Moissanite Ring", "price": 108.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644217/mikisi/products/1289_primary.jpg", "mat": "moissanite"}, {"id": 1306, "name": "Green Oval Moissanite Stacking Ring", "price": 110.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644568/mikisi/products/1306_primary.jpg", "mat": "moissanite"}, {"id": 1223, "name": "Marquise Cut Moissanite Twist Ring", "price": 110.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560456/mikisi/products/1223_primary.jpg", "mat": "moissanite"}, {"id": 700, "name": "Textured Pattern Open Ring", "price": 111.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920723/mikisi/products/700_primary.jpg", "mat": "gold"}, {"id": 1212, "name": "Pear Moissanite Stackable Ring Set", "price": 111.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553298/mikisi/products/1212_primary.jpg", "mat": "moissanite"}, {"id": 1210, "name": "Oval Moissanite Two Piece Ring Set", "price": 111.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785567588/mikisi/products/1210_primary.jpg", "mat": "moissanite"}, {"id": 1211, "name": "Round Moissanite Halo Flower Ring", "price": 112.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553299/mikisi/products/1211_primary.jpg", "mat": "moissanite"}, {"id": 1217, "name": "Pear Moissanite Double Band Ring", "price": 112.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553309/mikisi/products/1217_primary.jpg", "mat": "moissanite"}, {"id": 685, "name": "Peacock Feather Ring", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923355/mikisi/products/685_primary.jpg", "mat": "cubic_zirconia"}, {"id": 577, "name": "Diamond Teardrop Wedding Ring", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922925/mikisi/products/577_primary.jpg", "mat": "white_gold"}, {"id": 1232, "name": "Pear Cut Crown Cluster Ring", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553297/mikisi/products/1232_primary.jpg", "mat": "moissanite"}, {"id": 578, "name": "Rectangular Stone Teardrop Ring", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921290/mikisi/products/578_primary.jpg", "mat": "rose_gold"}, {"id": 1308, "name": "Marquise Moissanite Chevron Ring", "price": 115.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644616/mikisi/products/1308_primary.jpg", "mat": "moissanite"}, {"id": 684, "name": "Butterfly Ring", "price": 116.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923763/mikisi/products/684_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1216, "name": "Emerald Cut Moissanite Ring Set", "price": 118.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560453/mikisi/products/1216_primary.jpg", "mat": "moissanite"}, {"id": 1218, "name": "Geometric Emerald Cut Moissanite Ring Set", "price": 118.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560467/mikisi/products/1218_primary.jpg", "mat": "moissanite"}, {"id": 1309, "name": "Marquise Moissanite Stack Ring", "price": 118.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644638/mikisi/products/1309_primary.jpg", "mat": "moissanite"}, {"id": 1220, "name": "Heart Shape Moissanite Wide Band Ring", "price": 120.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560468/mikisi/products/1220_primary.jpg", "mat": "moissanite"}, {"id": 574, "name": "Heart and Pear Gemstone Ring", "price": 122.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919604/mikisi/products/574_primary.jpg", "mat": "silver"}, {"id": 579, "name": "Light Yellow Cushion-Cut Zirconia Full-Band Eternity 925 Sterling Silver Ring", "price": 122.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784918953/mikisi/products/579_primary.jpg", "mat": "cubic_zirconia"}, {"id": 688, "name": "Vintage Heart Ring", "price": 126.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923608/mikisi/products/688_primary.jpg", "mat": "silver"}, {"id": 572, "name": "Green Emerald Crown Halo Ring", "price": 132.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784918861/mikisi/products/572_primary.jpg", "mat": "semi_precious"}, {"id": 573, "name": "Pink Oval Cocktail Ring", "price": 135.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919757/mikisi/products/573_primary.jpg", "mat": "rose_gold"}, {"id": 570, "name": "Bright Yellow Rectangular Halo Ring", "price": 249.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923580/mikisi/products/570_primary.jpg", "mat": "silver"}];
 
 const STONE_META = {
-  moissanite:     { symbol:'◇', label:'Moissanite',      tag:'Brilliant sparkle, made to last.' },
-  cubic_zirconia: { symbol:'✧', label:'Cubic Zirconia',  tag:'Everyday brilliance, beautifully cut.' },
-  semi_precious:  { symbol:'◆', label:'Gemstones',       tag:'Color that tells a story.' },
-  pearl:          { symbol:'○', label:'Pearl',           tag:'Timeless, classic sophistication.' },
+  moissanite:     { label:'Moissanite',     tag:'The brilliance of diamonds, crafted to shine for life.' },
+  cubic_zirconia: { label:'Cubic Zirconia', tag:'Brilliant clarity, for sparkle worn every day.' },
+  semi_precious:  { label:'Gemstones',      tag:"Nature's color, drawn from the earth and set to endure." },
+  pearl:          { label:'Pearl',          tag:'Quiet, timeless grace that never goes out of style.' },
 };
 const METAL_META = {
   gold:       'Yellow Gold',
@@ -275,12 +274,9 @@ function renderStoneCards(){
     const meta = STONE_META[k];
     const sample = PRODUCTS.find(p => p.mat === k);
     return `<div class="stone-card" data-mat="${k}" onclick="setFilter('${k}')">
-      <img src="${sample.img}" alt="${meta.label}" loading="lazy"/>
-      <div class="stone-card-label">
-        <span class="stone-card-symbol">${meta.symbol}</span>
-        <div class="stone-card-name">${meta.label}</div>
-        <div class="stone-card-tag">${meta.tag}</div>
-      </div>
+      <div class="stone-card-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
+      <div class="stone-card-name">${meta.label}</div>
+      <div class="stone-card-tag">${meta.tag}</div>
     </div>`;
   }).join('');
 }
@@ -315,8 +311,9 @@ function render(){
   const label = activeFilter
     ? (STONE_META[activeFilter]?.label || METAL_META[activeFilter])
     : null;
-  document.getElementById('grid-count').textContent =
-    label ? `Showing ${filtered.length} ${label} Rings` : `Showing ${filtered.length} Rings`;
+  document.getElementById('grid-title').textContent = label ? `${label} Rings` : 'Rings';
+  document.getElementById('grid-sub').textContent =
+    label ? `${filtered.length} timeless pieces` : `${filtered.length} pieces, curated for you`;
   document.getElementById('grid-clear').classList.toggle('show', !!activeFilter);
 
   const shown = filtered.slice(0, visibleCount);
