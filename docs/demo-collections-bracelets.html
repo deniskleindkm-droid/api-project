@@ -67,42 +67,9 @@ nav{
   letter-spacing:0.3px;max-width:480px;margin:0 auto;line-height:1.7;
 }
 
-/* ── SHOP BY STYLE (spotlight) ── */
-.style-section{padding:72px 48px 0;}
-.style-spotlight{
-  max-width:1100px;margin:0 auto;cursor:pointer;
-  display:grid;grid-template-columns:1.1fr 1fr;align-items:stretch;
-  border:1px solid var(--border);
-}
-.style-spotlight-img{aspect-ratio:16/11;overflow:hidden;background:var(--ivory);}
-.style-spotlight-img img{width:100%;height:100%;object-fit:cover;transition:transform 0.7s ease;}
-.style-spotlight:hover .style-spotlight-img img{transform:scale(1.04);}
-.style-spotlight-text{
-  padding:40px 44px;display:flex;flex-direction:column;justify-content:center;
-  text-align:left;background:white;
-}
-.style-spotlight-eyebrow{
-  font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold-deep);
-  margin-bottom:12px;font-weight:500;
-}
-.style-spotlight-name{
-  font-family:'Cormorant Garamond',serif;font-weight:400;
-  font-size:clamp(24px,2.6vw,32px);color:var(--black);margin-bottom:14px;letter-spacing:0.3px;
-}
-.style-spotlight-tag{
-  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;
-  font-size:16px;color:var(--mid);line-height:1.6;margin-bottom:18px;
-}
-.style-spotlight-cta{
-  font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--black);
-  padding-bottom:6px;border-bottom:1px solid var(--black);align-self:flex-start;
-  transition:all 0.25s;
-}
-.style-spotlight.active .style-spotlight-cta{color:var(--pink-deep);border-color:var(--pink-deep);}
-.style-spotlight.active{border-color:var(--gold);}
-@media (max-width:700px){
-  .style-spotlight{grid-template-columns:1fr;}
-}
+/* ── SHOP BY STYLE -- reuses .stone-card styling below so it's visually
+   identical to the stone tiles, just a separate row/heading ── */
+.style-section{padding:72px 48px 0;text-align:center;}
 
 /* ── DISCOVER BY STONE ── */
 .stone-section{padding:72px 48px 16px;text-align:center;}
@@ -242,7 +209,11 @@ nav{
   <p>Crafted from genuine 925 sterling silver. Timeless pieces designed to stack and layer beautifully.</p>
 </div>
 
-<div class="style-section" id="style-section"><!-- filled by JS --></div>
+<div class="style-section">
+  <div class="section-title">Shop by Style</div>
+  <div class="section-intro">A signature silhouette, in every stone.</div>
+  <div class="stone-grid" id="style-grid"><!-- filled by JS --></div>
+</div>
 
 <div class="stone-section">
   <div class="section-title">Discover by Stone</div>
@@ -269,7 +240,7 @@ nav{
 
 <div class="dev-note">
   <strong>Note for Dennis:</strong> like Necklaces, Bracelets has real inventory in all four stone types
-  (Moissanite, Pearl, Cubic Zirconia, Gemstones), so all four tiles show here. The Tennis Bracelet spotlight
+  (Moissanite, Pearl, Cubic Zirconia, Gemstones), so all four tiles show here. The Tennis Bracelets tile
   above IS combinable with Stone/Metal filters (e.g. click Tennis then Moissanite to see just moissanite
   tennis bracelets) — style is detected independently from the product name, so it doesn't hit the same
   limitation. Stone and Metal Finish still can't combine with EACH OTHER though: today's material data gives
@@ -298,7 +269,7 @@ const METAL_META = {
 // metal, a style filter genuinely CAN combine with a stone or metal filter
 // at the same time -- see the dev-note below and the combined render() logic.
 const STYLE_META = {
-  tennis: { label:'Tennis Bracelets', eyebrow:'Shop by Style',
+  tennis: { label:'Tennis Bracelets',
             tag:'The bracelet that never goes out of style. Continuous brilliance, wrist to wrist.' },
 };
 const STONE_ORDER = ['moissanite','cubic_zirconia','semi_precious','pearl'];
@@ -321,20 +292,16 @@ function styleCounts(){
   return c;
 }
 
-function renderStyleSpotlight(){
+function renderStyleTiles(){
   const c = styleCounts();
-  const wrap = document.getElementById('style-section');
+  const wrap = document.getElementById('style-grid');
   wrap.innerHTML = STYLE_ORDER.filter(k => c[k] > 0).map(k => {
     const meta = STYLE_META[k];
     const sample = PRODUCTS.find(p => p.style === k);
-    return `<div class="style-spotlight" data-style="${k}" onclick="setStyleFilter('${k}')">
-      <div class="style-spotlight-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
-      <div class="style-spotlight-text">
-        <div class="style-spotlight-eyebrow">${meta.eyebrow}</div>
-        <div class="style-spotlight-name">${meta.label}</div>
-        <div class="style-spotlight-tag">${meta.tag}</div>
-        <div class="style-spotlight-cta">Shop the edit</div>
-      </div>
+    return `<div class="stone-card" data-style="${k}" onclick="setStyleFilter('${k}')">
+      <div class="stone-card-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
+      <div class="stone-card-name">${meta.label}</div>
+      <div class="stone-card-tag">${meta.tag}</div>
     </div>`;
   }).join('');
 }
@@ -383,11 +350,11 @@ function render(){
   if (activeMat)   filtered = filtered.filter(p => p.mat === activeMat);
   if (activeStyle) filtered = filtered.filter(p => p.style === activeStyle);
 
-  document.querySelectorAll('.stone-card').forEach(el =>
+  document.querySelectorAll('.stone-card[data-mat]').forEach(el =>
     el.classList.toggle('active', el.dataset.mat === activeMat));
   document.querySelectorAll('.metal-chip').forEach(el =>
     el.classList.toggle('active', el.dataset.mat === activeMat));
-  document.querySelectorAll('.style-spotlight').forEach(el =>
+  document.querySelectorAll('.stone-card[data-style]').forEach(el =>
     el.classList.toggle('active', el.dataset.style === activeStyle));
 
   const matLabel   = activeMat ? (STONE_META[activeMat]?.label || METAL_META[activeMat]) : null;
@@ -423,7 +390,7 @@ function loadMore(){
   render();
 }
 
-renderStyleSpotlight();
+renderStyleTiles();
 renderStoneCards();
 renderMetalChips();
 render();
