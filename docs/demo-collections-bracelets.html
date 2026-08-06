@@ -401,7 +401,7 @@ function render(){
   document.getElementById('grid-title').textContent = title;
 
   document.getElementById('grid-sub').textContent =
-    (activeMat || activeStyle) ? `${filtered.length} timeless pieces` : `${filtered.length} pieces, curated for you`;
+    (activeMat || activeStyle) ? `${filtered.length} timeless piece${filtered.length===1?'':'s'}` : `${filtered.length} piece${filtered.length===1?'':'s'}, curated for you`;
   document.getElementById('grid-clear').classList.toggle('show', !!(activeMat || activeStyle));
 
   const shown = filtered.slice(0, visibleCount);

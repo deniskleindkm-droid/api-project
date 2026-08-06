@@ -312,7 +312,7 @@ function render(){
     : null;
   document.getElementById('grid-title').textContent = label ? `${label} Necklaces` : 'Necklaces';
   document.getElementById('grid-sub').textContent =
-    label ? `${filtered.length} timeless pieces` : `${filtered.length} pieces, curated for you`;
+    label ? `${filtered.length} timeless piece${filtered.length===1?'':'s'}` : `${filtered.length} piece${filtered.length===1?'':'s'}, curated for you`;
   document.getElementById('grid-clear').classList.toggle('show', !!activeFilter);
 
   const shown = filtered.slice(0, visibleCount);
