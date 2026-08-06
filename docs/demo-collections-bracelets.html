@@ -67,8 +67,45 @@ nav{
   letter-spacing:0.3px;max-width:480px;margin:0 auto;line-height:1.7;
 }
 
+/* ── SHOP BY STYLE (spotlight) ── */
+.style-section{padding:72px 48px 0;}
+.style-spotlight{
+  max-width:1100px;margin:0 auto;cursor:pointer;
+  display:grid;grid-template-columns:1.1fr 1fr;align-items:stretch;
+  border:1px solid var(--border);
+}
+.style-spotlight-img{aspect-ratio:16/11;overflow:hidden;background:var(--ivory);}
+.style-spotlight-img img{width:100%;height:100%;object-fit:cover;transition:transform 0.7s ease;}
+.style-spotlight:hover .style-spotlight-img img{transform:scale(1.04);}
+.style-spotlight-text{
+  padding:40px 44px;display:flex;flex-direction:column;justify-content:center;
+  text-align:left;background:white;
+}
+.style-spotlight-eyebrow{
+  font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold-deep);
+  margin-bottom:12px;font-weight:500;
+}
+.style-spotlight-name{
+  font-family:'Cormorant Garamond',serif;font-weight:400;
+  font-size:clamp(24px,2.6vw,32px);color:var(--black);margin-bottom:14px;letter-spacing:0.3px;
+}
+.style-spotlight-tag{
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;
+  font-size:16px;color:var(--mid);line-height:1.6;margin-bottom:18px;
+}
+.style-spotlight-cta{
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--black);
+  padding-bottom:6px;border-bottom:1px solid var(--black);align-self:flex-start;
+  transition:all 0.25s;
+}
+.style-spotlight.active .style-spotlight-cta{color:var(--pink-deep);border-color:var(--pink-deep);}
+.style-spotlight.active{border-color:var(--gold);}
+@media (max-width:700px){
+  .style-spotlight{grid-template-columns:1fr;}
+}
+
 /* ── DISCOVER BY STONE ── */
-.stone-section{padding:88px 48px 16px;text-align:center;}
+.stone-section{padding:72px 48px 16px;text-align:center;}
 .section-title{
   font-family:'Cormorant Garamond',serif;font-weight:400;
   font-size:clamp(26px,3.2vw,34px);letter-spacing:0.5px;color:var(--black);margin-bottom:14px;
@@ -205,6 +242,8 @@ nav{
   <p>Crafted from genuine 925 sterling silver. Timeless pieces designed to stack and layer beautifully.</p>
 </div>
 
+<div class="style-section" id="style-section"><!-- filled by JS --></div>
+
 <div class="stone-section">
   <div class="section-title">Discover by Stone</div>
   <div class="section-intro">Every stone tells a different story. Explore the collection that speaks to you.</div>
@@ -218,7 +257,7 @@ nav{
 
 <div class="grid-section">
   <div class="grid-heading">
-    <div class="grid-title" id="grid-title">Rings</div>
+    <div class="grid-title" id="grid-title">Bracelets</div>
     <div class="grid-sub" id="grid-sub">38 pieces, curated for you</div>
     <div class="grid-clear" id="grid-clear" onclick="clearFilter()">Clear selection</div>
   </div>
@@ -230,16 +269,17 @@ nav{
 
 <div class="dev-note">
   <strong>Note for Dennis:</strong> like Necklaces, Bracelets has real inventory in all four stone types
-  (Moissanite, Pearl, Cubic Zirconia, Gemstones), so all four tiles show here. Same data limitation as before
-  though: today's material data gives each product exactly one label (e.g. a product is either "Moissanite" or
-  "Gold," never both), so clicking a Metal Finish chip and a Stone card can't yet be combined — clicking one
-  clears the other. Real cross-filtering (a gold moissanite bracelet showing under both) would need the
-  material-detection logic split into two separate fields. This demo reflects what today's data actually
-  supports; happy to scope that enhancement if you want true combined filtering before we integrate.
+  (Moissanite, Pearl, Cubic Zirconia, Gemstones), so all four tiles show here. The Tennis Bracelet spotlight
+  above IS combinable with Stone/Metal filters (e.g. click Tennis then Moissanite to see just moissanite
+  tennis bracelets) — style is detected independently from the product name, so it doesn't hit the same
+  limitation. Stone and Metal Finish still can't combine with EACH OTHER though: today's material data gives
+  each product exactly one label (a product is either "Moissanite" or "Gold," never both), so clicking one
+  clears the other. Fixing that would need the material-detection logic split into two separate fields
+  (stone type + metal color) — happy to scope that if you want full combined filtering before we integrate.
 </div>
 
 <script>
-const PRODUCTS = [{"id": 824, "name": "Minimalist Three Crystal Bracelet", "price": 51.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923189/mikisi/products/824_primary.jpg", "mat": "cubic_zirconia"}, {"id": 823, "name": "Golden Bubble Heart Bracelet", "price": 51.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923451/mikisi/products/823_primary.jpg", "mat": "gold"}, {"id": 934, "name": "Shell Pearl Bracelet", "price": 52.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921650/mikisi/products/934_primary.jpg", "mat": "pearl"}, {"id": 489, "name": "Sea Turtle Zirconia Bracelet", "price": 54.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919688/mikisi/products/489_primary.jpg", "mat": "cubic_zirconia"}, {"id": 833, "name": "Colorful Mini Round CZ Bracelet", "price": 54.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919465/mikisi/products/833_primary.jpg", "mat": "cubic_zirconia"}, {"id": 819, "name": "Colorful Cubic Zirconia Bracelet", "price": 55.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921738/mikisi/products/819_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1161, "name": "Bowknot Green Aventurine Bracelet", "price": 72.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316885/mikisi/products/1161_primary.jpg", "mat": "white_gold"}, {"id": 490, "name": "Teardrop Pendant Layered Bracelet", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921575/mikisi/products/490_primary.jpg", "mat": "silver"}, {"id": 1160, "name": "Four Petal Flower Station Bracelet", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316885/mikisi/products/1160_primary.jpg", "mat": "gold"}, {"id": 799, "name": "Minimalist Geometric Round Bead Bracelet", "price": 74.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924541/mikisi/products/799_primary.jpg", "mat": "silver"}, {"id": 796, "name": "Tiger Eye Stone Pearl Beaded Bracelet", "price": 80.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920038/mikisi/products/796_primary.jpg", "mat": "pearl"}, {"id": 803, "name": "Cubic Zirconia Tennis Bracelet", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924031/mikisi/products/803_primary.jpg", "mat": "semi_precious"}, {"id": 947, "name": "Blue Sapphire Tennis Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919988/mikisi/products/947_primary.jpg", "mat": "semi_precious"}, {"id": 835, "name": "Double Layer Minimalist Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924215/mikisi/products/835_primary.jpg", "mat": "silver"}, {"id": 942, "name": "Emerald Tennis Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919992/mikisi/products/942_primary.jpg", "mat": "semi_precious"}, {"id": 948, "name": "Rainbow Love Heart Tennis Bracelet", "price": 87.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924552/mikisi/products/948_primary.jpg", "mat": "white_gold"}, {"id": 821, "name": "Shell Pearl Conch Bracelet", "price": 87.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920222/mikisi/products/821_primary.jpg", "mat": "pearl"}, {"id": 945, "name": "Diamond Zircon Tennis Bracelet", "price": 90.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921555/mikisi/products/945_primary.jpg", "mat": "cubic_zirconia"}, {"id": 804, "name": "Crystal Geometric Beaded Bracelet", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922045/mikisi/products/804_primary.jpg", "mat": "cubic_zirconia"}, {"id": 946, "name": "Rainbow Geometric Cubic Zirconia Bracelet", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923191/mikisi/products/946_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1203, "name": "Vintage Silver Geometric Block Link Bracelet", "price": 109.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785036625/mikisi/products/1203_primary.jpg", "mat": "silver"}, {"id": 788, "name": "Minimalist Heart Letter Bracelet", "price": 110.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924121/mikisi/products/788_primary.jpg", "mat": "silver"}, {"id": 485, "name": "Turquoise Bezel Tennis Bracelet", "price": 112.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921571/mikisi/products/485_primary.png", "mat": "semi_precious"}, {"id": 830, "name": "Double Layer Rectangle Crystal Bracelet", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920212/mikisi/products/830_primary.jpg", "mat": "cubic_zirconia"}, {"id": 805, "name": "Bamboo Braided Three-Tone Bracelet", "price": 115.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921455/mikisi/products/805_primary.jpg", "mat": "gold"}, {"id": 807, "name": "Geometric Braided Silver Bracelet", "price": 117.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919998/mikisi/products/807_primary.jpg", "mat": "silver"}, {"id": 806, "name": "Mesh Geometric Pattern Bracelet", "price": 122.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919131/mikisi/products/806_primary.jpg", "mat": "white_gold"}, {"id": 798, "name": "Double Layer Cubic Zirconia Bracelet", "price": 123.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924134/mikisi/products/798_primary.jpg", "mat": "cubic_zirconia"}, {"id": 493, "name": "Blue Vine Sparkling Bracelet", "price": 127.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919941/mikisi/products/493_primary.jpg", "mat": "silver"}, {"id": 801, "name": "Luxury Moissanite Adjustable Bracelet", "price": 129.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920134/mikisi/products/801_primary.jpg", "mat": "moissanite"}, {"id": 487, "name": "Diamond Wheat Sheaf Bracelet", "price": 210.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922392/mikisi/products/487_primary.jpg", "mat": "white_gold"}, {"id": 787, "name": "Heart Charm Link Chain Bracelet", "price": 289.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920277/mikisi/products/787_primary.jpg", "mat": "silver"}, {"id": 1249, "name": "Oval & Round Moissanite Tennis Bracelet", "price": 292.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1249_primary.jpg", "mat": "moissanite"}, {"id": 1260, "name": "Moissanite Openwork Circle Bracelet", "price": 350.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643602/mikisi/products/1260_primary.jpg", "mat": "moissanite"}, {"id": 486, "name": "Marquise Vine Link Bracelet", "price": 374.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920145/mikisi/products/486_primary.jpg", "mat": "silver"}, {"id": 1259, "name": "Moissanite Flower Leaf Tennis Bracelet", "price": 392.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643516/mikisi/products/1259_primary.jpg", "mat": "moissanite"}, {"id": 1247, "name": "European Moissanite Tennis Bracelet", "price": 395.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1247_primary.jpg", "mat": "moissanite"}, {"id": 488, "name": "Emerald Cut Diamond Tennis Bracelet", "price": 548.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920296/mikisi/products/488_primary.jpg", "mat": "semi_precious"}];
+const PRODUCTS = [{"id": 824, "name": "Minimalist Three Crystal Bracelet", "price": 51.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923189/mikisi/products/824_primary.jpg", "mat": "cubic_zirconia"}, {"id": 823, "name": "Golden Bubble Heart Bracelet", "price": 51.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923451/mikisi/products/823_primary.jpg", "mat": "gold"}, {"id": 934, "name": "Shell Pearl Bracelet", "price": 52.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921650/mikisi/products/934_primary.jpg", "mat": "pearl"}, {"id": 489, "name": "Sea Turtle Zirconia Bracelet", "price": 54.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919688/mikisi/products/489_primary.jpg", "mat": "cubic_zirconia"}, {"id": 833, "name": "Colorful Mini Round CZ Bracelet", "price": 54.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919465/mikisi/products/833_primary.jpg", "mat": "cubic_zirconia"}, {"id": 819, "name": "Colorful Cubic Zirconia Bracelet", "price": 55.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921738/mikisi/products/819_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1161, "name": "Bowknot Green Aventurine Bracelet", "price": 72.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316885/mikisi/products/1161_primary.jpg", "mat": "white_gold"}, {"id": 490, "name": "Teardrop Pendant Layered Bracelet", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921575/mikisi/products/490_primary.jpg", "mat": "silver"}, {"id": 1160, "name": "Four Petal Flower Station Bracelet", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316885/mikisi/products/1160_primary.jpg", "mat": "gold"}, {"id": 799, "name": "Minimalist Geometric Round Bead Bracelet", "price": 74.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924541/mikisi/products/799_primary.jpg", "mat": "silver"}, {"id": 796, "name": "Tiger Eye Stone Pearl Beaded Bracelet", "price": 80.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920038/mikisi/products/796_primary.jpg", "mat": "pearl"}, {"id": 803, "name": "Cubic Zirconia Tennis Bracelet", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924031/mikisi/products/803_primary.jpg", "mat": "semi_precious", "style": "tennis"}, {"id": 947, "name": "Blue Sapphire Tennis Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919988/mikisi/products/947_primary.jpg", "mat": "semi_precious", "style": "tennis"}, {"id": 835, "name": "Double Layer Minimalist Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924215/mikisi/products/835_primary.jpg", "mat": "silver"}, {"id": 942, "name": "Emerald Tennis Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919992/mikisi/products/942_primary.jpg", "mat": "semi_precious", "style": "tennis"}, {"id": 948, "name": "Rainbow Love Heart Tennis Bracelet", "price": 87.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924552/mikisi/products/948_primary.jpg", "mat": "white_gold", "style": "tennis"}, {"id": 821, "name": "Shell Pearl Conch Bracelet", "price": 87.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920222/mikisi/products/821_primary.jpg", "mat": "pearl"}, {"id": 945, "name": "Diamond Zircon Tennis Bracelet", "price": 90.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921555/mikisi/products/945_primary.jpg", "mat": "cubic_zirconia", "style": "tennis"}, {"id": 804, "name": "Crystal Geometric Beaded Bracelet", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922045/mikisi/products/804_primary.jpg", "mat": "cubic_zirconia"}, {"id": 946, "name": "Rainbow Geometric Cubic Zirconia Bracelet", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923191/mikisi/products/946_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1203, "name": "Vintage Silver Geometric Block Link Bracelet", "price": 109.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785036625/mikisi/products/1203_primary.jpg", "mat": "silver"}, {"id": 788, "name": "Minimalist Heart Letter Bracelet", "price": 110.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924121/mikisi/products/788_primary.jpg", "mat": "silver"}, {"id": 485, "name": "Turquoise Bezel Tennis Bracelet", "price": 112.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921571/mikisi/products/485_primary.png", "mat": "semi_precious", "style": "tennis"}, {"id": 830, "name": "Double Layer Rectangle Crystal Bracelet", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920212/mikisi/products/830_primary.jpg", "mat": "cubic_zirconia"}, {"id": 805, "name": "Bamboo Braided Three-Tone Bracelet", "price": 115.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921455/mikisi/products/805_primary.jpg", "mat": "gold"}, {"id": 807, "name": "Geometric Braided Silver Bracelet", "price": 117.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919998/mikisi/products/807_primary.jpg", "mat": "silver"}, {"id": 806, "name": "Mesh Geometric Pattern Bracelet", "price": 122.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919131/mikisi/products/806_primary.jpg", "mat": "white_gold"}, {"id": 798, "name": "Double Layer Cubic Zirconia Bracelet", "price": 123.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924134/mikisi/products/798_primary.jpg", "mat": "cubic_zirconia"}, {"id": 493, "name": "Blue Vine Sparkling Bracelet", "price": 127.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919941/mikisi/products/493_primary.jpg", "mat": "silver"}, {"id": 801, "name": "Luxury Moissanite Adjustable Bracelet", "price": 129.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920134/mikisi/products/801_primary.jpg", "mat": "moissanite"}, {"id": 487, "name": "Diamond Wheat Sheaf Bracelet", "price": 210.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922392/mikisi/products/487_primary.jpg", "mat": "white_gold"}, {"id": 787, "name": "Heart Charm Link Chain Bracelet", "price": 289.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920277/mikisi/products/787_primary.jpg", "mat": "silver"}, {"id": 1249, "name": "Oval & Round Moissanite Tennis Bracelet", "price": 292.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1249_primary.jpg", "mat": "moissanite", "style": "tennis"}, {"id": 1260, "name": "Moissanite Openwork Circle Bracelet", "price": 350.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643602/mikisi/products/1260_primary.jpg", "mat": "moissanite"}, {"id": 486, "name": "Marquise Vine Link Bracelet", "price": 374.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920145/mikisi/products/486_primary.jpg", "mat": "silver"}, {"id": 1259, "name": "Moissanite Flower Leaf Tennis Bracelet", "price": 392.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643516/mikisi/products/1259_primary.jpg", "mat": "moissanite", "style": "tennis"}, {"id": 1247, "name": "European Moissanite Tennis Bracelet", "price": 395.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1247_primary.jpg", "mat": "moissanite", "style": "tennis"}, {"id": 488, "name": "Emerald Cut Diamond Tennis Bracelet", "price": 548.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920296/mikisi/products/488_primary.jpg", "mat": "semi_precious", "style": "tennis"}];
 
 const STONE_META = {
   moissanite:     { label:'Moissanite',     tag:'The brilliance of diamonds, crafted to shine for life.' },
@@ -253,10 +293,20 @@ const METAL_META = {
   white_gold: 'White Gold',
   rose_gold:  'Rose Gold',
 };
+// Style is detected independently from the product name (not from the same
+// priority-keyword bucket as STONE_META/METAL_META), so unlike stone vs.
+// metal, a style filter genuinely CAN combine with a stone or metal filter
+// at the same time -- see the dev-note below and the combined render() logic.
+const STYLE_META = {
+  tennis: { label:'Tennis Bracelets', eyebrow:'Shop by Style',
+            tag:'The bracelet that never goes out of style. Continuous brilliance, wrist to wrist.' },
+};
 const STONE_ORDER = ['moissanite','cubic_zirconia','semi_precious','pearl'];
 const METAL_ORDER = ['gold','silver','white_gold','rose_gold'];
+const STYLE_ORDER = ['tennis'];
 
-let activeFilter = null; // e.g. 'moissanite' or 'gold' -- single bucket, see dev-note
+let activeMat = null;   // e.g. 'moissanite' or 'gold' -- single bucket, see dev-note
+let activeStyle = null; // e.g. 'tennis' -- independent axis, combines with activeMat
 let visibleCount = 16;
 const PAGE_SIZE = 16;
 
@@ -264,6 +314,29 @@ function counts(){
   const c = {};
   PRODUCTS.forEach(p => c[p.mat] = (c[p.mat]||0) + 1);
   return c;
+}
+function styleCounts(){
+  const c = {};
+  PRODUCTS.forEach(p => { if (p.style) c[p.style] = (c[p.style]||0) + 1; });
+  return c;
+}
+
+function renderStyleSpotlight(){
+  const c = styleCounts();
+  const wrap = document.getElementById('style-section');
+  wrap.innerHTML = STYLE_ORDER.filter(k => c[k] > 0).map(k => {
+    const meta = STYLE_META[k];
+    const sample = PRODUCTS.find(p => p.style === k);
+    return `<div class="style-spotlight" data-style="${k}" onclick="setStyleFilter('${k}')">
+      <div class="style-spotlight-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
+      <div class="style-spotlight-text">
+        <div class="style-spotlight-eyebrow">${meta.eyebrow}</div>
+        <div class="style-spotlight-name">${meta.label}</div>
+        <div class="style-spotlight-tag">${meta.tag}</div>
+        <div class="style-spotlight-cta">Shop the edit</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function renderStoneCards(){
@@ -289,31 +362,47 @@ function renderMetalChips(){
 }
 
 function setFilter(mat){
-  activeFilter = (activeFilter === mat) ? null : mat;
+  activeMat = (activeMat === mat) ? null : mat;
+  visibleCount = PAGE_SIZE;
+  render();
+}
+function setStyleFilter(style){
+  activeStyle = (activeStyle === style) ? null : style;
   visibleCount = PAGE_SIZE;
   render();
 }
 function clearFilter(){
-  activeFilter = null;
+  activeMat = null;
+  activeStyle = null;
   visibleCount = PAGE_SIZE;
   render();
 }
 
 function render(){
-  const filtered = activeFilter ? PRODUCTS.filter(p => p.mat === activeFilter) : PRODUCTS;
+  let filtered = PRODUCTS;
+  if (activeMat)   filtered = filtered.filter(p => p.mat === activeMat);
+  if (activeStyle) filtered = filtered.filter(p => p.style === activeStyle);
 
   document.querySelectorAll('.stone-card').forEach(el =>
-    el.classList.toggle('active', el.dataset.mat === activeFilter));
+    el.classList.toggle('active', el.dataset.mat === activeMat));
   document.querySelectorAll('.metal-chip').forEach(el =>
-    el.classList.toggle('active', el.dataset.mat === activeFilter));
+    el.classList.toggle('active', el.dataset.mat === activeMat));
+  document.querySelectorAll('.style-spotlight').forEach(el =>
+    el.classList.toggle('active', el.dataset.style === activeStyle));
 
-  const label = activeFilter
-    ? (STONE_META[activeFilter]?.label || METAL_META[activeFilter])
-    : null;
-  document.getElementById('grid-title').textContent = label ? `${label} Bracelets` : 'Bracelets';
+  const matLabel   = activeMat ? (STONE_META[activeMat]?.label || METAL_META[activeMat]) : null;
+  const styleLabel = activeStyle ? STYLE_META[activeStyle].label.replace(' Bracelets', '') : null;
+
+  let title;
+  if (matLabel && styleLabel)      title = `${matLabel} ${styleLabel} Bracelets`;
+  else if (styleLabel)             title = `${styleLabel} Bracelets`;
+  else if (matLabel)               title = `${matLabel} Bracelets`;
+  else                             title = 'Bracelets';
+  document.getElementById('grid-title').textContent = title;
+
   document.getElementById('grid-sub').textContent =
-    label ? `${filtered.length} timeless pieces` : `${filtered.length} pieces, curated for you`;
-  document.getElementById('grid-clear').classList.toggle('show', !!activeFilter);
+    (activeMat || activeStyle) ? `${filtered.length} timeless pieces` : `${filtered.length} pieces, curated for you`;
+  document.getElementById('grid-clear').classList.toggle('show', !!(activeMat || activeStyle));
 
   const shown = filtered.slice(0, visibleCount);
   document.getElementById('pgrid').innerHTML = shown.map(p => `
@@ -334,6 +423,7 @@ function loadMore(){
   render();
 }
 
+renderStyleSpotlight();
 renderStoneCards();
 renderMetalChips();
 render();
