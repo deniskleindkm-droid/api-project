@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mikisi — Editorial Collection Demo (Necklaces)</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --cream:#fdf9f6;
+  --ivory:#f7f2ed;
+  --pink:#d4849c;
+  --pink-deep:#b8627a;
+  --pink-pale:#f9eef2;
+  --pink-mist:#fdf5f7;
+  --gold:#c9a96e;
+  --gold-light:#e8d5b0;
+  --gold-deep:#a8854a;
+  --black:#0e0e0e;
+  --charcoal:#2a2a2a;
+  --mid:#6b6b6b;
+  --light:#d8d0c8;
+  --border:#ece5dd;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--black);}
+
+/* ── DEMO NOTICE BAR ── */
+.demo-notice{
+  background:var(--black);color:var(--cream);text-align:center;
+  padding:10px 20px;font-size:11px;letter-spacing:1.5px;
+  text-transform:uppercase;font-weight:300;
+}
+.demo-notice strong{color:var(--gold-light);font-weight:500;}
+
+/* ── NAV (matches live site) ── */
+nav{
+  background:var(--cream);padding:0 48px;
+  display:flex;justify-content:space-between;align-items:center;
+  height:76px;border-bottom:1px solid var(--border);
+}
+.logo{
+  font-family:'Cormorant Garamond',serif;font-size:26px;
+  font-weight:400;letter-spacing:6px;color:var(--black);
+  text-transform:uppercase;
+}
+.logo em{color:var(--pink);font-style:italic;}
+.nav-links{display:flex;gap:26px;}
+.nav-links a{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);text-decoration:none;}
+.nav-links a.active{color:var(--black);border-bottom:1px solid var(--pink);padding-bottom:4px;}
+
+/* ── SMALL HERO ── */
+.col-hero{
+  padding:64px 48px 40px;text-align:center;
+  border-bottom:1px solid var(--border);
+}
+.col-hero h1{
+  font-family:'Cormorant Garamond',serif;font-weight:300;
+  font-size:clamp(36px,5vw,54px);letter-spacing:3px;
+  text-transform:uppercase;margin-bottom:14px;
+}
+.col-hero p{
+  font-size:13px;color:var(--mid);font-weight:300;
+  letter-spacing:0.3px;max-width:480px;margin:0 auto;line-height:1.7;
+}
+
+/* ── DISCOVER BY STONE ── */
+.stone-section{padding:88px 48px 16px;text-align:center;}
+.section-title{
+  font-family:'Cormorant Garamond',serif;font-weight:400;
+  font-size:clamp(26px,3.2vw,34px);letter-spacing:0.5px;color:var(--black);margin-bottom:14px;
+}
+.section-intro{
+  font-size:13px;color:var(--mid);font-weight:300;letter-spacing:0.2px;
+  max-width:440px;margin:0 auto 52px;line-height:1.8;
+}
+.stone-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:36px;max-width:1100px;margin:0 auto;
+}
+.stone-card{cursor:pointer;text-align:left;}
+.stone-card-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);margin-bottom:18px;}
+.stone-card-img img{
+  width:100%;height:100%;object-fit:cover;display:block;
+  transition:transform 0.7s ease;
+}
+.stone-card:hover .stone-card-img img{transform:scale(1.05);}
+.stone-card-name{
+  font-family:'Jost',sans-serif;font-weight:500;
+  font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--black);
+  margin-bottom:8px;
+  padding-bottom:10px;border-bottom:1px solid var(--border);
+  transition:border-color 0.3s;
+}
+.stone-card:hover .stone-card-name,
+.stone-card.active .stone-card-name{border-color:var(--gold);}
+.stone-card-tag{
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;
+  font-size:15px;color:var(--mid);line-height:1.55;
+}
+.stone-card.active .stone-card-tag{color:var(--pink-deep);}
+
+/* ── REFINE BY FINISH ── */
+.metal-section{
+  padding:56px 48px;text-align:center;
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  margin-top:80px;
+}
+.metal-chips{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;}
+.metal-chip{
+  font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  font-weight:400;color:var(--charcoal);
+  background:none;border:1px solid var(--light);
+  padding:10px 22px;cursor:pointer;transition:all 0.25s;
+  font-family:'Jost',sans-serif;
+}
+.metal-chip:hover{border-color:var(--pink);color:var(--pink-deep);}
+.metal-chip.active{background:var(--black);border-color:var(--black);color:white;}
+
+/* ── PRODUCT GRID ── */
+.grid-section{padding:80px 48px 100px;}
+.grid-heading{
+  text-align:center;
+  max-width:1400px;margin:0 auto 44px;
+}
+.grid-title{
+  font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:400;color:var(--black);
+  margin-bottom:8px;
+}
+.grid-sub{
+  font-size:12px;color:var(--mid);font-weight:300;letter-spacing:0.5px;
+}
+.grid-clear{
+  display:block;margin-top:10px;
+  font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--pink-deep);cursor:pointer;text-decoration:underline;
+  visibility:hidden;
+}
+.grid-clear.show{visibility:visible;}
+.pgrid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:28px;
+  max-width:1400px;margin:0 auto;
+}
+.pcard{cursor:pointer;}
+.pcard-img{aspect-ratio:4/5;overflow:hidden;background:var(--ivory);margin-bottom:14px;}
+.pcard-img img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
+.pcard:hover .pcard-img img{transform:scale(1.04);}
+.pcard-info{text-align:center;}
+.pcard-name{
+  font-size:12px;font-weight:300;color:var(--charcoal);
+  margin-bottom:5px;line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.pcard-price{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--black);}
+.pcard.hidden{display:none;}
+
+.load-more-wrap{text-align:center;margin-top:40px;}
+.load-more{
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--black);background:none;border:1px solid var(--black);
+  padding:14px 40px;cursor:pointer;font-family:'Jost',sans-serif;
+  transition:all 0.3s;
+}
+.load-more:hover{background:var(--black);color:white;}
+.load-more.done{display:none;}
+
+/* ── DEV NOTE (demo-only annotation) ── */
+.dev-note{
+  max-width:680px;margin:64px auto 0;padding:24px 28px;
+  background:var(--pink-pale);border:1px solid var(--border);
+  font-size:12px;color:var(--charcoal);line-height:1.8;
+}
+.dev-note strong{color:var(--pink-deep);}
+
+@media (max-width:900px){
+  .pgrid{grid-template-columns:repeat(2,1fr);}
+  .stone-grid{grid-template-columns:repeat(2,1fr);}
+}
+@media (max-width:560px){
+  nav{padding:0 20px;}
+  .nav-links{display:none;}
+  .col-hero,.stone-section,.metal-section,.grid-section{padding-left:20px;padding-right:20px;}
+}
+</style>
+</head>
+<body>
+
+<div class="demo-notice">Demo build — not live · <strong>Necklaces</strong> collection, real inventory · for review before integration</div>
+
+<nav>
+  <div class="logo">Mik<em>i</em>si</div>
+  <div class="nav-links">
+    <a href="demo-collections.html">Rings</a>
+    <a href="demo-collections-necklaces.html" class="active">Necklaces</a>
+    <a href="#">Bracelets</a>
+    <a href="#">Earrings</a>
+  </div>
+</nav>
+
+<div class="col-hero">
+  <h1>Necklaces</h1>
+  <p>Crafted from genuine 925 sterling silver. Timeless pieces designed to be layered and loved.</p>
+</div>
+
+<div class="stone-section">
+  <div class="section-title">Discover by Stone</div>
+  <div class="section-intro">Every stone tells a different story. Explore the collection that speaks to you.</div>
+  <div class="stone-grid" id="stone-grid"><!-- filled by JS --></div>
+</div>
+
+<div class="metal-section">
+  <div class="section-title" style="margin-bottom:24px;">Refine by Finish</div>
+  <div class="metal-chips" id="metal-chips"><!-- filled by JS --></div>
+</div>
+
+<div class="grid-section">
+  <div class="grid-heading">
+    <div class="grid-title" id="grid-title">Rings</div>
+    <div class="grid-sub" id="grid-sub">39 pieces, curated for you</div>
+    <div class="grid-clear" id="grid-clear" onclick="clearFilter()">Clear selection</div>
+  </div>
+  <div class="pgrid" id="pgrid"><!-- filled by JS --></div>
+  <div class="load-more-wrap">
+    <button class="load-more" id="load-more" onclick="loadMore()">Load More</button>
+  </div>
+</div>
+
+<div class="dev-note">
+  <strong>Note for Dennis:</strong> unlike Rings, Necklaces actually has real inventory in all four stone types
+  (Moissanite, Pearl, Cubic Zirconia, Gemstones), so all four tiles show here. Same data limitation as before
+  though: today's material data gives each product exactly one label (e.g. a product is either "Moissanite" or
+  "Gold," never both), so clicking a Metal Finish chip and a Stone card can't yet be combined — clicking one
+  clears the other. Real cross-filtering (a gold moissanite necklace showing under both) would need the
+  material-detection logic split into two separate fields. This demo reflects what today's data actually
+  supports; happy to scope that enhancement if you want true combined filtering before we integrate.
+</div>
+
+<script>
+const PRODUCTS = [{"id": 1135, "name": "Butterfly Clover Necklace", "price": 56.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919493/mikisi/products/1135_primary.jpg", "mat": "rose_gold"}, {"id": 887, "name": "Safety Pin Drop Pendant Necklace", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922220/mikisi/products/887_primary.jpg", "mat": "gold"}, {"id": 729, "name": "Mermaid Tail Pearl Pendant Necklace", "price": 75.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922856/mikisi/products/729_primary.jpg", "mat": "pearl"}, {"id": 1195, "name": "Geometric Round Donut Pendant Necklace", "price": 76.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785036625/mikisi/products/1195_primary.jpg", "mat": "silver"}, {"id": 1074, "name": "Green Stone Sunburst Pendant Necklace", "price": 77.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919053/mikisi/products/1074_primary.jpg", "mat": "gold"}, {"id": 1191, "name": "Geometric Double Interlocking Pendant Necklace", "price": 78.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785036546/mikisi/products/1191_primary.jpg", "mat": "rose_gold"}, {"id": 727, "name": "Starfish Pearl Collar Necklace", "price": 79.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924340/mikisi/products/727_primary.jpg", "mat": "pearl"}, {"id": 766, "name": "Heart Lock Adjustable Pendant Necklace", "price": 79.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921839/mikisi/products/766_primary.jpg", "mat": "gold"}, {"id": 1085, "name": "Geometric Tassel Pendant Necklace", "price": 79.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922102/mikisi/products/1085_primary.jpg", "mat": "gold"}, {"id": 1193, "name": "Clover Flower Pendant Necklace", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785036624/mikisi/products/1193_primary.jpg", "mat": "silver"}, {"id": 769, "name": "Star Crystal Pendant Necklace", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920035/mikisi/products/769_primary.jpg", "mat": "cubic_zirconia"}, {"id": 966, "name": "Heart Turquoise & Crystal Necklace", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921907/mikisi/products/966_primary.jpg", "mat": "semi_precious"}, {"id": 1182, "name": "Rose Quartz Pearl Beaded Necklace", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784663671/mikisi/products/1182_primary.jpg", "mat": "pearl"}, {"id": 931, "name": "Waterdrop Necklace", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922227/mikisi/products/931_primary.jpg", "mat": "moissanite"}, {"id": 768, "name": "Pearl Shell Pendant Necklace", "price": 83.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921007/mikisi/products/768_primary.jpg", "mat": "pearl"}, {"id": 767, "name": "Geometric Green & White Pendant Necklace", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923176/mikisi/products/767_primary.jpg", "mat": "white_gold"}, {"id": 747, "name": "Eye Shape Cubic Zirconia Halo Necklace", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924211/mikisi/products/747_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1236, "name": "Open Heart Outline Necklace", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552790/mikisi/products/1236_primary.jpg", "mat": "silver"}, {"id": 1235, "name": "Geometric Double Bar Necklace", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552790/mikisi/products/1235_primary.jpg", "mat": "white_gold"}, {"id": 926, "name": "Four Leaf Clover Necklace", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921828/mikisi/products/926_primary.jpg", "mat": "moissanite"}, {"id": 1239, "name": "Marquise Curved Wave Bar Necklace", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552790/mikisi/products/1239_primary.jpg", "mat": "white_gold"}, {"id": 1009, "name": "Round Open Circle Moissanite Necklace", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919253/mikisi/products/1009_primary.jpg", "mat": "moissanite"}, {"id": 1011, "name": "Six Pointed Star Moissanite Pendant Necklace", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923910/mikisi/products/1011_primary.jpg", "mat": "moissanite"}, {"id": 743, "name": "Geometric Tassel Drop Necklace", "price": 89.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923054/mikisi/products/743_primary.jpg", "mat": "gold"}, {"id": 933, "name": "Moissanite Lock Geometry Necklace", "price": 89.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921893/mikisi/products/933_primary.jpg", "mat": "moissanite"}, {"id": 924, "name": "Sunshine Necklace", "price": 90.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919675/mikisi/products/924_primary.jpg", "mat": "moissanite"}, {"id": 1234, "name": "Bow Ribbon Moissanite Necklace", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552790/mikisi/products/1234_primary.jpg", "mat": "moissanite"}, {"id": 1026, "name": "Moissanite Cluster Curved Bar Necklace", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921734/mikisi/products/1026_primary.jpg", "mat": "moissanite"}, {"id": 1012, "name": "Butterfly Heart Wing Moissanite Necklace", "price": 108.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924114/mikisi/products/1012_primary.jpg", "mat": "moissanite"}, {"id": 919, "name": "Lace Drop Tassel Necklace", "price": 109.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921179/mikisi/products/919_primary.jpg", "mat": "moissanite"}, {"id": 722, "name": "Diamond Heart Pendant Necklace", "price": 111.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919594/mikisi/products/722_primary.jpg", "mat": "rose_gold"}, {"id": 915, "name": "Waterdrop Enamel Pendant Necklace", "price": 113.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920444/mikisi/products/915_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1241, "name": "Marquise Cut Geometric Pendant Necklace", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1241_primary.jpg", "mat": "white_gold"}, {"id": 874, "name": "Shovel Pendant Cubic Zirconia Necklace", "price": 123.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922059/mikisi/products/874_primary.jpg", "mat": "cubic_zirconia"}, {"id": 773, "name": "Geometric Beaded Pendant Necklace", "price": 130.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919299/mikisi/products/773_primary.jpg", "mat": "gold"}, {"id": 721, "name": "Emerald Rectangular Halo Pendant Necklace", "price": 130.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919458/mikisi/products/721_primary.jpg", "mat": "semi_precious"}, {"id": 1245, "name": "Mocanite Geometric Heart Necklace", "price": 133.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1245_primary.jpg", "mat": "silver"}, {"id": 873, "name": "Snake Chain Round Bead Necklace", "price": 204.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922376/mikisi/products/873_primary.jpg", "mat": "gold"}, {"id": 1027, "name": "Geometric Pear Moissanite Pendant Necklace", "price": 222.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924130/mikisi/products/1027_primary.jpg", "mat": "moissanite"}];
+
+const STONE_META = {
+  moissanite:     { label:'Moissanite',     tag:'The brilliance of diamonds, crafted to shine for life.' },
+  cubic_zirconia: { label:'Cubic Zirconia', tag:'Brilliant clarity, for sparkle worn every day.' },
+  semi_precious:  { label:'Gemstones',      tag:"Nature's color, drawn from the earth and set to endure." },
+  pearl:          { label:'Pearl',          tag:'Quiet, timeless grace that never goes out of style.' },
+};
+const METAL_META = {
+  gold:       'Yellow Gold',
+  silver:     'Silver',
+  white_gold: 'White Gold',
+  rose_gold:  'Rose Gold',
+};
+const STONE_ORDER = ['moissanite','cubic_zirconia','semi_precious','pearl'];
+const METAL_ORDER = ['gold','silver','white_gold','rose_gold'];
+
+let activeFilter = null; // e.g. 'moissanite' or 'gold' -- single bucket, see dev-note
+let visibleCount = 16;
+const PAGE_SIZE = 16;
+
+function counts(){
+  const c = {};
+  PRODUCTS.forEach(p => c[p.mat] = (c[p.mat]||0) + 1);
+  return c;
+}
+
+function renderStoneCards(){
+  const c = counts();
+  const wrap = document.getElementById('stone-grid');
+  wrap.innerHTML = STONE_ORDER.filter(k => c[k] > 0).map(k => {
+    const meta = STONE_META[k];
+    const sample = PRODUCTS.find(p => p.mat === k);
+    return `<div class="stone-card" data-mat="${k}" onclick="setFilter('${k}')">
+      <div class="stone-card-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
+      <div class="stone-card-name">${meta.label}</div>
+      <div class="stone-card-tag">${meta.tag}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderMetalChips(){
+  const c = counts();
+  const wrap = document.getElementById('metal-chips');
+  wrap.innerHTML = METAL_ORDER.filter(k => c[k] > 0).map(k =>
+    `<button class="metal-chip" data-mat="${k}" onclick="setFilter('${k}')">${METAL_META[k]}</button>`
+  ).join('');
+}
+
+function setFilter(mat){
+  activeFilter = (activeFilter === mat) ? null : mat;
+  visibleCount = PAGE_SIZE;
+  render();
+}
+function clearFilter(){
+  activeFilter = null;
+  visibleCount = PAGE_SIZE;
+  render();
+}
+
+function render(){
+  const filtered = activeFilter ? PRODUCTS.filter(p => p.mat === activeFilter) : PRODUCTS;
+
+  document.querySelectorAll('.stone-card').forEach(el =>
+    el.classList.toggle('active', el.dataset.mat === activeFilter));
+  document.querySelectorAll('.metal-chip').forEach(el =>
+    el.classList.toggle('active', el.dataset.mat === activeFilter));
+
+  const label = activeFilter
+    ? (STONE_META[activeFilter]?.label || METAL_META[activeFilter])
+    : null;
+  document.getElementById('grid-title').textContent = label ? `${label} Necklaces` : 'Necklaces';
+  document.getElementById('grid-sub').textContent =
+    label ? `${filtered.length} timeless pieces` : `${filtered.length} pieces, curated for you`;
+  document.getElementById('grid-clear').classList.toggle('show', !!activeFilter);
+
+  const shown = filtered.slice(0, visibleCount);
+  document.getElementById('pgrid').innerHTML = shown.map(p => `
+    <div class="pcard">
+      <div class="pcard-img"><img src="${p.img}" alt="${p.name}" loading="lazy"/></div>
+      <div class="pcard-info">
+        <div class="pcard-name">${p.name}</div>
+        <div class="pcard-price">$${p.price.toFixed(2)}</div>
+      </div>
+    </div>`).join('');
+
+  const btn = document.getElementById('load-more');
+  btn.classList.toggle('done', visibleCount >= filtered.length);
+}
+
+function loadMore(){
+  visibleCount += PAGE_SIZE;
+  render();
+}
+
+renderStoneCards();
+renderMetalChips();
+render();
+</script>
+
+</body>
+</html>
