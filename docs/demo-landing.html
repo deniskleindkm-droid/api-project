@@ -213,10 +213,16 @@ nav{
   .values-section,.section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
   .values-grid{grid-template-columns:1fr 1fr;}
   .ig-grid{grid-template-columns:repeat(2,1fr);}
-  /* Hero headline: nowrap + a 44px floor made sense for the short original
-     "Real silver, rare finds." but "Made to be remembered." is longer and
-     was overflowing/getting clipped on any phone under ~500px. Let it wrap. */
-  .hero h1{white-space:normal;text-wrap:balance;font-size:clamp(34px,10vw,88px);}
+  /* Dennis wants the headline to stay on one line on mobile, not wrap --
+     so instead of allowing a wrap, shrink the floor low enough (via vw,
+     which scales with viewport width) that "Made to be remembered." fits
+     on one line even on a narrow phone. Keeps the original nowrap. */
+  .hero h1{font-size:clamp(22px,7vw,88px);}
+  .hero{padding-left:20px;padding-right:20px;}
+  /* Buttons: same story -- keep them side by side (not stacked), so shrink
+     padding/letter-spacing enough that both fit on one row on a narrow phone. */
+  .hero-btns{flex-wrap:nowrap;gap:8px;}
+  .hero-btns .btn-black,.hero-btns .btn-ghost{padding:12px 14px;font-size:8.5px;letter-spacing:1.5px;white-space:nowrap;}
   /* Hero banner's 640px MINIMUM height (from clamp(640px,62vw,860px)) meant
      the rotating banner alone was taller than most phone screens, before any
      other content was visible. Cap it to a sane viewport-relative height. */
