@@ -125,7 +125,14 @@ nav{
 }
 .col-tile:hover .col-tile-name{border-color:var(--gold);}
 .col-tile-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--mid);}
-@media (max-width:900px){.col-grid{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:900px){
+  .col-grid{grid-template-columns:repeat(2,1fr);}
+  /* 5 collections in a 2-column grid leaves the last tile (Anklets) alone
+     on the left with an empty gap on the right. Give it its own full-width
+     row, but cap and center the tile itself so it stays the same size as
+     its siblings rather than stretching/distorting to fill the row. */
+  .col-grid .col-tile:last-child{grid-column:1/-1;max-width:50%;margin:0 auto;}
+}
 
 /* ── SIGNATURE PIECES ── */
 .signature-section{padding:96px 48px;text-align:center;background:var(--ivory);}
