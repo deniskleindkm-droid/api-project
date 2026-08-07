@@ -128,10 +128,14 @@ nav{
 @media (max-width:900px){
   .col-grid{grid-template-columns:repeat(2,1fr);}
   /* 5 collections in a 2-column grid leaves the last tile (Anklets) alone
-     on the left with an empty gap on the right. Give it its own full-width
-     row, but cap and center the tile itself so it stays the same size as
-     its siblings rather than stretching/distorting to fill the row. */
-  .col-grid .col-tile:last-child{grid-column:1/-1;max-width:50%;margin:0 auto;}
+     on the left with an empty gap on the right. Span it across both
+     columns instead -- object-fit:cover means the photo just shows a wider
+     crop, no stretching/distortion, it becomes a full-width closing tile. */
+  .col-grid .col-tile:last-child{grid-column:1/-1;}
+  /* At full width, the base 2:3 portrait ratio would make this one tile
+     ~560px tall on a 375px phone -- switch to a wide banner ratio instead,
+     fitting for a full-width closing tile rather than a stretched portrait. */
+  .col-grid .col-tile:last-child .col-tile-img{aspect-ratio:16/9;}
 }
 
 /* ── SIGNATURE PIECES ── */
