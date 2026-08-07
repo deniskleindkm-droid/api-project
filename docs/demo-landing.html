@@ -46,6 +46,7 @@ nav{
 .nav-links{display:flex;gap:26px;}
 .nav-links a{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);text-decoration:none;}
 .nav-links a.active{color:var(--black);border-bottom:1px solid var(--pink);padding-bottom:4px;}
+.nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:6px;font-size:20px;color:var(--black);line-height:1;}
 
 /* ── HERO (ported as-is from the live site) ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
@@ -200,11 +201,30 @@ nav{
 .final-cta .btn-black:hover{background:var(--pink);color:white;}
 
 @media (max-width:560px){
-  nav{padding:0 20px;}
-  .nav-links{display:none;}
+  nav{padding:0 20px;position:relative;}
+  .nav-toggle{display:block;}
+  .nav-links{
+    display:none;position:absolute;top:76px;left:0;right:0;
+    flex-direction:column;gap:0;background:var(--cream);
+    border-bottom:1px solid var(--border);z-index:50;
+  }
+  .nav-links.open{display:flex;}
+  .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .values-section,.section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
   .values-grid{grid-template-columns:1fr 1fr;}
   .ig-grid{grid-template-columns:repeat(2,1fr);}
+  /* Hero headline: nowrap + a 44px floor made sense for the short original
+     "Real silver, rare finds." but "Made to be remembered." is longer and
+     was overflowing/getting clipped on any phone under ~500px. Let it wrap. */
+  .hero h1{white-space:normal;text-wrap:balance;font-size:clamp(34px,10vw,88px);}
+  /* Hero banner's 640px MINIMUM height (from clamp(640px,62vw,860px)) meant
+     the rotating banner alone was taller than most phone screens, before any
+     other content was visible. Cap it to a sane viewport-relative height. */
+  .hero-banner{height:60vh;}
+  /* 21:9 crops a portrait-leaning lifestyle photo down to a thin sliver on
+     narrow screens, losing most of the image -- use a taller ratio instead. */
+  .lifestyle-img{aspect-ratio:4/5;}
+  .experience-inner,.final-cta{padding-top:56px;padding-bottom:56px;}
 }
 </style>
 </head>
@@ -221,6 +241,7 @@ nav{
     <a href="demo-collections-bracelets.html">Bracelets</a>
     <a href="demo-collections-earrings.html">Earrings</a>
   </div>
+  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
 </nav>
 
 <!-- HERO — headline/tagline/CTAs updated for the new positioning (proof

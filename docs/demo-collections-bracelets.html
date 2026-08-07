@@ -51,6 +51,7 @@ nav{
 .nav-links{display:flex;gap:26px;}
 .nav-links a{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);text-decoration:none;}
 .nav-links a.active{color:var(--black);border-bottom:1px solid var(--pink);padding-bottom:4px;}
+.nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:6px;font-size:20px;color:var(--black);line-height:1;}
 
 /* ── SMALL HERO ── */
 .col-hero{
@@ -184,8 +185,15 @@ nav{
   .stone-grid{grid-template-columns:repeat(2,1fr);}
 }
 @media (max-width:560px){
-  nav{padding:0 20px;}
-  .nav-links{display:none;}
+  nav{padding:0 20px;position:relative;}
+  .nav-toggle{display:block;}
+  .nav-links{
+    display:none;position:absolute;top:76px;left:0;right:0;
+    flex-direction:column;gap:0;background:var(--cream);
+    border-bottom:1px solid var(--border);z-index:50;
+  }
+  .nav-links.open{display:flex;}
+  .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .col-hero,.stone-section,.metal-section,.grid-section{padding-left:20px;padding-right:20px;}
 }
 </style>
@@ -203,6 +211,7 @@ nav{
     <a href="demo-collections-bracelets.html" class="active">Bracelets</a>
     <a href="demo-collections-earrings.html">Earrings</a>
   </div>
+  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
 </nav>
 
 <div class="col-hero">
