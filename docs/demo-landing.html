@@ -115,7 +115,7 @@ nav{
 }
 .col-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;max-width:1400px;margin:0 auto;}
 .col-tile{cursor:pointer;text-align:left;}
-.col-tile-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);margin-bottom:16px;}
+.col-tile-img{aspect-ratio:2/3;overflow:hidden;background:var(--ivory);margin-bottom:16px;}
 .col-tile-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.7s ease;}
 .col-tile:hover .col-tile-img img{transform:scale(1.05);}
 .col-tile-name{
@@ -138,17 +138,21 @@ nav{
 .pcard-price{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--black);}
 @media (max-width:900px){.pgrid{grid-template-columns:repeat(2,1fr);}}
 
-/* ── PHOTOGRAPHY-PENDING PLACEHOLDER ── */
+/* ── PHOTOGRAPHY-PENDING PLACEHOLDER ──
+   Full-bleed and tall (not the 1400px-capped, short version from the first
+   draft) -- per Dennis: "this should be one of the largest sections on the
+   page," the emotional centerpiece, so it's sized to match a hero, not a
+   supporting block, even while the real photography is still pending. */
 .photo-pending{
-  aspect-ratio:16/8;background:var(--ivory);border:1px dashed var(--light);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
-  max-width:1400px;margin:0 auto;
+  aspect-ratio:16/11;width:100vw;margin-left:calc(-50vw + 50%);
+  background:var(--ivory);border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
 }
-.photo-pending-icon{font-size:22px;color:var(--gold);}
+.photo-pending-icon{font-size:26px;color:var(--gold);}
 .photo-pending-label{
-  font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);font-weight:400;
+  font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--mid);font-weight:400;
 }
-.photo-pending-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--light);}
+.photo-pending-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px;color:var(--light);}
 
 /* ── MIKISI EXPERIENCE ── */
 .experience-section{padding:0;text-align:center;background:white;}
@@ -219,33 +223,33 @@ nav{
   </div>
 </nav>
 
-<!-- HERO — unchanged copy/structure from live site, per your instruction -->
+<!-- HERO — headline/tagline/CTAs updated for the new positioning (proof
+     points -> feeling); banner structure and rotation mechanic unchanged -->
 <div class="hero">
-  <h1 class="fu fu2">Real silver, <em>rare finds.</em></h1>
-  <div class="hero-tagline fu fu3">Curated 925 sterling silver, honest prices, always something new.</div>
+  <h1 class="fu fu2">Made to be <em>remembered.</em></h1>
+  <div class="hero-tagline fu fu3">Timeless pieces, thoughtfully chosen for the way you live.</div>
   <div class="hero-btns fu fu4">
-    <button class="btn-black">Discover New Finds</button>
-    <button class="btn-ghost">Our Story</button>
+    <button class="btn-black">Explore Collections</button>
+    <button class="btn-ghost">Discover Mikisi</button>
   </div>
   <div class="hero-banner fu" style="animation-delay:0.78s">
     <div class="hero-rot-track" id="hero-rot-track"></div>
   </div>
 </div>
 
-<!-- MARQUEE -->
+<!-- MARQUEE — simplified to 3 statements per the new brand direction,
+     dropped "Real Silver / 925 / Honest Prices" as lead messaging -->
 <div class="marquee-wrap">
   <div class="marquee-track">
-    <span>Genuine 925 Sterling Silver</span><span class="dot">✦</span>
-    <span>Unique Finds</span><span class="dot">✦</span>
-    <span>Real Silver · Honest Prices</span><span class="dot">✦</span>
-    <span>Fast Express Shipping · 4–5 Days</span><span class="dot">✦</span>
-    <span>Rose Gold · Silver · Gold</span><span class="dot">✦</span>
-    <span>New Finds Added Often</span><span class="dot">✦</span>
-    <span>Genuine 925 Sterling Silver</span><span class="dot">✦</span>
-    <span>Unique Finds</span><span class="dot">✦</span>
-    <span>Real Silver · Honest Prices</span><span class="dot">✦</span>
-    <span>Fast Express Shipping · 4–5 Days</span><span class="dot">✦</span>
-    <span>Rose Gold · Silver · Gold</span><span class="dot">✦</span>
+    <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
+    <span>DHL Express · 4–6 Days</span><span class="dot">✦</span>
+    <span>Crafted to Last</span><span class="dot">✦</span>
+    <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
+    <span>DHL Express · 4–6 Days</span><span class="dot">✦</span>
+    <span>Crafted to Last</span><span class="dot">✦</span>
+    <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
+    <span>DHL Express · 4–6 Days</span><span class="dot">✦</span>
+    <span>Crafted to Last</span><span class="dot">✦</span>
   </div>
 </div>
 
@@ -289,15 +293,17 @@ nav{
   <div class="pgrid" id="signature-grid"><!-- filled by JS --></div>
 </div>
 
-<!-- THE MIKISI EXPERIENCE — photography pending -->
+<!-- THE MIKISI EXPERIENCE — the emotional centerpiece of the page, per
+     Dennis's direction; photography pending but sized/positioned as such
+     already so it's ready the moment real shots exist -->
 <div class="experience-section">
   <div class="experience-inner">
     <div class="section-title">The Mikisi Experience</div>
-    <div class="section-intro">Every order arrives beautifully presented, because luxury begins before you wear it.</div>
+    <div class="section-intro">Every order arrives in our signature pouch, because luxury begins before you wear it.</div>
     <div class="photo-pending">
       <div class="photo-pending-icon">✦</div>
       <div class="photo-pending-label">Awaiting packaging photography</div>
-      <div class="photo-pending-sub">Your pouch, thank-you card &amp; presentation shots go here</div>
+      <div class="photo-pending-sub">The pink pouch, thank-you card &amp; soft presentation shots go here</div>
     </div>
   </div>
 </div>
@@ -312,7 +318,16 @@ nav{
   </div>
 </div>
 
-<!-- WHY STERLING SILVER -->
+<!-- INSTAGRAM GALLERY -->
+<div class="ig-section">
+  <div class="section-title">Find Us on Instagram</div>
+  <div class="section-intro">@mikisi — real pieces, real posts.</div>
+  <div class="ig-grid" id="ig-grid"><!-- filled by JS --></div>
+</div>
+
+<!-- WHY STERLING SILVER — moved below the emotional sections (Experience,
+     Lifestyle, Instagram) per Dennis: customers fall in love first, then
+     learn why the quality matters, right before the closing CTA -->
 <div class="silver-section">
   <div class="section-title">Why Sterling Silver</div>
   <div class="silver-grid">
@@ -334,28 +349,31 @@ nav{
   </div>
 </div>
 
-<!-- INSTAGRAM GALLERY -->
-<div class="ig-section">
-  <div class="section-title">Find Us on Instagram</div>
-  <div class="section-intro">@mikisi — real pieces, real posts.</div>
-  <div class="ig-grid" id="ig-grid"><!-- filled by JS --></div>
-</div>
-
 <!-- FINAL CTA — photography pending, dark treatment works without it for now -->
 <div class="final-cta">
-  <h2>Luxury Delivered.</h2>
+  <h2>Begin Your Mikisi Story.</h2>
   <button class="btn-black">Shop Mikisi</button>
 </div>
 
 <div style="max-width:680px;margin:64px auto;padding:24px 28px;background:#f9eef2;border:1px solid #ece5dd;font-size:12px;color:#2a2a2a;line-height:1.8;">
-  <strong style="color:#b8627a;">Note for Dennis:</strong> Hero is unchanged from the live site, just re-pointed to a
-  rotation of 6 real Signature-flagged product photos instead of the live API call. Collections grid, Signature
-  Pieces, and the Instagram gallery all use real data (5 real collections, 8 real is_premium products, 9 real
-  posted Instagram photos). The Editorial Lifestyle section uses a real AI-generated lifestyle photo from the
-  RAWSHOT pipeline (content_lifestyle_url) — 18 products have these if you want to rotate/pick a different one.
-  The Mikisi Experience section and the Final CTA background are placeholders — genuinely blocked on your
-  packaging photography, which isn't in the system yet. Reviews section skipped entirely, as discussed — only 4
-  real orders exist, not enough for genuine testimonials.
+  <strong style="color:#b8627a;">Note for Dennis:</strong> Second pass per your positioning shift. Hero headline/tagline/
+  buttons rewritten to drop "Real Silver / 925 / Honest Prices" as lead messaging ("Made to be remembered" +
+  "Explore Collections" / "Discover Mikisi"), marquee simplified to 3 statements, Collections tiles are now taller
+  (2:3, more vertical/editorial), The Mikisi Experience placeholder is now full-bleed and hero-sized instead of a
+  small boxed block, and Why Sterling Silver moved to right before the final CTA (after Experience/Lifestyle/
+  Instagram) so quality is explained after the emotional pull, not before it. Final CTA now reads "Begin Your
+  Mikisi Story."
+  <br/><br/>
+  <strong style="color:#b8627a;">One thing I didn't touch:</strong> Brand Values still has "925 / Genuine Sterling
+  Silver" as one of its 4 items — I read your note as removing the FRONT-DOOR "Real Silver, Rare Finds" tagline,
+  not the material info entirely (you said keep Why Sterling Silver, just move it down), so I left this as a
+  supporting proof point rather than stripping it too. Say the word if you want that gone as well.
+  <br/><br/>
+  <strong style="color:#b8627a;">Not built yet:</strong> the pouch-as-recurring-motif idea (hero, lifestyle,
+  collections, emails, social) is a real cross-cutting design principle, not a single section — it needs the
+  actual pouch photography first before it can thread through the site. Hero is still unchanged structurally
+  (real product-photo rotation), still waiting on the "woman + jewelry + pouch" lifestyle shot per your
+  instruction to leave that for later.
 </div>
 
 <script>
