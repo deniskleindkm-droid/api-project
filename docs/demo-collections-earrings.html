@@ -68,8 +68,12 @@ nav{
   letter-spacing:0.3px;max-width:480px;margin:0 auto;line-height:1.7;
 }
 
+/* ── SHOP BY STYLE -- reuses .stone-card styling below so it's visually
+   identical to the stone tiles, just a separate row/heading ── */
+.style-section{padding:88px 48px 0;text-align:center;}
+
 /* ── DISCOVER BY STONE ── */
-.stone-section{padding:88px 48px 16px;text-align:center;}
+.stone-section{padding:72px 48px 16px;text-align:center;}
 .section-title{
   font-family:'Cormorant Garamond',serif;font-weight:400;
   font-size:clamp(26px,3.2vw,34px);letter-spacing:0.5px;color:var(--black);margin-bottom:14px;
@@ -215,6 +219,12 @@ nav{
   <p>Crafted from genuine 925 sterling silver. Timeless pieces designed to catch the light.</p>
 </div>
 
+<div class="style-section">
+  <div class="section-title">Shop by Style</div>
+  <div class="section-intro">A signature silhouette, in every stone.</div>
+  <div class="stone-grid" id="style-grid"><!-- filled by JS --></div>
+</div>
+
 <div class="stone-section">
   <div class="section-title">Discover by Stone</div>
   <div class="section-intro">Every stone tells a different story. Explore the collection that speaks to you.</div>
@@ -239,16 +249,17 @@ nav{
 </div>
 
 <div class="dev-note">
-  <strong>Note for Dennis:</strong> Stone and Metal Finish are independent filters here and combine with each
-  other (e.g. click Cubic Zirconia, then Gold, to see only gold CZ earrings) — same split-classification approach
-  as Bracelets. No Style spotlight on this page yet: about 40% of published Earrings have "Hoop"/"Huggie" in the
-  name, which could work the same way Tennis Bracelets did if you want that added tomorrow. Also carrying over
-  from Bracelets: this independent stone+metal split is real for the demo, but the live pricing engine
-  (jewelry_pricing.py) still stores one combined label per product — integrating this needs a backend change.
+  <strong>Note for Dennis:</strong> Stone, Metal Finish, and Style (Hoop/Huggie) are three independent filters
+  that all combine with each other — same pattern as the final Bracelets version (Style vs. Stone act as
+  alternatives to each other since a piece's primary framing is either "it's a Hoop" or "it's Moissanite," not
+  both; Metal Finish always layers on top of whichever is active). 18 of 39 published earrings (46%) are
+  Hoop/Huggie — an even bigger share than Tennis Bracelets was. This independent stone+metal split is real for
+  the demo, but the live pricing engine (jewelry_pricing.py) still stores one combined label per product —
+  integrating this needs a backend change, not just a frontend one.
 </div>
 
 <script>
-const PRODUCTS = [{"id": 850, "name": "Chain Threader Tassel Earring", "price": 48.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920986/mikisi/products/850_primary.jpg", "metal": "gold"}, {"id": 591, "name": "Ocean Mermaid Tail Earrings", "price": 48.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924320/mikisi/products/591_primary.jpg", "metal": "silver"}, {"id": 634, "name": "Cubic Zirconia Huggie Hoops Earring", "price": 51.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920225/mikisi/products/634_primary.jpg", "metal": "gold", "stone": "cubic_zirconia"}, {"id": 1163, "name": "Irregular Geometric Smooth Polished Huggie Hoops Earring", "price": 53.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784317368/mikisi/products/1163_primary.jpg", "metal": "gold"}, {"id": 534, "name": "Round and Cube Zirconia Hoops Earring", "price": 53.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923773/mikisi/products/534_primary.jpg", "metal": "white_gold", "stone": "cubic_zirconia"}, {"id": 585, "name": "Cactus Cubic Zirconia Earrings", "price": 53.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924213/mikisi/products/585_primary.jpg", "metal": "gold", "stone": "cubic_zirconia"}, {"id": 537, "name": "Geometric Twisted Wrap Hoops Earring", "price": 55.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921060/mikisi/products/537_primary.jpg", "metal": "gold"}, {"id": 649, "name": "Hollow Geometric Huggie Hoops Earring", "price": 55.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923743/mikisi/products/649_primary.jpg", "metal": "silver"}, {"id": 1132, "name": "Water Drop Polished Huggie Hoop Earrings", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919538/mikisi/products/1132_primary.jpg", "metal": "white_gold"}, {"id": 559, "name": "Geometric Marquise Spiked Hoop Earring", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920207/mikisi/products/559_primary.jpg", "metal": "white_gold", "stone": "semi_precious"}, {"id": 861, "name": "French Bow Tassel Earring", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923339/mikisi/products/861_primary.jpg", "metal": "silver"}, {"id": 535, "name": "Twisted Geometric Hoops Earring", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921912/mikisi/products/535_primary.jpg", "metal": "gold"}, {"id": 598, "name": "Blue Star Sea Urchin Hoops Earring", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920291/mikisi/products/598_primary.jpg", "metal": "silver"}, {"id": 592, "name": "Retro Turquoise Star Earrings", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923353/mikisi/products/592_primary.jpg", "metal": "silver", "stone": "semi_precious"}, {"id": 478, "name": "Sculptural Bow Pearl Drop Earrings", "price": 74.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922871/mikisi/products/478_primary.jpg", "metal": "gold", "stone": "pearl"}, {"id": 1176, "name": "Eight-Pointed Star Cubic Zirconia Earrings", "price": 75.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919914/mikisi/products/1176_primary.jpg", "metal": "gold", "stone": "cubic_zirconia"}, {"id": 584, "name": "Colorful Zirconia Drops Earring", "price": 75.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922850/mikisi/products/584_primary.jpg", "metal": "gold", "stone": "cubic_zirconia"}, {"id": 1162, "name": "Geometric Cubic Zirconia Huggie Hoops Earring", "price": 76.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784317366/mikisi/products/1162_primary.jpg", "metal": "white_gold", "stone": "cubic_zirconia"}, {"id": 1284, "name": "Moissanite Hoop Earrings", "price": 78.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644003/mikisi/products/1284_primary.jpg", "metal": "silver", "stone": "moissanite"}, {"id": 855, "name": "Chalcedony and Gold Drop Earring", "price": 79.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924761/mikisi/products/855_primary.jpg", "metal": "gold"}, {"id": 1204, "name": "Transparent White Crystal Leverback Earring", "price": 79.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785208863/mikisi/products/1204_primary.jpg", "metal": "silver", "stone": "cubic_zirconia"}, {"id": 1173, "name": "Modern Minimalist Huggie Earrings", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784663533/mikisi/products/1173_primary.jpg", "metal": "silver"}, {"id": 1283, "name": "Geometric Moissanite Hoop Earrings", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644000/mikisi/products/1283_primary.jpg", "metal": "white_gold", "stone": "moissanite"}, {"id": 594, "name": "Ocean Pearl Star Earrings", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920288/mikisi/products/594_primary.jpg", "metal": "gold", "stone": "pearl"}, {"id": 1268, "name": "Marquise Moissanite Stud Drop Earrings", "price": 83.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643734/mikisi/products/1268_primary.jpg", "metal": "white_gold", "stone": "moissanite"}, {"id": 1281, "name": "Graduated Round Moissanite Hoop Earrings", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643987/mikisi/products/1281_primary.jpg", "metal": "silver", "stone": "moissanite"}, {"id": 651, "name": "Geometric Water Drop Studs Earring", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919727/mikisi/products/651_primary.jpg", "metal": "gold"}, {"id": 617, "name": "Irregular Geometric Cubic Zirconia Hoops Earring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924229/mikisi/products/617_primary.jpg", "metal": "gold", "stone": "cubic_zirconia"}, {"id": 856, "name": "Bow Knot Star Chain Earring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924420/mikisi/products/856_primary.jpg", "metal": "silver", "stone": "cubic_zirconia"}, {"id": 1103, "name": "Geometric U Shape Huggie Hoop Earrings", "price": 86.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920907/mikisi/products/1103_primary.jpg", "metal": "gold"}, {"id": 600, "name": "Butterfly Vine Hoops Earring", "price": 86.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919662/mikisi/products/600_primary.jpg", "metal": "silver"}, {"id": 853, "name": "Bow Knot Tassel Earring", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923027/mikisi/products/853_primary.jpg", "metal": "silver"}, {"id": 590, "name": "Powder Blue Shell Star Earrings", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923895/mikisi/products/590_primary.jpg", "metal": "silver"}, {"id": 619, "name": "Colorful Dopamine Double Huggie Earring", "price": 107.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923351/mikisi/products/619_primary.jpg", "metal": "gold"}, {"id": 863, "name": "Waterdrop Crystal Drop Earring", "price": 110.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924422/mikisi/products/863_primary.jpg", "metal": "silver", "stone": "cubic_zirconia"}, {"id": 851, "name": "Moissanite Geometric Drops Earring", "price": 110.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924565/mikisi/products/851_primary.jpg", "metal": "silver", "stone": "moissanite"}, {"id": 864, "name": "Teardrop Crystal Drop Earring", "price": 113.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920285/mikisi/products/864_primary.jpg", "metal": "silver", "stone": "cubic_zirconia"}, {"id": 859, "name": "Pearl Geometric Gold Drop Earring", "price": 115.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923224/mikisi/products/859_primary.jpg", "metal": "gold", "stone": "pearl"}, {"id": 1175, "name": "Elegant Net Design Pearl Earrings", "price": 216.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784663533/mikisi/products/1175_primary.jpg", "metal": "silver", "stone": "pearl"}];
+const PRODUCTS = [{"id": 850, "name": "Chain Threader Tassel Earring", "price": 48.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920986/mikisi/products/850_primary.jpg", "metal": "gold"}, {"id": 591, "name": "Ocean Mermaid Tail Earrings", "price": 48.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924320/mikisi/products/591_primary.jpg", "metal": "silver"}, {"id": 634, "name": "Cubic Zirconia Huggie Hoops Earring", "price": 51.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920225/mikisi/products/634_primary.jpg", "metal": "gold", "stone": "cubic_zirconia", "style": "hoop"}, {"id": 1163, "name": "Irregular Geometric Smooth Polished Huggie Hoops Earring", "price": 53.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784317368/mikisi/products/1163_primary.jpg", "metal": "gold", "style": "hoop"}, {"id": 534, "name": "Round and Cube Zirconia Hoops Earring", "price": 53.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923773/mikisi/products/534_primary.jpg", "metal": "white_gold", "stone": "cubic_zirconia", "style": "hoop"}, {"id": 585, "name": "Cactus Cubic Zirconia Earrings", "price": 53.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924213/mikisi/products/585_primary.jpg", "metal": "gold", "stone": "cubic_zirconia"}, {"id": 537, "name": "Geometric Twisted Wrap Hoops Earring", "price": 55.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921060/mikisi/products/537_primary.jpg", "metal": "gold", "style": "hoop"}, {"id": 649, "name": "Hollow Geometric Huggie Hoops Earring", "price": 55.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923743/mikisi/products/649_primary.jpg", "metal": "silver", "style": "hoop"}, {"id": 1132, "name": "Water Drop Polished Huggie Hoop Earrings", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919538/mikisi/products/1132_primary.jpg", "metal": "white_gold", "style": "hoop"}, {"id": 559, "name": "Geometric Marquise Spiked Hoop Earring", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920207/mikisi/products/559_primary.jpg", "metal": "white_gold", "stone": "semi_precious", "style": "hoop"}, {"id": 861, "name": "French Bow Tassel Earring", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923339/mikisi/products/861_primary.jpg", "metal": "silver"}, {"id": 535, "name": "Twisted Geometric Hoops Earring", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921912/mikisi/products/535_primary.jpg", "metal": "gold", "style": "hoop"}, {"id": 598, "name": "Blue Star Sea Urchin Hoops Earring", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920291/mikisi/products/598_primary.jpg", "metal": "silver", "style": "hoop"}, {"id": 592, "name": "Retro Turquoise Star Earrings", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923353/mikisi/products/592_primary.jpg", "metal": "silver", "stone": "semi_precious"}, {"id": 478, "name": "Sculptural Bow Pearl Drop Earrings", "price": 74.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922871/mikisi/products/478_primary.jpg", "metal": "gold", "stone": "pearl"}, {"id": 1176, "name": "Eight-Pointed Star Cubic Zirconia Earrings", "price": 75.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919914/mikisi/products/1176_primary.jpg", "metal": "gold", "stone": "cubic_zirconia"}, {"id": 584, "name": "Colorful Zirconia Drops Earring", "price": 75.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922850/mikisi/products/584_primary.jpg", "metal": "gold", "stone": "cubic_zirconia"}, {"id": 1162, "name": "Geometric Cubic Zirconia Huggie Hoops Earring", "price": 76.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784317366/mikisi/products/1162_primary.jpg", "metal": "white_gold", "stone": "cubic_zirconia", "style": "hoop"}, {"id": 1284, "name": "Moissanite Hoop Earrings", "price": 78.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644003/mikisi/products/1284_primary.jpg", "metal": "silver", "stone": "moissanite", "style": "hoop"}, {"id": 855, "name": "Chalcedony and Gold Drop Earring", "price": 79.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924761/mikisi/products/855_primary.jpg", "metal": "gold"}, {"id": 1204, "name": "Transparent White Crystal Leverback Earring", "price": 79.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785208863/mikisi/products/1204_primary.jpg", "metal": "silver", "stone": "cubic_zirconia"}, {"id": 1173, "name": "Modern Minimalist Huggie Earrings", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784663533/mikisi/products/1173_primary.jpg", "metal": "silver", "style": "hoop"}, {"id": 1283, "name": "Geometric Moissanite Hoop Earrings", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644000/mikisi/products/1283_primary.jpg", "metal": "white_gold", "stone": "moissanite", "style": "hoop"}, {"id": 594, "name": "Ocean Pearl Star Earrings", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920288/mikisi/products/594_primary.jpg", "metal": "gold", "stone": "pearl"}, {"id": 1268, "name": "Marquise Moissanite Stud Drop Earrings", "price": 83.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643734/mikisi/products/1268_primary.jpg", "metal": "white_gold", "stone": "moissanite"}, {"id": 1281, "name": "Graduated Round Moissanite Hoop Earrings", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643987/mikisi/products/1281_primary.jpg", "metal": "silver", "stone": "moissanite", "style": "hoop"}, {"id": 651, "name": "Geometric Water Drop Studs Earring", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919727/mikisi/products/651_primary.jpg", "metal": "gold"}, {"id": 617, "name": "Irregular Geometric Cubic Zirconia Hoops Earring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924229/mikisi/products/617_primary.jpg", "metal": "gold", "stone": "cubic_zirconia", "style": "hoop"}, {"id": 856, "name": "Bow Knot Star Chain Earring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924420/mikisi/products/856_primary.jpg", "metal": "silver", "stone": "cubic_zirconia"}, {"id": 1103, "name": "Geometric U Shape Huggie Hoop Earrings", "price": 86.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920907/mikisi/products/1103_primary.jpg", "metal": "gold", "style": "hoop"}, {"id": 600, "name": "Butterfly Vine Hoops Earring", "price": 86.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919662/mikisi/products/600_primary.jpg", "metal": "silver", "style": "hoop"}, {"id": 853, "name": "Bow Knot Tassel Earring", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923027/mikisi/products/853_primary.jpg", "metal": "silver"}, {"id": 590, "name": "Powder Blue Shell Star Earrings", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923895/mikisi/products/590_primary.jpg", "metal": "silver"}, {"id": 619, "name": "Colorful Dopamine Double Huggie Earring", "price": 107.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923351/mikisi/products/619_primary.jpg", "metal": "gold", "style": "hoop"}, {"id": 863, "name": "Waterdrop Crystal Drop Earring", "price": 110.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924422/mikisi/products/863_primary.jpg", "metal": "silver", "stone": "cubic_zirconia"}, {"id": 851, "name": "Moissanite Geometric Drops Earring", "price": 110.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924565/mikisi/products/851_primary.jpg", "metal": "silver", "stone": "moissanite"}, {"id": 864, "name": "Teardrop Crystal Drop Earring", "price": 113.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920285/mikisi/products/864_primary.jpg", "metal": "silver", "stone": "cubic_zirconia"}, {"id": 859, "name": "Pearl Geometric Gold Drop Earring", "price": 115.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923224/mikisi/products/859_primary.jpg", "metal": "gold", "stone": "pearl"}, {"id": 1175, "name": "Elegant Net Design Pearl Earrings", "price": 216.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784663533/mikisi/products/1175_primary.jpg", "metal": "silver", "stone": "pearl"}];
 
 const STONE_META = {
   moissanite:     { label:'Moissanite',     tag:'The brilliance of diamonds, crafted to shine for life.' },
@@ -262,11 +273,22 @@ const METAL_META = {
   white_gold: 'White Gold',
   rose_gold:  'Rose Gold',
 };
+// Style, Stone and Metal are all independently detected fields on each
+// product -- Metal always combines (ANDs) with whichever of Stone/Style is
+// active. Stone and Style act as alternatives to each other (selecting one
+// clears the other), since a piece's primary framing is either "it's a
+// Hoop" or "it's Moissanite," not both at once.
+const STYLE_META = {
+  hoop: { label:'Hoop & Huggie',
+          tag:'The everyday essential. Effortless circles, made to catch the light.' },
+};
 const STONE_ORDER = ['moissanite','cubic_zirconia','semi_precious','pearl'];
 const METAL_ORDER = ['gold','silver','white_gold','rose_gold'];
+const STYLE_ORDER = ['hoop'];
 
 let activeStone = null;
 let activeMetal = null;
+let activeStyle = null;
 let visibleCount = 16;
 const PAGE_SIZE = 16;
 
@@ -279,6 +301,25 @@ function metalCounts(){
   const c = {};
   PRODUCTS.forEach(p => c[p.metal] = (c[p.metal]||0) + 1);
   return c;
+}
+function styleCounts(){
+  const c = {};
+  PRODUCTS.forEach(p => { if (p.style) c[p.style] = (c[p.style]||0) + 1; });
+  return c;
+}
+
+function renderStyleTiles(){
+  const c = styleCounts();
+  const wrap = document.getElementById('style-grid');
+  wrap.innerHTML = STYLE_ORDER.filter(k => c[k] > 0).map(k => {
+    const meta = STYLE_META[k];
+    const sample = PRODUCTS.find(p => p.style === k);
+    return `<div class="stone-card" data-style="${k}" onclick="setStyleFilter('${k}')">
+      <div class="stone-card-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
+      <div class="stone-card-name">${meta.label}</div>
+      <div class="stone-card-tag">${meta.tag}</div>
+    </div>`;
+  }).join('');
 }
 
 function renderStoneCards(){
@@ -305,17 +346,25 @@ function renderMetalChips(){
 
 function setStoneFilter(stone){
   activeStone = (activeStone === stone) ? null : stone;
+  activeStyle = null; // Stone and Style are alternatives to each other
+  visibleCount = PAGE_SIZE;
+  render();
+}
+function setStyleFilter(style){
+  activeStyle = (activeStyle === style) ? null : style;
+  activeStone = null; // Stone and Style are alternatives to each other
   visibleCount = PAGE_SIZE;
   render();
 }
 function setMetalFilter(metal){
-  activeMetal = (activeMetal === metal) ? null : metal;
+  activeMetal = (activeMetal === metal) ? null : metal; // always independent
   visibleCount = PAGE_SIZE;
   render();
 }
 function clearFilter(){
   activeStone = null;
   activeMetal = null;
+  activeStyle = null;
   visibleCount = PAGE_SIZE;
   render();
 }
@@ -323,20 +372,24 @@ function clearFilter(){
 function render(){
   let filtered = PRODUCTS;
   if (activeStone) filtered = filtered.filter(p => p.stone === activeStone);
+  if (activeStyle) filtered = filtered.filter(p => p.style === activeStyle);
   if (activeMetal) filtered = filtered.filter(p => p.metal === activeMetal);
 
-  document.querySelectorAll('.stone-card').forEach(el =>
+  document.querySelectorAll('.stone-card[data-stone]').forEach(el =>
     el.classList.toggle('active', el.dataset.stone === activeStone));
+  document.querySelectorAll('.stone-card[data-style]').forEach(el =>
+    el.classList.toggle('active', el.dataset.style === activeStyle));
   document.querySelectorAll('.metal-chip').forEach(el =>
     el.classList.toggle('active', el.dataset.metal === activeMetal));
 
   const parts = [];
   if (activeMetal) parts.push(METAL_META[activeMetal]);
   if (activeStone) parts.push(STONE_META[activeStone].label);
+  else if (activeStyle) parts.push(STYLE_META[activeStyle].label);
   const title = parts.length ? `${parts.join(' ')} Earrings` : 'Earrings';
   document.getElementById('grid-title').textContent = title;
 
-  const anyActive = !!(activeStone || activeMetal);
+  const anyActive = !!(activeStone || activeMetal || activeStyle);
   document.getElementById('grid-sub').textContent = anyActive
     ? `${filtered.length} timeless piece${filtered.length===1?'':'s'}`
     : `${filtered.length} piece${filtered.length===1?'':'s'}, curated for you`;
@@ -361,6 +414,7 @@ function loadMore(){
   render();
 }
 
+renderStyleTiles();
 renderStoneCards();
 renderMetalChips();
 render();
