@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mikisi — Editorial Homepage Demo</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --cream:#fdf9f6;
+  --ivory:#f7f2ed;
+  --pink:#d4849c;
+  --pink-deep:#b8627a;
+  --pink-pale:#f9eef2;
+  --pink-mist:#fdf5f7;
+  --gold:#c9a96e;
+  --gold-light:#e8d5b0;
+  --gold-deep:#a8854a;
+  --black:#0e0e0e;
+  --charcoal:#2a2a2a;
+  --mid:#6b6b6b;
+  --light:#d8d0c8;
+  --border:#ece5dd;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--black);}
+
+/* ── DEMO NOTICE ── */
+.demo-notice{
+  background:var(--black);color:var(--cream);text-align:center;
+  padding:10px 20px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:300;
+}
+.demo-notice strong{color:var(--gold-light);font-weight:500;}
+
+/* ── NAV ── */
+nav{
+  background:var(--cream);padding:0 48px;
+  display:flex;justify-content:space-between;align-items:center;
+  height:76px;border-bottom:1px solid var(--border);
+}
+.logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:400;letter-spacing:6px;color:var(--black);text-transform:uppercase;}
+.logo em{color:var(--pink);font-style:italic;}
+.nav-links{display:flex;gap:26px;}
+.nav-links a{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);text-decoration:none;}
+.nav-links a.active{color:var(--black);border-bottom:1px solid var(--pink);padding-bottom:4px;}
+
+/* ── HERO (ported as-is from the live site) ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+.fu{animation:fadeUp 0.9s ease forwards;opacity:0;}
+.fu2{animation-delay:0.28s;}.fu3{animation-delay:0.45s;}.fu4{animation-delay:0.62s;}
+.hero{
+  min-height:88vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:var(--cream);padding:72px 48px 0;position:relative;overflow:hidden;
+}
+.hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold-light),transparent);}
+.hero h1{
+  font-family:'Cormorant Garamond',serif;font-size:clamp(44px,6.5vw,88px);font-weight:300;
+  line-height:1.04;color:var(--black);text-align:center;white-space:nowrap;margin-bottom:18px;letter-spacing:-0.5px;
+}
+.hero h1 em{color:var(--pink);font-style:italic;}
+.hero-tagline{
+  font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:300;font-style:italic;
+  color:var(--mid);text-align:center;margin-bottom:40px;line-height:1.6;
+}
+.hero-btns{display:flex;gap:14px;justify-content:center;margin-bottom:56px;flex-wrap:wrap;}
+.btn-black{
+  background:var(--black);color:white;border:none;padding:14px 40px;font-size:10px;font-weight:400;
+  letter-spacing:3px;text-transform:uppercase;cursor:pointer;font-family:'Jost',sans-serif;transition:all 0.3s;
+}
+.btn-black:hover{background:var(--pink);}
+.btn-ghost{
+  background:none;color:var(--black);border:1px solid var(--black);padding:14px 40px;font-size:10px;font-weight:400;
+  letter-spacing:3px;text-transform:uppercase;cursor:pointer;font-family:'Jost',sans-serif;transition:all 0.3s;
+}
+.btn-ghost:hover{border-color:var(--pink);color:var(--pink);}
+.hero-banner{
+  width:100vw;margin-left:calc(-50vw + 50%);height:clamp(640px,62vw,860px);
+  overflow:hidden;background:var(--ivory);position:relative;
+}
+.hero-rot-track{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;transition:transform 0.9s cubic-bezier(.4,0,.2,1);}
+.hero-rot-slide{flex:0 0 100%;width:100%;height:100%;background-size:cover;background-position:center;background-repeat:no-repeat;}
+
+/* ── MARQUEE ── */
+.marquee-wrap{background:var(--black);overflow:hidden;padding:13px 0;white-space:nowrap;}
+.marquee-track{display:inline-block;animation:marquee 30s linear infinite;}
+@keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+.marquee-track span{font-size:10px;font-weight:300;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin:0 28px;}
+.marquee-track span.dot{color:var(--gold);margin:0 6px;}
+
+/* ── BRAND VALUES (replaces the old 5-icon trust bar) ── */
+.values-section{padding:80px 48px;border-bottom:1px solid var(--border);background:white;}
+.values-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:40px;max-width:1200px;margin:0 auto;
+}
+.value-item{text-align:center;}
+.value-mark{
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-size:28px;color:var(--gold);margin-bottom:16px;
+}
+.value-title{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--black);font-weight:500;margin-bottom:10px;}
+.value-sub{font-size:12.5px;color:var(--mid);font-weight:300;line-height:1.6;}
+@media (max-width:900px){.values-grid{grid-template-columns:repeat(2,1fr);}}
+
+/* ── SHOP COLLECTIONS ── */
+.section-wrap{padding:96px 48px;text-align:center;}
+.section-title{
+  font-family:'Cormorant Garamond',serif;font-weight:400;font-size:clamp(28px,3.4vw,38px);
+  letter-spacing:0.3px;color:var(--black);margin-bottom:14px;
+}
+.section-intro{
+  font-size:13px;color:var(--mid);font-weight:300;letter-spacing:0.2px;
+  max-width:480px;margin:0 auto 56px;line-height:1.8;
+}
+.col-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;max-width:1400px;margin:0 auto;}
+.col-tile{cursor:pointer;text-align:left;}
+.col-tile-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);margin-bottom:16px;}
+.col-tile-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.7s ease;}
+.col-tile:hover .col-tile-img img{transform:scale(1.05);}
+.col-tile-name{
+  font-family:'Jost',sans-serif;font-weight:500;font-size:12px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--black);margin-bottom:6px;padding-bottom:10px;border-bottom:1px solid var(--border);transition:border-color 0.3s;
+}
+.col-tile:hover .col-tile-name{border-color:var(--gold);}
+.col-tile-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--mid);}
+@media (max-width:900px){.col-grid{grid-template-columns:repeat(2,1fr);}}
+
+/* ── SIGNATURE PIECES ── */
+.signature-section{padding:96px 48px;text-align:center;background:var(--ivory);}
+.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;max-width:1400px;margin:0 auto;}
+.pcard{cursor:pointer;text-align:left;background:var(--cream);}
+.pcard-img{aspect-ratio:4/5;overflow:hidden;background:white;margin-bottom:14px;}
+.pcard-img img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
+.pcard:hover .pcard-img img{transform:scale(1.04);}
+.pcard-info{text-align:center;padding-bottom:6px;}
+.pcard-name{font-size:12px;font-weight:300;color:var(--charcoal);margin-bottom:5px;line-height:1.4;}
+.pcard-price{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--black);}
+@media (max-width:900px){.pgrid{grid-template-columns:repeat(2,1fr);}}
+
+/* ── PHOTOGRAPHY-PENDING PLACEHOLDER ── */
+.photo-pending{
+  aspect-ratio:16/8;background:var(--ivory);border:1px dashed var(--light);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  max-width:1400px;margin:0 auto;
+}
+.photo-pending-icon{font-size:22px;color:var(--gold);}
+.photo-pending-label{
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);font-weight:400;
+}
+.photo-pending-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--light);}
+
+/* ── MIKISI EXPERIENCE ── */
+.experience-section{padding:0;text-align:center;background:white;}
+.experience-inner{padding:96px 48px;}
+
+/* ── EDITORIAL LIFESTYLE ── */
+.lifestyle-section{padding:0;}
+.lifestyle-img{width:100%;aspect-ratio:21/9;overflow:hidden;background:var(--ivory);}
+.lifestyle-img img{width:100%;height:100%;object-fit:cover;}
+.lifestyle-caption{
+  text-align:center;padding:44px 48px;
+}
+.lifestyle-caption p{
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;
+  font-size:clamp(20px,2.4vw,26px);color:var(--black);max-width:600px;margin:0 auto;line-height:1.5;
+}
+
+/* ── WHY STERLING SILVER ── */
+.silver-section{padding:96px 48px;text-align:center;background:var(--ivory);}
+.silver-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:48px;max-width:1000px;margin:0 auto;}
+.silver-item{}
+.silver-num{
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--gold);margin-bottom:14px;
+}
+.silver-title{
+  font-family:'Cormorant Garamond',serif;font-weight:400;font-size:22px;color:var(--black);margin-bottom:12px;
+}
+.silver-sub{font-size:13px;color:var(--mid);font-weight:300;line-height:1.75;}
+@media (max-width:800px){.silver-grid{grid-template-columns:1fr;gap:40px;}}
+
+/* ── INSTAGRAM GALLERY ── */
+.ig-section{padding:96px 48px;text-align:center;}
+.ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:1000px;margin:0 auto;}
+.ig-tile{aspect-ratio:1/1;overflow:hidden;background:var(--ivory);cursor:pointer;position:relative;}
+.ig-tile img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
+.ig-tile:hover img{transform:scale(1.05);}
+
+/* ── FINAL CTA ── */
+.final-cta{position:relative;background:var(--black);color:white;text-align:center;padding:120px 48px;}
+.final-cta h2{
+  font-family:'Cormorant Garamond',serif;font-weight:300;font-size:clamp(32px,4.4vw,56px);
+  letter-spacing:0.5px;margin-bottom:32px;
+}
+.final-cta .btn-black{background:white;color:var(--black);}
+.final-cta .btn-black:hover{background:var(--pink);color:white;}
+
+@media (max-width:560px){
+  nav{padding:0 20px;}
+  .nav-links{display:none;}
+  .values-section,.section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
+  .values-grid{grid-template-columns:1fr 1fr;}
+  .ig-grid{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<div class="demo-notice">Demo build — not live · <strong>Homepage</strong> redesign, real inventory &amp; content · for review before integration</div>
+
+<nav>
+  <div class="logo">Mik<em>i</em>si</div>
+  <div class="nav-links">
+    <a href="demo-landing.html" class="active">Home</a>
+    <a href="demo-collections.html">Rings</a>
+    <a href="demo-collections-necklaces.html">Necklaces</a>
+    <a href="demo-collections-bracelets.html">Bracelets</a>
+    <a href="demo-collections-earrings.html">Earrings</a>
+  </div>
+</nav>
+
+<!-- HERO — unchanged copy/structure from live site, per your instruction -->
+<div class="hero">
+  <h1 class="fu fu2">Real silver, <em>rare finds.</em></h1>
+  <div class="hero-tagline fu fu3">Curated 925 sterling silver, honest prices, always something new.</div>
+  <div class="hero-btns fu fu4">
+    <button class="btn-black">Discover New Finds</button>
+    <button class="btn-ghost">Our Story</button>
+  </div>
+  <div class="hero-banner fu" style="animation-delay:0.78s">
+    <div class="hero-rot-track" id="hero-rot-track"></div>
+  </div>
+</div>
+
+<!-- MARQUEE -->
+<div class="marquee-wrap">
+  <div class="marquee-track">
+    <span>Genuine 925 Sterling Silver</span><span class="dot">✦</span>
+    <span>Unique Finds</span><span class="dot">✦</span>
+    <span>Real Silver · Honest Prices</span><span class="dot">✦</span>
+    <span>Fast Express Shipping · 4–5 Days</span><span class="dot">✦</span>
+    <span>Rose Gold · Silver · Gold</span><span class="dot">✦</span>
+    <span>New Finds Added Often</span><span class="dot">✦</span>
+    <span>Genuine 925 Sterling Silver</span><span class="dot">✦</span>
+    <span>Unique Finds</span><span class="dot">✦</span>
+    <span>Real Silver · Honest Prices</span><span class="dot">✦</span>
+    <span>Fast Express Shipping · 4–5 Days</span><span class="dot">✦</span>
+    <span>Rose Gold · Silver · Gold</span><span class="dot">✦</span>
+  </div>
+</div>
+
+<!-- BRAND VALUES -->
+<div class="values-section">
+  <div class="values-grid">
+    <div class="value-item">
+      <div class="value-mark">925</div>
+      <div class="value-title">Genuine Sterling Silver</div>
+      <div class="value-sub">Stamped, hypoallergenic, made to last.</div>
+    </div>
+    <div class="value-item">
+      <div class="value-mark">✦</div>
+      <div class="value-title">Signature Packaging</div>
+      <div class="value-sub">Every order arrives thoughtfully presented.</div>
+    </div>
+    <div class="value-item">
+      <div class="value-mark">⇉</div>
+      <div class="value-title">Fast Express Delivery</div>
+      <div class="value-sub">4–5 business days, fully tracked.</div>
+    </div>
+    <div class="value-item">
+      <div class="value-mark">◇</div>
+      <div class="value-title">Everyday Elegance</div>
+      <div class="value-sub">Designed to be worn, loved, and lived in.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SHOP COLLECTIONS -->
+<div class="section-wrap">
+  <div class="section-title">Shop Collections</div>
+  <div class="section-intro">Five collections, each with its own character. Find the one that speaks to you.</div>
+  <div class="col-grid" id="col-grid"><!-- filled by JS --></div>
+</div>
+
+<!-- SIGNATURE PIECES -->
+<div class="signature-section">
+  <div class="section-title">Signature Pieces</div>
+  <div class="section-intro">A curated edit of the pieces we're proudest to have made.</div>
+  <div class="pgrid" id="signature-grid"><!-- filled by JS --></div>
+</div>
+
+<!-- THE MIKISI EXPERIENCE — photography pending -->
+<div class="experience-section">
+  <div class="experience-inner">
+    <div class="section-title">The Mikisi Experience</div>
+    <div class="section-intro">Every order arrives beautifully presented, because luxury begins before you wear it.</div>
+    <div class="photo-pending">
+      <div class="photo-pending-icon">✦</div>
+      <div class="photo-pending-label">Awaiting packaging photography</div>
+      <div class="photo-pending-sub">Your pouch, thank-you card &amp; presentation shots go here</div>
+    </div>
+  </div>
+</div>
+
+<!-- EDITORIAL LIFESTYLE — using a real AI-generated lifestyle image -->
+<div class="lifestyle-section">
+  <div class="lifestyle-img">
+    <img id="lifestyle-hero-img" src="" alt="Mikisi jewelry, worn"/>
+  </div>
+  <div class="lifestyle-caption">
+    <p>Jewelry that becomes part of your everyday story.</p>
+  </div>
+</div>
+
+<!-- WHY STERLING SILVER -->
+<div class="silver-section">
+  <div class="section-title">Why Sterling Silver</div>
+  <div class="silver-grid">
+    <div class="silver-item">
+      <div class="silver-num">01</div>
+      <div class="silver-title">Lasts Longer</div>
+      <div class="silver-sub">925 sterling silver doesn't flake or fade like plated fashion jewelry — it's the real metal, through and through.</div>
+    </div>
+    <div class="silver-item">
+      <div class="silver-num">02</div>
+      <div class="silver-title">Hypoallergenic</div>
+      <div class="silver-sub">Gentle on sensitive skin, so you can wear the pieces you love without worry, every single day.</div>
+    </div>
+    <div class="silver-item">
+      <div class="silver-num">03</div>
+      <div class="silver-title">Made to Wear Daily</div>
+      <div class="silver-sub">Not precious-occasion-only — sterling silver is meant to be lived in, and it only gets better with wear.</div>
+    </div>
+  </div>
+</div>
+
+<!-- INSTAGRAM GALLERY -->
+<div class="ig-section">
+  <div class="section-title">Find Us on Instagram</div>
+  <div class="section-intro">@mikisi — real pieces, real posts.</div>
+  <div class="ig-grid" id="ig-grid"><!-- filled by JS --></div>
+</div>
+
+<!-- FINAL CTA — photography pending, dark treatment works without it for now -->
+<div class="final-cta">
+  <h2>Luxury Delivered.</h2>
+  <button class="btn-black">Shop Mikisi</button>
+</div>
+
+<div style="max-width:680px;margin:64px auto;padding:24px 28px;background:#f9eef2;border:1px solid #ece5dd;font-size:12px;color:#2a2a2a;line-height:1.8;">
+  <strong style="color:#b8627a;">Note for Dennis:</strong> Hero is unchanged from the live site, just re-pointed to a
+  rotation of 6 real Signature-flagged product photos instead of the live API call. Collections grid, Signature
+  Pieces, and the Instagram gallery all use real data (5 real collections, 8 real is_premium products, 9 real
+  posted Instagram photos). The Editorial Lifestyle section uses a real AI-generated lifestyle photo from the
+  RAWSHOT pipeline (content_lifestyle_url) — 18 products have these if you want to rotate/pick a different one.
+  The Mikisi Experience section and the Final CTA background are placeholders — genuinely blocked on your
+  packaging photography, which isn't in the system yet. Reviews section skipped entirely, as discussed — only 4
+  real orders exist, not enough for genuine testimonials.
+</div>
+
+<script>
+const HERO_IMAGES = ["https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922227/mikisi/products/931_primary.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1247_primary.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644546/mikisi/products/1305_primary.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643602/mikisi/products/1260_primary.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644267/mikisi/products/1291_primary.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921893/mikisi/products/933_primary.jpg"];
+const COLLECTIONS = [{"name": "Rings", "tag": "Mark the moment", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923608/mikisi/products/688_primary.jpg"}, {"name": "Necklaces", "tag": "Wear your story", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922059/mikisi/products/874_primary.jpg"}, {"name": "Bracelets", "tag": "Adorn your wrist", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921555/mikisi/products/945_primary.jpg"}, {"name": "Earrings", "tag": "Frame your face", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919914/mikisi/products/1176_primary.jpg"}, {"name": "Anklets", "tag": "Grace in every step", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919939/mikisi/products/501_primary.jpg"}];
+const SIGNATURE = [{"id": 1247, "name": "European Moissanite Tennis Bracelet", "category": "Bracelets", "final_price": 395.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1247_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/850530903903/850530903903_0.jpg"}, {"id": 1260, "name": "Moissanite Openwork Circle Bracelet", "category": "Bracelets", "final_price": 350.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643602/mikisi/products/1260_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/850967245242/850967245242_0.jpg"}, {"id": 1027, "name": "Geometric Pear Moissanite Pendant Necklace", "category": "Necklaces", "final_price": 222.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924130/mikisi/products/1027_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_06_23_14_24/1026756434459/1026756434459_0.jpg"}, {"id": 801, "name": "Luxury Moissanite Adjustable Bracelet", "category": "Bracelets", "final_price": 129.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920134/mikisi/products/801_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_03_12_15_19/843736145412/843736145412_0.jpg"}, {"id": 1220, "name": "Heart Shape Moissanite Wide Band Ring", "category": "Rings", "final_price": 120.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560468/mikisi/products/1220_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/868022921798/868022921798_0.jpg"}, {"id": 1309, "name": "Marquise Moissanite Stack Ring", "category": "Rings", "final_price": 118.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644638/mikisi/products/1309_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_41/867512223639/867512223639_0.jpg"}, {"id": 1216, "name": "Emerald Cut Moissanite Ring Set", "category": "Rings", "final_price": 118.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560453/mikisi/products/1216_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/867542787157/867542787157_0.jpg"}, {"id": 1308, "name": "Marquise Moissanite Chevron Ring", "category": "Rings", "final_price": 115.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644616/mikisi/products/1308_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_41/854966296363/854966296363_0.jpg"}];
+const LIFESTYLE = [{"id": 572, "name": "Green Emerald Crown Halo Ring", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616959/mikisi/products/572_lifestyle.jpg"}, {"id": 966, "name": "Heart Turquoise & Crystal Necklace", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616977/mikisi/products/966_lifestyle.jpg"}, {"id": 486, "name": "Marquise Vine Link Bracelet", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616980/mikisi/products/486_lifestyle.jpg"}, {"id": 874, "name": "Shovel Pendant Cubic Zirconia Necklace", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616999/mikisi/products/874_lifestyle.jpg"}, {"id": 1163, "name": "Irregular Geometric Smooth Polished Huggie Hoops Earring", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785000753/mikisi/products/1163_lifestyle.jpg"}, {"id": 597, "name": "Green Cactus Flower Ring", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1780941587/mikisi/products/597_lifestyle.jpg"}];
+const INSTAGRAM = [{"id": 65, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785589438/mikisi/products/801_gallery_2.jpg", "caption": "Brilliance that matches your resilience, worn on your wrist.\n\nThis adjustable bracelet in 925 sterling silver holds the timeless sparkle of moissanite\u2014a stone engineered to last, just like your strength. Wear it on your wrist as a quiet declaration of your own worth, a bracelet that knows you deserve nothing less than radiance. Let it remind you, every single day, that you are enough.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 64, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785849746/mikisi/products/1234_gallery_model.jpg", "caption": "A bow that whispers what confidence sounds like.\n\nThis sterling silver necklace is crafted for quiet power. The moissanite catches light with every deliberate movement around your neck, a delicate ribbon that knows exactly what it means. Elegance that doesn't ask for permission\u2014it simply adorns.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 63, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552796/mikisi/products/1241_gallery_4.jpg", "caption": "Geometric elegance for women who build empires.\n\nA marquise moissanite floats in architectural precision on this sterling silver necklace\u2014designed for those who refuse to blend in. Available in yellow or white gold-plated finishes, this necklace is a quiet statement of intention, worn close to your heart. Choose the metal that matches your vision, because every detail of your style should feel intentional.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 62, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644887/mikisi/products/1321_gallery_4.jpg", "caption": "Geometric constellation moissanite ring made for your hands.\n\nThis ring is designed for women who understand that brilliance isn't about being simple\u2014it's about honoring every facet of who you are. With moissanite stones arranged in a geometric pattern across 925 sterling silver or yellow gold-plated band, it's a ring that rewards close attention the way you deserve to be seen. Your fingers deserve to wear something that reflects the complexity and light you bring to the world.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 61, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644478/mikisi/products/1301_gallery_4.jpg", "caption": "A love letter to the woman who chooses herself first.\n\nThis sterling silver ring speaks for you. White moissanite catches the light as script curves across a geometric band\u2014a quiet declaration written right there on your finger. Wear it when self-worth isn't negotiable.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 56, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616996/mikisi/products/948_lifestyle.jpg", "caption": "Wear your love story in every color.\n\nThis Rainbow Love Heart Tennis Bracelet is more than jewelry\u2014it's a wrist-worn declaration. Crafted in white gold-plated 925 sterling silver, each heart-shaped stone catches the light with radiant pride, turning your wrist into a celebration of self-love unapologetically expressed. A bracelet that reminds you to shine in every shade of yourself.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 55, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616983/mikisi/products/1245_lifestyle.jpg", "caption": "Sharp angles, soft heart. One necklace says it all.\n\nGeometric design meets timeless elegance in this 925 sterling silver necklace\u2014each angle catches light like it's meant to be noticed. A symbol of someone who refuses to choose between strength and softness, this necklace rests on your neck as a quiet declaration of self-worth. When you wear pieces that reflect your complexity, you're choosing yourself.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 54, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616999/mikisi/products/874_lifestyle.jpg", "caption": "Geometric boldness meets everyday elegance with this necklace.\n\nThis Shovel Pendant Necklace is crafted in 925 sterling silver with your choice of a polished silver or 18k gold-plated finish. Sparkling cubic zirconia catches light from every angle, creating a modern statement that drapes beautifully around the neck. Bold, unapologetic, and entirely yours\u2014because choosing yourself starts with wearing what makes you feel powerful.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 53, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616986/mikisi/products/1212_lifestyle.jpg", "caption": "Sharp angles. Stronger statement. Two pear moissanites meet.\n\nStack them or wear them solo\u2014this sterling silver ring set moves with you, not against you. Pear-shaped stones demand attention on your fingers, whether you choose silver or gold-plated. Design that refuses compromise, just like you.\n\nTap to shop \ud83d\udecd\ufe0f"}];
+
+// Hero rotation — same mechanic as the live site, hardcoded real images
+(function(){
+  const track = document.getElementById('hero-rot-track');
+  HERO_IMAGES.forEach(img => {
+    const s = document.createElement('div');
+    s.className = 'hero-rot-slide';
+    s.style.backgroundImage = `url("${img.replace(/"/g,'%22')}")`;
+    track.appendChild(s);
+  });
+  const clone = document.createElement('div');
+  clone.className = 'hero-rot-slide';
+  clone.style.backgroundImage = `url("${HERO_IMAGES[0].replace(/"/g,'%22')}")`;
+  track.appendChild(clone);
+  let idx = 0;
+  setInterval(() => {
+    idx++;
+    track.style.transition = 'transform 0.9s cubic-bezier(.4,0,.2,1)';
+    track.style.transform = `translateX(-${idx*100}%)`;
+    if (idx === HERO_IMAGES.length){
+      setTimeout(() => {
+        track.style.transition = 'none';
+        idx = 0;
+        track.style.transform = 'translateX(0%)';
+      }, 900);
+    }
+  }, 5000);
+})();
+
+// Collections
+document.getElementById('col-grid').innerHTML = COLLECTIONS.map(c => `
+  <div class="col-tile">
+    <div class="col-tile-img"><img src="${c.img}" alt="${c.name}" loading="lazy"/></div>
+    <div class="col-tile-name">${c.name}</div>
+    <div class="col-tile-sub">${c.tag}</div>
+  </div>`).join('');
+
+// Signature pieces
+document.getElementById('signature-grid').innerHTML = SIGNATURE.slice(0,4).map(p => `
+  <div class="pcard">
+    <div class="pcard-img"><img src="${p.content_image_url}" alt="${p.name}" loading="lazy"/></div>
+    <div class="pcard-info">
+      <div class="pcard-name">${p.name}</div>
+      <div class="pcard-price">$${p.final_price.toFixed(2)}</div>
+    </div>
+  </div>`).join('');
+
+// Lifestyle hero image
+document.getElementById('lifestyle-hero-img').src = LIFESTYLE[0].content_lifestyle_url;
+
+// Instagram gallery
+document.getElementById('ig-grid').innerHTML = INSTAGRAM.slice(0,9).map(p => `
+  <div class="ig-tile"><img src="${p.image_url}" alt="Mikisi on Instagram" loading="lazy"/></div>`).join('');
+</script>
+
+</body>
+</html>
