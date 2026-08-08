@@ -48,36 +48,40 @@ nav{
 .nav-links a.active{color:var(--black);border-bottom:1px solid var(--pink);padding-bottom:4px;}
 .nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:6px;font-size:20px;color:var(--black);line-height:1;}
 
-/* ── HERO — one cinematic composition: full-bleed campaign image with the
-   headline sitting in the image's own negative space, and the marquee
-   pinned to the photo's bottom edge instead of stacked below it as a
-   separate black bar — the whole hero reads as one block, not three. ── */
+/* ── HERO — full-bleed edge to edge (the blurred backdrop covers the whole
+   screen, no cream showing anywhere) while the actual photo stays fully
+   uncropped in the foreground -- the same trick Net-a-Porter/Apple Music
+   use to reconcile "cover the whole screen" with "don't crop the subject." ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
 .fu{animation:fadeUp 0.9s ease forwards;opacity:0;}
 .fu2{animation-delay:0.28s;}.fu3{animation-delay:0.45s;}.fu4{animation-delay:0.62s;}
 .hero{
   position:relative;width:100vw;margin-left:calc(-50vw + 50%);
-  overflow:hidden;background:var(--cream);display:flex;align-items:stretch;
+  height:92vh;min-height:660px;max-height:920px;overflow:hidden;background:var(--black);
 }
-.hero-img{position:relative;flex:0 0 auto;}
-.hero-img img{display:block;height:90vh;min-height:620px;max-height:880px;width:auto;max-width:100%;}
+.hero-bg{
+  position:absolute;inset:-40px;background-size:cover;background-position:22% center;
+  filter:blur(60px) brightness(0.6) saturate(1.15);transform:scale(1.15);
+}
+.hero-img{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-start;padding-left:5vw;}
+.hero-img img{max-height:86%;width:auto;max-width:56%;object-fit:contain;display:block;box-shadow:0 40px 100px rgba(0,0,0,0.45);}
 .hero-overlay{
-  position:relative;z-index:1;flex:1 1 auto;min-width:0;max-width:720px;margin-left:auto;
+  position:relative;z-index:1;height:100%;max-width:640px;margin-left:auto;
   display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
-  padding:0 9vw 60px 56px;
+  padding:0 9vw 60px 40px;
 }
 .hero h1{
   font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4.4vw,54px);font-weight:300;
-  line-height:1.25;color:var(--black);text-align:right;margin-bottom:14px;letter-spacing:-0.2px;
+  line-height:1.25;color:var(--cream);text-align:right;margin-bottom:14px;letter-spacing:-0.2px;
 }
 .hero h1 em{color:var(--pink);font-style:italic;}
 .hero-sub{
   font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:300;font-style:italic;
-  color:var(--pink-deep);text-align:right;margin-bottom:34px;line-height:1.6;
+  color:var(--pink);text-align:right;margin-bottom:34px;line-height:1.6;
 }
 .hero-link{
   font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:3px;text-transform:uppercase;
-  color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);padding-bottom:6px;transition:all 0.3s;
+  color:var(--cream);text-decoration:none;border-bottom:1px solid var(--cream);padding-bottom:6px;transition:all 0.3s;
 }
 .hero-link:hover{color:var(--pink);border-color:var(--pink);}
 .btn-black{
@@ -221,21 +225,18 @@ nav{
   .nav-links.open{display:flex;}
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
-  /* Side-by-side (photo left, copy in the cream space to the right) only
-     works with room to spare -- on a phone the photo would either get
-     squeezed to a thumbnail or shove the text off-screen. Stack instead:
-     full-width photo on top (aspect-ratio keeps it uncropped, no letterbox
-     math needed), copy centered below it in normal flow. */
-  .hero{flex-direction:column;}
-  .hero-img{width:100%;}
-  .hero-img img{width:100%;height:auto;max-height:none;min-height:0;aspect-ratio:1200/1490;}
-  .hero-overlay{width:100%;max-width:100%;align-items:center;padding:32px 24px 44px;}
-  .hero h1{font-size:clamp(28px,8vw,44px);text-align:center;}
+  /* Side-by-side (photo left, copy to the right) only works with room to
+     spare. The full-bleed blurred backdrop already covers the whole screen
+     regardless of height, so on mobile we just re-layout the two foreground
+     layers: photo centered in the upper portion, copy centered below it --
+     both still sit on top of the same edge-to-edge blur, no cream anywhere. */
+  .hero{height:100vh;min-height:640px;max-height:820px;}
+  .hero-bg{background-position:center 30%;}
+  .hero-img{justify-content:center;align-items:flex-start;padding-left:0;padding-top:60px;}
+  .hero-img img{max-height:48%;max-width:78%;box-shadow:0 24px 60px rgba(0,0,0,0.45);}
+  .hero-overlay{align-items:center;justify-content:flex-end;max-width:100%;padding:0 24px 70px;}
+  .hero h1{font-size:clamp(26px,7.5vw,38px);text-align:center;}
   .hero-sub{text-align:center;}
-  /* Marquee was pinned absolute-over-the-photo for the desktop overlay
-     look; stacked on mobile it now sits over the cream copy area instead,
-     so it goes back to a normal solid-black bar in flow. */
-  .hero .marquee-wrap{position:static;background:var(--black);}
   /* 21:9 crops a portrait-leaning lifestyle photo down to a thin sliver on
      narrow screens, losing most of the image -- use a taller ratio instead. */
   .lifestyle-img{aspect-ratio:4/5;}
@@ -259,16 +260,12 @@ nav{
   <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
 </nav>
 
-<!-- HERO — one campaign photo with the copy AND the marquee living inside
-     it, nothing stacked below it as a separate block. Real RAWSHOT lifestyle
-     shot (Moissanite Bowknot Statement Ring, minimalist studio setting) --
-     the previous necklace/villa shot was square and left too much blurry
-     dead space either side once cropped into this wide a frame; this one
-     fills the crop with real tonal detail (skin, hair, satin, wall) instead
-     of a void, still a full portrait with the ring clearly visible on her
-     hand. No "MIKISI" text mark on the photo -- the nav logo above already
-     covers that, a second one on the image was redundant. -->
+<!-- HERO — the blurred backdrop is the same photo, scaled to fully cover
+     the screen edge to edge (no cream showing anywhere), while the actual
+     photo stays completely uncropped in the foreground so the ring is
+     never cut off. -->
 <div class="hero">
+  <div class="hero-bg" style="background-image:url('https://res.cloudinary.com/ds8qviz1o/image/upload/v1784395403/mikisi/products/1121_lifestyle.jpg')"></div>
   <div class="hero-img">
     <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1784395403/mikisi/products/1121_lifestyle.jpg" alt="A Mikisi ring, worn"/>
   </div>
@@ -421,6 +418,16 @@ nav{
   drift out of sync again the way a hardcoded height could. Mobile also now stacks the photo above the copy
   (full-width, uncropped via aspect-ratio) instead of trying to force the side-by-side desktop layout into a
   narrow screen — verified both breakpoints locally before pushing.
+  <br/><br/>
+  <strong style="color:#b8627a;">Ninth pass — full-bleed AND uncropped, both at once:</strong> "contain" solved
+  the cropping problem but left cream space beside the photo, which read as the hero only covering one side of
+  the screen instead of the whole thing. Cover-the-whole-screen and never-crop-the-subject are in real tension
+  at this aspect ratio — the fix real fashion/media sites use for exactly this (Net-a-Porter, Apple Music) is a
+  blurred, darkened copy of the same photo as a full-bleed backdrop (edge to edge, no cream anywhere), with the
+  actual sharp, fully uncropped photo floating on top of it. Hero text is white/pink now instead of black, since
+  it sits on the blurred backdrop rather than the cream background. Rebuilt mobile the same way: photo centered
+  near the top, copy centered below it, both on the same full-bleed blur. Verified locally at both breakpoints
+  again before pushing.
   <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
   everything above works with the real assets we have, but the ideal version needs images we don't have yet:
