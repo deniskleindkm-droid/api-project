@@ -59,7 +59,7 @@ nav{
   height:92vh;min-height:660px;max-height:920px;overflow:hidden;background:var(--ivory);
 }
 .hero-img{position:absolute;inset:0;}
-.hero-img img{width:100%;height:100%;object-fit:cover;object-position:38% 20%;display:block;}
+.hero-img img{width:100%;height:100%;object-fit:cover;object-position:50% 15%;display:block;}
 .hero-overlay{
   position:relative;z-index:1;height:100%;max-width:640px;
   display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;
@@ -248,17 +248,17 @@ nav{
   <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
 </nav>
 
-<!-- HERO — single real photo, full-bleed cover, edge to edge. Went back to
-     the tennis bracelet/estate shot -- it has genuine open sky to sit the
-     headline in, instead of a tight portrait crop that forces the text to
-     overlap her face. -->
+<!-- HERO — single real photo, full-bleed cover, edge to edge. Swapped to a
+     genuine smiling portrait (lemon orchard, real sky above her head for
+     the headline) -- a real woman's face this time, not just an arm, while
+     still keeping real negative space so the text doesn't land on her. -->
 <div class="hero">
   <div class="hero-img">
-    <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1784235468/mikisi/products/947_lifestyle.jpg" alt="A Mikisi tennis bracelet, worn"/>
+    <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1784235628/mikisi/products/721_lifestyle.jpg" alt="A Mikisi necklace, worn"/>
   </div>
   <div class="hero-overlay">
-    <h1 class="fu fu2">The beauty of <em>everyday</em>.</h1>
-    <div class="hero-sub fu fu3">Jewelry you'll reach for again and again.</div>
+    <h1 class="fu fu2">Collected for <em>life</em>.</h1>
+    <div class="hero-sub fu fu3">Pieces chosen to become part of your story.</div>
     <a href="#collections" class="hero-link fu fu4">Explore</a>
   </div>
   <div class="marquee-wrap">
@@ -276,10 +276,11 @@ nav{
   </div>
 </div>
 
-<!-- SHOP COLLECTIONS -->
+<!-- DISCOVER THE COLLECTIONS (formerly "Shop Collections") — luxury brands
+     rarely say "Shop" -->
 <div class="section-wrap" id="collections">
-  <div class="section-title">Shop Collections</div>
-  <div class="section-intro">Five collections, each with its own character. Find the one that speaks to you.</div>
+  <div class="section-title">Discover the Collections</div>
+  <div class="section-intro">Every collection tells a different story. Find the one that feels like yours.</div>
   <div class="col-grid" id="col-grid"><!-- filled by JS --></div>
 </div>
 
@@ -289,7 +290,7 @@ nav{
 <div class="experience-section">
   <div class="experience-inner">
     <div class="section-title">The Mikisi Experience</div>
-    <div class="section-intro">Every order arrives in our signature pouch, because luxury begins before you wear it.</div>
+    <div class="section-intro">Thoughtfully presented from the very first moment.</div>
     <div class="experience-photo">
       <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1786200766/mikisi/content/packaging_display.jpg" alt="The Mikisi pouch, thank-you card, and jewelry, beautifully presented"/>
     </div>
@@ -299,7 +300,7 @@ nav{
 <!-- THE MIKISI EDIT (formerly "Signature Pieces") — brands curate, stores feature -->
 <div class="signature-section">
   <div class="section-title">The Mikisi Edit</div>
-  <div class="section-intro">The pieces we return to, again and again.</div>
+  <div class="section-intro">Designed to become everyday favorites.</div>
   <div class="pgrid" id="signature-grid"><!-- filled by JS --></div>
 </div>
 
@@ -313,10 +314,10 @@ nav{
   </div>
 </div>
 
-<!-- WORN BY YOU (formerly "Find Us on Instagram") — about the people wearing
-     the pieces, not the platform -->
+<!-- LIFE IN MIKISI (formerly "Worn by You" / "Find Us on Instagram") —
+     about the people wearing the pieces, not the platform -->
 <div class="ig-section">
-  <div class="section-title">Worn by You</div>
+  <div class="section-title">Life in Mikisi</div>
   <div class="ig-grid" id="ig-grid"><!-- filled by JS --></div>
   <a href="https://instagram.com/mikisi.co" target="_blank" rel="noopener" class="ig-view-link">View on Instagram →</a>
 </div>
@@ -330,17 +331,17 @@ nav{
   <div class="silver-grid">
     <div class="silver-item">
       <div class="silver-num">01</div>
-      <div class="silver-title">Lasts Longer</div>
+      <div class="silver-title">Made for Years</div>
       <div class="silver-sub">925 sterling silver doesn't flake or fade like plated fashion jewelry — it's the real metal, through and through.</div>
     </div>
     <div class="silver-item">
       <div class="silver-num">02</div>
-      <div class="silver-title">Hypoallergenic</div>
+      <div class="silver-title">Gentle by Nature</div>
       <div class="silver-sub">Gentle on sensitive skin, so you can wear the pieces you love without worry, every single day.</div>
     </div>
     <div class="silver-item">
       <div class="silver-num">03</div>
-      <div class="silver-title">Made to Wear Daily</div>
+      <div class="silver-title">Designed for Everyday</div>
       <div class="silver-sub">Not precious-occasion-only — sterling silver is meant to be lived in, and it only gets better with wear.</div>
     </div>
   </div>
@@ -349,7 +350,7 @@ nav{
 <!-- FINAL CTA — closes on a feeling rather than a sales pitch, real packaging
      photo as the backdrop so the pouch bookends the page -->
 <div class="final-cta">
-  <h2>Until next time.</h2>
+  <h2>The piece you'll reach for tomorrow.</h2>
   <button class="btn-black">Shop Mikisi</button>
 </div>
 
@@ -425,6 +426,24 @@ nav{
   desktop and mobile before pushing. This is the same tension as the "Seventh pass" note above: a photo actually
   shot for this exact full-bleed frame — with deliberate negative space built in — wouldn't force any of these
   tradeoffs at all.
+  <br/><br/>
+  <strong style="color:#b8627a;">Twelfth pass — new hero photo, a real woman with a real smile:</strong> swapped
+  to the lemon-orchard shot (Emerald Rectangular Halo Pendant Necklace) — a genuine smiling portrait, not just an
+  arm, still with real sky/foliage above her head for the headline to sit in cleanly. Tuned the crop so the
+  marquee cuts at her chin instead of across her eyes or mouth, and her full smile is visible on scroll before
+  it. Honest tradeoff: at this crop the necklace itself isn't in shot — it sits at chest height, too far below
+  the sky for one crop window to reach both. Flagging this rather than hiding it: if you want the piece visible
+  in the very first fold, that likely means going back to an arm/wrist pose like the bracelet shot, or a real
+  shoot composed for this exact frame.
+  <br/><br/>
+  <strong style="color:#b8627a;">Copy pass — full editorial rewrite:</strong> reworked the copy across the page
+  per your notes. Hero is now "Collected for <em>life</em>." / "Pieces chosen to become part of your story."
+  Collections retitled "Discover the Collections" with a new intro line. The Mikisi Edit's subtext is now
+  "Designed to become everyday favorites" — used that instead of "the pieces our customers return to, year
+  after year" since we've only ever had 4 real orders, and that phrasing implies repeat-purchase behavior we
+  don't have data for. Experience intro is now "Thoughtfully presented from the very first moment." Sterling
+  silver column titles are now Made for Years / Gentle by Nature / Designed for Everyday. Instagram section is
+  now "Life in Mikisi." Final CTA is now "The piece you'll reach for tomorrow" (your favorite of the options).
   <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
   everything above works with the real assets we have, but the ideal version needs images we don't have yet:
