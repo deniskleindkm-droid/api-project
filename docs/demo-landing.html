@@ -49,8 +49,9 @@ nav{
 .nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:6px;font-size:20px;color:var(--black);line-height:1;}
 
 /* ── HERO — one cinematic composition: full-bleed campaign image with the
-   headline sitting in the image's own negative space (the sky, upper-left),
-   not a cream text block stacked above a separate banner. ── */
+   headline sitting in the image's own negative space, and the marquee
+   pinned to the photo's bottom edge instead of stacked below it as a
+   separate black bar — the whole hero reads as one block, not three. ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
 .fu{animation:fadeUp 0.9s ease forwards;opacity:0;}
 .fu2{animation-delay:0.28s;}.fu3{animation-delay:0.45s;}.fu4{animation-delay:0.62s;}
@@ -59,11 +60,11 @@ nav{
   height:92vh;min-height:640px;max-height:960px;overflow:hidden;background:var(--ivory);
 }
 .hero-img{position:absolute;inset:0;}
-.hero-img img{width:100%;height:100%;object-fit:cover;object-position:38% 20%;display:block;}
+.hero-img img{width:100%;height:100%;object-fit:cover;object-position:50% 16%;display:block;}
 .hero-overlay{
-  position:relative;z-index:1;height:100%;max-width:720px;
-  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
-  padding:0 56px 0 9vw;
+  position:relative;z-index:1;height:100%;max-width:720px;margin-left:auto;
+  display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
+  padding:0 9vw 60px 56px;
 }
 .hero-mark{
   font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:7px;text-transform:uppercase;
@@ -71,7 +72,7 @@ nav{
 }
 .hero h1{
   font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4.4vw,54px);font-weight:300;
-  line-height:1.25;color:var(--black);text-align:left;margin-bottom:32px;letter-spacing:-0.2px;
+  line-height:1.25;color:var(--black);text-align:right;margin-bottom:32px;letter-spacing:-0.2px;
 }
 .hero h1 em{color:var(--pink);font-style:italic;}
 .hero-link{
@@ -85,8 +86,12 @@ nav{
 }
 .btn-black:hover{background:var(--pink);}
 
-/* ── MARQUEE ── */
+/* ── MARQUEE — now pinned to the hero photo's bottom edge (see .hero
+   .marquee-wrap override below) instead of living in normal flow as its
+   own stacked section. Rule kept generic so other pages that still use
+   the marquee in-flow are unaffected. ── */
 .marquee-wrap{background:var(--black);overflow:hidden;padding:13px 0;white-space:nowrap;}
+.hero .marquee-wrap{position:absolute;left:0;right:0;bottom:0;z-index:1;background:rgba(14,14,14,0.55);}
 .marquee-track{display:inline-block;animation:marquee 30s linear infinite;}
 @keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
 .marquee-track span{font-size:10px;font-weight:300;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin:0 28px;}
@@ -244,27 +249,24 @@ nav{
   <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
 </nav>
 
-<!-- HERO — one campaign photo with the copy living inside it, not stacked
-     above it. Real RAWSHOT lifestyle shot (Blue Sapphire Tennis Bracelet,
-     Tuscan estate) chosen specifically because the sky/blurred background
-     upper-left gives the headline real negative space to sit in, with no
-     scrim needed — dark serif text reads cleanly straight off the sky. -->
+<!-- HERO — one campaign photo with the copy AND the marquee living inside
+     it, nothing stacked below it as a separate block. Real RAWSHOT
+     lifestyle shot (Mocanite Geometric Heart Necklace, Tuscan estate) --
+     chosen over the previous arm-only crop because it's a full portrait
+     (a woman, not just a hand), with the vineyard/sky to her right giving
+     the headline real negative space, no scrim needed. -->
 <div class="hero">
   <div class="hero-img">
-    <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1784235468/mikisi/products/947_lifestyle.jpg" alt="A Mikisi tennis bracelet, worn"/>
+    <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616983/mikisi/products/1245_lifestyle.jpg" alt="A Mikisi necklace, worn"/>
   </div>
   <div class="hero-overlay">
     <div class="hero-mark fu fu2">Mikisi</div>
     <h1 class="fu fu3">Quiet luxury,<br/>for everyday moments.</h1>
     <a href="#collections" class="hero-link fu fu4">Explore</a>
   </div>
-</div>
-
-<!-- MARQUEE — simplified to 3 statements per the new brand direction,
-     dropped "Real Silver / 925 / Honest Prices" as lead messaging -->
-<div class="marquee-wrap">
-  <div class="marquee-track">
-    <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
+  <div class="marquee-wrap">
+    <div class="marquee-track">
+      <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
     <span>DHL Express · 4–6 Days</span><span class="dot">✦</span>
     <span>Crafted to Last</span><span class="dot">✦</span>
     <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
@@ -273,6 +275,7 @@ nav{
     <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
     <span>DHL Express · 4–6 Days</span><span class="dot">✦</span>
     <span>Crafted to Last</span><span class="dot">✦</span>
+    </div>
   </div>
 </div>
 
