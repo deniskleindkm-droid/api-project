@@ -51,32 +51,34 @@ nav{
 .nav-links a.active{color:var(--cream);border-bottom:1px solid var(--pink);padding-bottom:4px;}
 .nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:6px;font-size:20px;color:var(--cream);line-height:1;}
 
-/* ── HERO — one real photo, full-bleed, edge to edge. No blur trick, no
-   floating shadow box -- a luxury brand hero is just a clean, single,
-   confident image with the copy sitting directly in its negative space. ── */
+/* ── HERO — one real photo, full-bleed, edge to edge. The container's
+   aspect-ratio matches the real photo's own ratio (3:2) exactly, at every
+   screen size, with no separate mobile override -- this is the one rule
+   that guarantees zero cropping AND zero letterboxing simultaneously,
+   because the box is never a different shape than the image. Same CSS,
+   same result, on a phone or an ultrawide monitor. ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
 .fu{animation:fadeUp 0.9s ease forwards;opacity:0;}
 .fu2{animation-delay:0.28s;}.fu3{animation-delay:0.45s;}.fu4{animation-delay:0.62s;}
 .hero{
   position:relative;width:100vw;margin-left:calc(-50vw + 50%);
-  height:92vh;min-height:660px;max-height:920px;overflow:hidden;background:var(--ivory);
+  background:var(--cream);
 }
-.hero-img{position:absolute;inset:0;}
+.hero-img{position:relative;width:100%;aspect-ratio:3/2;overflow:hidden;background:var(--ivory);}
 .hero-img img{width:100%;height:100%;object-fit:cover;object-position:60% 50%;display:block;}
 .hero-overlay{
-  position:relative;z-index:1;height:100%;max-width:560px;
-  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
-  padding:0 9vw 60px;
+  position:relative;max-width:640px;margin:0 auto;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:56px 24px 60px;text-align:center;
 }
 .hero h1{
   font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4.4vw,54px);font-weight:300;
-  line-height:1.25;color:var(--black);text-align:left;margin-bottom:14px;letter-spacing:-0.2px;
+  line-height:1.25;color:var(--black);text-align:center;margin-bottom:14px;letter-spacing:-0.2px;
 }
 .hero h1 em{color:var(--pink);font-style:italic;}
 .hero-sub{
   font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:300;font-style:italic;
-  color:var(--pink-deep);text-align:left;margin-bottom:34px;line-height:1.6;
-  text-shadow:0 1px 16px rgba(255,255,255,0.85),0 1px 3px rgba(255,255,255,0.6);
+  color:var(--pink-deep);text-align:center;margin-bottom:34px;line-height:1.6;
 }
 .hero-link{
   font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:3px;text-transform:uppercase;
@@ -89,12 +91,8 @@ nav{
 }
 .btn-black:hover{background:var(--pink);}
 
-/* ── MARQUEE — now pinned to the hero photo's bottom edge (see .hero
-   .marquee-wrap override below) instead of living in normal flow as its
-   own stacked section. Rule kept generic so other pages that still use
-   the marquee in-flow are unaffected. ── */
+/* ── MARQUEE — normal in-flow bar, same at every screen size. ── */
 .marquee-wrap{background:var(--black);overflow:hidden;padding:13px 0;white-space:nowrap;}
-.hero .marquee-wrap{position:absolute;left:0;right:0;bottom:0;z-index:1;background:rgba(14,14,14,0.55);}
 .marquee-track{display:inline-block;animation:marquee 30s linear infinite;}
 @keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
 .marquee-track span{font-size:10px;font-weight:300;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin:0 28px;}
@@ -146,12 +144,13 @@ nav{
 .pcard-price{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--black);}
 @media (max-width:900px){.pgrid{grid-template-columns:repeat(2,1fr);}}
 
-/* ── THE MIKISI EXPERIENCE PHOTO — near full-screen, editorial-spread scale,
-   per Dennis: "imagine almost full screen. Like an editorial spread." ── */
+/* ── THE MIKISI EXPERIENCE PHOTO — same universal rule as the hero:
+   aspect-ratio matches the real photo (3:2) exactly, at every screen
+   size, no separate mobile override. Full-bleed and near-full-screen on
+   wide viewports, never cropped or letterboxed on any viewport. ── */
 .experience-photo{
   width:100vw;margin-left:calc(-50vw + 50%);
-  height:92vh;min-height:560px;max-height:920px;
-  overflow:hidden;background:var(--ivory);
+  aspect-ratio:3/2;overflow:hidden;background:var(--ivory);
 }
 .experience-photo img{width:100%;height:100%;object-fit:cover;display:block;}
 
@@ -159,10 +158,14 @@ nav{
 .experience-section{padding:0;text-align:center;background:white;}
 .experience-inner{padding:96px 48px;}
 
-/* ── EDITORIAL LIFESTYLE ── */
+/* ── EDITORIAL LIFESTYLE — the real photo here is square (1200x1200), not
+   the wide 21:9 or tall 4:5 this used to assume, so every screen size was
+   cropping it. Fixed-height band + object-fit:contain instead: the whole
+   image always shows, scaled to fit, letterboxed in the cream on the
+   sides rather than cropped -- true "fit any size of screen." ── */
 .lifestyle-section{padding:0;}
-.lifestyle-img{width:100%;aspect-ratio:21/9;overflow:hidden;background:var(--ivory);}
-.lifestyle-img img{width:100%;height:100%;object-fit:cover;}
+.lifestyle-img{width:100%;height:min(75vh,640px);overflow:hidden;background:var(--ivory);}
+.lifestyle-img img{width:100%;height:100%;object-fit:contain;}
 .lifestyle-caption{
   text-align:center;padding:44px 48px;
 }
@@ -230,25 +233,10 @@ nav{
   .nav-links.open{display:flex;}
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
-  /* The flat-lay hero photo is landscape (3:2) -- cropping it to fill a
-     narrow, tall mobile screen (cover) hid almost all of the jewelry and
-     the "mikisi" lettering, leaving just a sliver of the pouch. Stack
-     instead: full-width photo at its own real aspect ratio (nothing
-     cropped, nothing added), copy centered below it in normal flow. */
-  .hero{height:auto;min-height:0;max-height:none;display:block;}
-  .hero-img{position:relative;aspect-ratio:3/2;}
-  .hero-img img{object-position:center;}
-  .hero-overlay{position:static;height:auto;max-width:100%;padding:32px 24px 56px;}
+  /* Hero, Experience photo, and Lifestyle photo all use aspect-ratio or a
+     capped height + object-fit:contain now (see their base rules above) --
+     the same CSS renders correctly at this width with no override needed. */
   .hero h1{font-size:clamp(26px,7.5vw,38px);}
-  .hero .marquee-wrap{position:static;background:var(--black);}
-  /* 21:9 crops a portrait-leaning lifestyle photo down to a thin sliver on
-     narrow screens, losing most of the image -- use a taller ratio instead. */
-  .lifestyle-img{aspect-ratio:4/5;}
-  /* Same issue the hero had: this photo is landscape (3:2), and the fixed
-     92vh cover height was cropping out almost all of the pouch/jewelry on
-     a narrow screen, showing only a sliver of marble. Show the whole photo
-     at its own aspect ratio instead -- nothing cropped, no letterboxing. */
-  .experience-photo{height:auto;min-height:0;max-height:none;aspect-ratio:3/2;}
   .experience-inner,.final-cta{padding-top:56px;padding-bottom:56px;}
 }
 </style>
@@ -491,6 +479,22 @@ nav{
   below a boxed cream nav bar) — kept as a normal solid bar on mobile since the compact stacked hero doesn't have
   room to spare under it. Verified all of this with direct computed-style checks (exact pixel dimensions, not
   just eyeballing) before pushing.
+  <br/><br/>
+  <strong style="color:#b8627a;">Fifteenth pass — redesigned this properly instead of patching per breakpoint:</strong>
+  you asked for images to be "adjusted equally without any manipulation" rather than fixed with a separate mobile
+  override each time — fair, the previous fix was still a mobile-only special case. Rebuilt the hero and the
+  Experience photo so the container's <code>aspect-ratio</code> matches the real photo (3:2) directly in the base
+  rule, with no media query at all — the identical CSS now produces a correctly-fitting, never-cropped image at
+  any width, from a phone to an ultrawide monitor, because the box is mathematically never a different shape than
+  the photo. Also caught the Editorial Lifestyle photo had the same class of bug from way earlier — it's actually
+  square (1200x1200), but was hardcoded to 21:9 on desktop and 4:5 on mobile, cropping it both ways. That one
+  can't use the aspect-ratio trick (a square image on an ultrawide screen would make the section absurdly tall),
+  so it uses a capped responsive height with <code>object-fit:contain</code> instead — the whole image always
+  visible, scaled to fit, same rule at every size. The hero's headline moved from overlaid-on-photo to a plain
+  centered block below the image, since a universal rule couldn't guarantee a "safe" patch of image to lay text
+  on at every possible aspect ratio the way the old cover-crop version could. Verified with computed-style
+  measurements at 390px and 1440px — both report the exact same 1.5 aspect ratio, confirming one rule really is
+  covering every screen size now.
   <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
   the hero itself is now in much better shape with a real dedicated shot. Still open: activity-specific
