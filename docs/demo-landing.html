@@ -48,41 +48,42 @@ nav{
 .nav-links a.active{color:var(--black);border-bottom:1px solid var(--pink);padding-bottom:4px;}
 .nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:6px;font-size:20px;color:var(--black);line-height:1;}
 
-/* ── HERO (ported as-is from the live site) ── */
+/* ── HERO — one cinematic composition: full-bleed campaign image with the
+   headline sitting in the image's own negative space (the sky, upper-left),
+   not a cream text block stacked above a separate banner. ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
 .fu{animation:fadeUp 0.9s ease forwards;opacity:0;}
 .fu2{animation-delay:0.28s;}.fu3{animation-delay:0.45s;}.fu4{animation-delay:0.62s;}
 .hero{
-  min-height:88vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  background:var(--cream);padding:72px 48px 0;position:relative;overflow:hidden;
+  position:relative;width:100vw;margin-left:calc(-50vw + 50%);
+  height:92vh;min-height:640px;max-height:960px;overflow:hidden;background:var(--ivory);
 }
-.hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold-light),transparent);}
+.hero-img{position:absolute;inset:0;}
+.hero-img img{width:100%;height:100%;object-fit:cover;object-position:38% 20%;display:block;}
+.hero-overlay{
+  position:relative;z-index:1;height:100%;max-width:600px;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+  padding:0 9vw;
+}
 .hero-mark{
   font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:7px;text-transform:uppercase;
-  color:var(--gold-deep);text-align:center;margin-bottom:24px;
+  color:var(--gold-deep);margin-bottom:24px;
 }
 .hero h1{
-  font-family:'Cormorant Garamond',serif;font-size:clamp(38px,6vw,76px);font-weight:300;
-  line-height:1.2;color:var(--black);text-align:center;margin-bottom:44px;letter-spacing:-0.3px;
+  font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4.4vw,54px);font-weight:300;
+  line-height:1.25;color:var(--black);text-align:left;margin-bottom:32px;letter-spacing:-0.2px;
 }
 .hero h1 em{color:var(--pink);font-style:italic;}
-.hero-btns{display:flex;gap:14px;justify-content:center;margin-bottom:56px;flex-wrap:wrap;}
+.hero-link{
+  font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:3px;text-transform:uppercase;
+  color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);padding-bottom:6px;transition:all 0.3s;
+}
+.hero-link:hover{color:var(--pink);border-color:var(--pink);}
 .btn-black{
   background:var(--black);color:white;border:none;padding:14px 40px;font-size:10px;font-weight:400;
   letter-spacing:3px;text-transform:uppercase;cursor:pointer;font-family:'Jost',sans-serif;transition:all 0.3s;
 }
 .btn-black:hover{background:var(--pink);}
-.btn-ghost{
-  background:none;color:var(--black);border:1px solid var(--black);padding:14px 40px;font-size:10px;font-weight:400;
-  letter-spacing:3px;text-transform:uppercase;cursor:pointer;font-family:'Jost',sans-serif;transition:all 0.3s;
-}
-.btn-ghost:hover{border-color:var(--pink);color:var(--pink);}
-.hero-banner{
-  width:100vw;margin-left:calc(-50vw + 50%);height:clamp(640px,62vw,860px);
-  overflow:hidden;background:var(--ivory);position:relative;
-}
-.hero-rot-track{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;transition:transform 0.9s cubic-bezier(.4,0,.2,1);}
-.hero-rot-slide{flex:0 0 100%;width:100%;height:100%;background-size:cover;background-position:center;background-repeat:no-repeat;}
 
 /* ── MARQUEE ── */
 .marquee-wrap{background:var(--black);overflow:hidden;padding:13px 0;white-space:nowrap;}
@@ -215,13 +216,11 @@ nav{
   .nav-links.open{display:flex;}
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
-  .hero h1{font-size:clamp(30px,9vw,76px);}
-  .hero{padding-left:20px;padding-right:20px;}
-  .hero-btns .btn-black{padding:13px 32px;font-size:9px;letter-spacing:2px;}
-  /* Hero banner's 640px MINIMUM height (from clamp(640px,62vw,860px)) meant
-     the rotating banner alone was taller than most phone screens, before any
-     other content was visible. Cap it to a sane viewport-relative height. */
-  .hero-banner{height:60vh;}
+  /* Full-bleed hero photo at 92vh is taller than most phone screens can
+     spare before any other content is visible -- cap it shorter on mobile. */
+  .hero{height:78vh;min-height:520px;}
+  .hero-overlay{padding:0 24px;max-width:100%;}
+  .hero h1{font-size:clamp(28px,8vw,44px);}
   /* 21:9 crops a portrait-leaning lifestyle photo down to a thin sliver on
      narrow screens, losing most of the image -- use a taller ratio instead. */
   .lifestyle-img{aspect-ratio:4/5;}
@@ -245,16 +244,19 @@ nav{
   <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
 </nav>
 
-<!-- HERO — cut to almost no text per Dennis: "the image should do 80% of
-     the talking." Wordmark + one two-line thought + one CTA. -->
+<!-- HERO — one campaign photo with the copy living inside it, not stacked
+     above it. Real RAWSHOT lifestyle shot (Blue Sapphire Tennis Bracelet,
+     Tuscan estate) chosen specifically because the sky/blurred background
+     upper-left gives the headline real negative space to sit in, with no
+     scrim needed — dark serif text reads cleanly straight off the sky. -->
 <div class="hero">
-  <div class="hero-mark fu fu2">Mikisi</div>
-  <h1 class="fu fu3">Quiet luxury,<br/>for everyday moments.</h1>
-  <div class="hero-btns fu fu4">
-    <button class="btn-black">Explore</button>
+  <div class="hero-img">
+    <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1784235468/mikisi/products/947_lifestyle.jpg" alt="A Mikisi tennis bracelet, worn"/>
   </div>
-  <div class="hero-banner fu" style="animation-delay:0.78s">
-    <div class="hero-rot-track" id="hero-rot-track"></div>
+  <div class="hero-overlay">
+    <div class="hero-mark fu fu2">Mikisi</div>
+    <h1 class="fu fu3">Quiet luxury,<br/>for everyday moments.</h1>
+    <a href="#collections" class="hero-link fu fu4">Explore</a>
   </div>
 </div>
 
@@ -275,7 +277,7 @@ nav{
 </div>
 
 <!-- SHOP COLLECTIONS -->
-<div class="section-wrap">
+<div class="section-wrap" id="collections">
   <div class="section-title">Shop Collections</div>
   <div class="section-intro">Five collections, each with its own character. Find the one that speaks to you.</div>
   <div class="col-grid" id="col-grid"><!-- filled by JS --></div>
@@ -366,50 +368,30 @@ nav{
   instead of plain product-on-white shots for Rings, Necklaces, Bracelets, and Earrings — Anklets still uses the
   primary product photo since no lifestyle shot exists yet for that category.
   <br/><br/>
+  <strong style="color:#b8627a;">Fourth pass — hero rebuilt as one composition:</strong> the headline and the
+  photo were two separate blocks (cream text area, then a banner below it) — fixed. Hero is now one full-bleed
+  image with the copy sitting inside the photo's own negative space, not overlaid with a gradient scrim. Swapped
+  the 5-image rotation for a single static image (the Blue Sapphire Tennis Bracelet shot, Tuscan estate) chosen
+  specifically because its sky/blurred background upper-left gives the dark serif headline somewhere real to sit
+  — no card, no border, no gradient needed for legibility. CTA is now a small underlined "Explore" text link
+  (scrolls to Collections) instead of a solid black button. Headline kept at "Quiet luxury, for everyday moments,"
+  left-aligned, 2 lines.
+  <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
-  everything above works with the real assets we have, but your brief called for things I can't fabricate:
-  a true cinematic campaign photograph for the hero (what we have is 5 good RAWSHOT lifestyle shots, not a
-  single "fashion magazine" hero image), activity-specific editorial shots per collection (hand at rest, a
-  neckline, a coffee cup, a portrait, bare feet), lifestyle versions of the Signature/Edit product cards, and
-  brand film/video. The pouch-as-recurring-motif also still needs dedicated shots beyond the one packaging photo
-  currently doing double duty in Experience and the Final CTA. None of that can be simulated honestly — it needs
-  a real shoot.
+  everything above works with the real assets we have, but the ideal version needs images we don't have yet:
+  a true dedicated campaign shot (woman, movement, the pouch in-frame, shot specifically for this hero — what
+  we used is a strong real lifestyle photo repurposed, not commissioned for this exact composition),
+  activity-specific editorial shots per collection (hand at rest, a neckline, a coffee cup, a portrait, bare
+  feet), lifestyle versions of the Mikisi Edit product cards, and brand film/video. The pouch-as-recurring-motif
+  also still needs dedicated shots beyond the one packaging photo currently doing double duty in Experience and
+  the Final CTA. None of that can be simulated honestly — it needs a real shoot.
 </div>
 
 <script>
-const HERO_IMAGES = ["https://res.cloudinary.com/ds8qviz1o/image/upload/v1785851982/mikisi/products/1301_lifestyle.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784687191/mikisi/products/1027_lifestyle.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784235468/mikisi/products/947_lifestyle.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785000753/mikisi/products/1163_lifestyle.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616986/mikisi/products/1212_lifestyle.jpg"];
 const COLLECTIONS = [{"name": "Rings", "tag": "Mark the moment", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1780941587/mikisi/products/597_lifestyle.jpg"}, {"name": "Necklaces", "tag": "Wear your story", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616977/mikisi/products/966_lifestyle.jpg"}, {"name": "Bracelets", "tag": "Adorn your wrist", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616980/mikisi/products/486_lifestyle.jpg"}, {"name": "Earrings", "tag": "Frame your face", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785000753/mikisi/products/1163_lifestyle.jpg"}, {"name": "Anklets", "tag": "Grace in every step", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919939/mikisi/products/501_primary.jpg"}];
 const SIGNATURE = [{"id": 1247, "name": "European Moissanite Tennis Bracelet", "category": "Bracelets", "final_price": 395.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1247_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/850530903903/850530903903_0.jpg"}, {"id": 1260, "name": "Moissanite Openwork Circle Bracelet", "category": "Bracelets", "final_price": 350.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643602/mikisi/products/1260_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/850967245242/850967245242_0.jpg"}, {"id": 1027, "name": "Geometric Pear Moissanite Pendant Necklace", "category": "Necklaces", "final_price": 222.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924130/mikisi/products/1027_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_06_23_14_24/1026756434459/1026756434459_0.jpg"}, {"id": 801, "name": "Luxury Moissanite Adjustable Bracelet", "category": "Bracelets", "final_price": 129.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920134/mikisi/products/801_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_03_12_15_19/843736145412/843736145412_0.jpg"}, {"id": 1220, "name": "Heart Shape Moissanite Wide Band Ring", "category": "Rings", "final_price": 120.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560468/mikisi/products/1220_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/868022921798/868022921798_0.jpg"}, {"id": 1309, "name": "Marquise Moissanite Stack Ring", "category": "Rings", "final_price": 118.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644638/mikisi/products/1309_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_41/867512223639/867512223639_0.jpg"}, {"id": 1216, "name": "Emerald Cut Moissanite Ring Set", "category": "Rings", "final_price": 118.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560453/mikisi/products/1216_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/867542787157/867542787157_0.jpg"}, {"id": 1308, "name": "Marquise Moissanite Chevron Ring", "category": "Rings", "final_price": 115.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644616/mikisi/products/1308_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_41/854966296363/854966296363_0.jpg"}];
 const LIFESTYLE = [{"id": 572, "name": "Green Emerald Crown Halo Ring", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616959/mikisi/products/572_lifestyle.jpg"}, {"id": 966, "name": "Heart Turquoise & Crystal Necklace", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616977/mikisi/products/966_lifestyle.jpg"}, {"id": 486, "name": "Marquise Vine Link Bracelet", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616980/mikisi/products/486_lifestyle.jpg"}, {"id": 874, "name": "Shovel Pendant Cubic Zirconia Necklace", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616999/mikisi/products/874_lifestyle.jpg"}, {"id": 1163, "name": "Irregular Geometric Smooth Polished Huggie Hoops Earring", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785000753/mikisi/products/1163_lifestyle.jpg"}, {"id": 597, "name": "Green Cactus Flower Ring", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1780941587/mikisi/products/597_lifestyle.jpg"}];
 const INSTAGRAM = [{"id": 65, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785589438/mikisi/products/801_gallery_2.jpg", "caption": "Brilliance that matches your resilience, worn on your wrist.\n\nThis adjustable bracelet in 925 sterling silver holds the timeless sparkle of moissanite\u2014a stone engineered to last, just like your strength. Wear it on your wrist as a quiet declaration of your own worth, a bracelet that knows you deserve nothing less than radiance. Let it remind you, every single day, that you are enough.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 64, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785849746/mikisi/products/1234_gallery_model.jpg", "caption": "A bow that whispers what confidence sounds like.\n\nThis sterling silver necklace is crafted for quiet power. The moissanite catches light with every deliberate movement around your neck, a delicate ribbon that knows exactly what it means. Elegance that doesn't ask for permission\u2014it simply adorns.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 63, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552796/mikisi/products/1241_gallery_4.jpg", "caption": "Geometric elegance for women who build empires.\n\nA marquise moissanite floats in architectural precision on this sterling silver necklace\u2014designed for those who refuse to blend in. Available in yellow or white gold-plated finishes, this necklace is a quiet statement of intention, worn close to your heart. Choose the metal that matches your vision, because every detail of your style should feel intentional.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 62, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644887/mikisi/products/1321_gallery_4.jpg", "caption": "Geometric constellation moissanite ring made for your hands.\n\nThis ring is designed for women who understand that brilliance isn't about being simple\u2014it's about honoring every facet of who you are. With moissanite stones arranged in a geometric pattern across 925 sterling silver or yellow gold-plated band, it's a ring that rewards close attention the way you deserve to be seen. Your fingers deserve to wear something that reflects the complexity and light you bring to the world.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 61, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644478/mikisi/products/1301_gallery_4.jpg", "caption": "A love letter to the woman who chooses herself first.\n\nThis sterling silver ring speaks for you. White moissanite catches the light as script curves across a geometric band\u2014a quiet declaration written right there on your finger. Wear it when self-worth isn't negotiable.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 56, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616996/mikisi/products/948_lifestyle.jpg", "caption": "Wear your love story in every color.\n\nThis Rainbow Love Heart Tennis Bracelet is more than jewelry\u2014it's a wrist-worn declaration. Crafted in white gold-plated 925 sterling silver, each heart-shaped stone catches the light with radiant pride, turning your wrist into a celebration of self-love unapologetically expressed. A bracelet that reminds you to shine in every shade of yourself.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 55, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616983/mikisi/products/1245_lifestyle.jpg", "caption": "Sharp angles, soft heart. One necklace says it all.\n\nGeometric design meets timeless elegance in this 925 sterling silver necklace\u2014each angle catches light like it's meant to be noticed. A symbol of someone who refuses to choose between strength and softness, this necklace rests on your neck as a quiet declaration of self-worth. When you wear pieces that reflect your complexity, you're choosing yourself.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 54, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616999/mikisi/products/874_lifestyle.jpg", "caption": "Geometric boldness meets everyday elegance with this necklace.\n\nThis Shovel Pendant Necklace is crafted in 925 sterling silver with your choice of a polished silver or 18k gold-plated finish. Sparkling cubic zirconia catches light from every angle, creating a modern statement that drapes beautifully around the neck. Bold, unapologetic, and entirely yours\u2014because choosing yourself starts with wearing what makes you feel powerful.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 53, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616986/mikisi/products/1212_lifestyle.jpg", "caption": "Sharp angles. Stronger statement. Two pear moissanites meet.\n\nStack them or wear them solo\u2014this sterling silver ring set moves with you, not against you. Pear-shaped stones demand attention on your fingers, whether you choose silver or gold-plated. Design that refuses compromise, just like you.\n\nTap to shop \ud83d\udecd\ufe0f"}];
-
-// Hero rotation — same mechanic as the live site, hardcoded real images
-(function(){
-  const track = document.getElementById('hero-rot-track');
-  HERO_IMAGES.forEach(img => {
-    const s = document.createElement('div');
-    s.className = 'hero-rot-slide';
-    s.style.backgroundImage = `url("${img.replace(/"/g,'%22')}")`;
-    track.appendChild(s);
-  });
-  const clone = document.createElement('div');
-  clone.className = 'hero-rot-slide';
-  clone.style.backgroundImage = `url("${HERO_IMAGES[0].replace(/"/g,'%22')}")`;
-  track.appendChild(clone);
-  let idx = 0;
-  setInterval(() => {
-    idx++;
-    track.style.transition = 'transform 0.9s cubic-bezier(.4,0,.2,1)';
-    track.style.transform = `translateX(-${idx*100}%)`;
-    if (idx === HERO_IMAGES.length){
-      setTimeout(() => {
-        track.style.transition = 'none';
-        idx = 0;
-        track.style.transform = 'translateX(0%)';
-      }, 900);
-    }
-  }, 5000);
-})();
 
 // Collections
 document.getElementById('col-grid').innerHTML = COLLECTIONS.map(c => `
