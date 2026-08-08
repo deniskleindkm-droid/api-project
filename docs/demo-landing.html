@@ -57,15 +57,15 @@ nav{
   background:var(--cream);padding:72px 48px 0;position:relative;overflow:hidden;
 }
 .hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold-light),transparent);}
+.hero-mark{
+  font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:7px;text-transform:uppercase;
+  color:var(--gold-deep);text-align:center;margin-bottom:24px;
+}
 .hero h1{
-  font-family:'Cormorant Garamond',serif;font-size:clamp(44px,6.5vw,88px);font-weight:300;
-  line-height:1.04;color:var(--black);text-align:center;white-space:nowrap;margin-bottom:18px;letter-spacing:-0.5px;
+  font-family:'Cormorant Garamond',serif;font-size:clamp(38px,6vw,76px);font-weight:300;
+  line-height:1.2;color:var(--black);text-align:center;margin-bottom:44px;letter-spacing:-0.3px;
 }
 .hero h1 em{color:var(--pink);font-style:italic;}
-.hero-tagline{
-  font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:300;font-style:italic;
-  color:var(--mid);text-align:center;margin-bottom:40px;line-height:1.6;
-}
 .hero-btns{display:flex;gap:14px;justify-content:center;margin-bottom:56px;flex-wrap:wrap;}
 .btn-black{
   background:var(--black);color:white;border:none;padding:14px 40px;font-size:10px;font-weight:400;
@@ -90,19 +90,6 @@ nav{
 @keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
 .marquee-track span{font-size:10px;font-weight:300;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin:0 28px;}
 .marquee-track span.dot{color:var(--gold);margin:0 6px;}
-
-/* ── BRAND VALUES (replaces the old 5-icon trust bar) ── */
-.values-section{padding:80px 48px;border-bottom:1px solid var(--border);background:white;}
-.values-grid{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:40px;max-width:1200px;margin:0 auto;
-}
-.value-item{text-align:center;}
-.value-mark{
-  font-family:'Cormorant Garamond',serif;font-style:italic;font-size:28px;color:var(--gold);margin-bottom:16px;
-}
-.value-title{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--black);font-weight:500;margin-bottom:10px;}
-.value-sub{font-size:12.5px;color:var(--mid);font-weight:300;line-height:1.6;}
-@media (max-width:900px){.values-grid{grid-template-columns:repeat(2,1fr);}}
 
 /* ── SHOP COLLECTIONS ── */
 .section-wrap{padding:96px 48px;text-align:center;}
@@ -150,23 +137,11 @@ nav{
 .pcard-price{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--black);}
 @media (max-width:900px){.pgrid{grid-template-columns:repeat(2,1fr);}}
 
-/* ── PHOTOGRAPHY-PENDING PLACEHOLDER ──
-   Full-bleed and tall (not the 1400px-capped, short version from the first
-   draft) -- per Dennis: "this should be one of the largest sections on the
-   page," the emotional centerpiece, so it's sized to match a hero, not a
-   supporting block, even while the real photography is still pending. */
-.photo-pending{
-  aspect-ratio:16/11;width:100vw;margin-left:calc(-50vw + 50%);
-  background:var(--ivory);border-top:1px solid var(--border);border-bottom:1px solid var(--border);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
-}
-.photo-pending-icon{font-size:26px;color:var(--gold);}
-.photo-pending-label{
-  font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--mid);font-weight:400;
-}
-.photo-pending-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px;color:var(--light);}
+/* ── THE MIKISI EXPERIENCE PHOTO — near full-screen, editorial-spread scale,
+   per Dennis: "imagine almost full screen. Like an editorial spread." ── */
 .experience-photo{
-  aspect-ratio:16/11;width:100vw;margin-left:calc(-50vw + 50%);
+  width:100vw;margin-left:calc(-50vw + 50%);
+  height:92vh;min-height:560px;max-height:920px;
   overflow:hidden;background:var(--ivory);
 }
 .experience-photo img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -215,8 +190,13 @@ nav{
 .ig-view-link:hover{color:var(--pink-deep);border-color:var(--pink-deep);}
 .ig-tile:hover img{transform:scale(1.05);}
 
-/* ── FINAL CTA ── */
-.final-cta{position:relative;background:var(--black);color:white;text-align:center;padding:120px 48px;}
+/* ── FINAL CTA — real packaging photo as a soft, dark-overlaid backdrop,
+   so the pouch closes the page the same way it opens the Experience section ── */
+.final-cta{
+  position:relative;color:white;text-align:center;padding:140px 48px;
+  background:linear-gradient(180deg,rgba(14,14,14,0.68),rgba(14,14,14,0.86)),
+    url('https://res.cloudinary.com/ds8qviz1o/image/upload/v1786200766/mikisi/content/packaging_display.jpg') center/cover no-repeat;
+}
 .final-cta h2{
   font-family:'Cormorant Garamond',serif;font-weight:300;font-size:clamp(32px,4.4vw,56px);
   letter-spacing:0.5px;margin-bottom:32px;
@@ -234,21 +214,10 @@ nav{
   }
   .nav-links.open{display:flex;}
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
-  .values-section,.section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
-  .values-grid{grid-template-columns:1fr 1fr;}
-  /* Only 3 tiles now -- keep 3 columns even on mobile (small square
-     thumbnails work fine at this count) rather than leaving one alone
-     in a 2-column row, same balance issue as the Collections grid had. */
-  /* Dennis wants the headline to stay on one line on mobile, not wrap --
-     so instead of allowing a wrap, shrink the floor low enough (via vw,
-     which scales with viewport width) that "Made to be remembered." fits
-     on one line even on a narrow phone. Keeps the original nowrap. */
-  .hero h1{font-size:clamp(22px,7vw,88px);}
+  .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
+  .hero h1{font-size:clamp(30px,9vw,76px);}
   .hero{padding-left:20px;padding-right:20px;}
-  /* Buttons: same story -- keep them side by side (not stacked), so shrink
-     padding/letter-spacing enough that both fit on one row on a narrow phone. */
-  .hero-btns{flex-wrap:nowrap;gap:8px;}
-  .hero-btns .btn-black,.hero-btns .btn-ghost{padding:12px 14px;font-size:8.5px;letter-spacing:1.5px;white-space:nowrap;}
+  .hero-btns .btn-black{padding:13px 32px;font-size:9px;letter-spacing:2px;}
   /* Hero banner's 640px MINIMUM height (from clamp(640px,62vw,860px)) meant
      the rotating banner alone was taller than most phone screens, before any
      other content was visible. Cap it to a sane viewport-relative height. */
@@ -276,14 +245,13 @@ nav{
   <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
 </nav>
 
-<!-- HERO — headline/tagline/CTAs updated for the new positioning (proof
-     points -> feeling); banner structure and rotation mechanic unchanged -->
+<!-- HERO — cut to almost no text per Dennis: "the image should do 80% of
+     the talking." Wordmark + one two-line thought + one CTA. -->
 <div class="hero">
-  <h1 class="fu fu2">Made to be <em>remembered.</em></h1>
-  <div class="hero-tagline fu fu3">Timeless pieces, thoughtfully chosen for the way you live.</div>
+  <div class="hero-mark fu fu2">Mikisi</div>
+  <h1 class="fu fu3">Quiet luxury,<br/>for everyday moments.</h1>
   <div class="hero-btns fu fu4">
-    <button class="btn-black">Explore Collections</button>
-    <button class="btn-ghost">Discover Mikisi</button>
+    <button class="btn-black">Explore</button>
   </div>
   <div class="hero-banner fu" style="animation-delay:0.78s">
     <div class="hero-rot-track" id="hero-rot-track"></div>
@@ -306,32 +274,6 @@ nav{
   </div>
 </div>
 
-<!-- BRAND VALUES -->
-<div class="values-section">
-  <div class="values-grid">
-    <div class="value-item">
-      <div class="value-mark">925</div>
-      <div class="value-title">Genuine Sterling Silver</div>
-      <div class="value-sub">Stamped, hypoallergenic, made to last.</div>
-    </div>
-    <div class="value-item">
-      <div class="value-mark">✦</div>
-      <div class="value-title">Signature Packaging</div>
-      <div class="value-sub">Every order arrives thoughtfully presented.</div>
-    </div>
-    <div class="value-item">
-      <div class="value-mark">⇉</div>
-      <div class="value-title">Fast Express Delivery</div>
-      <div class="value-sub">4–6 business days, fully tracked.</div>
-    </div>
-    <div class="value-item">
-      <div class="value-mark">◇</div>
-      <div class="value-title">Everyday Elegance</div>
-      <div class="value-sub">Designed to be worn, loved, and lived in.</div>
-    </div>
-  </div>
-</div>
-
 <!-- SHOP COLLECTIONS -->
 <div class="section-wrap">
   <div class="section-title">Shop Collections</div>
@@ -339,16 +281,9 @@ nav{
   <div class="col-grid" id="col-grid"><!-- filled by JS --></div>
 </div>
 
-<!-- SIGNATURE PIECES -->
-<div class="signature-section">
-  <div class="section-title">Signature Pieces</div>
-  <div class="section-intro">A curated edit of the pieces we're proudest to have made.</div>
-  <div class="pgrid" id="signature-grid"><!-- filled by JS --></div>
-</div>
-
-<!-- THE MIKISI EXPERIENCE — the emotional centerpiece of the page, per
-     Dennis's direction; photography pending but sized/positioned as such
-     already so it's ready the moment real shots exist -->
+<!-- THE MIKISI EXPERIENCE — moved ahead of The Mikisi Edit per Dennis: before
+     customers see curated pieces, the brand should establish that it cares.
+     Real packaging photo, now near full-screen editorial scale. -->
 <div class="experience-section">
   <div class="experience-inner">
     <div class="section-title">The Mikisi Experience</div>
@@ -357,6 +292,13 @@ nav{
       <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1786200766/mikisi/content/packaging_display.jpg" alt="The Mikisi pouch, thank-you card, and jewelry, beautifully presented"/>
     </div>
   </div>
+</div>
+
+<!-- THE MIKISI EDIT (formerly "Signature Pieces") — brands curate, stores feature -->
+<div class="signature-section">
+  <div class="section-title">The Mikisi Edit</div>
+  <div class="section-intro">The pieces we return to, again and again.</div>
+  <div class="pgrid" id="signature-grid"><!-- filled by JS --></div>
 </div>
 
 <!-- EDITORIAL LIFESTYLE — using a real AI-generated lifestyle image -->
@@ -369,18 +311,20 @@ nav{
   </div>
 </div>
 
-<!-- INSTAGRAM GALLERY -->
+<!-- WORN BY YOU (formerly "Find Us on Instagram") — about the people wearing
+     the pieces, not the platform -->
 <div class="ig-section">
-  <div class="section-title">Find Us on Instagram</div>
+  <div class="section-title">Worn by You</div>
   <div class="ig-grid" id="ig-grid"><!-- filled by JS --></div>
   <a href="https://instagram.com/mikisi.co" target="_blank" rel="noopener" class="ig-view-link">View on Instagram →</a>
 </div>
 
-<!-- WHY STERLING SILVER — moved below the emotional sections (Experience,
-     Lifestyle, Instagram) per Dennis: customers fall in love first, then
-     learn why the quality matters, right before the closing CTA -->
+<!-- CRAFTED TO LAST (formerly "Why Sterling Silver") — leads with philosophy
+     instead of a material spec sheet; still positioned right before the
+     closing CTA, after the emotional sections -->
 <div class="silver-section">
-  <div class="section-title">Why Sterling Silver</div>
+  <div class="section-title">Crafted to Last</div>
+  <div class="section-intro">Our jewelry begins with genuine 925 sterling silver, because beauty should be worn every day.</div>
   <div class="silver-grid">
     <div class="silver-item">
       <div class="silver-num">01</div>
@@ -400,45 +344,41 @@ nav{
   </div>
 </div>
 
-<!-- FINAL CTA — photography pending, dark treatment works without it for now -->
+<!-- FINAL CTA — closes on a feeling rather than a sales pitch, real packaging
+     photo as the backdrop so the pouch bookends the page -->
 <div class="final-cta">
-  <h2>Begin Your Mikisi Story.</h2>
+  <h2>Until next time.</h2>
   <button class="btn-black">Shop Mikisi</button>
 </div>
 
 <div style="max-width:680px;margin:64px auto;padding:24px 28px;background:#f9eef2;border:1px solid #ece5dd;font-size:12px;color:#2a2a2a;line-height:1.8;">
-  <strong style="color:#b8627a;">Note for Dennis:</strong> Second pass per your positioning shift. Hero headline/tagline/
-  buttons rewritten to drop "Real Silver / 925 / Honest Prices" as lead messaging ("Made to be remembered" +
-  "Explore Collections" / "Discover Mikisi"), marquee simplified to 3 statements, Collections tiles are now taller
-  (2:3, more vertical/editorial), The Mikisi Experience placeholder is now full-bleed and hero-sized instead of a
-  small boxed block, and Why Sterling Silver moved to right before the final CTA (after Experience/Lifestyle/
-  Instagram) so quality is explained after the emotional pull, not before it. Final CTA now reads "Begin Your
-  Mikisi Story."
+  <strong style="color:#b8627a;">Third pass — fashion-house direction:</strong> Hero cut down to wordmark + one
+  two-line thought + a single "Explore" button, no separate tagline paragraph. Brand Values (925 / Packaging /
+  Delivery / Everyday Elegance) deleted outright, not redesigned — that material/logistics info still lives on
+  product pages. Section order is now Hero → Collections → The Mikisi Experience → The Mikisi Edit (renamed from
+  "Signature Pieces") → Lifestyle → Worn by You (renamed from "Find Us on Instagram") → Crafted to Last (renamed
+  from "Why Sterling Silver," now leads with a philosophy line instead of a spec) → Final CTA ("Until next time.").
+  The Mikisi Experience photo is now near full-screen (92vh) instead of a 16:11 block. Final CTA's flat black
+  background is now the real packaging photo with a dark overlay, so the pouch opens the page (Experience) and
+  closes it (CTA) — same asset, no new photography needed for that one.
   <br/><br/>
-  <strong style="color:#b8627a;">One thing I didn't touch:</strong> Brand Values still has "925 / Genuine Sterling
-  Silver" as one of its 4 items — I read your note as removing the FRONT-DOOR "Real Silver, Rare Finds" tagline,
-  not the material info entirely (you said keep Why Sterling Silver, just move it down), so I left this as a
-  supporting proof point rather than stripping it too. Say the word if you want that gone as well.
+  <strong style="color:#b8627a;">Update:</strong> Collections tiles now use real RAWSHOT lifestyle photography
+  instead of plain product-on-white shots for Rings, Necklaces, Bracelets, and Earrings — Anklets still uses the
+  primary product photo since no lifestyle shot exists yet for that category.
   <br/><br/>
-  <strong style="color:#b8627a;">Update:</strong> The Mikisi Experience section now uses your real packaging
-  photo (pouch, tissue paper, thank-you card, jewelry) instead of the placeholder — uploaded to Cloudinary and
-  wired in directly.
-  <br/><br/>
-  <strong style="color:#b8627a;">Not built yet:</strong> the pouch-as-recurring-motif idea (threading it through
-  hero, lifestyle, collections, emails, social too) is a real cross-cutting design principle, not a single
-  section — this one photo covers the Experience section, but the rest still needs dedicated shots (or this same
-  one reused/cropped differently).
-  <br/><br/>
-  <strong style="color:#b8627a;">Update:</strong> Hero rotation now uses 5 real RAWSHOT-generated lifestyle
-  photos (LOVE Letter Script Ring, Geometric Pear Moissanite Pendant Necklace, Blue Sapphire Tennis Bracelet,
-  Huggie Hoops Earrings, Pear Moissanite Stackable Ring Set) instead of plain product-on-white primary shots —
-  one per collection where a RAWSHOT image exists. Still waiting on the dedicated "woman + jewelry + pouch"
-  hero shot per your instruction to leave that for later.
+  <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
+  everything above works with the real assets we have, but your brief called for things I can't fabricate:
+  a true cinematic campaign photograph for the hero (what we have is 5 good RAWSHOT lifestyle shots, not a
+  single "fashion magazine" hero image), activity-specific editorial shots per collection (hand at rest, a
+  neckline, a coffee cup, a portrait, bare feet), lifestyle versions of the Signature/Edit product cards, and
+  brand film/video. The pouch-as-recurring-motif also still needs dedicated shots beyond the one packaging photo
+  currently doing double duty in Experience and the Final CTA. None of that can be simulated honestly — it needs
+  a real shoot.
 </div>
 
 <script>
 const HERO_IMAGES = ["https://res.cloudinary.com/ds8qviz1o/image/upload/v1785851982/mikisi/products/1301_lifestyle.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784687191/mikisi/products/1027_lifestyle.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784235468/mikisi/products/947_lifestyle.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785000753/mikisi/products/1163_lifestyle.jpg", "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616986/mikisi/products/1212_lifestyle.jpg"];
-const COLLECTIONS = [{"name": "Rings", "tag": "Mark the moment", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923608/mikisi/products/688_primary.jpg"}, {"name": "Necklaces", "tag": "Wear your story", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922059/mikisi/products/874_primary.jpg"}, {"name": "Bracelets", "tag": "Adorn your wrist", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921555/mikisi/products/945_primary.jpg"}, {"name": "Earrings", "tag": "Frame your face", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919914/mikisi/products/1176_primary.jpg"}, {"name": "Anklets", "tag": "Grace in every step", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919939/mikisi/products/501_primary.jpg"}];
+const COLLECTIONS = [{"name": "Rings", "tag": "Mark the moment", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1780941587/mikisi/products/597_lifestyle.jpg"}, {"name": "Necklaces", "tag": "Wear your story", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616977/mikisi/products/966_lifestyle.jpg"}, {"name": "Bracelets", "tag": "Adorn your wrist", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616980/mikisi/products/486_lifestyle.jpg"}, {"name": "Earrings", "tag": "Frame your face", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785000753/mikisi/products/1163_lifestyle.jpg"}, {"name": "Anklets", "tag": "Grace in every step", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919939/mikisi/products/501_primary.jpg"}];
 const SIGNATURE = [{"id": 1247, "name": "European Moissanite Tennis Bracelet", "category": "Bracelets", "final_price": 395.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1247_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/850530903903/850530903903_0.jpg"}, {"id": 1260, "name": "Moissanite Openwork Circle Bracelet", "category": "Bracelets", "final_price": 350.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643602/mikisi/products/1260_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/850967245242/850967245242_0.jpg"}, {"id": 1027, "name": "Geometric Pear Moissanite Pendant Necklace", "category": "Necklaces", "final_price": 222.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924130/mikisi/products/1027_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_06_23_14_24/1026756434459/1026756434459_0.jpg"}, {"id": 801, "name": "Luxury Moissanite Adjustable Bracelet", "category": "Bracelets", "final_price": 129.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920134/mikisi/products/801_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_03_12_15_19/843736145412/843736145412_0.jpg"}, {"id": 1220, "name": "Heart Shape Moissanite Wide Band Ring", "category": "Rings", "final_price": 120.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560468/mikisi/products/1220_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/868022921798/868022921798_0.jpg"}, {"id": 1309, "name": "Marquise Moissanite Stack Ring", "category": "Rings", "final_price": 118.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644638/mikisi/products/1309_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_41/867512223639/867512223639_0.jpg"}, {"id": 1216, "name": "Emerald Cut Moissanite Ring Set", "category": "Rings", "final_price": 118.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560453/mikisi/products/1216_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/867542787157/867542787157_0.jpg"}, {"id": 1308, "name": "Marquise Moissanite Chevron Ring", "category": "Rings", "final_price": 115.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644616/mikisi/products/1308_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_41/854966296363/854966296363_0.jpg"}];
 const LIFESTYLE = [{"id": 572, "name": "Green Emerald Crown Halo Ring", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616959/mikisi/products/572_lifestyle.jpg"}, {"id": 966, "name": "Heart Turquoise & Crystal Necklace", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616977/mikisi/products/966_lifestyle.jpg"}, {"id": 486, "name": "Marquise Vine Link Bracelet", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616980/mikisi/products/486_lifestyle.jpg"}, {"id": 874, "name": "Shovel Pendant Cubic Zirconia Necklace", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616999/mikisi/products/874_lifestyle.jpg"}, {"id": 1163, "name": "Irregular Geometric Smooth Polished Huggie Hoops Earring", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785000753/mikisi/products/1163_lifestyle.jpg"}, {"id": 597, "name": "Green Cactus Flower Ring", "content_lifestyle_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1780941587/mikisi/products/597_lifestyle.jpg"}];
 const INSTAGRAM = [{"id": 65, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785589438/mikisi/products/801_gallery_2.jpg", "caption": "Brilliance that matches your resilience, worn on your wrist.\n\nThis adjustable bracelet in 925 sterling silver holds the timeless sparkle of moissanite\u2014a stone engineered to last, just like your strength. Wear it on your wrist as a quiet declaration of your own worth, a bracelet that knows you deserve nothing less than radiance. Let it remind you, every single day, that you are enough.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 64, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785849746/mikisi/products/1234_gallery_model.jpg", "caption": "A bow that whispers what confidence sounds like.\n\nThis sterling silver necklace is crafted for quiet power. The moissanite catches light with every deliberate movement around your neck, a delicate ribbon that knows exactly what it means. Elegance that doesn't ask for permission\u2014it simply adorns.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 63, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552796/mikisi/products/1241_gallery_4.jpg", "caption": "Geometric elegance for women who build empires.\n\nA marquise moissanite floats in architectural precision on this sterling silver necklace\u2014designed for those who refuse to blend in. Available in yellow or white gold-plated finishes, this necklace is a quiet statement of intention, worn close to your heart. Choose the metal that matches your vision, because every detail of your style should feel intentional.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 62, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644887/mikisi/products/1321_gallery_4.jpg", "caption": "Geometric constellation moissanite ring made for your hands.\n\nThis ring is designed for women who understand that brilliance isn't about being simple\u2014it's about honoring every facet of who you are. With moissanite stones arranged in a geometric pattern across 925 sterling silver or yellow gold-plated band, it's a ring that rewards close attention the way you deserve to be seen. Your fingers deserve to wear something that reflects the complexity and light you bring to the world.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 61, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644478/mikisi/products/1301_gallery_4.jpg", "caption": "A love letter to the woman who chooses herself first.\n\nThis sterling silver ring speaks for you. White moissanite catches the light as script curves across a geometric band\u2014a quiet declaration written right there on your finger. Wear it when self-worth isn't negotiable.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 56, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616996/mikisi/products/948_lifestyle.jpg", "caption": "Wear your love story in every color.\n\nThis Rainbow Love Heart Tennis Bracelet is more than jewelry\u2014it's a wrist-worn declaration. Crafted in white gold-plated 925 sterling silver, each heart-shaped stone catches the light with radiant pride, turning your wrist into a celebration of self-love unapologetically expressed. A bracelet that reminds you to shine in every shade of yourself.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 55, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616983/mikisi/products/1245_lifestyle.jpg", "caption": "Sharp angles, soft heart. One necklace says it all.\n\nGeometric design meets timeless elegance in this 925 sterling silver necklace\u2014each angle catches light like it's meant to be noticed. A symbol of someone who refuses to choose between strength and softness, this necklace rests on your neck as a quiet declaration of self-worth. When you wear pieces that reflect your complexity, you're choosing yourself.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 54, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616999/mikisi/products/874_lifestyle.jpg", "caption": "Geometric boldness meets everyday elegance with this necklace.\n\nThis Shovel Pendant Necklace is crafted in 925 sterling silver with your choice of a polished silver or 18k gold-plated finish. Sparkling cubic zirconia catches light from every angle, creating a modern statement that drapes beautifully around the neck. Bold, unapologetic, and entirely yours\u2014because choosing yourself starts with wearing what makes you feel powerful.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 53, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616986/mikisi/products/1212_lifestyle.jpg", "caption": "Sharp angles. Stronger statement. Two pear moissanites meet.\n\nStack them or wear them solo\u2014this sterling silver ring set moves with you, not against you. Pear-shaped stones demand attention on your fingers, whether you choose silver or gold-plated. Design that refuses compromise, just like you.\n\nTap to shop \ud83d\udecd\ufe0f"}];
