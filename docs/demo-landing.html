@@ -59,11 +59,11 @@ nav{
   height:92vh;min-height:660px;max-height:920px;overflow:hidden;background:var(--ivory);
 }
 .hero-img{position:absolute;inset:0;}
-.hero-img img{width:100%;height:100%;object-fit:cover;object-position:50% 15%;display:block;}
+.hero-img img{width:100%;height:100%;object-fit:cover;object-position:60% 50%;display:block;}
 .hero-overlay{
-  position:relative;z-index:1;height:100%;max-width:640px;
-  display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;
-  padding:64px 9vw 60px;
+  position:relative;z-index:1;height:100%;max-width:560px;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+  padding:0 9vw 60px;
 }
 .hero h1{
   font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4.4vw,54px);font-weight:300;
@@ -222,8 +222,8 @@ nav{
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
   .hero{height:92vh;min-height:640px;max-height:820px;}
-  .hero-img img{object-position:38% center;}
-  .hero-overlay{max-width:100%;padding:48px 24px 60px;}
+  .hero-img img{object-position:30% center;}
+  .hero-overlay{max-width:100%;padding:0 24px 60px;}
   .hero h1{font-size:clamp(26px,7.5vw,38px);}
   /* 21:9 crops a portrait-leaning lifestyle photo down to a thin sliver on
      narrow screens, losing most of the image -- use a taller ratio instead. */
@@ -248,13 +248,15 @@ nav{
   <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
 </nav>
 
-<!-- HERO — single real photo, full-bleed cover, edge to edge. Swapped to a
-     genuine smiling portrait (lemon orchard, real sky above her head for
-     the headline) -- a real woman's face this time, not just an arm, while
-     still keeping real negative space so the text doesn't land on her. -->
+<!-- HERO — real editorial flat-lay (your photo): the signature pouch, ring,
+     hoop earrings, and tennis bracelet on marble with real dappled light.
+     Landscape 3:2 crop, so almost none of it needs to be cropped away, and
+     the plain wall on the left is genuine negative space for the copy --
+     no face-overlap tradeoffs, multiple real pieces visible, and the pouch
+     motif finally in the hero itself. -->
 <div class="hero">
   <div class="hero-img">
-    <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1784235628/mikisi/products/721_lifestyle.jpg" alt="A Mikisi necklace, worn"/>
+    <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1786219332/mikisi/content/hero_flatlay.jpg" alt="The Mikisi pouch with a ring, hoop earrings, and tennis bracelet"/>
   </div>
   <div class="hero-overlay">
     <h1 class="fu fu2">Collected for <em>life</em>.</h1>
@@ -445,14 +447,23 @@ nav{
   silver column titles are now Made for Years / Gentle by Nature / Designed for Everyday. Instagram section is
   now "Life in Mikisi." Final CTA is now "The piece you'll reach for tomorrow" (your favorite of the options).
   <br/><br/>
+  <strong style="color:#b8627a;">Thirteenth pass — your own hero photo, uploaded and wired in:</strong> replaced
+  the lemon-orchard portrait with the flat-lay you sent (pouch, ring, hoop earrings, tennis bracelet, on marble
+  with real dappled light). Uploaded it to Cloudinary and swapped it straight in. This solves several things at
+  once: it's landscape (3:2), so almost none of it needs cropping on desktop; the plain wall on the left is
+  genuine negative space, not a face-overlap compromise; multiple real pieces are visible at once instead of
+  just one; and the pouch — the recurring motif you wanted threaded through the brand — is finally in the hero
+  itself, with its own "mikisi" branding doing double duty as a second wordmark. On mobile the crop is much
+  tighter (portrait screens can only show a narrow vertical slice of a wide photo), so it's positioned toward
+  the wall side to keep the copy clear of the pouch and its lettering. Verified both breakpoints locally.
+  <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
-  everything above works with the real assets we have, but the ideal version needs images we don't have yet:
-  a true dedicated campaign shot (woman, movement, the pouch in-frame, shot specifically for this hero — what
-  we used is a strong real lifestyle photo repurposed, not commissioned for this exact composition),
-  activity-specific editorial shots per collection (hand at rest, a neckline, a coffee cup, a portrait, bare
-  feet), lifestyle versions of the Mikisi Edit product cards, and brand film/video. The pouch-as-recurring-motif
-  also still needs dedicated shots beyond the one packaging photo currently doing double duty in Experience and
-  the Final CTA. None of that can be simulated honestly — it needs a real shoot.
+  the hero itself is now in much better shape with a real dedicated shot. Still open: activity-specific
+  editorial shots per collection (hand at rest, a neckline, a coffee cup, a portrait, bare feet), lifestyle
+  versions of the Mikisi Edit product cards, and brand film/video. The pouch motif could still extend further —
+  this flat-lay and the Experience section's packaging photo are two different real shots of it now, which is
+  a start, but emails/social/ads don't have a matching shot yet. None of that can be simulated honestly — it
+  needs a real shoot.
 </div>
 
 <script>
