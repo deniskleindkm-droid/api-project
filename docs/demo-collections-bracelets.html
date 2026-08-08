@@ -68,10 +68,6 @@ nav{
   letter-spacing:0.3px;max-width:480px;margin:0 auto;line-height:1.7;
 }
 
-/* ── SHOP BY STYLE -- reuses .stone-card styling below so it's visually
-   identical to the stone tiles, just a separate row/heading ── */
-.style-section{padding:72px 48px 0;text-align:center;}
-
 /* ── DISCOVER BY STONE ── */
 .stone-section{padding:72px 48px 16px;text-align:center;}
 .section-title{
@@ -219,12 +215,6 @@ nav{
   <p>Crafted from genuine 925 sterling silver. Timeless pieces designed to stack and layer beautifully.</p>
 </div>
 
-<div class="style-section">
-  <div class="section-title">Shop by Style</div>
-  <div class="section-intro">A signature silhouette, in every stone.</div>
-  <div class="stone-grid" id="style-grid"><!-- filled by JS --></div>
-</div>
-
 <div class="stone-section">
   <div class="section-title">Discover by Stone</div>
   <div class="section-intro">Every stone tells a different story. Explore the collection that speaks to you.</div>
@@ -249,15 +239,13 @@ nav{
 </div>
 
 <div class="dev-note">
-  <strong>Note for Dennis:</strong> Stone, Metal Finish, and Style are now three fully independent filters that
-  combine with each other (click Moissanite, then Silver, to see the 3 real bracelets that are genuinely both).
-  Style vs. Stone still work as alternatives to each other, not combined (clicking one clears the other) since
-  a piece's primary story is either "it's a Tennis Bracelet" or "it's Moissanite," not usually both framings at
-  once — Metal Finish always layers on top of whichever one is active. <strong>One thing to flag:</strong> this
-  independent stone+metal split is real for this demo (I split the classification into two separate detectors
-  and re-read the actual catalog to test it), but the live site's pricing engine (jewelry_pricing.py) still only
-  stores one combined label per product. Wiring this into the real site would mean updating that backend to
-  store stone and metal as separate fields, not just a frontend change.
+  <strong>Note for Dennis:</strong> Removed the "Shop by Style" (Tennis Bracelets) section per your request —
+  Stone and Metal Finish are the two filters now, fully independent and combine with each other (click
+  Moissanite, then Silver, to see the 3 real bracelets that are genuinely both). <strong>One thing to
+  flag:</strong> this independent stone+metal split is real for this demo (I split the classification into two
+  separate detectors and re-read the actual catalog to test it), but the live site's pricing engine
+  (jewelry_pricing.py) still only stores one combined label per product. Wiring this into the real site would
+  mean updating that backend to store stone and metal as separate fields, not just a frontend change.
 </div>
 
 <script>
@@ -275,23 +263,13 @@ const METAL_META = {
   white_gold: 'White Gold',
   rose_gold:  'Rose Gold',
 };
-// Style, Stone and Metal are all independently detected fields on each
-// product now (see the dev-note above) -- Metal always combines (ANDs)
-// with whichever of Stone/Style is active. Stone and Style act as
-// alternatives to EACH OTHER though (selecting one clears the other):
-// a piece's primary framing is either "it's a Tennis Bracelet" or
-// "it's Moissanite," not both at once, but either can be refined by metal.
-const STYLE_META = {
-  tennis: { label:'Tennis Bracelets',
-            tag:'The bracelet that never goes out of style. Continuous brilliance, wrist to wrist.' },
-};
+// Stone and Metal are independently detected fields on each product --
+// Metal always combines (ANDs) with whichever Stone is active.
 const STONE_ORDER = ['moissanite','cubic_zirconia','semi_precious','pearl'];
 const METAL_ORDER = ['gold','silver','white_gold','rose_gold'];
-const STYLE_ORDER = ['tennis'];
 
 let activeStone = null;
 let activeMetal = null;
-let activeStyle = null;
 let visibleCount = 16;
 const PAGE_SIZE = 16;
 
@@ -305,26 +283,6 @@ function metalCounts(){
   PRODUCTS.forEach(p => c[p.metal] = (c[p.metal]||0) + 1);
   return c;
 }
-function styleCounts(){
-  const c = {};
-  PRODUCTS.forEach(p => { if (p.style) c[p.style] = (c[p.style]||0) + 1; });
-  return c;
-}
-
-function renderStyleTiles(){
-  const c = styleCounts();
-  const wrap = document.getElementById('style-grid');
-  wrap.innerHTML = STYLE_ORDER.filter(k => c[k] > 0).map(k => {
-    const meta = STYLE_META[k];
-    const sample = PRODUCTS.find(p => p.style === k);
-    return `<div class="stone-card" data-style="${k}" onclick="setStyleFilter('${k}')">
-      <div class="stone-card-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
-      <div class="stone-card-name">${meta.label}</div>
-      <div class="stone-card-tag">${meta.tag}</div>
-    </div>`;
-  }).join('');
-}
-
 function renderStoneCards(){
   const c = stoneCounts();
   const wrap = document.getElementById('stone-grid');
@@ -349,25 +307,17 @@ function renderMetalChips(){
 
 function setStoneFilter(stone){
   activeStone = (activeStone === stone) ? null : stone;
-  activeStyle = null; // Stone and Style are alternatives to each other
-  visibleCount = PAGE_SIZE;
-  render();
-}
-function setStyleFilter(style){
-  activeStyle = (activeStyle === style) ? null : style;
-  activeStone = null; // Stone and Style are alternatives to each other
   visibleCount = PAGE_SIZE;
   render();
 }
 function setMetalFilter(metal){
-  activeMetal = (activeMetal === metal) ? null : metal; // always independent -- never clears stone/style
+  activeMetal = (activeMetal === metal) ? null : metal; // always independent -- never clears stone
   visibleCount = PAGE_SIZE;
   render();
 }
 function clearFilter(){
   activeStone = null;
   activeMetal = null;
-  activeStyle = null;
   visibleCount = PAGE_SIZE;
   render();
 }
@@ -375,24 +325,20 @@ function clearFilter(){
 function render(){
   let filtered = PRODUCTS;
   if (activeStone) filtered = filtered.filter(p => p.stone === activeStone);
-  if (activeStyle) filtered = filtered.filter(p => p.style === activeStyle);
   if (activeMetal) filtered = filtered.filter(p => p.metal === activeMetal);
 
   document.querySelectorAll('.stone-card[data-stone]').forEach(el =>
     el.classList.toggle('active', el.dataset.stone === activeStone));
-  document.querySelectorAll('.stone-card[data-style]').forEach(el =>
-    el.classList.toggle('active', el.dataset.style === activeStyle));
   document.querySelectorAll('.metal-chip').forEach(el =>
     el.classList.toggle('active', el.dataset.metal === activeMetal));
 
   const parts = [];
   if (activeMetal) parts.push(METAL_META[activeMetal]);
   if (activeStone) parts.push(STONE_META[activeStone].label);
-  else if (activeStyle) parts.push(STYLE_META[activeStyle].label.replace(' Bracelets', ''));
   const title = parts.length ? `${parts.join(' ')} Bracelets` : 'Bracelets';
   document.getElementById('grid-title').textContent = title;
 
-  const anyActive = !!(activeStone || activeMetal || activeStyle);
+  const anyActive = !!(activeStone || activeMetal);
   document.getElementById('grid-sub').textContent = anyActive
     ? `${filtered.length} timeless piece${filtered.length===1?'':'s'}`
     : `${filtered.length} piece${filtered.length===1?'':'s'}, curated for you`;
@@ -417,7 +363,6 @@ function loadMore(){
   render();
 }
 
-renderStyleTiles();
 renderStoneCards();
 renderMetalChips();
 render();
