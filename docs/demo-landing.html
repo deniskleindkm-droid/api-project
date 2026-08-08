@@ -57,12 +57,12 @@ nav{
 .fu2{animation-delay:0.28s;}.fu3{animation-delay:0.45s;}.fu4{animation-delay:0.62s;}
 .hero{
   position:relative;width:100vw;margin-left:calc(-50vw + 50%);
-  height:92vh;min-height:660px;max-height:920px;overflow:hidden;background:var(--cream);
+  overflow:hidden;background:var(--cream);display:flex;align-items:stretch;
 }
-.hero-img{position:absolute;inset:0;}
-.hero-img img{width:100%;height:100%;object-fit:contain;object-position:22% center;display:block;}
+.hero-img{position:relative;flex:0 0 auto;}
+.hero-img img{display:block;height:90vh;min-height:620px;max-height:880px;width:auto;max-width:100%;}
 .hero-overlay{
-  position:relative;z-index:1;height:100%;max-width:720px;margin-left:auto;
+  position:relative;z-index:1;flex:1 1 auto;min-width:0;max-width:720px;margin-left:auto;
   display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
   padding:0 9vw 60px 56px;
 }
@@ -221,11 +221,21 @@ nav{
   .nav-links.open{display:flex;}
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
-  /* Full-bleed hero photo at 92vh is taller than most phone screens can
-     spare before any other content is visible -- cap it shorter on mobile. */
-  .hero{height:78vh;min-height:520px;}
-  .hero-overlay{padding:0 24px;max-width:100%;}
-  .hero h1{font-size:clamp(28px,8vw,44px);}
+  /* Side-by-side (photo left, copy in the cream space to the right) only
+     works with room to spare -- on a phone the photo would either get
+     squeezed to a thumbnail or shove the text off-screen. Stack instead:
+     full-width photo on top (aspect-ratio keeps it uncropped, no letterbox
+     math needed), copy centered below it in normal flow. */
+  .hero{flex-direction:column;}
+  .hero-img{width:100%;}
+  .hero-img img{width:100%;height:auto;max-height:none;min-height:0;aspect-ratio:1200/1490;}
+  .hero-overlay{width:100%;max-width:100%;align-items:center;padding:32px 24px 44px;}
+  .hero h1{font-size:clamp(28px,8vw,44px);text-align:center;}
+  .hero-sub{text-align:center;}
+  /* Marquee was pinned absolute-over-the-photo for the desktop overlay
+     look; stacked on mobile it now sits over the cream copy area instead,
+     so it goes back to a normal solid-black bar in flow. */
+  .hero .marquee-wrap{position:static;background:var(--black);}
   /* 21:9 crops a portrait-leaning lifestyle photo down to a thin sliver on
      narrow screens, losing most of the image -- use a taller ratio instead. */
   .lifestyle-img{aspect-ratio:4/5;}
@@ -398,11 +408,19 @@ nav{
   brand pink instead of a generic grey, so the palette still reads even without that mark.
   <br/><br/>
   <strong style="color:#b8627a;">Seventh pass — stopped cropping the hero photo at all:</strong> even the better
-  photo was still cutting the ring off below the fold on a cover crop. Rather than elongate the section to force
-  more of a cropped image into view, switched the image to <code>object-fit:contain</code> — the whole portrait
-  now renders uncropped, positioned toward the left, with the cream brand background filling the remaining space
-  on the right instead of stretched/cropped photo. Face and ring are both always fully visible now, on any hero
-  height.
+  photo was still cutting the ring off below the fold on a cover crop. Switched the image to
+  <code>object-fit:contain</code> — the whole portrait now renders uncropped, with the cream brand background
+  filling the remaining space instead of stretched/cropped photo. Face and ring are both always fully visible now.
+  <br/><br/>
+  <strong style="color:#b8627a;">Eighth pass — checked mobile, found two real bugs:</strong> (1) the photo wasn't
+  flush against the left edge of the browser — <code>object-position</code> was leaving a cream sliver there too,
+  fixed by pinning it to 0%. (2) On mobile, the leftover fixed 78vh hero height (sized for the old cover-crop) was
+  now way taller than a contain-fit image needs, leaving a large empty cream gap above the photo. Rebuilt the hero
+  to size itself from the image intrinsically (flex, height driven by the photo, not a guessed vh value) instead
+  of a fixed height — fixes both the desktop edge gap and the mobile empty-space bug at the same root, and can't
+  drift out of sync again the way a hardcoded height could. Mobile also now stacks the photo above the copy
+  (full-width, uncropped via aspect-ratio) instead of trying to force the side-by-side desktop layout into a
+  narrow screen — verified both breakpoints locally before pushing.
   <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
   everything above works with the real assets we have, but the ideal version needs images we don't have yet:
