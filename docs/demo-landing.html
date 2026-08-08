@@ -60,7 +60,7 @@ nav{
   height:92vh;min-height:640px;max-height:960px;overflow:hidden;background:var(--ivory);
 }
 .hero-img{position:absolute;inset:0;}
-.hero-img img{width:100%;height:100%;object-fit:cover;object-position:50% 16%;display:block;}
+.hero-img img{width:100%;height:100%;object-fit:cover;object-position:50% 72%;display:block;}
 .hero-overlay{
   position:relative;z-index:1;height:100%;max-width:720px;margin-left:auto;
   display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
@@ -72,9 +72,13 @@ nav{
 }
 .hero h1{
   font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4.4vw,54px);font-weight:300;
-  line-height:1.25;color:var(--black);text-align:right;margin-bottom:32px;letter-spacing:-0.2px;
+  line-height:1.25;color:var(--black);text-align:right;margin-bottom:14px;letter-spacing:-0.2px;
 }
 .hero h1 em{color:var(--pink);font-style:italic;}
+.hero-sub{
+  font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:300;font-style:italic;
+  color:var(--mid);text-align:right;margin-bottom:34px;line-height:1.6;
+}
 .hero-link{
   font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:3px;text-transform:uppercase;
   color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);padding-bottom:6px;transition:all 0.3s;
@@ -261,7 +265,8 @@ nav{
   </div>
   <div class="hero-overlay">
     <div class="hero-mark fu fu2">Mikisi</div>
-    <h1 class="fu fu3">Quiet luxury,<br/>for everyday moments.</h1>
+    <h1 class="fu fu3">The beauty of <em>everyday</em>.</h1>
+    <div class="hero-sub fu fu3">Jewelry you'll reach for again and again.</div>
     <a href="#collections" class="hero-link fu fu4">Explore</a>
   </div>
   <div class="marquee-wrap">
@@ -373,12 +378,17 @@ nav{
   <br/><br/>
   <strong style="color:#b8627a;">Fourth pass — hero rebuilt as one composition:</strong> the headline and the
   photo were two separate blocks (cream text area, then a banner below it) — fixed. Hero is now one full-bleed
-  image with the copy sitting inside the photo's own negative space, not overlaid with a gradient scrim. Swapped
-  the 5-image rotation for a single static image (the Blue Sapphire Tennis Bracelet shot, Tuscan estate) chosen
-  specifically because its sky/blurred background upper-left gives the dark serif headline somewhere real to sit
-  — no card, no border, no gradient needed for legibility. CTA is now a small underlined "Explore" text link
-  (scrolls to Collections) instead of a solid black button. Headline kept at "Quiet luxury, for everyday moments,"
-  left-aligned, 2 lines.
+  image with the copy sitting inside the photo's own negative space, not overlaid with a gradient scrim. The
+  marquee is pinned to the photo's bottom edge too, instead of stacking below it as its own black bar — the whole
+  hero is one block now, nothing separate underneath it. CTA is a small underlined "Explore" text link (scrolls
+  to Collections) instead of a solid black button.
+  <br/><br/>
+  <strong style="color:#b8627a;">Fifth pass — better hero photo + new copy:</strong> swapped the arm-only bracelet
+  crop for a full portrait (Mocanite Geometric Heart Necklace, same Tuscan estate series) — an actual woman per
+  your brief, warmer tones closer to the brand palette, and a published product. Copy is now "The beauty of
+  <em>everyday</em>." with "Jewelry you'll reach for again and again." underneath, right-aligned to sit in the
+  vineyard/sky negative space to her right. Kept the brand pink on "everyday," same treatment as the "Mik<em>i</em>si"
+  wordmark.
   <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
   everything above works with the real assets we have, but the ideal version needs images we don't have yet:
