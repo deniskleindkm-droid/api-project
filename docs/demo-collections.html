@@ -104,22 +104,6 @@ nav{
 }
 .stone-card.active .stone-card-tag{color:var(--pink-deep);}
 
-/* ── REFINE BY FINISH ── */
-.metal-section{
-  padding:56px 48px;text-align:center;
-  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
-  margin-top:80px;
-}
-.metal-chips{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;}
-.metal-chip{
-  font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
-  font-weight:400;color:var(--charcoal);
-  background:none;border:1px solid var(--light);
-  padding:10px 22px;cursor:pointer;transition:all 0.25s;
-  font-family:'Jost',sans-serif;
-}
-.metal-chip:hover{border-color:var(--pink);color:var(--pink-deep);}
-.metal-chip.active{background:var(--black);border-color:var(--black);color:white;}
 
 /* ── PRODUCT GRID ── */
 .grid-section{padding:80px 48px 100px;}
@@ -190,7 +174,7 @@ nav{
   }
   .nav-links.open{display:flex;}
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
-  .col-hero,.stone-section,.metal-section,.grid-section{padding-left:20px;padding-right:20px;}
+  .col-hero,.stone-section,.grid-section{padding-left:20px;padding-right:20px;}
 }
 </style>
 </head>
@@ -221,11 +205,6 @@ nav{
   <div class="stone-grid" id="stone-grid"><!-- filled by JS --></div>
 </div>
 
-<div class="metal-section">
-  <div class="section-title" style="margin-bottom:24px;">Refine by Finish</div>
-  <div class="metal-chips" id="metal-chips"><!-- filled by JS --></div>
-</div>
-
 <div class="grid-section">
   <div class="grid-heading">
     <div class="grid-title" id="grid-title">Rings</div>
@@ -239,14 +218,13 @@ nav{
 </div>
 
 <div class="dev-note">
-  <strong>Note for Dennis:</strong> the stone cards above only show Moissanite, Cubic Zirconia and Gemstones because
-  those are the only stone types actually in the Rings collection right now — no Pearl rings exist in inventory,
-  so I left that tile out rather than show a card that leads to zero products. Also: today's material data gives
-  each product exactly one label (e.g. a product is either "Moissanite" or "Gold," never both), so clicking a
-  Metal Finish chip and a Stone card can't yet be combined — clicking one clears the other. Real cross-filtering
-  (a gold moissanite ring showing under both) would need the material-detection logic split into two separate
-  fields. This demo reflects what today's data actually supports; happy to scope that enhancement if you want true
-  combined filtering before we integrate.
+  <strong>Note for Dennis:</strong> Removed "Refine by Finish" per your request — "Discover by Stone" is the
+  only filter now. The stone cards above only show Moissanite, Cubic Zirconia and Gemstones because those are
+  the only stone types actually in the Rings collection right now — no Pearl rings exist in inventory, so I
+  left that tile out rather than show a card that leads to zero products. One thing to flag: today's material
+  data gives each product exactly one label (e.g. a product is either "Moissanite" or "Gold," never both), so
+  rings whose only label is a metal (not a stone) won't appear under any of these tiles — they still show in
+  the default unfiltered view, just aren't reachable via a filter click.
 </div>
 
 <script>
@@ -258,16 +236,9 @@ const STONE_META = {
   semi_precious:  { label:'Gemstones',      tag:"Nature's color, drawn from the earth and set to endure." },
   pearl:          { label:'Pearl',          tag:'Quiet, timeless grace that never goes out of style.' },
 };
-const METAL_META = {
-  gold:       'Yellow Gold',
-  silver:     'Silver',
-  white_gold: 'White Gold',
-  rose_gold:  'Rose Gold',
-};
 const STONE_ORDER = ['moissanite','cubic_zirconia','semi_precious','pearl'];
-const METAL_ORDER = ['gold','silver','white_gold','rose_gold'];
 
-let activeFilter = null; // e.g. 'moissanite' or 'gold' -- single bucket, see dev-note
+let activeFilter = null; // e.g. 'moissanite' -- single bucket, see dev-note
 let visibleCount = 16;
 const PAGE_SIZE = 16;
 
@@ -291,14 +262,6 @@ function renderStoneCards(){
   }).join('');
 }
 
-function renderMetalChips(){
-  const c = counts();
-  const wrap = document.getElementById('metal-chips');
-  wrap.innerHTML = METAL_ORDER.filter(k => c[k] > 0).map(k =>
-    `<button class="metal-chip" data-mat="${k}" onclick="setFilter('${k}')">${METAL_META[k]}</button>`
-  ).join('');
-}
-
 function setFilter(mat){
   activeFilter = (activeFilter === mat) ? null : mat;
   visibleCount = PAGE_SIZE;
@@ -315,12 +278,8 @@ function render(){
 
   document.querySelectorAll('.stone-card').forEach(el =>
     el.classList.toggle('active', el.dataset.mat === activeFilter));
-  document.querySelectorAll('.metal-chip').forEach(el =>
-    el.classList.toggle('active', el.dataset.mat === activeFilter));
 
-  const label = activeFilter
-    ? (STONE_META[activeFilter]?.label || METAL_META[activeFilter])
-    : null;
+  const label = activeFilter ? STONE_META[activeFilter]?.label : null;
   document.getElementById('grid-title').textContent = label ? `${label} Rings` : 'Rings';
   document.getElementById('grid-sub').textContent =
     label ? `${filtered.length} timeless piece${filtered.length===1?'':'s'}` : `${filtered.length} piece${filtered.length===1?'':'s'}, curated for you`;
@@ -346,7 +305,6 @@ function loadMore(){
 }
 
 renderStoneCards();
-renderMetalChips();
 render();
 </script>
 

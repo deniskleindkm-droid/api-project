@@ -104,22 +104,6 @@ nav{
 }
 .stone-card.active .stone-card-tag{color:var(--pink-deep);}
 
-/* ── REFINE BY FINISH ── */
-.metal-section{
-  padding:56px 48px;text-align:center;
-  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
-  margin-top:80px;
-}
-.metal-chips{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;}
-.metal-chip{
-  font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
-  font-weight:400;color:var(--charcoal);
-  background:none;border:1px solid var(--light);
-  padding:10px 22px;cursor:pointer;transition:all 0.25s;
-  font-family:'Jost',sans-serif;
-}
-.metal-chip:hover{border-color:var(--pink);color:var(--pink-deep);}
-.metal-chip.active{background:var(--black);border-color:var(--black);color:white;}
 
 /* ── PRODUCT GRID ── */
 .grid-section{padding:80px 48px 100px;}
@@ -190,7 +174,7 @@ nav{
   }
   .nav-links.open{display:flex;}
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
-  .col-hero,.stone-section,.metal-section,.grid-section{padding-left:20px;padding-right:20px;}
+  .col-hero,.stone-section,.grid-section{padding-left:20px;padding-right:20px;}
 }
 </style>
 </head>
@@ -221,11 +205,6 @@ nav{
   <div class="stone-grid" id="stone-grid"><!-- filled by JS --></div>
 </div>
 
-<div class="metal-section">
-  <div class="section-title" style="margin-bottom:24px;">Refine by Finish</div>
-  <div class="metal-chips" id="metal-chips"><!-- filled by JS --></div>
-</div>
-
 <div class="grid-section">
   <div class="grid-heading">
     <div class="grid-title" id="grid-title">Earrings</div>
@@ -239,10 +218,8 @@ nav{
 </div>
 
 <div class="dev-note">
-  <strong>Note for Dennis:</strong> Removed the "Shop by Style" (Hoop & Huggie) section per your request —
-  Stone and Metal Finish are the two filters now, fully independent and combine with each other. This
-  independent stone+metal split is real for the demo, but the live pricing engine (jewelry_pricing.py) still
-  stores one combined label per product — integrating this needs a backend change, not just a frontend one.
+  <strong>Note for Dennis:</strong> Removed "Shop by Style" (Hoop & Huggie) and now "Refine by Finish" (Metal)
+  too, per your requests — Stone is the only filter left, "Discover by Stone."
 </div>
 
 <script>
@@ -254,30 +231,15 @@ const STONE_META = {
   semi_precious:  { label:'Gemstones',      tag:"Nature's color, drawn from the earth and set to endure." },
   pearl:          { label:'Pearl',          tag:'Quiet, timeless grace that never goes out of style.' },
 };
-const METAL_META = {
-  gold:       'Yellow Gold',
-  silver:     'Silver',
-  white_gold: 'White Gold',
-  rose_gold:  'Rose Gold',
-};
-// Stone and Metal are independently detected fields on each product --
-// Metal always combines (ANDs) with whichever Stone is active.
 const STONE_ORDER = ['moissanite','cubic_zirconia','semi_precious','pearl'];
-const METAL_ORDER = ['gold','silver','white_gold','rose_gold'];
 
 let activeStone = null;
-let activeMetal = null;
 let visibleCount = 16;
 const PAGE_SIZE = 16;
 
 function stoneCounts(){
   const c = {};
   PRODUCTS.forEach(p => { if (p.stone) c[p.stone] = (c[p.stone]||0) + 1; });
-  return c;
-}
-function metalCounts(){
-  const c = {};
-  PRODUCTS.forEach(p => c[p.metal] = (c[p.metal]||0) + 1);
   return c;
 }
 function renderStoneCards(){
@@ -294,27 +256,13 @@ function renderStoneCards(){
   }).join('');
 }
 
-function renderMetalChips(){
-  const c = metalCounts();
-  const wrap = document.getElementById('metal-chips');
-  wrap.innerHTML = METAL_ORDER.filter(k => c[k] > 0).map(k =>
-    `<button class="metal-chip" data-metal="${k}" onclick="setMetalFilter('${k}')">${METAL_META[k]}</button>`
-  ).join('');
-}
-
 function setStoneFilter(stone){
   activeStone = (activeStone === stone) ? null : stone;
   visibleCount = PAGE_SIZE;
   render();
 }
-function setMetalFilter(metal){
-  activeMetal = (activeMetal === metal) ? null : metal; // always independent
-  visibleCount = PAGE_SIZE;
-  render();
-}
 function clearFilter(){
   activeStone = null;
-  activeMetal = null;
   visibleCount = PAGE_SIZE;
   render();
 }
@@ -322,20 +270,16 @@ function clearFilter(){
 function render(){
   let filtered = PRODUCTS;
   if (activeStone) filtered = filtered.filter(p => p.stone === activeStone);
-  if (activeMetal) filtered = filtered.filter(p => p.metal === activeMetal);
 
   document.querySelectorAll('.stone-card[data-stone]').forEach(el =>
     el.classList.toggle('active', el.dataset.stone === activeStone));
-  document.querySelectorAll('.metal-chip').forEach(el =>
-    el.classList.toggle('active', el.dataset.metal === activeMetal));
 
   const parts = [];
-  if (activeMetal) parts.push(METAL_META[activeMetal]);
   if (activeStone) parts.push(STONE_META[activeStone].label);
   const title = parts.length ? `${parts.join(' ')} Earrings` : 'Earrings';
   document.getElementById('grid-title').textContent = title;
 
-  const anyActive = !!(activeStone || activeMetal);
+  const anyActive = !!activeStone;
   document.getElementById('grid-sub').textContent = anyActive
     ? `${filtered.length} timeless piece${filtered.length===1?'':'s'}`
     : `${filtered.length} piece${filtered.length===1?'':'s'}, curated for you`;
@@ -361,7 +305,6 @@ function loadMore(){
 }
 
 renderStoneCards();
-renderMetalChips();
 render();
 </script>
 
