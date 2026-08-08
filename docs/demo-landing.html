@@ -57,10 +57,10 @@ nav{
 .fu2{animation-delay:0.28s;}.fu3{animation-delay:0.45s;}.fu4{animation-delay:0.62s;}
 .hero{
   position:relative;width:100vw;margin-left:calc(-50vw + 50%);
-  height:92vh;min-height:640px;max-height:960px;overflow:hidden;background:var(--ivory);
+  height:92vh;min-height:660px;max-height:920px;overflow:hidden;background:var(--cream);
 }
 .hero-img{position:absolute;inset:0;}
-.hero-img img{width:100%;height:100%;object-fit:cover;object-position:50% 52%;display:block;}
+.hero-img img{width:100%;height:100%;object-fit:contain;object-position:22% center;display:block;}
 .hero-overlay{
   position:relative;z-index:1;height:100%;max-width:720px;margin-left:auto;
   display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
@@ -396,6 +396,13 @@ nav{
   clearly visible on her hand. Also removed the small "MIKISI" text mark that was sitting on the photo — the nav
   logo right above it already says Mikisi, so it was a redundant second wordmark; the subtext line now carries the
   brand pink instead of a generic grey, so the palette still reads even without that mark.
+  <br/><br/>
+  <strong style="color:#b8627a;">Seventh pass — stopped cropping the hero photo at all:</strong> even the better
+  photo was still cutting the ring off below the fold on a cover crop. Rather than elongate the section to force
+  more of a cropped image into view, switched the image to <code>object-fit:contain</code> — the whole portrait
+  now renders uncropped, positioned toward the left, with the cream brand background filling the remaining space
+  on the right instead of stretched/cropped photo. Face and ring are both always fully visible now, on any hero
+  height.
   <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
   everything above works with the real assets we have, but the ideal version needs images we don't have yet:
