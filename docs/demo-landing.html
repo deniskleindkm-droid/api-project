@@ -60,15 +60,11 @@ nav{
   height:92vh;min-height:640px;max-height:960px;overflow:hidden;background:var(--ivory);
 }
 .hero-img{position:absolute;inset:0;}
-.hero-img img{width:100%;height:100%;object-fit:cover;object-position:50% 72%;display:block;}
+.hero-img img{width:100%;height:100%;object-fit:cover;object-position:50% 52%;display:block;}
 .hero-overlay{
   position:relative;z-index:1;height:100%;max-width:720px;margin-left:auto;
   display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
   padding:0 9vw 60px 56px;
-}
-.hero-mark{
-  font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:7px;text-transform:uppercase;
-  color:var(--gold-deep);margin-bottom:24px;
 }
 .hero h1{
   font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4.4vw,54px);font-weight:300;
@@ -77,7 +73,7 @@ nav{
 .hero h1 em{color:var(--pink);font-style:italic;}
 .hero-sub{
   font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:300;font-style:italic;
-  color:var(--mid);text-align:right;margin-bottom:34px;line-height:1.6;
+  color:var(--pink-deep);text-align:right;margin-bottom:34px;line-height:1.6;
 }
 .hero-link{
   font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:3px;text-transform:uppercase;
@@ -254,18 +250,20 @@ nav{
 </nav>
 
 <!-- HERO — one campaign photo with the copy AND the marquee living inside
-     it, nothing stacked below it as a separate block. Real RAWSHOT
-     lifestyle shot (Mocanite Geometric Heart Necklace, Tuscan estate) --
-     chosen over the previous arm-only crop because it's a full portrait
-     (a woman, not just a hand), with the vineyard/sky to her right giving
-     the headline real negative space, no scrim needed. -->
+     it, nothing stacked below it as a separate block. Real RAWSHOT lifestyle
+     shot (Moissanite Bowknot Statement Ring, minimalist studio setting) --
+     the previous necklace/villa shot was square and left too much blurry
+     dead space either side once cropped into this wide a frame; this one
+     fills the crop with real tonal detail (skin, hair, satin, wall) instead
+     of a void, still a full portrait with the ring clearly visible on her
+     hand. No "MIKISI" text mark on the photo -- the nav logo above already
+     covers that, a second one on the image was redundant. -->
 <div class="hero">
   <div class="hero-img">
-    <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616983/mikisi/products/1245_lifestyle.jpg" alt="A Mikisi necklace, worn"/>
+    <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1784395403/mikisi/products/1121_lifestyle.jpg" alt="A Mikisi ring, worn"/>
   </div>
   <div class="hero-overlay">
-    <div class="hero-mark fu fu2">Mikisi</div>
-    <h1 class="fu fu3">The beauty of <em>everyday</em>.</h1>
+    <h1 class="fu fu2">The beauty of <em>everyday</em>.</h1>
     <div class="hero-sub fu fu3">Jewelry you'll reach for again and again.</div>
     <a href="#collections" class="hero-link fu fu4">Explore</a>
   </div>
@@ -389,6 +387,15 @@ nav{
   <em>everyday</em>." with "Jewelry you'll reach for again and again." underneath, right-aligned to sit in the
   vineyard/sky negative space to her right. Kept the brand pink on "everyday," same treatment as the "Mik<em>i</em>si"
   wordmark.
+  <br/><br/>
+  <strong style="color:#b8627a;">Sixth pass — that photo still wasn't covering well:</strong> it turned out square
+  (1200x1200), so cropping it into this wide a hero left the model boxed into the middle third with a lot of flat,
+  blurry villa-wall/sky on either side — not "not filling the container" as a CSS bug, but genuinely too much dead
+  space for the frame. Swapped to a different real lifestyle shot (Moissanite Bowknot Statement Ring, minimalist
+  studio setting) that has tonal detail across the whole frame instead of empty blur — still a full portrait, ring
+  clearly visible on her hand. Also removed the small "MIKISI" text mark that was sitting on the photo — the nav
+  logo right above it already says Mikisi, so it was a redundant second wordmark; the subtext line now carries the
+  brand pink instead of a generic grey, so the palette still reads even without that mark.
   <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
   everything above works with the real assets we have, but the ideal version needs images we don't have yet:
