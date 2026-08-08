@@ -35,18 +35,21 @@ body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--black);}
 }
 .demo-notice strong{color:var(--gold-light);font-weight:500;}
 
-/* ── NAV ── */
+/* ── NAV — floats transparently over the hero photo instead of sitting in
+   its own cream bar, so the hero extends all the way to the top of the
+   page. Swapped to white/cream text since it now sits on the image. ── */
 nav{
-  background:var(--cream);padding:0 48px;
+  position:absolute;top:0;left:0;right:0;z-index:5;
+  background:transparent;padding:0 48px;
   display:flex;justify-content:space-between;align-items:center;
-  height:76px;border-bottom:1px solid var(--border);
+  height:76px;border-bottom:none;
 }
-.logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:400;letter-spacing:6px;color:var(--black);text-transform:uppercase;}
+.logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:400;letter-spacing:6px;color:var(--cream);text-transform:uppercase;}
 .logo em{color:var(--pink);font-style:italic;}
 .nav-links{display:flex;gap:26px;}
-.nav-links a{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);text-decoration:none;}
-.nav-links a.active{color:var(--black);border-bottom:1px solid var(--pink);padding-bottom:4px;}
-.nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:6px;font-size:20px;color:var(--black);line-height:1;}
+.nav-links a{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(253,249,246,0.8);text-decoration:none;}
+.nav-links a.active{color:var(--cream);border-bottom:1px solid var(--pink);padding-bottom:4px;}
+.nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:6px;font-size:20px;color:var(--cream);line-height:1;}
 
 /* ── HERO — one real photo, full-bleed, edge to edge. No blur trick, no
    floating shadow box -- a luxury brand hero is just a clean, single,
@@ -211,8 +214,14 @@ nav{
 .final-cta .btn-black:hover{background:var(--pink);color:white;}
 
 @media (max-width:560px){
-  nav{padding:0 20px;position:relative;}
-  .nav-toggle{display:block;}
+  /* Mobile hero is now a compact stacked image (see below), not a tall
+     full-viewport photo -- floating the nav over it would cover the pouch
+     and lettering, so it goes back to a normal solid bar here. */
+  nav{padding:0 20px;position:relative;background:var(--cream);}
+  .logo{color:var(--black);}
+  .nav-links a{color:var(--mid);}
+  .nav-links a.active{color:var(--black);}
+  .nav-toggle{display:block;color:var(--black);}
   .nav-links{
     display:none;position:absolute;top:76px;left:0;right:0;
     flex-direction:column;gap:0;background:var(--cream);
@@ -221,13 +230,25 @@ nav{
   .nav-links.open{display:flex;}
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
-  .hero{height:92vh;min-height:640px;max-height:820px;}
-  .hero-img img{object-position:30% center;}
-  .hero-overlay{max-width:100%;padding:0 24px 60px;}
+  /* The flat-lay hero photo is landscape (3:2) -- cropping it to fill a
+     narrow, tall mobile screen (cover) hid almost all of the jewelry and
+     the "mikisi" lettering, leaving just a sliver of the pouch. Stack
+     instead: full-width photo at its own real aspect ratio (nothing
+     cropped, nothing added), copy centered below it in normal flow. */
+  .hero{height:auto;min-height:0;max-height:none;display:block;}
+  .hero-img{position:relative;aspect-ratio:3/2;}
+  .hero-img img{object-position:center;}
+  .hero-overlay{position:static;height:auto;max-width:100%;padding:32px 24px 56px;}
   .hero h1{font-size:clamp(26px,7.5vw,38px);}
+  .hero .marquee-wrap{position:static;background:var(--black);}
   /* 21:9 crops a portrait-leaning lifestyle photo down to a thin sliver on
      narrow screens, losing most of the image -- use a taller ratio instead. */
   .lifestyle-img{aspect-ratio:4/5;}
+  /* Same issue the hero had: this photo is landscape (3:2), and the fixed
+     92vh cover height was cropping out almost all of the pouch/jewelry on
+     a narrow screen, showing only a sliver of marble. Show the whole photo
+     at its own aspect ratio instead -- nothing cropped, no letterboxing. */
+  .experience-photo{height:auto;min-height:0;max-height:none;aspect-ratio:3/2;}
   .experience-inner,.final-cta{padding-top:56px;padding-bottom:56px;}
 }
 </style>
@@ -455,6 +476,21 @@ nav{
   itself, with its own "mikisi" branding doing double duty as a second wordmark. On mobile the crop is much
   tighter (portrait screens can only show a narrow vertical slice of a wide photo), so it's positioned toward
   the wall side to keep the copy clear of the pouch and its lettering. Verified both breakpoints locally.
+  <br/><br/>
+  <strong style="color:#b8627a;">Fourteenth pass — mobile: hero and Experience photo were both cropping out
+  the actual jewelry:</strong> you flagged mobile as "not fitting" and you were right. Both the hero flat-lay
+  and the Experience packaging photo are real landscape (3:2) shots, and the fixed near-full-screen mobile
+  height was forcing an aggressive cover crop on a narrow screen — on the hero that meant only a sliver of the
+  pouch showed, with the ring/hoops/bracelet and the "mikisi" lettering cropped out entirely; same problem on
+  the Experience photo. Fixed both the same way: on mobile only, the photo now renders at its own real 3:2
+  aspect ratio (full width, height determined by the ratio, not a fixed vh) — nothing cropped, nothing added.
+  The hero also switched from an overlaid-on-image layout to a simple stack (photo on top, copy centered below
+  it in normal flow) since there's no longer a tall background to lay text over on mobile. Desktop is unchanged
+  — both photos were already showing correctly there. Also floated the nav transparently over the hero image on
+  desktop per your suggestion (white/cream text, hero now extends to the very top of the page instead of sitting
+  below a boxed cream nav bar) — kept as a normal solid bar on mobile since the compact stacked hero doesn't have
+  room to spare under it. Verified all of this with direct computed-style checks (exact pixel dimensions, not
+  just eyeballing) before pushing.
   <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
   the hero itself is now in much better shape with a real dedicated shot. Still open: activity-specific
