@@ -197,9 +197,17 @@ nav{
 
 /* ── INSTAGRAM GALLERY ── */
 .ig-section{padding:96px 48px;text-align:center;}
-.ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:1000px;margin:0 auto;}
+.ig-link{color:var(--pink-deep);text-decoration:none;border-bottom:1px solid var(--pink-deep);transition:opacity 0.2s;}
+.ig-link:hover{opacity:0.7;}
+.ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:700px;margin:0 auto 32px;}
 .ig-tile{aspect-ratio:1/1;overflow:hidden;background:var(--ivory);cursor:pointer;position:relative;}
 .ig-tile img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
+.ig-view-link{
+  display:inline-block;font-size:11px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);
+  padding-bottom:4px;transition:all 0.25s;
+}
+.ig-view-link:hover{color:var(--pink-deep);border-color:var(--pink-deep);}
 .ig-tile:hover img{transform:scale(1.05);}
 
 /* ── FINAL CTA ── */
@@ -223,7 +231,9 @@ nav{
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .values-section,.section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
   .values-grid{grid-template-columns:1fr 1fr;}
-  .ig-grid{grid-template-columns:repeat(2,1fr);}
+  /* Only 3 tiles now -- keep 3 columns even on mobile (small square
+     thumbnails work fine at this count) rather than leaving one alone
+     in a 2-column row, same balance issue as the Collections grid had. */
   /* Dennis wants the headline to stay on one line on mobile, not wrap --
      so instead of allowing a wrap, shrink the floor low enough (via vw,
      which scales with viewport width) that "Made to be remembered." fits
@@ -359,8 +369,12 @@ nav{
 <!-- INSTAGRAM GALLERY -->
 <div class="ig-section">
   <div class="section-title">Find Us on Instagram</div>
-  <div class="section-intro">@mikisi — real pieces, real posts.</div>
+  <div class="section-intro">
+    <a href="https://instagram.com/mikisi.co" target="_blank" rel="noopener" class="ig-link">@mikisi.co</a>
+    — real pieces, real posts.
+  </div>
   <div class="ig-grid" id="ig-grid"><!-- filled by JS --></div>
+  <a href="https://instagram.com/mikisi.co" target="_blank" rel="noopener" class="ig-view-link">View on Instagram →</a>
 </div>
 
 <!-- WHY STERLING SILVER — moved below the emotional sections (Experience,
@@ -470,8 +484,9 @@ document.getElementById('signature-grid').innerHTML = SIGNATURE.slice(0,4).map(p
 // Lifestyle hero image
 document.getElementById('lifestyle-hero-img').src = LIFESTYLE[0].content_lifestyle_url;
 
-// Instagram gallery
-document.getElementById('ig-grid').innerHTML = INSTAGRAM.slice(0,9).map(p => `
+// Instagram gallery -- just 3 tiles, a preview that invites a click-through
+// to the real profile rather than a full grid
+document.getElementById('ig-grid').innerHTML = INSTAGRAM.slice(0,3).map(p => `
   <div class="ig-tile"><img src="${p.image_url}" alt="Mikisi on Instagram" loading="lazy"/></div>`).join('');
 </script>
 
