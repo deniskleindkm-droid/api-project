@@ -59,20 +59,21 @@ nav{
   height:92vh;min-height:660px;max-height:920px;overflow:hidden;background:var(--ivory);
 }
 .hero-img{position:absolute;inset:0;}
-.hero-img img{width:100%;height:100%;object-fit:cover;object-position:50% 38%;display:block;}
+.hero-img img{width:100%;height:100%;object-fit:cover;object-position:38% 20%;display:block;}
 .hero-overlay{
-  position:relative;z-index:1;height:100%;max-width:640px;margin-left:auto;
-  display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
-  padding:0 9vw 60px 40px;
+  position:relative;z-index:1;height:100%;max-width:640px;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;
+  padding:64px 9vw 60px;
 }
 .hero h1{
   font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4.4vw,54px);font-weight:300;
-  line-height:1.25;color:var(--black);text-align:right;margin-bottom:14px;letter-spacing:-0.2px;
+  line-height:1.25;color:var(--black);text-align:left;margin-bottom:14px;letter-spacing:-0.2px;
 }
 .hero h1 em{color:var(--pink);font-style:italic;}
 .hero-sub{
   font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:300;font-style:italic;
-  color:var(--pink-deep);text-align:right;margin-bottom:34px;line-height:1.6;
+  color:var(--pink-deep);text-align:left;margin-bottom:34px;line-height:1.6;
+  text-shadow:0 1px 16px rgba(255,255,255,0.85),0 1px 3px rgba(255,255,255,0.6);
 }
 .hero-link{
   font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:3px;text-transform:uppercase;
@@ -220,11 +221,10 @@ nav{
   .nav-links.open{display:flex;}
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
-  .hero{height:88vh;min-height:600px;max-height:780px;}
-  .hero-img img{object-position:50% 30%;}
-  .hero-overlay{align-items:center;max-width:100%;padding:0 24px 60px;}
-  .hero h1{font-size:clamp(26px,7.5vw,38px);text-align:center;}
-  .hero-sub{text-align:center;}
+  .hero{height:92vh;min-height:640px;max-height:820px;}
+  .hero-img img{object-position:38% center;}
+  .hero-overlay{max-width:100%;padding:48px 24px 60px;}
+  .hero h1{font-size:clamp(26px,7.5vw,38px);}
   /* 21:9 crops a portrait-leaning lifestyle photo down to a thin sliver on
      narrow screens, losing most of the image -- use a taller ratio instead. */
   .lifestyle-img{aspect-ratio:4/5;}
@@ -248,10 +248,13 @@ nav{
   <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
 </nav>
 
-<!-- HERO — single real photo, full-bleed cover, edge to edge. -->
+<!-- HERO — single real photo, full-bleed cover, edge to edge. Went back to
+     the tennis bracelet/estate shot -- it has genuine open sky to sit the
+     headline in, instead of a tight portrait crop that forces the text to
+     overlap her face. -->
 <div class="hero">
   <div class="hero-img">
-    <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1784395403/mikisi/products/1121_lifestyle.jpg" alt="A Mikisi ring, worn"/>
+    <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1784235468/mikisi/products/947_lifestyle.jpg" alt="A Mikisi tennis bracelet, worn"/>
   </div>
   <div class="hero-overlay">
     <h1 class="fu fu2">The beauty of <em>everyday</em>.</h1>
@@ -410,9 +413,18 @@ nav{
   <br/><br/>
   <strong style="color:#b8627a;">Tenth pass — back to one real photo, full-bleed, no tricks:</strong> straight
   <code>object-fit:cover</code>, edge to edge, exactly as originally briefed. That does mean accepting a crop
-  again on this aspect ratio, but tuned the framing so the ring stays in shot along with her face — verified on
-  both desktop and mobile before pushing. This is the same tension as the "Seventh pass" note above: a photo
-  actually shot for this exact full-bleed frame wouldn't force this tradeoff at all.
+  again on this aspect ratio.
+  <br/><br/>
+  <strong style="color:#b8627a;">Eleventh pass — that crop had the headline sitting on her face:</strong> the
+  ring-on-hand studio shot doesn't have real negative space at any full-bleed crop — her face fills nearly the
+  whole frame, so the text had nowhere to go but across her jaw. Switched back to the tennis bracelet/estate
+  shot from earlier — it has genuine open sky, so the headline sits cleanly with nothing behind it, and the
+  bracelet stays in shot lower in the frame. The subtext line still grazes her arm with lower contrast than
+  the headline — tried several crop positions to clear it and each one was worse than the original, so instead
+  gave the subtext a soft light text-shadow so it stays legible against skin or sky either way. Verified on both
+  desktop and mobile before pushing. This is the same tension as the "Seventh pass" note above: a photo actually
+  shot for this exact full-bleed frame — with deliberate negative space built in — wouldn't force any of these
+  tradeoffs at all.
   <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
   everything above works with the real assets we have, but the ideal version needs images we don't have yet:
