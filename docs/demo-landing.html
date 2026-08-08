@@ -48,23 +48,18 @@ nav{
 .nav-links a.active{color:var(--black);border-bottom:1px solid var(--pink);padding-bottom:4px;}
 .nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:6px;font-size:20px;color:var(--black);line-height:1;}
 
-/* ── HERO — full-bleed edge to edge (the blurred backdrop covers the whole
-   screen, no cream showing anywhere) while the actual photo stays fully
-   uncropped in the foreground -- the same trick Net-a-Porter/Apple Music
-   use to reconcile "cover the whole screen" with "don't crop the subject." ── */
+/* ── HERO — one real photo, full-bleed, edge to edge. No blur trick, no
+   floating shadow box -- a luxury brand hero is just a clean, single,
+   confident image with the copy sitting directly in its negative space. ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
 .fu{animation:fadeUp 0.9s ease forwards;opacity:0;}
 .fu2{animation-delay:0.28s;}.fu3{animation-delay:0.45s;}.fu4{animation-delay:0.62s;}
 .hero{
   position:relative;width:100vw;margin-left:calc(-50vw + 50%);
-  height:92vh;min-height:660px;max-height:920px;overflow:hidden;background:var(--black);
+  height:92vh;min-height:660px;max-height:920px;overflow:hidden;background:var(--ivory);
 }
-.hero-bg{
-  position:absolute;inset:-40px;background-size:cover;background-position:22% center;
-  filter:blur(60px) brightness(0.6) saturate(1.15);transform:scale(1.15);
-}
-.hero-img{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-start;padding-left:5vw;}
-.hero-img img{max-height:86%;width:auto;max-width:56%;object-fit:contain;display:block;box-shadow:0 40px 100px rgba(0,0,0,0.45);}
+.hero-img{position:absolute;inset:0;}
+.hero-img img{width:100%;height:100%;object-fit:cover;object-position:50% 38%;display:block;}
 .hero-overlay{
   position:relative;z-index:1;height:100%;max-width:640px;margin-left:auto;
   display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
@@ -72,16 +67,16 @@ nav{
 }
 .hero h1{
   font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4.4vw,54px);font-weight:300;
-  line-height:1.25;color:var(--cream);text-align:right;margin-bottom:14px;letter-spacing:-0.2px;
+  line-height:1.25;color:var(--black);text-align:right;margin-bottom:14px;letter-spacing:-0.2px;
 }
 .hero h1 em{color:var(--pink);font-style:italic;}
 .hero-sub{
   font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:300;font-style:italic;
-  color:var(--pink);text-align:right;margin-bottom:34px;line-height:1.6;
+  color:var(--pink-deep);text-align:right;margin-bottom:34px;line-height:1.6;
 }
 .hero-link{
   font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:3px;text-transform:uppercase;
-  color:var(--cream);text-decoration:none;border-bottom:1px solid var(--cream);padding-bottom:6px;transition:all 0.3s;
+  color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);padding-bottom:6px;transition:all 0.3s;
 }
 .hero-link:hover{color:var(--pink);border-color:var(--pink);}
 .btn-black{
@@ -225,16 +220,9 @@ nav{
   .nav-links.open{display:flex;}
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
-  /* Side-by-side (photo left, copy to the right) only works with room to
-     spare. The full-bleed blurred backdrop already covers the whole screen
-     regardless of height, so on mobile we just re-layout the two foreground
-     layers: photo centered in the upper portion, copy centered below it --
-     both still sit on top of the same edge-to-edge blur, no cream anywhere. */
-  .hero{height:100vh;min-height:640px;max-height:820px;}
-  .hero-bg{background-position:center 30%;}
-  .hero-img{justify-content:center;align-items:flex-start;padding-left:0;padding-top:60px;}
-  .hero-img img{max-height:48%;max-width:78%;box-shadow:0 24px 60px rgba(0,0,0,0.45);}
-  .hero-overlay{align-items:center;justify-content:flex-end;max-width:100%;padding:0 24px 70px;}
+  .hero{height:88vh;min-height:600px;max-height:780px;}
+  .hero-img img{object-position:50% 30%;}
+  .hero-overlay{align-items:center;max-width:100%;padding:0 24px 60px;}
   .hero h1{font-size:clamp(26px,7.5vw,38px);text-align:center;}
   .hero-sub{text-align:center;}
   /* 21:9 crops a portrait-leaning lifestyle photo down to a thin sliver on
@@ -260,12 +248,8 @@ nav{
   <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
 </nav>
 
-<!-- HERO — the blurred backdrop is the same photo, scaled to fully cover
-     the screen edge to edge (no cream showing anywhere), while the actual
-     photo stays completely uncropped in the foreground so the ring is
-     never cut off. -->
+<!-- HERO — single real photo, full-bleed cover, edge to edge. -->
 <div class="hero">
-  <div class="hero-bg" style="background-image:url('https://res.cloudinary.com/ds8qviz1o/image/upload/v1784395403/mikisi/products/1121_lifestyle.jpg')"></div>
   <div class="hero-img">
     <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1784395403/mikisi/products/1121_lifestyle.jpg" alt="A Mikisi ring, worn"/>
   </div>
@@ -419,15 +403,16 @@ nav{
   (full-width, uncropped via aspect-ratio) instead of trying to force the side-by-side desktop layout into a
   narrow screen — verified both breakpoints locally before pushing.
   <br/><br/>
-  <strong style="color:#b8627a;">Ninth pass — full-bleed AND uncropped, both at once:</strong> "contain" solved
-  the cropping problem but left cream space beside the photo, which read as the hero only covering one side of
-  the screen instead of the whole thing. Cover-the-whole-screen and never-crop-the-subject are in real tension
-  at this aspect ratio — the fix real fashion/media sites use for exactly this (Net-a-Porter, Apple Music) is a
-  blurred, darkened copy of the same photo as a full-bleed backdrop (edge to edge, no cream anywhere), with the
-  actual sharp, fully uncropped photo floating on top of it. Hero text is white/pink now instead of black, since
-  it sits on the blurred backdrop rather than the cream background. Rebuilt mobile the same way: photo centered
-  near the top, copy centered below it, both on the same full-bleed blur. Verified locally at both breakpoints
-  again before pushing.
+  <strong style="color:#b8627a;">Ninth pass — tried a blurred-backdrop-plus-floating-photo trick, rejected:</strong>
+  built a version where a blurred copy of the photo covered the whole screen and the real photo floated on top
+  with a shadow. You called it out immediately as not reading like a luxury brand, and you're right — it was
+  clever instead of confident. Reverted.
+  <br/><br/>
+  <strong style="color:#b8627a;">Tenth pass — back to one real photo, full-bleed, no tricks:</strong> straight
+  <code>object-fit:cover</code>, edge to edge, exactly as originally briefed. That does mean accepting a crop
+  again on this aspect ratio, but tuned the framing so the ring stays in shot along with her face — verified on
+  both desktop and mobile before pushing. This is the same tension as the "Seventh pass" note above: a photo
+  actually shot for this exact full-bleed frame wouldn't force this tradeoff at all.
   <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
   everything above works with the real assets we have, but the ideal version needs images we don't have yet:
