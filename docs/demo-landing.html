@@ -161,7 +161,7 @@ nav{
 /* ── SIGNATURE PIECES — same treatment as Mikisi Experience: left-aligned
    instead of centered, pulled up close to the section above, and the
    heading/intro sized down a bit from the shared default. ── */
-.signature-section{padding:20px 48px 56px;text-align:left;background:var(--ivory);}
+.signature-section{padding:20px 48px 0;text-align:left;background:var(--ivory);}
 .signature-section .section-intro{margin:0 0 36px;font-size:12px;}
 .signature-section .section-title{font-size:clamp(22px,2.6vw,30px);}
 .pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;max-width:1400px;margin:0 auto;}
@@ -219,11 +219,17 @@ nav{
 .silver-sub{font-size:13px;color:var(--mid);font-weight:300;line-height:1.75;}
 @media (max-width:800px){.silver-grid{gap:24px;}}
 
-/* ── INSTAGRAM GALLERY ── */
-.ig-section{padding:56px 48px;text-align:center;}
+/* ── INSTAGRAM GALLERY — left-aligned and heading sized down like Mikisi
+   Edit, but this section has no intro paragraph (just the heading, then
+   straight to the grid), so pulling it close means zeroing the top
+   padding entirely -- the grid ends up touching Mikisi Edit's grid above
+   it, not just "close." The grid also loses its auto-centering so it
+   hugs the left edge instead of floating in its own centered column. ── */
+.ig-section{padding:0 48px 56px;text-align:left;}
+.ig-section .section-title{font-size:clamp(22px,2.6vw,30px);}
 .ig-link{color:var(--pink-deep);text-decoration:none;border-bottom:1px solid var(--pink-deep);transition:opacity 0.2s;}
 .ig-link:hover{opacity:0.7;}
-.ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:700px;margin:0 auto 32px;}
+.ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:700px;margin:0 0 32px;}
 .ig-tile{aspect-ratio:1/1;overflow:hidden;background:var(--ivory);cursor:pointer;position:relative;}
 .ig-tile img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
 .ig-view-link{
@@ -265,16 +271,17 @@ nav{
   /* Tighter still than the desktop base padding (also just reduced from
      96px to 56px for the same reason) -- mobile screens have even less
      room to spare, so sections sit as close to each other as possible. */
-  .silver-section,.ig-section,.final-cta{padding:44px 20px;}
+  .silver-section,.final-cta{padding:44px 20px;}
   /* .section-wrap (Collections), .experience-inner (Mikisi Experience),
-     and .signature-section (Mikisi Edit) keep their own small top padding
-     instead of this shared 44px -- the 560px shared rule was quietly
-     undoing the "pull the text up close to the section above" fixes,
-     since it resets all four sides including top. Bottom/sides still
-     match everything else. */
+     .signature-section (Mikisi Edit), and .ig-section (Life in Mikisi)
+     keep their own small top padding instead of this shared 44px -- the
+     560px shared rule was quietly undoing the "pull the text up close to
+     the section above" fixes, since it resets all four sides including
+     top. Bottom/sides still match everything else. */
   .section-wrap{padding:0 20px 44px;}
   .experience-inner{padding:20px 20px 44px;}
-  .signature-section{padding:20px 20px 44px;}
+  .ig-section{padding:0 20px 44px;}
+  .signature-section{padding:20px 20px 0;}
   .section-title{margin-bottom:8px;}
   .section-intro{margin-bottom:32px;}
   /* Hero gets one deliberate elongation on mobile -- a true 3:2 crop reads
