@@ -449,7 +449,7 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
 .final-cta{
   position:relative;color:white;text-align:center;padding:90px 48px;
   background:linear-gradient(180deg,rgba(14,14,14,0.68),rgba(14,14,14,0.86)),
-    url('https://res.cloudinary.com/ds8qviz1o/image/upload/v1786200766/mikisi/content/packaging_display.jpg') center/cover no-repeat;
+    url('https://res.cloudinary.com/ds8qviz1o/image/upload/f_auto,q_auto,w_1600/v1786200766/mikisi/content/packaging_display.jpg') center/cover no-repeat;
 }
 .final-cta h2{
   font-family:'Cormorant Garamond',serif;font-weight:300;font-size:clamp(32px,4.4vw,56px);
@@ -1096,21 +1096,23 @@ footer{background:var(--black);padding:40px 48px 36px;}
     padding:0 0 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
   }
   .stone-grid::-webkit-scrollbar{display:none;}
-  .stone-card{flex:0 0 68%;scroll-snap-align:start;}
+  .stone-card{flex:0 0 46%;scroll-snap-align:start;}
+  .stone-card-name{font-size:10px;padding-bottom:8px;margin-bottom:6px;}
+  .stone-card-tag{font-size:12px;}
+  .stone-card-img{margin-bottom:10px;}
 
-  /* Product grid inside collection — 4 per row on mobile (was 3), smaller
-     cards throughout to match. */
+  /* Product grid inside collection — 3 per row on mobile */
   .cv-grid{
-    grid-template-columns:repeat(4,1fr);
+    grid-template-columns:repeat(3,1fr);
     gap:1px;
   }
-  .pcard-info{padding:6px 5px 8px;}
+  .pcard-info{padding:8px 7px 10px;}
   .pcard-brand{display:none;}
-  .pcard-name{font-size:9.5px;margin-bottom:3px;-webkit-line-clamp:2;}
-  .pcard-price{font-size:11px;margin-bottom:1px;}
-  .pcard-orig{font-size:8px;}
-  .pcard-badge{font-size:6px;padding:2px 5px;top:5px;left:5px;}
-  .pcard-wish{width:20px;height:20px;font-size:9px;top:4px;right:4px;}
+  .pcard-name{font-size:11px;margin-bottom:4px;-webkit-line-clamp:2;}
+  .pcard-price{font-size:13px;margin-bottom:1px;}
+  .pcard-orig{font-size:9px;}
+  .pcard-badge{font-size:7px;padding:2px 6px;top:6px;left:6px;}
+  .pcard-wish{width:24px;height:24px;font-size:11px;top:5px;right:5px;}
 
   /* Product inline view — single column on mobile */
   .pp-inline-inner{grid-template-columns:1fr;height:auto;min-height:100vh;}
@@ -1266,7 +1268,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
     <div class="section-title">The Mikisi Experience</div>
     <div class="section-intro">Thoughtfully presented from the very first moment.</div>
     <div class="experience-photo">
-      <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1786200766/mikisi/content/packaging_display.jpg" alt="The Mikisi pouch, thank-you card, and jewelry, beautifully presented"/>
+      <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/f_auto,q_auto,w_1200/v1786200766/mikisi/content/packaging_display.jpg" alt="The Mikisi pouch, thank-you card, and jewelry, beautifully presented" loading="lazy"/>
     </div>
   </div>
 </div>
@@ -1714,6 +1716,20 @@ let wishlist = JSON.parse(localStorage.getItem('mk_wishlist')||'[]');
 
 // ── HELPERS ──
 function getPlaceholder(){return 'https://placehold.co/400x600/fdf9f6/d4849c?text=Mikisi';}
+// Cloudinary on-the-fly resize/format -- confirmed live (real product
+// photo) this cuts a 114KB original down to 35KB with no visible quality
+// loss: f_auto serves WebP/AVIF to browsers that support it, q_auto picks
+// the smallest quality that still looks right. Every image on this page
+// was being served at its original upload size regardless of how small
+// it's actually displayed, which is almost certainly the biggest single
+// contributor to "site loads slowly." Only touches Cloudinary
+// /image/upload/ URLs -- left untouched for Silverbene's own raw supplier
+// photos (image_url's fallback source) and Cloudinary /video/upload/
+// URLs, since an image transform on a video resource just breaks it.
+function cld(url, width){
+  if(!url || !url.includes('res.cloudinary.com') || !url.includes('/image/upload/')) return url;
+  return url.replace('/image/upload/', `/image/upload/f_auto,q_auto,w_${width}/`);
+}
 function stripHtml(str){
   if(!str)return'';
   return str.replace(/<[^>]+>/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/\s+/g,' ').trim();
@@ -1791,7 +1807,8 @@ function renderMaterials(finishLabel){
   el.textContent=base+(finishLabel?' Finished in '+finishLabel+'.':'');
 }
 function applyVariantUI(chipLabel){
-  const varImg=findVariantImage(chipLabel);
+  const varImgRaw=findVariantImage(chipLabel);
+  const varImg=varImgRaw?cld(varImgRaw,900):varImgRaw;
   const imgEl=document.getElementById('pp-img');
   if(varImg||(ppBaseImages.length&&ppImages[0]!==ppBaseImages[0])){
     imgEl.style.opacity='0';
@@ -1903,8 +1920,10 @@ let heroRotTimer=null;
 
 // Sets a background-image div's photo. `url()` needs its own quotes escaped
 // (single quotes never appear in our Cloudinary URLs, but guard anyway).
+// 1600w covers this full-bleed section sharply even on a wide desktop
+// retina display.
 function setHeroBg(el, url){
-  el.style.backgroundImage = `url("${url.replace(/"/g,'%22')}")`;
+  el.style.backgroundImage = `url("${cld(url,1600).replace(/"/g,'%22')}")`;
 }
 
 function startHeroRotation(images){
@@ -2029,7 +2048,7 @@ async function loadInstagramPosts(){
     // "Tap to shop" CTA that follow are too long for a tile overlay.
     const hook = (p.caption || '').split('\n\n')[0];
     return `<div class="ig-tile">
-      <img src="${p.image_url}" alt="Mikisi on Instagram" loading="lazy"/>
+      <img src="${cld(p.image_url,500)}" alt="Mikisi on Instagram" loading="lazy"/>
       <div class="ig-tile-overlay">
         <div class="ig-tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="0.9" fill="currentColor" stroke="none"/></svg></div>
         <div class="ig-tile-caption">${hook}</div>
@@ -2149,7 +2168,7 @@ function renderStoneSection(name, prods){
   document.getElementById('stone-grid').innerHTML = buckets.map(k=>{
     const meta = STONE_META[k];
     const sample = prods.find(p=>_stoneBucket(p)===k);
-    const img = sample.content_image_url || sample.image_url || getPlaceholder();
+    const img = cld(sample.content_image_url || sample.image_url || getPlaceholder(), 400);
     return `<div class="stone-card" data-bucket="${k}" onclick="setStoneFilter('${k}')">
       <div class="stone-card-img"><img src="${img}" alt="${meta.label}" loading="lazy"/></div>
       <div class="stone-card-name">${meta.label}</div>
@@ -2170,7 +2189,7 @@ function renderCollectionTiles(cols){
   if(!cols||!cols.length){grid.innerHTML='<div style="color:var(--light);font-size:14px;grid-column:1/-1;padding:20px;font-family:\'Cormorant Garamond\',serif;font-style:italic">Collections loading…</div>';return;}
   grid.innerHTML = cols.map(col=>{
     // Rotating image: use image_url from collection or pick from products
-    const img = col.image_url || getDailyImage(allProducts, col.id) || null;
+    const img = cld(col.image_url || getDailyImage(allProducts, col.id) || null, 500);
     const sub = _collectionTaglines[col.name.toLowerCase()] || 'Explore the collection';
     const nameEsc = col.name.replace(/'/g,"\\'");
     // Caption now lives below the image (name/tag/Shop Now) instead of a
@@ -2272,8 +2291,8 @@ function pcardSizeText(p){
 // future badge/wishlist/pricing change would otherwise need to be kept
 // in sync by hand across both).
 function productCardHTML(p){
-  const imgA = p.content_image_url || p.image_url || getPlaceholder();
-  const imgB = (p.image_url && p.content_image_url && p.image_url !== p.content_image_url) ? p.image_url : null;
+  const imgA = cld(p.content_image_url || p.image_url || getPlaceholder(), 450);
+  const imgB = (p.image_url && p.content_image_url && p.image_url !== p.content_image_url) ? cld(p.image_url, 450) : null;
   const name = cleanName(p.name);
   const outOfStock = !p.stock || p.stock === 0;
   let badge='';
@@ -2419,7 +2438,7 @@ function doSearch(val){
   if(!matches.length){box.innerHTML=`<div class="search-empty">No pieces found for "${val}"</div>`;box.classList.add('open');return;}
   box.innerHTML = matches.map(p=>`
     <div class="sri" onclick="openPP(${p.id});document.getElementById('search-drop').classList.remove('open');document.getElementById('search-input').value=''">
-      <div class="sri-img"><img src="${p.content_image_url||p.image_url||getPlaceholder()}" onerror="this.src='${getPlaceholder()}'"/></div>
+      <div class="sri-img"><img src="${cld(p.content_image_url||p.image_url||getPlaceholder(),100)}" onerror="this.src='${getPlaceholder()}'"/></div>
       <div class="sri-text">
         <span class="sri-name">${cleanName(p.name)}</span>
         <span class="sri-price">$${p.final_price.toFixed(2)}</span>
@@ -2733,6 +2752,7 @@ async function openPP(id, presetVariantId=null){
   else if(!ppImages.length&&p.image_url)ppImages=[p.image_url];
   ppImages=[...new Set(ppImages)];  // deduplicate identical URLs
   if(!ppImages.length)ppImages=[getPlaceholder()];
+  ppImages=ppImages.map(u=>cld(u,900)); // full product-detail gallery -- larger than any grid thumbnail
   ppIdx=0;
 
   // ── Reset accordion states for the incoming product ──
@@ -3619,7 +3639,7 @@ function renderCart(data){
     return `
     <div class="cart-item"${oos?' style="opacity:0.55"':''}>
       <div class="ci-img" onclick="openPP(${item.product_id})" style="cursor:pointer" title="View product">
-        <img src="${item.content_image_url||item.image_url||getPlaceholder()}" onerror="this.src='${getPlaceholder()}'"/>
+        <img src="${cld(item.content_image_url||item.image_url||getPlaceholder(),150)}" onerror="this.src='${getPlaceholder()}'"/>
       </div>
       <div class="ci-info">
         <div class="ci-brand" onclick="openPP(${item.product_id})" style="cursor:pointer">Mikisi</div>
