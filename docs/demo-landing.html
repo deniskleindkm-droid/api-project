@@ -107,14 +107,14 @@ nav{
 .marquee-track span.dot{color:var(--gold);margin:0 6px;}
 
 /* ── SHOP COLLECTIONS ── */
-.section-wrap{padding:96px 48px;text-align:center;}
+.section-wrap{padding:56px 48px;text-align:center;}
 .section-title{
   font-family:'Cormorant Garamond',serif;font-weight:400;font-size:clamp(28px,3.4vw,38px);
   letter-spacing:0.3px;color:var(--black);margin-bottom:14px;
 }
 .section-intro{
   font-size:13px;color:var(--mid);font-weight:300;letter-spacing:0.2px;
-  max-width:480px;margin:0 auto 56px;line-height:1.8;
+  max-width:480px;margin:0 auto 36px;line-height:1.8;
 }
 .col-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;max-width:1400px;margin:0 auto;}
 .col-tile{cursor:pointer;text-align:left;}
@@ -148,7 +148,7 @@ nav{
 }
 
 /* ── SIGNATURE PIECES ── */
-.signature-section{padding:96px 48px;text-align:center;background:var(--ivory);}
+.signature-section{padding:56px 48px;text-align:center;background:var(--ivory);}
 .pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;max-width:1400px;margin:0 auto;}
 .pcard{cursor:pointer;text-align:left;background:var(--cream);}
 .pcard-img{aspect-ratio:4/5;overflow:hidden;background:white;margin-bottom:14px;}
@@ -171,10 +171,10 @@ nav{
 
 /* ── MIKISI EXPERIENCE ── */
 .experience-section{padding:0;text-align:center;background:white;}
-.experience-inner{padding:96px 48px;}
+.experience-inner{padding:56px 48px;}
 
 /* ── WHY STERLING SILVER ── */
-.silver-section{padding:96px 48px;text-align:center;background:var(--ivory);}
+.silver-section{padding:56px 48px;text-align:center;background:var(--ivory);}
 .silver-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:48px;max-width:1000px;margin:0 auto;}
 .silver-item{}
 .silver-num{
@@ -187,7 +187,7 @@ nav{
 @media (max-width:800px){.silver-grid{gap:24px;}}
 
 /* ── INSTAGRAM GALLERY ── */
-.ig-section{padding:96px 48px;text-align:center;}
+.ig-section{padding:56px 48px;text-align:center;}
 .ig-link{color:var(--pink-deep);text-decoration:none;border-bottom:1px solid var(--pink-deep);transition:opacity 0.2s;}
 .ig-link:hover{opacity:0.7;}
 .ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:700px;margin:0 auto 32px;}
@@ -204,7 +204,7 @@ nav{
 /* ── FINAL CTA — real packaging photo as a soft, dark-overlaid backdrop,
    so the pouch closes the page the same way it opens the Experience section ── */
 .final-cta{
-  position:relative;color:white;text-align:center;padding:140px 48px;
+  position:relative;color:white;text-align:center;padding:90px 48px;
   background:linear-gradient(180deg,rgba(14,14,14,0.68),rgba(14,14,14,0.86)),
     url('https://res.cloudinary.com/ds8qviz1o/image/upload/v1786200766/mikisi/content/packaging_display.jpg') center/cover no-repeat;
 }
@@ -229,10 +229,9 @@ nav{
   .nav-links.open{display:flex;}
   .nav-links a{color:var(--charcoal);padding:16px 20px;border-bottom:1px solid var(--border);}
   .nav-links a.active{color:var(--black);}
-  /* Every section had the full 96px desktop top/bottom padding, so two
-     adjacent sections stacked to ~192px of pure empty space between them
-     -- tightened to 44px each on mobile so sections sit close to each
-     other, and shrunk the title/intro margins the same way. */
+  /* Tighter still than the desktop base padding (also just reduced from
+     96px to 56px for the same reason) -- mobile screens have even less
+     room to spare, so sections sit as close to each other as possible. */
   .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding:44px 20px;}
   .section-title{margin-bottom:8px;}
   .section-intro{margin-bottom:32px;}
