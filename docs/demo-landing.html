@@ -156,21 +156,22 @@ nav{
     scrollbar-width:none;
   }
   .col-grid::-webkit-scrollbar{display:none;}
-  /* Slide hint -- a soft edge fade (not a circular button, which read as
-     a stuck-looking control) with a chevron that nudges side to side to
-     suggest motion. Purely a visual cue: pointer-events:none, scroll
-     still happens on the row underneath it. Disappears the instant the
-     customer scrolls at all (see updateColHint's threshold below), not
-     only once they reach the very end. */
+  /* Slide hint -- just the nudging chevron, no gradient backdrop behind
+     it (dropped per feedback). Purely a visual cue: pointer-events:none,
+     scroll still happens on the row underneath it. Disappears the
+     instant the customer scrolls at all (see updateColHint's threshold
+     below), not only once they reach the very end. */
   .col-slide-hint{
-    position:absolute;right:0;top:0;bottom:38px;width:64px;
-    display:flex;align-items:center;justify-content:flex-end;
-    padding-right:8px;
-    background:linear-gradient(to right, rgba(247,242,237,0) 0%, rgba(247,242,237,0.95) 75%);
+    position:absolute;right:12px;top:0;bottom:38px;
+    display:flex;align-items:center;justify-content:center;
     pointer-events:none;z-index:3;
     transition:opacity 0.25s ease;
   }
-  .col-slide-hint svg{width:20px;height:20px;color:var(--black);animation:colHintNudge 1.3s ease-in-out infinite;}
+  .col-slide-hint svg{
+    width:22px;height:22px;color:white;
+    filter:drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+    animation:colHintNudge 1.3s ease-in-out infinite;
+  }
   .col-slide-hint.col-slide-hint-hidden{opacity:0;}
   @keyframes colHintNudge{0%,100%{transform:translateX(0);}50%{transform:translateX(7px);}}
   /* Wider tile, same height as before -- 82% flex-basis instead of 68%,
