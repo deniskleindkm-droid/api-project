@@ -225,26 +225,27 @@ nav{
 .final-cta .btn-black:hover{background:var(--pink);color:white;}
 
 @media (max-width:560px){
-  /* Mobile hero is now a compact stacked image (see below), not a tall
-     full-viewport photo -- floating the nav over it would cover the pouch
-     and lettering, so it goes back to a normal solid bar here. */
-  nav{padding:0 20px;position:relative;background:var(--cream);}
-  .logo{color:var(--black);}
-  .nav-links a{color:var(--mid);}
-  .nav-links a.active{color:var(--black);}
-  .nav-toggle{display:block;color:var(--black);}
+  /* Nav now floats transparently over the hero on mobile too, same as
+     desktop -- the hero extends all the way to the top of the page, no
+     separate solid nav bar. Only the hamburger toggle needs a mobile-only
+     rule (base hides it above 560px). */
+  .nav-toggle{display:block;}
   .nav-links{
     display:none;position:absolute;top:76px;left:0;right:0;
     flex-direction:column;gap:0;background:var(--cream);
     border-bottom:1px solid var(--border);z-index:50;
   }
   .nav-links.open{display:flex;}
-  .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
+  .nav-links a{color:var(--charcoal);padding:16px 20px;border-bottom:1px solid var(--border);}
+  .nav-links a.active{color:var(--black);}
   .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
-  /* Hero, Experience, and Lifestyle photos all use the same base rule at
-     every size, no mobile override -- the hero is the identical 3:2
-     cover-crop composition as desktop, just narrower, so mobile matches
-     desktop exactly instead of a separate compact treatment. */
+  /* Hero gets one deliberate elongation on mobile -- a true 3:2 crop reads
+     a bit short/cramped on a narrow phone. Fixed height + object-fit:cover
+     (inherited from the base rule) instead of the old object-fit:contain
+     hack, so it crops in slightly on the sides rather than letterboxing
+     with empty cream bars. Experience/Lifestyle photos keep the base rule
+     unchanged. */
+  .hero-img{aspect-ratio:auto;height:40vh;min-height:300px;max-height:380px;}
   .experience-inner,.final-cta{padding-top:56px;padding-bottom:56px;}
 }
 </style>
@@ -253,25 +254,28 @@ nav{
 
 <div class="demo-notice">Demo build — not live · <strong>Homepage</strong> redesign, real inventory &amp; content · for review before integration</div>
 
-<nav>
-  <div class="logo">Mik<em>i</em>si</div>
-  <div class="nav-links">
-    <a href="demo-landing.html" class="active">Home</a>
-    <a href="demo-collections.html">Rings</a>
-    <a href="demo-collections-necklaces.html">Necklaces</a>
-    <a href="demo-collections-bracelets.html">Bracelets</a>
-    <a href="demo-collections-earrings.html">Earrings</a>
-  </div>
-  <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
-</nav>
-
 <!-- HERO — real editorial flat-lay (your photo): the signature pouch, ring,
      hoop earrings, and tennis bracelet on marble with real dappled light.
      Landscape 3:2 crop, so almost none of it needs to be cropped away, and
      the plain wall on the left is genuine negative space for the copy --
      no face-overlap tradeoffs, multiple real pieces visible, and the pouch
-     motif finally in the hero itself. -->
+     motif finally in the hero itself. Nav lives inside .hero (not as a
+     sibling before it) so its position:absolute;top:0 anchors to the
+     hero's own top edge, not the page's -- otherwise it collides with the
+     .demo-notice bar above, which is worse on mobile where that banner
+     wraps to 3 lines. -->
 <div class="hero">
+  <nav>
+    <div class="logo">Mik<em>i</em>si</div>
+    <div class="nav-links">
+      <a href="demo-landing.html" class="active">Home</a>
+      <a href="demo-collections.html">Rings</a>
+      <a href="demo-collections-necklaces.html">Necklaces</a>
+      <a href="demo-collections-bracelets.html">Bracelets</a>
+      <a href="demo-collections-earrings.html">Earrings</a>
+    </div>
+    <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="Menu">☰</button>
+  </nav>
   <div class="hero-img">
     <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1786219332/mikisi/content/hero_flatlay.jpg" alt="The Mikisi pouch with a ring, hoop earrings, and tennis bracelet"/>
   </div>
