@@ -241,16 +241,10 @@ nav{
   .nav-links.open{display:flex;}
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
-  /* Experience and Lifestyle photos use the same base rule at every size
-     with no override needed. The hero gets one deliberate exception: at
-     3:2 a 390px-wide screen only gets a 260px-tall hero, which read as
-     too small/compact. Let it grow taller here specifically, switching to
-     object-fit:contain so growing the box doesn't crop anything -- the
-     tradeoff is a sliver of cream letterboxing top/bottom, which blends
-     with the photo's own pale wall tone. */
-  .hero-img{aspect-ratio:auto;height:62vh;min-height:440px;max-height:620px;}
-  .hero-img img{object-fit:contain;}
-  .hero h1{font-size:clamp(26px,7.5vw,38px);}
+  /* Hero, Experience, and Lifestyle photos all use the same base rule at
+     every size, no mobile override -- the hero is the identical 3:2
+     cover-crop composition as desktop, just narrower, so mobile matches
+     desktop exactly instead of a separate compact treatment. */
   .experience-inner,.final-cta{padding-top:56px;padding-bottom:56px;}
 }
 </style>
