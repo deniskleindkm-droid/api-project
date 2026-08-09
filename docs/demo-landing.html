@@ -110,8 +110,8 @@ nav{
    hero and left-aligned instead of centered (unique to this section --
    .section-wrap/.section-intro are shared classes, so the override is
    scoped to #collections rather than changed at the shared rule). ── */
-.section-wrap{padding:20px 48px 56px;text-align:left;}
-#collections .section-intro{margin:0 0 36px;}
+.section-wrap{padding:0 48px 56px;text-align:left;}
+#collections .section-intro{margin:0;}
 .section-title{
   font-family:'Cormorant Garamond',serif;font-weight:400;font-size:clamp(28px,3.4vw,38px);
   letter-spacing:0.3px;color:var(--black);margin-bottom:14px;
@@ -272,7 +272,7 @@ nav{
      undoing the "pull the text up close to the section above" fixes,
      since it resets all four sides including top. Bottom/sides still
      match everything else. */
-  .section-wrap{padding:20px 20px 44px;}
+  .section-wrap{padding:0 20px 44px;}
   .experience-inner{padding:20px 20px 44px;}
   .signature-section{padding:20px 20px 44px;}
   .section-title{margin-bottom:8px;}
