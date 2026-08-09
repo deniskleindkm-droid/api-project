@@ -158,34 +158,61 @@ nav{
   .col-tile-img{aspect-ratio:4/5;}
 }
 
-/* ── SIGNATURE PIECES — same treatment as Mikisi Experience: left-aligned
-   instead of centered, pulled up close to the section above, and the
-   heading/intro sized down a bit from the shared default. ── */
-.signature-section{padding:20px 48px 0;text-align:left;background:var(--ivory);}
+/* ── TENNIS BRACELETS (formerly "The Mikisi Edit" / "Signature Pieces") —
+   left-aligned like the other sections, pulled up close to the section
+   above, heading/intro sized down. The product row is now always a
+   horizontally sliding track (not a wrapping grid) at every screen size,
+   since the point of this section is to slide through one category's
+   full range rather than show a fixed set -- arrow buttons control it on
+   pointer devices, touch/trackpad swipe works everywhere too. ── */
+.signature-section{padding:20px 48px 0;text-align:left;background:var(--ivory);position:relative;}
 .signature-section .section-intro{margin:0 0 36px;font-size:12px;}
 .signature-section .section-title{font-size:clamp(22px,2.6vw,30px);}
-.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;max-width:1400px;margin:0 auto;}
-.pcard{cursor:pointer;text-align:left;background:var(--cream);}
+.tb-track-wrap{position:relative;}
+.pgrid{
+  display:flex;gap:24px;max-width:1400px;margin:0 auto;
+  overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:0;
+  padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.pgrid::-webkit-scrollbar{display:none;}
+.pcard{cursor:pointer;text-align:left;background:var(--cream);flex:0 0 calc(25% - 18px);scroll-snap-align:start;}
 .pcard-img{aspect-ratio:4/5;overflow:hidden;background:white;margin-bottom:14px;}
 .pcard-img img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
 .pcard:hover .pcard-img img{transform:scale(1.04);}
 .pcard-info{text-align:center;padding-bottom:6px;}
 .pcard-name{font-size:12px;font-weight:300;color:var(--charcoal);margin-bottom:5px;line-height:1.4;}
 .pcard-price{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--black);}
+/* Arrow buttons -- vertically centered on the image row (not the full
+   card height, so they don't drift down when the name/price text wraps
+   to different heights), hidden once a side has nothing left to scroll. */
+.tb-arrow{
+  position:absolute;top:0;bottom:38px;
+  width:40px;height:40px;margin:auto 0;
+  border-radius:50%;border:1px solid var(--border);background:white;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;color:var(--black);cursor:pointer;
+  box-shadow:0 2px 10px rgba(0,0,0,0.08);transition:opacity 0.2s,background 0.2s;
+  z-index:2;
+}
+.tb-arrow:hover{background:var(--pink-pale);}
+.tb-arrow.tb-prev{left:-4px;}
+.tb-arrow.tb-next{right:-4px;}
+.tb-arrow[disabled]{opacity:0;pointer-events:none;}
+.tb-shop-link{
+  display:inline-block;margin:28px 0 56px;
+  font-family:'Jost',sans-serif;font-size:10px;font-weight:400;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);padding-bottom:4px;transition:all 0.3s;
+}
+.tb-shop-link:hover{color:var(--pink);border-color:var(--pink);}
 @media (max-width:900px){
-  /* The Mikisi Edit: one sliding row instead of wrapping to a 2-column
-     grid, same horizontally scrollable, snap-aligned pattern as the
-     Collections carousel above -- 4 cards fit in a row on wide screens,
-     slide through them on narrow ones instead of stacking to 2 rows. */
   .signature-section{padding-left:20px;padding-right:20px;}
-  .pgrid{
-    display:flex;grid-template-columns:none;gap:14px;max-width:none;
-    overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:20px;
-    padding:0 20px 10px;margin:0 -20px;-webkit-overflow-scrolling:touch;
-    scrollbar-width:none;
-  }
-  .pgrid::-webkit-scrollbar{display:none;}
-  .pcard{flex:0 0 82%;scroll-snap-align:start;}
+  .pcard{flex:0 0 44%;}
+  .tb-arrow{width:32px;height:32px;font-size:13px;}
+  .tb-arrow.tb-prev{left:2px;}
+  .tb-arrow.tb-next{right:2px;}
+}
+@media (max-width:560px){
+  .pcard{flex:0 0 68%;}
 }
 
 /* ── THE MIKISI EXPERIENCE PHOTO — same universal rule as the hero:
@@ -394,11 +421,18 @@ nav{
   </div>
 </div>
 
-<!-- THE MIKISI EDIT (formerly "Signature Pieces") — brands curate, stores feature -->
+<!-- TENNIS BRACELETS (formerly "The Mikisi Edit" / "Signature Pieces") --
+     one real category, browsable end to end via a sliding row instead of
+     a fixed curated set across categories -->
 <div class="signature-section">
-  <div class="section-title">The Mikisi Edit</div>
-  <div class="section-intro">Designed to become everyday favorites.</div>
-  <div class="pgrid" id="signature-grid"><!-- filled by JS --></div>
+  <div class="section-title">Tennis Bracelets</div>
+  <div class="section-intro">Our most-loved silhouette, sparkling in every stone.</div>
+  <div class="tb-track-wrap">
+    <button class="tb-arrow tb-prev" id="tb-prev" onclick="tbScroll(-1)" aria-label="Previous">‹</button>
+    <div class="pgrid" id="signature-grid"><!-- filled by JS --></div>
+    <button class="tb-arrow tb-next" id="tb-next" onclick="tbScroll(1)" aria-label="Next">›</button>
+  </div>
+  <a href="demo-collections-tennis-bracelets.html" class="tb-shop-link">Shop Now</a>
 </div>
 
 <!-- LIFE IN MIKISI (formerly "Worn by You" / "Find Us on Instagram") —
@@ -599,7 +633,7 @@ nav{
 <script>
 // "href" points each tile at its real demo collection page.
 const COLLECTIONS = [{"name": "Rings", "tag": "Mark the moment", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1780941587/mikisi/products/597_lifestyle.jpg", "href": "demo-collections.html"}, {"name": "Necklaces", "tag": "Wear your story", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616977/mikisi/products/966_lifestyle.jpg", "href": "demo-collections-necklaces.html"}, {"name": "Bracelets", "tag": "Adorn your wrist", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616980/mikisi/products/486_lifestyle.jpg", "href": "demo-collections-bracelets.html"}, {"name": "Earrings", "tag": "Frame your face", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785000753/mikisi/products/1163_lifestyle.jpg", "href": "demo-collections-earrings.html"}, {"name": "Anklets", "tag": "Grace in every step", "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919939/mikisi/products/501_primary.jpg", "href": "demo-collections-anklets.html"}];
-const SIGNATURE = [{"id": 1247, "name": "European Moissanite Tennis Bracelet", "category": "Bracelets", "final_price": 395.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1247_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/850530903903/850530903903_0.jpg"}, {"id": 1260, "name": "Moissanite Openwork Circle Bracelet", "category": "Bracelets", "final_price": 350.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643602/mikisi/products/1260_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/850967245242/850967245242_0.jpg"}, {"id": 1027, "name": "Geometric Pear Moissanite Pendant Necklace", "category": "Necklaces", "final_price": 222.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924130/mikisi/products/1027_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_06_23_14_24/1026756434459/1026756434459_0.jpg"}, {"id": 801, "name": "Luxury Moissanite Adjustable Bracelet", "category": "Bracelets", "final_price": 129.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920134/mikisi/products/801_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_03_12_15_19/843736145412/843736145412_0.jpg"}, {"id": 1220, "name": "Heart Shape Moissanite Wide Band Ring", "category": "Rings", "final_price": 120.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560468/mikisi/products/1220_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/868022921798/868022921798_0.jpg"}, {"id": 1309, "name": "Marquise Moissanite Stack Ring", "category": "Rings", "final_price": 118.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644638/mikisi/products/1309_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_41/867512223639/867512223639_0.jpg"}, {"id": 1216, "name": "Emerald Cut Moissanite Ring Set", "category": "Rings", "final_price": 118.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560453/mikisi/products/1216_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_52/867542787157/867542787157_0.jpg"}, {"id": 1308, "name": "Marquise Moissanite Chevron Ring", "category": "Rings", "final_price": 115.9, "content_image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644616/mikisi/products/1308_primary.jpg", "image_url": "https://silverbene.com/media/catalog/product/lky/2026_07_31_12_41/854966296363/854966296363_0.jpg"}];
+const TENNIS_BRACELETS = [{"id": 803, "name": "Cubic Zirconia Tennis Bracelet", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924031/mikisi/products/803_primary.jpg"}, {"id": 947, "name": "Blue Sapphire Tennis Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919988/mikisi/products/947_primary.jpg"}, {"id": 942, "name": "Emerald Tennis Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919992/mikisi/products/942_primary.jpg"}, {"id": 948, "name": "Rainbow Love Heart Tennis Bracelet", "price": 87.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924552/mikisi/products/948_primary.jpg"}, {"id": 945, "name": "Diamond Zircon Tennis Bracelet", "price": 90.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921555/mikisi/products/945_primary.jpg"}, {"id": 485, "name": "Turquoise Bezel Tennis Bracelet", "price": 112.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921571/mikisi/products/485_primary.png"}, {"id": 1249, "name": "Oval & Round Moissanite Tennis Bracelet", "price": 292.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1249_primary.jpg"}, {"id": 1259, "name": "Moissanite Flower Leaf Tennis Bracelet", "price": 392.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643516/mikisi/products/1259_primary.jpg"}, {"id": 1247, "name": "European Moissanite Tennis Bracelet", "price": 395.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1247_primary.jpg"}, {"id": 488, "name": "Emerald Cut Diamond Tennis Bracelet", "price": 548.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920296/mikisi/products/488_primary.jpg"}];
 const INSTAGRAM = [{"id": 65, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785589438/mikisi/products/801_gallery_2.jpg", "caption": "Brilliance that matches your resilience, worn on your wrist.\n\nThis adjustable bracelet in 925 sterling silver holds the timeless sparkle of moissanite\u2014a stone engineered to last, just like your strength. Wear it on your wrist as a quiet declaration of your own worth, a bracelet that knows you deserve nothing less than radiance. Let it remind you, every single day, that you are enough.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 64, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785849746/mikisi/products/1234_gallery_model.jpg", "caption": "A bow that whispers what confidence sounds like.\n\nThis sterling silver necklace is crafted for quiet power. The moissanite catches light with every deliberate movement around your neck, a delicate ribbon that knows exactly what it means. Elegance that doesn't ask for permission\u2014it simply adorns.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 63, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552796/mikisi/products/1241_gallery_4.jpg", "caption": "Geometric elegance for women who build empires.\n\nA marquise moissanite floats in architectural precision on this sterling silver necklace\u2014designed for those who refuse to blend in. Available in yellow or white gold-plated finishes, this necklace is a quiet statement of intention, worn close to your heart. Choose the metal that matches your vision, because every detail of your style should feel intentional.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 62, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644887/mikisi/products/1321_gallery_4.jpg", "caption": "Geometric constellation moissanite ring made for your hands.\n\nThis ring is designed for women who understand that brilliance isn't about being simple\u2014it's about honoring every facet of who you are. With moissanite stones arranged in a geometric pattern across 925 sterling silver or yellow gold-plated band, it's a ring that rewards close attention the way you deserve to be seen. Your fingers deserve to wear something that reflects the complexity and light you bring to the world.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 61, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644478/mikisi/products/1301_gallery_4.jpg", "caption": "A love letter to the woman who chooses herself first.\n\nThis sterling silver ring speaks for you. White moissanite catches the light as script curves across a geometric band\u2014a quiet declaration written right there on your finger. Wear it when self-worth isn't negotiable.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 56, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616996/mikisi/products/948_lifestyle.jpg", "caption": "Wear your love story in every color.\n\nThis Rainbow Love Heart Tennis Bracelet is more than jewelry\u2014it's a wrist-worn declaration. Crafted in white gold-plated 925 sterling silver, each heart-shaped stone catches the light with radiant pride, turning your wrist into a celebration of self-love unapologetically expressed. A bracelet that reminds you to shine in every shade of yourself.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 55, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616983/mikisi/products/1245_lifestyle.jpg", "caption": "Sharp angles, soft heart. One necklace says it all.\n\nGeometric design meets timeless elegance in this 925 sterling silver necklace\u2014each angle catches light like it's meant to be noticed. A symbol of someone who refuses to choose between strength and softness, this necklace rests on your neck as a quiet declaration of self-worth. When you wear pieces that reflect your complexity, you're choosing yourself.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 54, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616999/mikisi/products/874_lifestyle.jpg", "caption": "Geometric boldness meets everyday elegance with this necklace.\n\nThis Shovel Pendant Necklace is crafted in 925 sterling silver with your choice of a polished silver or 18k gold-plated finish. Sparkling cubic zirconia catches light from every angle, creating a modern statement that drapes beautifully around the neck. Bold, unapologetic, and entirely yours\u2014because choosing yourself starts with wearing what makes you feel powerful.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 53, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616986/mikisi/products/1212_lifestyle.jpg", "caption": "Sharp angles. Stronger statement. Two pear moissanites meet.\n\nStack them or wear them solo\u2014this sterling silver ring set moves with you, not against you. Pear-shaped stones demand attention on your fingers, whether you choose silver or gold-plated. Design that refuses compromise, just like you.\n\nTap to shop \ud83d\udecd\ufe0f"}];
 
 // Collections
@@ -611,15 +645,33 @@ document.getElementById('col-grid').innerHTML = COLLECTIONS.map(c => `
     ${c.href ? `<a href="${c.href}" class="col-tile-shop">Shop Now</a>` : ''}
   </div>`).join('');
 
-// Signature pieces
-document.getElementById('signature-grid').innerHTML = SIGNATURE.slice(0,4).map(p => `
+// Tennis Bracelets slider
+document.getElementById('signature-grid').innerHTML = TENNIS_BRACELETS.map(p => `
   <div class="pcard">
-    <div class="pcard-img"><img src="${p.content_image_url}" alt="${p.name}" loading="lazy"/></div>
+    <div class="pcard-img"><img src="${p.img}" alt="${p.name}" loading="lazy"/></div>
     <div class="pcard-info">
       <div class="pcard-name">${p.name}</div>
-      <div class="pcard-price">$${p.final_price.toFixed(2)}</div>
+      <div class="pcard-price">$${p.price.toFixed(2)}</div>
     </div>
   </div>`).join('');
+
+// Tennis Bracelets arrow controls -- scroll by roughly one card width per
+// click, and disable/fade an arrow once that side has nothing left to
+// scroll to (rather than leaving a dead-looking-but-clickable button).
+const tbTrack = document.getElementById('signature-grid');
+function tbScroll(dir){
+  const card = tbTrack.querySelector('.pcard');
+  const amount = card ? card.getBoundingClientRect().width + 24 : tbTrack.clientWidth * 0.8;
+  tbTrack.scrollBy({left: dir * amount, behavior: 'smooth'});
+}
+function tbUpdateArrows(){
+  const max = tbTrack.scrollWidth - tbTrack.clientWidth - 1;
+  document.getElementById('tb-prev').disabled = tbTrack.scrollLeft <= 0;
+  document.getElementById('tb-next').disabled = tbTrack.scrollLeft >= max;
+}
+tbTrack.addEventListener('scroll', tbUpdateArrows);
+window.addEventListener('resize', tbUpdateArrows);
+tbUpdateArrows();
 
 // Instagram gallery -- 3 tiles, a preview that invites a click-through to
 // the real profile rather than a full grid. Hover reveals the post's own
