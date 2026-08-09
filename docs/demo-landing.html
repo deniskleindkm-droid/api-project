@@ -133,6 +133,7 @@ nav{
      scrollable, snap-aligned row instead, same idea as a native app
      carousel. Each tile is a fixed % of the viewport so the next one
      peeks in at the edge as a scroll affordance. */
+  .section-wrap{padding-left:20px;padding-right:20px;}
   .col-grid{
     display:flex;grid-template-columns:none;gap:14px;max-width:none;
     overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:20px;
@@ -170,7 +171,7 @@ nav{
     scrollbar-width:none;
   }
   .pgrid::-webkit-scrollbar{display:none;}
-  .pcard{flex:0 0 68%;scroll-snap-align:start;}
+  .pcard{flex:0 0 82%;scroll-snap-align:start;}
 }
 
 /* ── THE MIKISI EXPERIENCE PHOTO — same universal rule as the hero:
