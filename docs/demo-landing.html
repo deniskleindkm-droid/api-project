@@ -145,12 +145,30 @@ nav{
      peeks in at the edge as a scroll affordance. */
   .section-wrap{padding-left:20px;padding-right:20px;}
   .col-grid{
+    position:relative;
     display:flex;grid-template-columns:none;gap:14px;max-width:none;
     overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:20px;
     padding:0 20px 10px;margin:0 -20px;-webkit-overflow-scrolling:touch;
     scrollbar-width:none;
   }
   .col-grid::-webkit-scrollbar{display:none;}
+  /* Slide hint -- a small pulsing arrow over the middle-right of the row,
+     purely a visual cue that there's more to swipe through (not a
+     button: pointer-events:none, swipe/scroll still happens on the row
+     underneath it). Fades out for good once the row is scrolled all the
+     way to its end, since there's nothing left to hint at by then. */
+  .col-slide-hint{
+    position:absolute;right:14px;top:38%;transform:translateY(-50%);
+    width:34px;height:34px;border-radius:50%;
+    background:rgba(255,255,255,0.92);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 10px rgba(0,0,0,0.14);
+    color:var(--black);font-size:16px;line-height:1;
+    pointer-events:none;z-index:3;
+    animation:colHintPulse 1.8s ease-in-out infinite;
+  }
+  .col-slide-hint.col-slide-hint-hidden{opacity:0 !important;animation:none;}
+  @keyframes colHintPulse{0%,100%{opacity:0.55;}50%{opacity:1;}}
   /* Wider tile, same height as before -- 82% flex-basis instead of 68%,
      paired with a less-narrow 4:5 image ratio instead of 2:3 so the box
      grows wider without also growing taller. */
@@ -641,13 +659,27 @@ const TENNIS_BRACELETS = [{"id": 803, "name": "Cubic Zirconia Tennis Bracelet", 
 const INSTAGRAM = [{"id": 65, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785589438/mikisi/products/801_gallery_2.jpg", "caption": "Brilliance that matches your resilience, worn on your wrist.\n\nThis adjustable bracelet in 925 sterling silver holds the timeless sparkle of moissanite\u2014a stone engineered to last, just like your strength. Wear it on your wrist as a quiet declaration of your own worth, a bracelet that knows you deserve nothing less than radiance. Let it remind you, every single day, that you are enough.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 64, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785849746/mikisi/products/1234_gallery_model.jpg", "caption": "A bow that whispers what confidence sounds like.\n\nThis sterling silver necklace is crafted for quiet power. The moissanite catches light with every deliberate movement around your neck, a delicate ribbon that knows exactly what it means. Elegance that doesn't ask for permission\u2014it simply adorns.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 63, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552796/mikisi/products/1241_gallery_4.jpg", "caption": "Geometric elegance for women who build empires.\n\nA marquise moissanite floats in architectural precision on this sterling silver necklace\u2014designed for those who refuse to blend in. Available in yellow or white gold-plated finishes, this necklace is a quiet statement of intention, worn close to your heart. Choose the metal that matches your vision, because every detail of your style should feel intentional.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 62, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644887/mikisi/products/1321_gallery_4.jpg", "caption": "Geometric constellation moissanite ring made for your hands.\n\nThis ring is designed for women who understand that brilliance isn't about being simple\u2014it's about honoring every facet of who you are. With moissanite stones arranged in a geometric pattern across 925 sterling silver or yellow gold-plated band, it's a ring that rewards close attention the way you deserve to be seen. Your fingers deserve to wear something that reflects the complexity and light you bring to the world.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 61, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644478/mikisi/products/1301_gallery_4.jpg", "caption": "A love letter to the woman who chooses herself first.\n\nThis sterling silver ring speaks for you. White moissanite catches the light as script curves across a geometric band\u2014a quiet declaration written right there on your finger. Wear it when self-worth isn't negotiable.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 56, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616996/mikisi/products/948_lifestyle.jpg", "caption": "Wear your love story in every color.\n\nThis Rainbow Love Heart Tennis Bracelet is more than jewelry\u2014it's a wrist-worn declaration. Crafted in white gold-plated 925 sterling silver, each heart-shaped stone catches the light with radiant pride, turning your wrist into a celebration of self-love unapologetically expressed. A bracelet that reminds you to shine in every shade of yourself.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 55, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616983/mikisi/products/1245_lifestyle.jpg", "caption": "Sharp angles, soft heart. One necklace says it all.\n\nGeometric design meets timeless elegance in this 925 sterling silver necklace\u2014each angle catches light like it's meant to be noticed. A symbol of someone who refuses to choose between strength and softness, this necklace rests on your neck as a quiet declaration of self-worth. When you wear pieces that reflect your complexity, you're choosing yourself.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 54, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616999/mikisi/products/874_lifestyle.jpg", "caption": "Geometric boldness meets everyday elegance with this necklace.\n\nThis Shovel Pendant Necklace is crafted in 925 sterling silver with your choice of a polished silver or 18k gold-plated finish. Sparkling cubic zirconia catches light from every angle, creating a modern statement that drapes beautifully around the neck. Bold, unapologetic, and entirely yours\u2014because choosing yourself starts with wearing what makes you feel powerful.\n\nTap to shop \ud83d\udecd\ufe0f"}, {"id": 53, "image_url": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785616986/mikisi/products/1212_lifestyle.jpg", "caption": "Sharp angles. Stronger statement. Two pear moissanites meet.\n\nStack them or wear them solo\u2014this sterling silver ring set moves with you, not against you. Pear-shaped stones demand attention on your fingers, whether you choose silver or gold-plated. Design that refuses compromise, just like you.\n\nTap to shop \ud83d\udecd\ufe0f"}];
 
 // Collections
-document.getElementById('col-grid').innerHTML = COLLECTIONS.map(c => `
+const colGrid = document.getElementById('col-grid');
+colGrid.innerHTML = COLLECTIONS.map(c => `
   <div class="col-tile">
     <div class="col-tile-img"><img src="${c.img}" alt="${c.name}" loading="lazy"/></div>
     <div class="col-tile-name">${c.name}</div>
     <div class="col-tile-sub">${c.tag}</div>
     ${c.href ? `<a href="${c.href}" class="col-tile-shop">Shop Now</a>` : ''}
   </div>`).join('');
+// Slide hint -- appended after the innerHTML above (not part of it) so a
+// later re-render would never wipe it out. Only visible on mobile/tablet
+// (see the max-width:900px rule) where this row actually overflows --
+// on desktop all 5 tiles already fit, so there's nothing to hint at.
+colGrid.insertAdjacentHTML('beforeend', '<div class="col-slide-hint" id="col-slide-hint">›</div>');
+const colHint = document.getElementById('col-slide-hint');
+function updateColHint(){
+  const max = colGrid.scrollWidth - colGrid.clientWidth - 1;
+  colHint.classList.toggle('col-slide-hint-hidden', colGrid.scrollLeft >= max);
+}
+colGrid.addEventListener('scroll', updateColHint);
+window.addEventListener('resize', updateColHint);
+updateColHint();
 
 // Tennis Bracelets slider
 document.getElementById('signature-grid').innerHTML = TENNIS_BRACELETS.map(p => `
