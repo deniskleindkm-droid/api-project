@@ -53,10 +53,13 @@ nav{
 
 /* ── HERO — one real photo, full-bleed, edge to edge. The container's
    aspect-ratio matches the real photo's own ratio (3:2) exactly, at every
-   screen size, with no separate mobile override -- this is the one rule
-   that guarantees zero cropping AND zero letterboxing simultaneously,
-   because the box is never a different shape than the image. Same CSS,
-   same result, on a phone or an ultrawide monitor. ── */
+   screen size, with no separate mobile override -- this guarantees zero
+   cropping AND zero letterboxing simultaneously, because the box is never
+   a different shape than the image. Because that's now guaranteed at any
+   width, the copy can go back to living inside the photo itself (the
+   wall/negative-space side, object-position keeps the pouch clear of it)
+   instead of a separate block below it -- same "one composition" idea as
+   before, just no longer dependent on a per-breakpoint crop to work. ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
 .fu{animation:fadeUp 0.9s ease forwards;opacity:0;}
 .fu2{animation-delay:0.28s;}.fu3{animation-delay:0.45s;}.fu4{animation-delay:0.62s;}
@@ -67,18 +70,19 @@ nav{
 .hero-img{position:relative;width:100%;aspect-ratio:3/2;overflow:hidden;background:var(--ivory);}
 .hero-img img{width:100%;height:100%;object-fit:cover;object-position:60% 50%;display:block;}
 .hero-overlay{
-  position:relative;max-width:640px;margin:0 auto;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:56px 24px 60px;text-align:center;
+  position:absolute;inset:0;z-index:1;max-width:46%;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+  padding:4vh 4vw;text-align:left;
 }
 .hero h1{
-  font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4.4vw,54px);font-weight:300;
-  line-height:1.25;color:var(--black);text-align:center;margin-bottom:14px;letter-spacing:-0.2px;
+  font-family:'Cormorant Garamond',serif;font-size:clamp(18px,4vw,54px);font-weight:300;
+  line-height:1.2;color:var(--black);text-align:left;margin-bottom:1vh;letter-spacing:-0.2px;
 }
 .hero h1 em{color:var(--pink);font-style:italic;}
 .hero-sub{
-  font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:300;font-style:italic;
-  color:var(--pink-deep);text-align:center;margin-bottom:34px;line-height:1.6;
+  font-family:'Cormorant Garamond',serif;font-size:clamp(10px,1.4vw,16px);font-weight:300;font-style:italic;
+  color:var(--pink-deep);text-align:left;margin-bottom:2.5vh;line-height:1.5;
+  text-shadow:0 1px 12px rgba(255,255,255,0.8),0 1px 3px rgba(255,255,255,0.55);
 }
 .hero-link{
   font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:3px;text-transform:uppercase;
@@ -91,8 +95,12 @@ nav{
 }
 .btn-black:hover{background:var(--pink);}
 
-/* ── MARQUEE — normal in-flow bar, same at every screen size. ── */
+/* ── MARQUEE — pinned to the hero photo's bottom edge, part of the same
+   composition as the headline, not a separate bar below it. Works at any
+   size now since the hero container itself is never a different shape
+   than the photo. ── */
 .marquee-wrap{background:var(--black);overflow:hidden;padding:13px 0;white-space:nowrap;}
+.hero .marquee-wrap{position:absolute;left:0;right:0;bottom:0;z-index:1;background:rgba(14,14,14,0.55);}
 .marquee-track{display:inline-block;animation:marquee 30s linear infinite;}
 @keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
 .marquee-track span{font-size:10px;font-weight:300;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin:0 28px;}
@@ -233,9 +241,15 @@ nav{
   .nav-links.open{display:flex;}
   .nav-links a{padding:16px 20px;border-bottom:1px solid var(--border);}
   .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
-  /* Hero, Experience photo, and Lifestyle photo all use aspect-ratio or a
-     capped height + object-fit:contain now (see their base rules above) --
-     the same CSS renders correctly at this width with no override needed. */
+  /* Experience and Lifestyle photos use the same base rule at every size
+     with no override needed. The hero gets one deliberate exception: at
+     3:2 a 390px-wide screen only gets a 260px-tall hero, which read as
+     too small/compact. Let it grow taller here specifically, switching to
+     object-fit:contain so growing the box doesn't crop anything -- the
+     tradeoff is a sliver of cream letterboxing top/bottom, which blends
+     with the photo's own pale wall tone. */
+  .hero-img{aspect-ratio:auto;height:62vh;min-height:440px;max-height:620px;}
+  .hero-img img{object-fit:contain;}
   .hero h1{font-size:clamp(26px,7.5vw,38px);}
   .experience-inner,.final-cta{padding-top:56px;padding-bottom:56px;}
 }
@@ -495,6 +509,20 @@ nav{
   on at every possible aspect ratio the way the old cover-crop version could. Verified with computed-style
   measurements at 390px and 1440px — both report the exact same 1.5 aspect ratio, confirming one rule really is
   covering every screen size now.
+  <br/><br/>
+  <strong style="color:#b8627a;">Sixteenth pass — put the copy and the marquee back inside the hero photo:</strong>
+  moving the headline to a plain block below the image (previous pass) broke the "one composition" idea — you
+  were right to call that out. Since the image is now guaranteed to render at its real proportions at any width,
+  the negative-space area (the wall, left of the pouch) is reliably there at every screen size too, so the
+  headline went back to living inside the photo as an overlay — sized down with <code>clamp()</code> so it stays
+  legible without overflowing on a narrow screen. The marquee is back pinned to the photo's bottom edge as well,
+  not a separate bar underneath.
+  <br/><br/>
+  <strong style="color:#b8627a;">Seventeenth pass — mobile hero felt too small:</strong> at a true 3:2 ratio, a
+  390px-wide phone only gets a 260px-tall hero — accurate, but cramped. Gave mobile one deliberate exception:
+  the hero grows taller there (up to 620px) and switches to <code>object-fit:contain</code>, so the extra height
+  doesn't crop anything — the tradeoff is a sliver of cream letterboxing above and below the photo, which reads
+  fine against the photo's own pale wall tone. Desktop is untouched.
   <br/><br/>
   <strong style="color:#b8627a;">The honest gap — this is now a photography problem, not a layout one:</strong>
   the hero itself is now in much better shape with a real dedicated shot. Still open: activity-specific
