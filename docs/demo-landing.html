@@ -156,23 +156,23 @@ nav{
     scrollbar-width:none;
   }
   .col-grid::-webkit-scrollbar{display:none;}
-  /* Slide hint -- a small pulsing arrow over the middle-right of the row,
-     purely a visual cue that there's more to swipe through (not a
-     button: pointer-events:none, swipe/scroll still happens on the row
-     underneath it). Fades out for good once the row is scrolled all the
-     way to its end, since there's nothing left to hint at by then. */
+  /* Slide hint -- a soft edge fade (not a circular button, which read as
+     a stuck-looking control) with a chevron that nudges side to side to
+     suggest motion. Purely a visual cue: pointer-events:none, scroll
+     still happens on the row underneath it. Disappears the instant the
+     customer scrolls at all (see updateColHint's threshold below), not
+     only once they reach the very end. */
   .col-slide-hint{
-    position:absolute;right:14px;top:38%;transform:translateY(-50%);
-    width:34px;height:34px;border-radius:50%;
-    background:rgba(255,255,255,0.92);
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:0 2px 10px rgba(0,0,0,0.14);
-    color:var(--black);font-size:16px;line-height:1;
+    position:absolute;right:0;top:0;bottom:38px;width:64px;
+    display:flex;align-items:center;justify-content:flex-end;
+    padding-right:8px;
+    background:linear-gradient(to right, rgba(247,242,237,0) 0%, rgba(247,242,237,0.95) 75%);
     pointer-events:none;z-index:3;
-    animation:colHintPulse 1.8s ease-in-out infinite;
+    transition:opacity 0.25s ease;
   }
-  .col-slide-hint.col-slide-hint-hidden{opacity:0 !important;animation:none;}
-  @keyframes colHintPulse{0%,100%{opacity:0.55;}50%{opacity:1;}}
+  .col-slide-hint svg{width:20px;height:20px;color:var(--black);animation:colHintNudge 1.3s ease-in-out infinite;}
+  .col-slide-hint.col-slide-hint-hidden{opacity:0;}
+  @keyframes colHintNudge{0%,100%{transform:translateX(0);}50%{transform:translateX(7px);}}
   /* Wider tile, same height as before -- 82% flex-basis instead of 68%,
      paired with a less-narrow 4:5 image ratio instead of 2:3 so the box
      grows wider without also growing taller. */
@@ -675,14 +675,15 @@ colGrid.innerHTML = COLLECTIONS.map(c => `
 // later re-render would never wipe it out. Only visible on mobile/tablet
 // (see the max-width:900px rule) where this row actually overflows --
 // on desktop all 5 tiles already fit, so there's nothing to hint at.
-colGrid.insertAdjacentHTML('beforeend', '<div class="col-slide-hint" id="col-slide-hint">›</div>');
+colGrid.insertAdjacentHTML('beforeend', '<div class="col-slide-hint" id="col-slide-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>');
 const colHint = document.getElementById('col-slide-hint');
+// Disappears the instant the row is scrolled at all, rather than only
+// once scrolled all the way to the end -- a small threshold (not >0)
+// absorbs the sub-pixel scroll jitter some browsers report at rest.
 function updateColHint(){
-  const max = colGrid.scrollWidth - colGrid.clientWidth - 1;
-  colHint.classList.toggle('col-slide-hint-hidden', colGrid.scrollLeft >= max);
+  colHint.classList.toggle('col-slide-hint-hidden', colGrid.scrollLeft > 4);
 }
 colGrid.addEventListener('scroll', updateColHint);
-window.addEventListener('resize', updateColHint);
 updateColHint();
 
 // Tennis Bracelets slider
