@@ -141,6 +141,12 @@ nav{
   color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);padding-bottom:4px;transition:all 0.3s;
 }
 .col-tile-shop:hover{color:var(--pink);border-color:var(--pink);}
+/* Hidden by default -- with no display rule at all this stray child
+   div would fall into the 5-column grid as an unwanted 6th item on
+   desktop (all 5 tiles already fit in one row there, nothing to hint
+   at). Only switched on inside the max-width:900px block below, where
+   Collections actually becomes a scrollable row. */
+.col-slide-hint{display:none;}
 @media (max-width:900px){
   /* All 5 tiles in one sliding row instead of a 2-column grid with an
      odd-one-out Anklets tile spanning full width below -- a horizontally
