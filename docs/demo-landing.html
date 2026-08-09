@@ -233,18 +233,18 @@ nav{
 .ig-tile{aspect-ratio:1/1;overflow:hidden;background:var(--ivory);cursor:pointer;position:relative;}
 .ig-tile img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
 .ig-tile:hover img{transform:scale(1.05);}
-/* Hover overlay -- dark scrim + real caption snippet + IG glyph, so this
-   reads as an actual customer/social post rather than a plain photo grid.
-   Fades in on hover instead of sitting on the tile at rest, keeping the
-   grid clean until someone actually engages with it. */
+/* Overlay is always visible (not hover-only) -- hover-triggered content
+   never shows up on a touchscreen, which is most traffic here, so making
+   it hover-only would mean most visitors never see it at all. Always-on
+   dark scrim + real caption snippet + IG glyph, so this reads as an
+   actual customer/social post rather than a plain photo grid, on every
+   device. */
 .ig-tile-overlay{
   position:absolute;inset:0;
   background:linear-gradient(180deg,rgba(14,14,14,0) 40%,rgba(14,14,14,0.78) 100%);
-  opacity:0;transition:opacity 0.35s ease;
   display:flex;flex-direction:column;justify-content:flex-end;
   padding:14px;
 }
-.ig-tile:hover .ig-tile-overlay{opacity:1;}
 .ig-tile-icon{color:white;margin-bottom:8px;}
 .ig-tile-icon svg{width:16px;height:16px;display:block;}
 .ig-tile-caption{
