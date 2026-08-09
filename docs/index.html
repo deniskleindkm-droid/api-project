@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="p:domain_verify" content="c1f64f6b15e635a2f8455b584182cbb3"/>
 <meta name="facebook-domain-verification" content="mptnv8dbnajp95fqgnfcebpiit1qrm"/>
-<title>Mikisi — Real Silver, Rare Finds</title>
+<title>Mikisi — Quiet Luxury, Everyday Moments</title>
 <script>
 // Restores the real path+query when arriving via docs/404.html's redirect
 // (GitHub Pages has no server-side routing for paths like /products/123 —
@@ -133,40 +133,57 @@ nav{
 .nav-text-link{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);text-decoration:none;font-weight:300;transition:color 0.2s;}
 .nav-text-link:hover{color:var(--black);}
 
+/* ── NAV: always solid, on every page, at every scroll position —
+   previously went transparent while floating over the hero photo, but
+   that let the real nav controls (search, cart, orders, sign in/out) get
+   visually swallowed into whatever the hero photo looked like at the
+   top edge. Dennis asked for the nav to always stay clearly on top of
+   any background, so the transparent-over-hero state (nav.at-hero) has
+   been retired -- _updateNavAtHero() in the main script is now a no-op
+   that just guarantees the class never lingers on. */
+nav{transition:background 0.3s ease,border-color 0.3s ease;}
+
 /* ── HERO ── */
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
 .fu{animation:fadeUp 0.9s ease forwards;opacity:0;}
 .fu1{animation-delay:0.1s;}.fu2{animation-delay:0.28s;}.fu3{animation-delay:0.45s;}.fu4{animation-delay:0.62s;}
 
+/* One full-bleed composition: the hero shows one curated flat-lay photo
+   (same exact image as the demo, see showDemoHeroPhoto()), copy overlays
+   it in the photo's own negative space (.hero-overlay), and the marquee
+   is pinned to the bottom edge (see .hero .marquee-wrap below) -- matches
+   the demo's hero exactly, including its 3:2 ratio, now that this section
+   shows that same specific photo instead of the live rotation of square
+   product close-ups the 8:5 ratio/gradient wash used to be tuned for. The
+   old rotation/video/banner_url code (loadHero() etc.) is still intact
+   below if that dynamic feature is ever wired back up -- it would need
+   its own container tuning again at that point. */
 .hero{
-  min-height:88vh;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-  background:var(--cream);padding:72px 48px 0;
-  position:relative;overflow:hidden;
+  position:relative;width:100vw;margin-left:calc(-50vw + 50%);
+  aspect-ratio:3/2;overflow:hidden;background:var(--cream);
 }
-.hero::after{
-  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,var(--gold-light),transparent);
+.hero-overlay{
+  position:absolute;inset:0;z-index:1;max-width:46%;
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
+  padding:4vh 4vw;text-align:left;
+  /* No gradient wash, matching the demo exactly -- this specific photo is
+     framed (background-position 60% 50%, set in showDemoHeroPhoto()) so
+     the left side is genuine light negative space, no legibility assist
+     needed. */
 }
-.hero-eyebrow{
-  font-size:10px;font-weight:300;letter-spacing:5px;
-  text-transform:uppercase;color:var(--gold);
-  margin-bottom:24px;display:flex;align-items:center;gap:14px;
-}
-.hero-eyebrow::before,.hero-eyebrow::after{content:'';width:36px;height:1px;background:var(--gold-light);}
 .hero h1{
   font-family:'Cormorant Garamond',serif;
-  font-size:clamp(44px,6.5vw,88px);font-weight:300;
-  line-height:1.04;color:var(--black);text-align:center;
-  white-space:nowrap;margin-bottom:18px;letter-spacing:-0.5px;
+  font-size:clamp(28px,4.5vw,72px);font-weight:300;
+  line-height:1.05;color:var(--black);text-align:left;
+  white-space:normal;margin-bottom:18px;letter-spacing:-0.5px;
 }
 .hero h1 em{color:var(--pink);font-style:italic;}
-.hero-tagline{
-  font-family:'Cormorant Garamond',serif;font-size:17px;
-  font-weight:300;font-style:italic;color:var(--mid);
-  text-align:center;margin-bottom:40px;line-height:1.6;
+.hero-btns{display:flex;gap:14px;justify-content:flex-start;margin-bottom:0;flex-wrap:wrap;}
+.hero-link{
+  font-family:'Jost',sans-serif;font-size:11px;font-weight:400;letter-spacing:3px;text-transform:uppercase;
+  color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);padding-bottom:6px;transition:all 0.3s;
 }
-.hero-btns{display:flex;gap:14px;justify-content:center;margin-bottom:56px;flex-wrap:wrap;}
+.hero-link:hover{color:var(--pink);border-color:var(--pink);}
 .btn-black{
   background:var(--black);color:white;border:none;
   padding:14px 40px;font-size:10px;font-weight:400;
@@ -182,15 +199,12 @@ nav{
 }
 .btn-ghost:hover{border-color:var(--pink);color:var(--pink);}
 .hero-banner{
-  width:100vw;margin-left:calc(-50vw + 50%);
-  /* Every rotation photo is a perfect square (1:1). A short, very wide
-     banner would cover-crop nearly half of each photo's height away, so
-     this scales with viewport width toward a ~1.6:1 box (much closer to
-     square, still clearly a wide banner) instead of the old fixed 560px. */
-  height:clamp(640px,62vw,860px);
+  /* Now fills .hero edge-to-edge (which itself carries the real 8:5
+     aspect-ratio tuned for these square photos, see .hero above) instead
+     of being its own separately-sized block with a fixed/clamped height. */
+  position:absolute;inset:0;
   overflow:hidden;
   background:var(--ivory);display:flex;align-items:center;justify-content:center;
-  position:relative;
 }
 /* #hero-img is a background-image div, not an <img> — see the rotation
    layers below for why (browsers' built-in reverse-image-search icon only
@@ -235,20 +249,13 @@ nav{
 
 /* ── MARQUEE ── */
 .marquee-wrap{background:var(--black);overflow:hidden;padding:13px 0;white-space:nowrap;}
+/* Pinned to the hero photo's own bottom edge now, instead of its own bar
+   sitting below it -- part of the same one-composition hero. */
+.hero .marquee-wrap{position:absolute;left:0;right:0;bottom:0;z-index:1;background:rgba(14,14,14,0.55);}
 .marquee-track{display:inline-block;animation:marquee 30s linear infinite;}
 @keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
 .marquee-track span{font-size:10px;font-weight:300;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin:0 28px;}
 .marquee-track span.dot{color:var(--gold);margin:0 6px;}
-
-/* ── TRUST BAR ── */
-.trust-bar{
-  border-bottom:1px solid var(--border);padding:18px 48px;
-  display:flex;justify-content:center;gap:56px;flex-wrap:wrap;background:white;
-}
-.trust-item{
-  display:flex;flex-direction:column;align-items:center;gap:5px;
-  font-size:9px;font-weight:300;letter-spacing:2px;text-transform:uppercase;color:var(--mid);
-}
 
 /* ── SUCCESS ── */
 .success-banner{
@@ -259,63 +266,194 @@ nav{
 }
 .success-banner.show{display:flex;}
 
-/* ── COLLECTIONS HOME ── */
-.collections-home{padding:72px 48px;background:var(--cream);}
-.section-discover-note{
-  font-size:11px;font-weight:300;color:var(--mid);
-  letter-spacing:1.5px;margin-bottom:36px;
-  font-style:italic;
-}
-.section-eyebrow{
-  font-size:10px;font-weight:300;letter-spacing:4px;
-  text-transform:uppercase;color:var(--gold);
-  margin-bottom:10px;display:flex;align-items:center;gap:12px;
-}
-.section-eyebrow::after{content:'';flex:0 0 28px;height:1px;background:var(--gold-light);}
+/* ── SHARED SECTION HEADING/INTRO -- used by Mikisi Experience, Tennis
+   Bracelets, Life in Mikisi, and Crafted to Last (Collections dropped
+   its own heading entirely and uses .section-discover-note instead, but
+   this shared rule is still very much needed by the other four). ── */
 .section-title{
-  font-family:'Cormorant Garamond',serif;font-size:36px;
-  font-weight:300;color:var(--black);margin-bottom:40px;
+  font-family:'Cormorant Garamond',serif;font-weight:400;font-size:clamp(28px,3.4vw,38px);
+  letter-spacing:0.3px;color:var(--black);margin-bottom:14px;
+}
+.section-intro{
+  font-size:13px;color:var(--mid);font-weight:300;letter-spacing:0.2px;
+  /* margin:0 auto (not 0 0) -- Crafted to Last has no per-section
+     override and needs this centered, matching its own text-align:center
+     and the numbered columns below it. Experience/Signature/IG each add
+     their own scoped .section-intro{margin:0 0 36px} to go flush-left
+     instead (see each section's own CSS above). */
+  max-width:480px;margin:0 auto 36px;line-height:1.8;
+}
+
+/* ── COLLECTIONS HOME -- heading dropped, intro pulled flush against the
+   hero and left-aligned; caption now lives below the image (name/tag/
+   Shop Now) instead of as a gradient overlay baked onto the photo,
+   matching the demo redesign. grid-template-columns generalized to
+   auto-fill instead of the demo's fixed repeat(5,1fr), since the real
+   /collections API can return anywhere from 5 to 7+ categories, not a
+   fixed 5. ── */
+.collections-home{padding:0 48px 56px;background:var(--cream);position:relative;}
+.section-discover-note{
+  font-size:12px;font-weight:300;color:var(--mid);
+  letter-spacing:0.2px;margin:0;max-width:480px;
+  font-style:italic;text-align:left;
 }
 .collections-grid{
+  position:relative;
   display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:3px;
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:24px;margin-top:36px;
 }
-.col-tile{
-  position:relative;cursor:pointer;overflow:hidden;
-  aspect-ratio:3/4;background:var(--ivory);
+.col-tile{cursor:pointer;text-align:left;}
+.col-tile-img{aspect-ratio:2/3;overflow:hidden;background:var(--ivory);margin-bottom:16px;transition:background 0.3s;}
+.col-tile-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.7s ease;}
+.col-tile:hover .col-tile-img img{transform:scale(1.05);}
+.col-tile:hover .col-tile-img.col-tile-img-empty{background:var(--pink-pale);}
+.col-tile-img .tn{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;color:var(--charcoal);
 }
-.col-tile img{
-  width:100%;height:100%;object-fit:cover;
-  transition:transform 0.7s ease;
-}
-.col-tile:hover img{transform:scale(1.06);}
-.col-tile-overlay{
-  position:absolute;inset:0;
-  background:linear-gradient(to top,rgba(14,14,14,0.62) 0%,rgba(14,14,14,0.1) 45%,transparent 70%);
-  display:flex;flex-direction:column;justify-content:flex-end;padding:20px 18px;
-  transition:background 0.3s;
-}
-.col-tile:hover .col-tile-overlay{background:linear-gradient(to top,rgba(14,14,14,0.72) 0%,rgba(14,14,14,0.2) 50%,transparent 70%);}
 .col-tile-name{
-  color:white;font-family:'Cormorant Garamond',serif;
-  font-size:19px;font-weight:400;font-style:italic;
-  letter-spacing:0.5px;
+  font-family:'Jost',sans-serif;font-weight:500;font-size:12px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--black);margin-bottom:6px;padding-bottom:10px;border-bottom:1px solid var(--border);transition:border-color 0.3s;
 }
-.col-tile-sub{
-  color:rgba(255,255,255,0.55);font-size:9px;
-  letter-spacing:2.5px;text-transform:uppercase;margin-top:3px;
+.col-tile:hover .col-tile-name{border-color:var(--gold);}
+.col-tile-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--mid);}
+.col-tile-shop{
+  display:inline-block;margin-top:14px;
+  font-family:'Jost',sans-serif;font-size:10px;font-weight:400;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);padding-bottom:4px;transition:all 0.3s;
 }
-.col-tile-no-img{
-  width:100%;height:100%;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:8px;
-  background:var(--ivory);transition:background 0.3s;
+.col-tile-shop:hover{color:var(--pink);border-color:var(--pink);}
+/* Hidden by default -- with no display rule at all this stray child div
+   would fall into the collections-grid's flow as an unwanted extra item
+   on desktop (all real categories already fit there without scrolling,
+   nothing to hint at). Only switched on inside the max-width:768px
+   mobile block below, where Collections actually becomes a scrollable
+   row. This is the fix that was supposed to already be here -- the
+   comment inside the mobile block said it was, but the rule itself was
+   missing, which is exactly why the arrow was showing up on desktop. */
+.col-slide-hint{display:none;}
+
+/* ── THE MIKISI EXPERIENCE — text left-aligned, pulled flush against the
+   bottom of Collections above it. Photo aspect-ratio matches the real
+   photo (3:2) exactly at every width, so it's never cropped/letterboxed
+   by a mismatched container -- same universal rule as the hero itself,
+   just for a photo that actually is 3:2 (unlike the hero's square
+   rotation images). ── */
+.experience-photo{
+  width:100vw;margin-left:calc(-50vw + 50%);
+  aspect-ratio:3/2;overflow:hidden;background:var(--ivory);
 }
-.col-tile:hover .col-tile-no-img{background:var(--pink-pale);}
-.col-tile-no-img .tn{
-  font-family:'Cormorant Garamond',serif;font-size:17px;
-  font-style:italic;color:var(--charcoal);
+.experience-photo img{width:100%;height:100%;object-fit:cover;display:block;}
+.experience-section{padding:0;text-align:left;background:white;}
+.experience-inner{padding:20px 48px 56px;}
+.experience-inner .section-intro{margin:0 0 36px;}
+
+/* ── TENNIS BRACELETS — one real category, always a horizontally sliding
+   track (not a wrapping grid) so customers can browse the full real
+   silhouette range. Left-aligned, pulled flush to the Experience section
+   above and to Life in Mikisi below (both sections' own padding zeroed
+   on the touching side) -- see renderTennisBracelets()/tbScroll() for the
+   real data behind this. ── */
+.signature-section{padding:20px 48px 0;text-align:left;background:var(--ivory);position:relative;}
+.signature-section .section-intro{margin:0 0 36px;font-size:12px;}
+.signature-section .section-title{font-size:clamp(22px,2.6vw,30px);}
+.tb-track-wrap{position:relative;}
+.pgrid{
+  display:flex;gap:24px;max-width:1400px;margin:0;
+  overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:0;
+  padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
 }
+.pgrid::-webkit-scrollbar{display:none;}
+/* Reuses the site's real .pcard/.pcard-img/.pcard-wish/.pcard-brand card
+   design as-is (defined once, further down, under PRODUCT CARD) --
+   Tennis Bracelets shows real products with real wishlist/pricing, so
+   it should get the exact same polished card treatment as every other
+   product listing on the site, not a separate simplified one. Only the
+   sizing needs to change here, since .pcard's real definition assumes a
+   CSS grid parent (.cv-grid) sizing it via grid-template-columns, while
+   .pgrid is a flex track instead (needed for the horizontal scroll) --
+   this scoped rule is the only piece that's actually different. */
+.pgrid .pcard{flex:0 0 calc(25% - 18px);scroll-snap-align:start;}
+.tb-arrow{
+  position:absolute;top:0;bottom:38px;width:32px;
+  border:none;background:none;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--black);cursor:pointer;
+  transition:opacity 0.2s;z-index:2;
+}
+.tb-arrow svg{width:22px;height:22px;}
+.tb-arrow.tb-prev{left:-30px;}
+.tb-arrow.tb-next{right:-30px;}
+.tb-arrow.tb-prev svg{animation:tbNudgeLeft 1.3s ease-in-out infinite;}
+.tb-arrow.tb-next svg{animation:tbNudgeRight 1.3s ease-in-out infinite;}
+@keyframes tbNudgeLeft{0%,100%{transform:translateX(0);}50%{transform:translateX(-7px);}}
+@keyframes tbNudgeRight{0%,100%{transform:translateX(0);}50%{transform:translateX(7px);}}
+.tb-arrow:hover{opacity:0.6;}
+.tb-arrow[disabled]{opacity:0;pointer-events:none;}
+.tb-shop-link{
+  display:inline-block;margin:28px 0 56px;
+  font-family:'Jost',sans-serif;font-size:10px;font-weight:400;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);padding-bottom:4px;transition:all 0.3s;
+}
+.tb-shop-link:hover{color:var(--pink);border-color:var(--pink);}
+
+/* ── LIFE IN MIKISI — real posted Instagram content (see
+   loadInstagramPosts()). Overlay is always visible, never hover-only --
+   hover never fires on a touchscreen tap, which is most traffic here, so
+   hover-only would mean most visitors never see the caption at all. ── */
+.ig-section{padding:0 48px 56px;text-align:left;}
+.ig-section .section-title{font-size:clamp(22px,2.6vw,30px);}
+.ig-link{color:var(--pink-deep);text-decoration:none;border-bottom:1px solid var(--pink-deep);transition:opacity 0.2s;}
+.ig-link:hover{opacity:0.7;}
+.ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:700px;margin:0 0 32px;}
+.ig-tile{aspect-ratio:1/1;overflow:hidden;background:var(--ivory);cursor:pointer;position:relative;}
+.ig-tile img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
+.ig-tile:hover img{transform:scale(1.05);}
+.ig-tile-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(14,14,14,0) 40%,rgba(14,14,14,0.78) 100%);
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:14px;
+}
+.ig-tile-icon{color:white;margin-bottom:8px;}
+.ig-tile-icon svg{width:16px;height:16px;display:block;}
+.ig-tile-caption{
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;
+  font-size:13px;line-height:1.35;color:white;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+.ig-view-link{
+  display:block;width:fit-content;margin:0 auto;
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--black);text-decoration:none;border-bottom:1px solid var(--black);
+  padding-bottom:4px;transition:all 0.25s;
+}
+.ig-view-link:hover{color:var(--pink-deep);border-color:var(--pink-deep);}
+
+/* ── CRAFTED TO LAST — the one section deliberately still centered
+   throughout the left-align pass, matching the demo's own choice. ── */
+.silver-section{padding:56px 48px;text-align:center;background:var(--ivory);}
+.silver-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:48px;max-width:1000px;margin:0 auto;}
+.silver-num{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--gold);margin-bottom:14px;}
+.silver-title{font-family:'Cormorant Garamond',serif;font-weight:400;font-size:22px;color:var(--black);margin-bottom:12px;}
+.silver-sub{font-size:13px;color:var(--mid);font-weight:300;line-height:1.75;}
+@media (max-width:800px){.silver-grid{gap:24px;}}
+
+/* ── FINAL CTA — real packaging photo as a soft, dark-overlaid backdrop,
+   so the pouch closes the page the same way it opens the Experience
+   section. Reuses .btn-black, just recolored for the dark backdrop. ── */
+.final-cta{
+  position:relative;color:white;text-align:center;padding:90px 48px;
+  background:linear-gradient(180deg,rgba(14,14,14,0.68),rgba(14,14,14,0.86)),
+    url('https://res.cloudinary.com/ds8qviz1o/image/upload/v1786200766/mikisi/content/packaging_display.jpg') center/cover no-repeat;
+}
+.final-cta h2{
+  font-family:'Cormorant Garamond',serif;font-weight:300;font-size:clamp(32px,4.4vw,56px);
+  letter-spacing:0.5px;margin-bottom:32px;
+}
+.final-cta .btn-black{background:white;color:var(--black);}
+.final-cta .btn-black:hover{background:var(--pink);color:white;}
 
 /* ── COLLECTION VIEW (inside a collection) ── */
 .collection-view{display:none;padding:0 48px 80px;}
@@ -333,6 +471,31 @@ nav{
   display:flex;align-items:center;gap:6px;transition:color 0.2s;
 }
 .cv-back:hover{color:var(--pink);}
+
+/* ── DISCOVER BY STONE — real per-product filter, ported from the demo's
+   4 collection pages that have it (Rings/Necklaces/Bracelets/Earrings).
+   Deliberately absent for Anklets and Tennis Bracelets, same as the demo
+   -- confirmed against real data: Anklets has only 1 product with a real
+   stone (everything else is plain metal), not enough variety for a
+   filter to earn its place. .collection-view already carries the 48px
+   horizontal padding, so this only needs its own vertical spacing. */
+.stone-section{padding:56px 0 16px;text-align:center;}
+.stone-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:32px;max-width:1000px;margin:0 auto;
+}
+.stone-card{cursor:pointer;text-align:left;}
+.stone-card-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);margin-bottom:16px;}
+.stone-card-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.7s ease;}
+.stone-card:hover .stone-card-img img{transform:scale(1.05);}
+.stone-card-name{
+  font-family:'Jost',sans-serif;font-weight:500;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--black);margin-bottom:8px;padding-bottom:10px;border-bottom:1px solid var(--border);
+  transition:border-color 0.3s;
+}
+.stone-card:hover .stone-card-name,.stone-card.active .stone-card-name{border-color:var(--gold);}
+.stone-card-tag{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--mid);line-height:1.5;}
+.stone-card.active .stone-card-tag{color:var(--pink-deep);}
 
 /* Product grid inside collection */
 .cv-grid{
@@ -368,7 +531,6 @@ nav{
 }
 .badge-new{background:var(--black);color:white;}
 .badge-signature{background:var(--gold);color:white;}
-.badge-limited{background:var(--pink);color:white;}
 .pcard-wish{
   position:absolute;top:8px;right:8px;
   width:28px;height:28px;background:rgba(255,255,255,0.88);
@@ -408,67 +570,6 @@ nav{
 .bc-item:hover{color:var(--pink);}
 .bc-item.active{color:var(--black);}
 .bc-sep{color:var(--light);font-size:9px;}
-
-/* ── DIVIDER ── */
-.divider-band{
-  padding:56px 48px;background:var(--black);
-  display:flex;align-items:center;justify-content:center;
-  flex-direction:column;gap:10px;text-align:center;
-}
-.divider-eye{font-size:9px;font-weight:300;letter-spacing:4px;text-transform:uppercase;color:var(--gold);}
-.divider-quote{
-  font-family:'Cormorant Garamond',serif;
-  font-size:clamp(24px,3.5vw,42px);font-weight:300;
-  font-style:italic;color:white;line-height:1.2;
-}
-.divider-sub{font-size:11px;font-weight:300;color:rgba(255,255,255,0.35);letter-spacing:1.5px;margin-top:4px;}
-
-/* ── URGENCY ── */
-.urgency-bar{
-  background:var(--pink-pale);padding:15px 40px;
-  display:flex;align-items:center;justify-content:center;
-  gap:14px;flex-wrap:wrap;
-  border-top:1px solid rgba(212,132,156,0.2);
-  border-bottom:1px solid rgba(212,132,156,0.2);
-}
-.urgency-text{font-size:10px;font-weight:300;letter-spacing:2px;text-transform:uppercase;color:var(--mid);}
-.urgency-timer{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--pink-deep);font-weight:400;letter-spacing:2px;}
-
-/* ── STYLE GUIDE ── */
-.style-guide-section{padding:64px 48px;background:var(--pink-mist);text-align:center;}
-.sg-grid{
-  display:grid;grid-template-columns:repeat(3,1fr);gap:24px;
-  max-width:900px;margin:32px auto 0;
-}
-.sg-card{background:white;cursor:pointer;transition:transform 0.25s ease;}
-.sg-card:hover{transform:translateY(-4px);}
-.sg-card-img{aspect-ratio:1/1;overflow:hidden;background:var(--ivory);}
-.sg-card-img img{width:100%;height:100%;object-fit:cover;}
-.sg-card-name{
-  font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--black);
-  padding:12px 10px 2px;line-height:1.3;
-}
-.sg-card-price{font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--pink-deep);padding:0 10px 14px;}
-.sg-tip{
-  font-size:12px;font-weight:300;color:var(--mid);letter-spacing:0.3px;
-  max-width:520px;margin:28px auto 0;font-style:italic;
-}
-@media (max-width:640px){.sg-grid{grid-template-columns:1fr;max-width:320px;}}
-
-/* ── ABOUT ── */
-.about-section{
-  padding:96px 48px;display:none;
-  gap:72px;align-items:center;flex-wrap:wrap;background:white;
-}
-.about-content{flex:1;min-width:280px;}
-.about-title{
-  font-family:'Cormorant Garamond',serif;font-size:42px;
-  font-weight:300;line-height:1.15;margin-bottom:22px;color:var(--black);
-}
-.about-title em{font-style:italic;color:var(--pink);}
-.about-text{font-size:14px;font-weight:300;color:var(--mid);line-height:1.9;margin-bottom:26px;}
-.about-img{flex:1;min-width:280px;height:380px;overflow:hidden;}
-.about-img img{width:100%;height:100%;object-fit:cover;}
 
 /* ── CART ── */
 .cart-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:200;backdrop-filter:blur(2px);}
@@ -800,21 +901,31 @@ details[open] .pp-accordion-arr{transform:rotate(180deg);}
   .back-to-col-btn{bottom:18px;right:14px;font-size:8px;padding:10px 16px;}
 }
 
-/* Collection mode — hide all homepage sections, show only the collection */
+/* Collection mode — hide all homepage sections, show only the collection.
+   Selector list updated for the new homepage section set (Mikisi
+   Experience / Tennis Bracelets / Life in Mikisi / Crafted to Last /
+   Final CTA replace the retired trust-bar/divider-band/about-section/
+   style-guide-section) -- some of these classes don't exist in the DOM
+   yet until their sections are added, which is harmless (an inert
+   selector), so this only needs touching once. */
 body.collection-mode .hero,
 body.collection-mode .marquee-wrap,
-body.collection-mode .trust-bar,
 body.collection-mode .success-banner,
-body.collection-mode .divider-band,
-body.collection-mode .urgency-bar,
-body.collection-mode .about-section,
-body.collection-mode .style-guide-section,
+body.collection-mode .experience-section,
+body.collection-mode .signature-section,
+body.collection-mode .ig-section,
+body.collection-mode .silver-section,
+body.collection-mode .final-cta,
 body.collection-mode .collections-home{display:none!important;}
 body.collection-mode #breadcrumb{display:flex!important;}
 body.collection-mode .collection-view{display:block!important;padding-top:20px;}
 
-/* ── FOOTER ── */
-footer{background:var(--black);padding:52px 48px 36px;}
+/* ── FOOTER — sits directly below .final-cta now (a dark packaging-photo
+   backdrop), same near-black tone on both, so slightly tightened top
+   padding reads as one continuous closing block instead of two separate
+   dark sections stacked with a big gap between them. Otherwise unchanged
+   -- content/links/colors all stay exactly as they are. ── */
+footer{background:var(--black);padding:40px 48px 36px;}
 .footer-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:36px;padding-bottom:36px;border-bottom:1px solid #222;margin-bottom:24px;}
 .footer-logo{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300;color:white;letter-spacing:5px;text-transform:uppercase;}
 .footer-logo em{font-style:italic;color:var(--pink);}
@@ -863,30 +974,90 @@ footer{background:var(--black);padding:52px 48px 36px;}
   .nav-icon{font-size:17px;padding:2px;}
   .nav-sign-btn{padding:6px 11px;font-size:9px;letter-spacing:1.5px;}
 
-  /* Hero */
-  .hero{padding:52px 18px 0;min-height:75vh;}
-  .hero h1{font-size:36px;white-space:normal;text-align:center;line-height:1.08;}
-  .hero-eyebrow{justify-content:center;}
-  .hero-tagline{font-size:14px;margin-bottom:32px;}
-  .hero-btns{gap:10px;margin-bottom:36px;}
+  /* Hero -- one deliberate exception here: at a true 8:5 ratio a narrow
+     phone only gets a short hero, which reads as cramped (same tension
+     the demo's own mobile pass already worked through for its hero).
+     Grow it taller instead of keeping the aspect-ratio, and anchor the
+     copy near the bottom rather than vertically centered in a 46%-wide
+     side column -- simpler and more robust at phone widths with this
+     site's real sentence-length tagline (vs. the demo's much shorter
+     placeholder copy). */
+  .hero{aspect-ratio:auto;height:56vh;min-height:340px;max-height:520px;}
+  .hero-overlay{
+    max-width:100%;align-items:flex-start;justify-content:flex-end;
+    padding:20px 20px 60px;
+    background:linear-gradient(180deg,rgba(253,249,246,0) 30%,rgba(253,249,246,0.92) 70%);
+  }
+  .hero h1{font-size:clamp(26px,7.5vw,38px);white-space:normal;text-align:left;line-height:1.1;}
+  .hero-btns{gap:10px;margin-bottom:0;}
   .btn-black,.btn-ghost{padding:13px 26px;font-size:9px;letter-spacing:2px;}
-  .hero-banner{height:300px;}
 
   /* Marquee */
   .marquee-wrap{padding:11px 0;}
 
-  /* Trust */
-  .trust-bar{padding:14px 14px;gap:16px;}
-  .trust-item{font-size:8px;letter-spacing:1.5px;}
-
-  /* Collections home — 2 per row */
-  .collections-home{padding:40px 14px 52px;}
-  .section-title{font-size:28px;margin-bottom:28px;}
+  /* Collections home — all real categories in one sliding row instead of
+     wrapping to a 2-column grid, same horizontally scrollable, snap-
+     aligned pattern as the demo's carousel. Each tile is a fixed % of
+     the viewport so the next one peeks in at the edge as a scroll
+     affordance. */
+  .collections-home{padding:0 14px 40px;}
   .collections-grid{
-    grid-template-columns:repeat(2,1fr);
-    gap:2px;
+    display:flex;grid-template-columns:none;gap:14px;margin-top:24px;
+    overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:0;
+    padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
   }
-  .col-tile-name{font-size:16px;}
+  .collections-grid::-webkit-scrollbar{display:none;}
+  .col-tile{flex:0 0 68%;scroll-snap-align:start;}
+  /* Slide hint -- just the nudging chevron, no gradient backdrop, same
+     design already settled on for the demo's identical hint. Hidden by
+     default (see the unconditional base rule below the desktop grid CSS)
+     -- omitting that let an earlier version of this same hint leak into
+     the desktop grid as a stray extra tile, so the default-off rule is
+     load-bearing, not just tidiness. */
+  .col-slide-hint{
+    position:absolute;right:12px;top:0;bottom:0;
+    display:flex;align-items:center;justify-content:center;
+    pointer-events:none;z-index:3;
+    transition:opacity 0.25s ease;
+  }
+  .col-slide-hint svg{
+    width:22px;height:22px;color:white;
+    filter:drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+    animation:colHintNudge 1.3s ease-in-out infinite;
+  }
+  .col-slide-hint.col-slide-hint-hidden{opacity:0;}
+  @keyframes colHintNudge{0%,100%{transform:translateX(0);}50%{transform:translateX(7px);}}
+
+  /* Mikisi Experience / Tennis Bracelets / Life in Mikisi / Crafted to
+     Last / Final CTA -- same "pull sections flush against each other"
+     treatment as desktop, tightened further for this width (matches the
+     demo's own mobile pass, translated from its 560px breakpoint to this
+     file's 768px one). */
+  .silver-section,.final-cta{padding:36px 14px;}
+  .experience-inner{padding:16px 14px 36px;}
+  .ig-section{padding:0 14px 36px;}
+  .signature-section{padding:16px 14px 0;}
+  .experience-inner .section-title,.signature-section .section-title,.ig-section .section-title{margin-bottom:8px;}
+  .experience-inner .section-intro,.signature-section .section-intro{margin-bottom:24px;}
+  /* Crafted to Last: keep the same 3-across row as desktop instead of
+     stacking to 1 column -- tighten the gap and shrink the type so three
+     columns actually fit a narrow phone without overflowing. */
+  .silver-grid{gap:10px;}
+  .silver-num{font-size:11px;margin-bottom:6px;}
+  .silver-title{font-size:14px;line-height:1.25;margin-bottom:6px;}
+  .silver-sub{font-size:10.5px;line-height:1.45;}
+  /* Tennis Bracelets: narrower cards, same sliding-track pattern already
+     used for Collections. Arrow offset shrinks to match this section's
+     smaller 14px side padding (vs. 48px on desktop). Scoped to .pgrid
+     specifically -- .pcard is also the real card design used site-wide
+     in .cv-grid (a CSS grid, not a flex track), which must not pick up
+     a flex-basis override meant only for this section's sliding track. */
+  .pgrid .pcard{flex:0 0 68%;}
+  .tb-arrow{width:26px;}
+  .tb-arrow svg{width:18px;height:18px;}
+  .tb-arrow.tb-prev{left:-16px;}
+  .tb-arrow.tb-next{right:-16px;}
+  .ig-grid{max-width:none;}
 
   /* Breadcrumb */
   .breadcrumb{padding:12px 14px;}
@@ -895,6 +1066,19 @@ footer{background:var(--black);padding:52px 48px 36px;}
   .collection-view{padding:0 14px 60px;}
   .cv-header{padding:28px 0 18px;margin-bottom:20px;}
   .cv-title{font-size:32px;}
+
+  /* Discover by Stone -- same horizontally-scrollable, snap-aligned
+     pattern already used for the homepage's Collections carousel and
+     the Tennis Bracelets slider above, rather than wrapping to a
+     cramped 2-column grid. */
+  .stone-section{padding:36px 0 8px;}
+  .stone-grid{
+    display:flex;grid-template-columns:none;gap:14px;max-width:none;
+    overflow-x:auto;scroll-snap-type:x mandatory;
+    padding:0 0 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+  }
+  .stone-grid::-webkit-scrollbar{display:none;}
+  .stone-card{flex:0 0 68%;scroll-snap-align:start;}
 
   /* Product grid inside collection — 3 per row on mobile */
   .cv-grid{
@@ -948,11 +1132,6 @@ footer{background:var(--black);padding:52px 48px 36px;}
   .footer-top{flex-direction:column;gap:18px;}
   .footer-links{gap:14px;}
   .footer-bottom{flex-direction:column;gap:5px;}
-
-  /* Others */
-  .divider-band{padding:36px 16px;}
-  .urgency-bar{padding:13px 16px;gap:8px;}
-  .about-section{padding:48px 16px;}
 }
 
 /* Tablet */
@@ -991,14 +1170,13 @@ footer{background:var(--black);padding:52px 48px 36px;}
   </div>
 </nav>
 
-<!-- HERO -->
+<!-- HERO -- one full-bleed composition now: the real rotation/video/banner
+     layer fills the whole box, copy lives inside it as an overlay (in the
+     photo's own negative space), and the marquee is pinned to its bottom
+     edge instead of sitting in a separate bar underneath. Copy and
+     marquee text now match the demo exactly, not the site's own former
+     value/logistics wording. -->
 <div class="hero">
-  <h1 class="fu fu2">Real silver, <em>rare finds.</em></h1>
-  <div class="hero-tagline fu fu3" id="hero-tagline-el">Curated 925 sterling silver, honest prices, always something new.</div>
-  <div class="hero-btns fu fu4">
-    <button class="btn-black" onclick="showCollections()">Discover New Finds</button>
-    <button class="btn-ghost" onclick="scrollToAbout()">Our Story</button>
-  </div>
   <div class="hero-banner fu" style="animation-delay:0.78s">
     <div class="hero-banner-ph" id="hero-ph">
       <p>Your collection banner appears here</p>
@@ -1022,33 +1200,25 @@ footer{background:var(--black);padding:52px 48px 36px;}
          on every slide (see JS for the seamless last-to-first wrap). -->
     <div class="hero-rot-track" id="hero-rot-track" role="img" aria-label="Mikisi jewelry"></div>
   </div>
-</div>
-
-<!-- MARQUEE -->
-<div class="marquee-wrap">
-  <div class="marquee-track">
-    <span>Genuine 925 Sterling Silver</span><span class="dot">✦</span>
-    <span>Unique Finds</span><span class="dot">✦</span>
-    <span>Real Silver · Honest Prices</span><span class="dot">✦</span>
-    <span>Free Shipping · 8–10 Days</span><span class="dot">✦</span>
-    <span>Rose Gold · Silver · Gold</span><span class="dot">✦</span>
-    <span>New Finds Added Often</span><span class="dot">✦</span>
-    <span>Genuine 925 Sterling Silver</span><span class="dot">✦</span>
-    <span>Unique Finds</span><span class="dot">✦</span>
-    <span>Real Silver · Honest Prices</span><span class="dot">✦</span>
-    <span>Free Shipping · 8–10 Days</span><span class="dot">✦</span>
-    <span>Rose Gold · Silver · Gold</span><span class="dot">✦</span>
-    <span>New Finds Added Often</span><span class="dot">✦</span>
+  <div class="hero-overlay">
+    <h1 class="fu fu2">Quiet luxury,<br/>for everyday<br/><em>moments</em>.</h1>
+    <div class="hero-btns fu fu4">
+      <a href="#collections-home" class="hero-link" onclick="event.preventDefault();showCollections();">Explore</a>
+    </div>
   </div>
-</div>
-
-<!-- TRUST -->
-<div class="trust-bar">
-  <div class="trust-item"><span>✦</span>925 Sterling Silver</div>
-  <div class="trust-item"><span>⇉</span>Free Shipping · 8–10 Days</div>
-  <div class="trust-item"><span>↺</span>30-Day Returns</div>
-  <div class="trust-item"><span>◇</span>Authenticity Guaranteed</div>
-  <div class="trust-item"><span>❋</span>Lifetime Care</div>
+  <div class="marquee-wrap">
+    <div class="marquee-track">
+      <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
+      <span>DHL Express · 4–6 Days</span><span class="dot">✦</span>
+      <span>Crafted to Last</span><span class="dot">✦</span>
+      <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
+      <span>DHL Express · 4–6 Days</span><span class="dot">✦</span>
+      <span>Crafted to Last</span><span class="dot">✦</span>
+      <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
+      <span>DHL Express · 4–6 Days</span><span class="dot">✦</span>
+      <span>Crafted to Last</span><span class="dot">✦</span>
+    </div>
+  </div>
 </div>
 
 <div class="success-banner" id="success-banner">✦ Payment confirmed. Your piece is being prepared with care.</div>
@@ -1060,13 +1230,79 @@ footer{background:var(--black);padding:52px 48px 36px;}
   <span class="bc-item active" id="bc-current"></span>
 </div>
 
-<!-- COLLECTIONS HOME -->
+<!-- COLLECTIONS HOME -- heading dropped, intro pulled flush against the
+     hero and left-aligned, same treatment as the demo redesign. -->
 <div class="collections-home" id="collections-home">
-  <div class="section-title" id="collections-title">Discover New Finds</div>
-  <div class="section-discover-note">New finds added often. Discover something unique.</div>
+  <div class="section-discover-note">Every collection tells a different story. Find the one that feels like yours.</div>
   <div class="collections-grid" id="collections-grid">
     <div class="loading">Discovering collections…</div>
   </div>
+</div>
+
+<!-- THE MIKISI EXPERIENCE — before customers see curated pieces, the brand
+     should establish that it cares. Real packaging photo, near full-screen
+     editorial scale. -->
+<div class="experience-section">
+  <div class="experience-inner">
+    <div class="section-title">The Mikisi Experience</div>
+    <div class="section-intro">Thoughtfully presented from the very first moment.</div>
+    <div class="experience-photo">
+      <img src="https://res.cloudinary.com/ds8qviz1o/image/upload/v1786200766/mikisi/content/packaging_display.jpg" alt="The Mikisi pouch, thank-you card, and jewelry, beautifully presented"/>
+    </div>
+  </div>
+</div>
+
+<!-- TENNIS BRACELETS — one real category, browsable end to end via a
+     sliding row of the real published inventory (see renderTennisBracelets,
+     added in the next pass). -->
+<div class="signature-section">
+  <div class="section-title">Tennis Bracelets</div>
+  <div class="section-intro">Our most-loved silhouette, sparkling in every stone.</div>
+  <div class="tb-track-wrap">
+    <button class="tb-arrow tb-prev" id="tb-prev" onclick="tbScroll(-1)" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="pgrid" id="signature-grid"><!-- filled by renderTennisBracelets() --></div>
+    <button class="tb-arrow tb-next" id="tb-next" onclick="tbScroll(1)" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+  <a href="javascript:void(0)" class="tb-shop-link" onclick="shopTennisBracelets()">Shop Now</a>
+</div>
+
+<!-- LIFE IN MIKISI — real posted Instagram content (see loadInstagramPosts,
+     added in the next pass), about the people wearing the pieces. -->
+<div class="ig-section">
+  <div class="section-title">Life in Mikisi</div>
+  <div class="ig-grid" id="ig-grid"><!-- filled by loadInstagramPosts() --></div>
+  <a href="https://instagram.com/mikisi.co" target="_blank" rel="noopener" class="ig-view-link">View on Instagram →</a>
+</div>
+
+<!-- CRAFTED TO LAST — leads with philosophy instead of a material spec
+     sheet, right before the closing CTA. -->
+<div class="silver-section">
+  <div class="section-title">Crafted to Last</div>
+  <div class="section-intro">Our jewelry begins with genuine 925 sterling silver, because beauty should be worn every day.</div>
+  <div class="silver-grid">
+    <div class="silver-item">
+      <div class="silver-num">01</div>
+      <div class="silver-title">Made for Years</div>
+      <div class="silver-sub">925 sterling silver doesn't flake or fade like plated fashion jewelry — it's the real metal, through and through.</div>
+    </div>
+    <div class="silver-item">
+      <div class="silver-num">02</div>
+      <div class="silver-title">Gentle by Nature</div>
+      <div class="silver-sub">Soft on sensitive skin, so you can wear the pieces you love without worry, every single day.</div>
+    </div>
+    <div class="silver-item">
+      <div class="silver-num">03</div>
+      <div class="silver-title">Designed for Everyday</div>
+      <div class="silver-sub">Not precious-occasion-only — sterling silver is meant to be lived in, and it only gets better with wear.</div>
+    </div>
+  </div>
+</div>
+
+<!-- FINAL CTA — closes on a feeling rather than a sales pitch, real
+     packaging photo as the backdrop so the pouch bookends the page. -->
+<div class="final-cta">
+  <h2>The piece you'll reach for tomorrow.</h2>
+  <button class="btn-black" onclick="showCollections()">Shop Mikisi</button>
 </div>
 
 <!-- COLLECTION VIEW (products inside a collection) -->
@@ -1074,6 +1310,15 @@ footer{background:var(--black);padding:52px 48px 36px;}
   <div class="cv-header">
     <div class="cv-title" id="cv-title">Necklaces</div>
     <button class="cv-back" onclick="goHome()">← All Collections</button>
+  </div>
+  <!-- Discover by Stone -- Rings/Necklaces/Bracelets/Earrings only, see
+       renderStoneSection() -- hidden by default, shown/populated per
+       collection so a cold render of this markup never flashes stale
+       tiles from whichever collection was open last. -->
+  <div class="stone-section" id="stone-section" style="display:none">
+    <div class="section-title">Discover by Stone</div>
+    <div class="section-intro">Every stone tells a different story. Explore the collection that speaks to you.</div>
+    <div class="stone-grid" id="stone-grid"></div>
   </div>
   <div class="cv-grid" id="cv-grid">
     <div class="loading">Discovering pieces…</div>
@@ -1160,7 +1405,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
         <details class="pp-accordion" open>
           <summary class="pp-accordion-head">Shipping &amp; Returns <span class="pp-accordion-arr">▾</span></summary>
           <div class="pp-ship-body">
-            <div class="pp-ship-row"><span>⇉</span><span><strong>Free shipping</strong> &nbsp;·&nbsp; 8–10 business days</span></div>
+            <div class="pp-ship-row"><span>⇉</span><span><strong>Fast express shipping</strong> &nbsp;·&nbsp; 4–5 business days</span></div>
             <div class="pp-ship-row"><span>↺</span><span><strong>30-day returns</strong></span></div>
           </div>
         </details>
@@ -1172,64 +1417,6 @@ footer{background:var(--black);padding:52px 48px 36px;}
       </div>
     </div>
   </div>
-</div>
-
-<!-- DIVIDER -->
-<div class="divider-band">
-  <div class="divider-eye">Real Silver, Rare Finds</div>
-  <div class="divider-quote">"Unique pieces you won't find everywhere —<br>genuine, refined, and made to last."</div>
-  <div class="divider-sub">Genuine · Unique · Always Something New</div>
-</div>
-
-<!-- STYLE GUIDE: RING STACKING -->
-<div class="style-guide-section" id="style-guide-rings">
-  <div class="section-eyebrow" style="justify-content:center;">Style Guide</div>
-  <div class="section-title">The Art of the Stack</div>
-  <div class="section-discover-note">Ring stacking is 2026's most-worn trend — layer two or three pieces for a look that feels intentional, never matchy.</div>
-  <div class="sg-grid" id="sg-grid-rings"></div>
-  <div class="sg-tip">Let one ring lead — a delicate band, a geometric line, a moissanite stack — and build the rest around it, one finger at a time.</div>
-</div>
-
-<!-- STYLE GUIDE: NECKLACE LAYERING -->
-<div class="style-guide-section" id="style-guide-necklaces" style="background:var(--ivory);">
-  <div class="section-eyebrow" style="justify-content:center;">Style Guide</div>
-  <div class="section-title">The Art of the Layer</div>
-  <div class="section-discover-note">Mix a delicate everyday piece with texture and a statement moissanite for a look that builds all day, every day.</div>
-  <div class="sg-grid" id="sg-grid-necklaces"></div>
-  <div class="sg-tip">Start delicate, add texture, finish with sparkle — moissanite reads as everyday luxury now, not just special-occasion.</div>
-</div>
-
-<!-- STYLE GUIDE: BRACELET STACKING -->
-<div class="style-guide-section" id="style-guide-bracelets">
-  <div class="section-eyebrow" style="justify-content:center;">Style Guide</div>
-  <div class="section-title">The Art of the Arm Party</div>
-  <div class="section-discover-note">Stack a delicate chain, a beaded texture, and a tennis bracelet for a wrist that tells its own story.</div>
-  <div class="sg-grid" id="sg-grid-bracelets"></div>
-  <div class="sg-tip">Vary the widths and let them sit at different heights on your wrist — that's what makes a stack look curated, not accidental.</div>
-</div>
-
-<!-- STYLE GUIDE: THE CURATED EAR -->
-<div class="style-guide-section" id="style-guide-earrings" style="background:var(--ivory);">
-  <div class="section-eyebrow" style="justify-content:center;">Style Guide</div>
-  <div class="section-title">The Curated Ear</div>
-  <div class="section-discover-note">Mix a huggie hoop, a stud, and a statement drop across your piercings for an effortlessly layered ear.</div>
-  <div class="sg-grid" id="sg-grid-earrings"></div>
-  <div class="sg-tip">Place the hoop closest to your face, the stud mid-lobe, and let the statement drop anchor the bottom — balance, not symmetry.</div>
-</div>
-
-<!-- ABOUT -->
-<div class="about-section" id="about">
-  <div class="about-content">
-    <div class="section-eyebrow">About Mikisi</div>
-    <div class="about-title">Real silver, <em>rare finds.</em></div>
-    <div class="about-text">Mikisi is a place to discover genuine sterling silver — unique, refined pieces you won't see everywhere, at prices that make sense. Every piece is crafted from real 925 sterling silver: the genuine precious metal, stamped and hypoallergenic, made to be worn, loved, and last for years.</div>
-    <div class="about-text" style="margin-top:-10px;">Our selection is always evolving, so there's always something new to find. No luxury markup, no fast-fashion fakes — just real silver, thoughtfully chosen.</div>
-    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;">
-      <button class="btn-ghost" onclick="window.location.href='/about'" style="width:fit-content;padding:12px 28px;">Our Full Story</button>
-      <button class="btn-ghost" onclick="showCollections()" style="width:fit-content;padding:12px 28px;">Discover New Finds</button>
-    </div>
-  </div>
-  <div class="about-img"><img src="https://placehold.co/520x400/fdf9f6/d4849c?text=Mikisi" alt="Mikisi sterling silver jewelry" loading="lazy"/></div>
 </div>
 
 <!-- CART -->
@@ -1358,12 +1545,12 @@ footer{background:var(--black);padding:52px 48px 36px;}
         </select>
       </div>
 
-      <!-- Shipping — included in price, USPS 8-10 days -->
+      <!-- Shipping — fast express, day range updated 2026-08-05 (was USPS 8-10 days) -->
       <div style="margin-bottom:16px;padding:13px 14px;background:var(--ivory);border:1px solid var(--border);display:flex;align-items:center;gap:10px;">
         <span style="color:var(--gold);font-size:14px;">⇉</span>
         <div>
-          <div style="font-size:12px;font-weight:500;color:var(--black);">Shipping included &nbsp;·&nbsp; <span style="color:var(--gold)">8–10 business days</span></div>
-          <div style="font-size:10px;color:var(--mid);margin-top:2px;">Free shipping · 30-day returns</div>
+          <div style="font-size:12px;font-weight:500;color:var(--black);">Fast express shipping &nbsp;·&nbsp; <span style="color:var(--gold)">4–5 business days</span></div>
+          <div style="font-size:10px;color:var(--mid);margin-top:2px;">30-day returns</div>
         </div>
       </div>
 
@@ -1445,7 +1632,7 @@ footer{background:var(--black);padding:52px 48px 36px;}
   <div class="footer-top">
     <div>
       <div class="footer-logo">Mik<em>i</em>si</div>
-      <div class="footer-tagline">Real silver, rare finds.</div>
+      <div class="footer-tagline">Quiet luxury, for everyday moments.</div>
     </div>
     <div class="footer-links">
       <a class="footer-link" href="/about" style="color:#555;text-decoration:none;">About Us</a>
@@ -1515,43 +1702,6 @@ function cleanName(str){
   return stripHtml(str).replace(/^Mikisi\s*[-–—]\s*/i,'').trim();
 }
 function trunc(str,n){return str&&str.length>n?str.substring(0,n)+'…':str||'';}
-
-// ── STYLE GUIDE ROTATION ──
-// Featured products change once per day (not per page load) so the same
-// visitor sees a stable set all day, but the picks aren't permanently
-// hardcoded — a stable id-sort + a day-index offset means every category
-// cycles through its whole live catalog over time, automatically dropping
-// anything that's since been unpublished/discontinued (allProducts is
-// already published-only) without ever needing a manual edit here again.
-function pickStyleGuideProducts(category,count){
-  const pool=allProducts.filter(p=>p.category===category).sort((a,b)=>a.id-b.id);
-  if(!pool.length)return[];
-  const dayIndex=Math.floor(Date.now()/86400000);
-  const start=dayIndex%pool.length;
-  const picks=[];
-  for(let i=0;i<Math.min(count,pool.length);i++){picks.push(pool[(start+i)%pool.length]);}
-  return picks;
-}
-function renderStyleGuideGrid(gridId,category){
-  const el=document.getElementById(gridId);
-  if(!el)return;
-  const picks=pickStyleGuideProducts(category,3);
-  el.innerHTML=picks.map(p=>{
-    const img=p.content_image_url||p.image_url||getPlaceholder();
-    const name=cleanName(p.name);
-    return `<div class="sg-card" onclick="openPP(${p.id})">
-      <div class="sg-card-img"><img src="${img}" alt="${name}" onerror="this.src='${getPlaceholder()}'" loading="lazy"></div>
-      <div class="sg-card-name">${name}</div>
-      <div class="sg-card-price">$${p.final_price.toFixed(2)}</div>
-    </div>`;
-  }).join('');
-}
-function renderAllStyleGuides(){
-  renderStyleGuideGrid('sg-grid-rings','Rings');
-  renderStyleGuideGrid('sg-grid-necklaces','Necklaces');
-  renderStyleGuideGrid('sg-grid-bracelets','Bracelets');
-  renderStyleGuideGrid('sg-grid-earrings','Earrings');
-}
 
 // ── VARIANT-AWARE HELPERS ──
 function getVariantMaterial(variantLabel,baseMaterial){
@@ -1648,9 +1798,11 @@ window.scrollTo(0,0);
 window.onload = async()=>{
   window.scrollTo(0,0);
   updateAuthUI();
-  loadHero();
+  _updateNavAtHero();
+  showDemoHeroPhoto();
   await Promise.all([loadCollections(),loadProducts()]);
-  renderAllStyleGuides();
+  renderTennisBracelets();
+  loadInstagramPosts();
   loadCart();
   const p = new URLSearchParams(window.location.search);
   if(p.get('cart')==='open'){setTimeout(()=>toggleCart(),300);}
@@ -1697,7 +1849,33 @@ window.onload = async()=>{
   if(previewId){ previewKey = p.get('key') || null; openPP(Number(previewId)); }
   const addParam = p.get('add');
   if(addParam) addParam.split(',').forEach(pair=>{const[id,qty]=pair.split(':');if(id)addToCart(Number(id),'',null,null);});
+  // Cold visit to a real per-collection URL (e.g. shared/bookmarked
+  // /collections/tennis-bracelets) -- allCollections/allProducts are both
+  // already loaded above, so the router can resolve it immediately.
+  _routeFromPath();
 };
+// Back/forward through collection pages -- re-derive the view from
+// whatever URL the browser just navigated to, rather than pushing a new
+// history entry (that would trap the user, since every back tap would
+// just push forward again).
+window.addEventListener('popstate', ()=>{
+  if(!_routeFromPath()) goHome({pushUrl:false});
+});
+// Resolves /collections/<slug> to the matching collection (or the
+// standalone Tennis Bracelets page) and opens it without touching browser
+// history -- the URL is already correct, whether this is a cold visit to
+// a shared link or a back/forward navigation. Returns false (does
+// nothing) for "/" and any unrecognized path, so callers can fall back to
+// goHome().
+function _routeFromPath(){
+  const m = window.location.pathname.match(/^\/collections\/([a-z0-9-]+)\/?$/);
+  if(!m) return false;
+  const slug = m[1];
+  if(slug === 'tennis-bracelets'){ openTennisBracelets({pushUrl:false}); return true; }
+  const col = (allCollections||[]).find(c => _collSlug(c.name) === slug);
+  if(col){ openCollection(col.id, col.name, {pushUrl:false}); return true; }
+  return false;
+}
 
 let heroRotation=[];
 let heroRotIndex=0;
@@ -1755,6 +1933,19 @@ function startHeroRotation(images){
   },10000);
 }
 
+// Shows the demo's exact curated flat-lay photo instead of the live
+// /store/hero rotation, so the hero matches the demo pixel-for-pixel.
+// Bypasses loadHero() entirely -- that function (and its rotation/video/
+// banner logic) is left untouched below in case the rotation feature is
+// wanted back later.
+function showDemoHeroPhoto(){
+  const ph=document.getElementById('hero-ph');
+  const img=document.getElementById('hero-img');
+  setHeroBg(img, 'https://res.cloudinary.com/ds8qviz1o/image/upload/v1786219332/mikisi/content/hero_flatlay.jpg');
+  img.style.display='block';
+  ph.style.display='none';
+}
+
 async function loadHero(){
   try{
     const res=await fetch(`${API}/store/hero`);
@@ -1790,8 +1981,37 @@ async function loadHero(){
       test.src=d.banner_url;
     }
 
-    if(d.tagline) document.getElementById('hero-tagline-el').textContent=d.tagline;
   }catch{}
+}
+
+// ── LIFE IN MIKISI (real posted Instagram content, see GET /store/instagram) ──
+const _IG_CACHE_KEY = 'mikisi_instagram_v1';
+async function loadInstagramPosts(){
+  const grid = document.getElementById('ig-grid');
+  if(!grid) return;
+  let posts = _cacheGet(_IG_CACHE_KEY);
+  if(!posts){
+    try{
+      const res = await fetch(`${API}/store/instagram?limit=3`);
+      if(!res.ok) return;
+      posts = await res.json();
+      if(Array.isArray(posts)) _cacheSet(_IG_CACHE_KEY, posts);
+    }catch{ return; }
+  }
+  if(!Array.isArray(posts) || !posts.length) return; // leave the section's static heading/link, empty grid
+  grid.innerHTML = posts.map(p=>{
+    // The real caption's opening thought -- the part before the first
+    // blank line -- is always the actual hook; body copy and the
+    // "Tap to shop" CTA that follow are too long for a tile overlay.
+    const hook = (p.caption || '').split('\n\n')[0];
+    return `<div class="ig-tile">
+      <img src="${p.image_url}" alt="Mikisi on Instagram" loading="lazy"/>
+      <div class="ig-tile-overlay">
+        <div class="ig-tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="0.9" fill="currentColor" stroke="none"/></svg></div>
+        <div class="ig-tile-caption">${hook}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ── COLLECTIONS ──
@@ -1831,50 +2051,159 @@ function getDailyImage(products, collectionId){
   return colProds[dayIdx]?.content_image_url||colProds[dayIdx]?.image_url||null;
 }
 
+const _collectionTaglines = {
+  'necklaces':'Wear your story',
+  'earrings':'Frame your face',
+  'rings':'Mark the moment',
+  'bracelets':'Adorn your wrist',
+  'anklets':'Grace in every step',
+  'ear cuffs':'No piercing required',
+  'jewelry sets':'Complete the look',
+};
+// Real, bookmarkable/shareable URL per collection page (e.g.
+// /collections/tennis-bracelets), matching the demo's separate-page-per-
+// collection structure -- without actually splitting into separate HTML
+// files, which would mean duplicating the real nav/cart/checkout/auth code
+// into every one of them. One shared app, real per-collection URLs.
+function _collSlug(name){
+  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+// ── DISCOVER BY STONE — ported from the demo's 4 collection pages that
+// have it. Deliberately excludes Anklets and Tennis Bracelets, same as
+// the demo (confirmed against real data: Anklets has only 1 product with
+// an actual stone, everything else is plain metal -- not enough variety
+// for a filter to earn its place there). ──
+const STONE_META = {
+  moissanite:     { label:'Moissanite',     tag:'The brilliance of diamonds, crafted to shine for life.' },
+  cubic_zirconia: { label:'Cubic Zirconia', tag:'Brilliant clarity, for sparkle worn every day.' },
+  semi_precious:  { label:'Gemstones',      tag:"Nature's color, drawn from the earth and set to endure." },
+  pearl:          { label:'Pearl',          tag:'Quiet, timeless grace that never goes out of style.' }
+};
+const STONE_ORDER = ['moissanite','cubic_zirconia','semi_precious','pearl'];
+const _STONE_FILTER_CATEGORIES = new Set(['rings','necklaces','bracelets','earrings']);
+let activeStoneFilter = null;
+let _stoneSectionProducts = []; // the open collection's unfiltered set, so setStoneFilter() can re-slice it without re-fetching
+// Real per-product stone type lives in specs.stone (e.g. "Moissanite CZ",
+// "Blue Sapphire Cubic Zirconia", "Turquoise") -- there's no single clean
+// field for it, unlike the free-text `material` column, which mixes
+// metal and stone together and can't be bucketed reliably. Collapsing
+// that free text into 4 buckets is inherently lossy (e.g. "Blue Sapphire
+// Cubic Zirconia" reads as Cubic Zirconia here, not Gemstones) -- the
+// same tradeoff the demo's own necklace dev-note already flagged as
+// acceptable for a one-bucket-per-product model. Returns null for
+// products with no real stone at all (plain metal pieces), which then
+// simply don't appear under any tile, same as the demo.
+function _stoneBucket(p){
+  let specs = p.specs;
+  try{ if(typeof specs==='string') specs = JSON.parse(specs); }catch{ specs=null; }
+  // Falls back to accent_stone when there's no primary stone field --
+  // found live on real products (e.g. "Colorful Cubic Zirconia Bracelet",
+  // #819) whose only stone info Silverbene put under accent_stone, which
+  // would otherwise silently exclude them from every tile despite clearly
+  // having a real, nameable stone.
+  const raw = ((specs&&(specs.stone||specs.accent_stone))||'').toLowerCase();
+  if(!raw) return null;
+  if(raw.includes('moissanite')) return 'moissanite';
+  if(raw.includes('pearl')) return 'pearl';
+  if(raw.includes('cubic zirconia')||raw.includes('crystal')||raw.includes('high carbon')) return 'cubic_zirconia';
+  return 'semi_precious'; // any other named gemstone -- turquoise, sapphire, tiger eye, aventurine, etc.
+}
+// Called from openCollection() with that collection's full product set --
+// hides itself for categories with no filter (Anklets, Tennis Bracelets)
+// or if this particular set happens to have zero real stones.
+function renderStoneSection(name, prods){
+  const section = document.getElementById('stone-section');
+  activeStoneFilter = null;
+  _stoneSectionProducts = prods;
+  if(!_STONE_FILTER_CATEGORIES.has((name||'').toLowerCase())){ section.style.display='none'; return; }
+  const counts = {};
+  prods.forEach(p=>{ const b=_stoneBucket(p); if(b) counts[b]=(counts[b]||0)+1; });
+  const buckets = STONE_ORDER.filter(k=>counts[k]>0);
+  if(!buckets.length){ section.style.display='none'; return; }
+  section.style.display='block';
+  document.getElementById('stone-grid').innerHTML = buckets.map(k=>{
+    const meta = STONE_META[k];
+    const sample = prods.find(p=>_stoneBucket(p)===k);
+    const img = sample.content_image_url || sample.image_url || getPlaceholder();
+    return `<div class="stone-card" data-bucket="${k}" onclick="setStoneFilter('${k}')">
+      <div class="stone-card-img"><img src="${img}" alt="${meta.label}" loading="lazy"/></div>
+      <div class="stone-card-name">${meta.label}</div>
+      <div class="stone-card-tag">${meta.tag}</div>
+    </div>`;
+  }).join('');
+}
+function setStoneFilter(bucket){
+  activeStoneFilter = (activeStoneFilter===bucket) ? null : bucket;
+  document.querySelectorAll('.stone-card').forEach(el=>el.classList.toggle('active', el.dataset.bucket===activeStoneFilter));
+  const filtered = activeStoneFilter ? _stoneSectionProducts.filter(p=>_stoneBucket(p)===activeStoneFilter) : _stoneSectionProducts;
+  renderCollectionProducts(filtered);
+}
+
 function renderCollectionTiles(cols){
   const grid = document.getElementById('collections-grid');
   if(!cols||!cols.length){grid.innerHTML='<div style="color:var(--light);font-size:14px;grid-column:1/-1;padding:20px;font-family:\'Cormorant Garamond\',serif;font-style:italic">Collections loading…</div>';return;}
   grid.innerHTML = cols.map(col=>{
     // Rotating image: use image_url from collection or pick from products
     const img = col.image_url || getDailyImage(allProducts, col.id) || null;
-    const taglines = {
-      'necklaces':'Wear your story',
-      'earrings':'Frame your face',
-      'rings':'Mark the moment',
-      'bracelets':'Adorn your wrist',
-      'anklets':'Grace in every step',
-      'ear cuffs':'No piercing required',
-      'jewelry sets':'Complete the look',
-    };
-    const sub = taglines[col.name.toLowerCase()] || 'Explore the collection';
-    if(img){
-      return `<div class="col-tile" onclick="openCollection(${col.id},'${col.name.replace(/'/g,"\\'")}')">
-        <img src="${img}" onerror="this.parentElement.querySelector('.col-tile-overlay').style.background='linear-gradient(to top,rgba(14,14,14,0.7),rgba(14,14,14,0.3))';this.style.display='none';" alt="${col.name}"/>
-        <div class="col-tile-overlay">
-          <div class="col-tile-name">${col.name}</div>
-          <div class="col-tile-sub">${sub}</div>
-        </div>
-      </div>`;
-    }
-    return `<div class="col-tile" onclick="openCollection(${col.id},'${col.name.replace(/'/g,"\\'")}')">
-      <div class="col-tile-no-img">
-        <div class="tn">${col.name}</div>
-        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);margin-top:3px">${sub}</div>
-      </div>
+    const sub = _collectionTaglines[col.name.toLowerCase()] || 'Explore the collection';
+    const nameEsc = col.name.replace(/'/g,"\\'");
+    // Caption now lives below the image (name/tag/Shop Now) instead of a
+    // gradient overlay baked onto the photo -- the no-image fallback
+    // (some real categories have no dedicated collection photo yet)
+    // keeps its own italic placeholder text, just inside the same
+    // image-box shape instead of a separate differently-sized block.
+    const imgBox = img
+      ? `<img src="${img}" alt="${col.name}" loading="lazy" onerror="this.closest('.col-tile-img').classList.add('col-tile-img-empty');this.remove();"/>`
+      : `<div class="tn">${col.name}</div>`;
+    return `<div class="col-tile" onclick="openCollection(${col.id},'${nameEsc}')">
+      <div class="col-tile-img${img?'':' col-tile-img-empty'}">${imgBox}</div>
+      <div class="col-tile-name">${col.name}</div>
+      <div class="col-tile-sub">${sub}</div>
+      <a href="javascript:void(0)" class="col-tile-shop" onclick="event.stopPropagation();openCollection(${col.id},'${nameEsc}')">Shop Now</a>
     </div>`;
-  }).join('');
+  }).join('') +
+  // Slide hint -- appended as part of the same innerHTML write (not a
+  // separate insertAdjacentHTML call) since renderCollectionTiles can run
+  // more than once (cache-hit vs. fetch, plus a couple of later re-render
+  // call sites), and grid.innerHTML=... wipes any previously-appended
+  // child on every call. Only visible on mobile/tablet (max-width:900px);
+  // on desktop all real categories already fit without scrolling.
+  '<div class="col-slide-hint" id="col-slide-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>';
+  // Duplicate identical addEventListener calls on the same element are a
+  // no-op per spec, so binding this on every render (rather than tracking
+  // "already bound" state) is safe and simpler.
+  grid.addEventListener('scroll', updateColHint, {passive:true});
+  updateColHint();
+}
+// Disappears the instant the row is scrolled at all (matches the same fix
+// already made on the demo's identical hint after it first shipped
+// hover/end-of-scroll-only and read as "stuck").
+function updateColHint(){
+  const grid = document.getElementById('collections-grid');
+  const hint = document.getElementById('col-slide-hint');
+  if(!grid || !hint) return;
+  hint.classList.toggle('col-slide-hint-hidden', grid.scrollLeft > 4);
 }
 
-async function openCollection(id, name){
+async function openCollection(id, name, opts){
+  opts = opts || {};
   document.body.classList.add('collection-mode');
+  _updateNavAtHero(); // don't wait for a scroll event -- e.g. clicking a
+                       // tile while already at scrollY 0 fires none at all
   document.getElementById('cv-title').textContent = name;
   showBreadcrumb(name);
   window.scrollTo({top:0,behavior:'smooth'});
+  // Real per-collection URL -- skipped when this call came from popstate
+  // (_routeFromPath) or the initial-load router, since the URL is already
+  // correct in both of those cases and pushing again would corrupt the
+  // back/forward history stack.
+  if(opts.pushUrl !== false) history.pushState(null, '', '/collections/'+_collSlug(name));
 
   // Filter locally — primary: by collection_id, fallback: by category name
   let local = allProducts.filter(p=>p.collection_id===id);
   if(!local.length) local = allProducts.filter(p=>(p.category||'').toLowerCase()===name.toLowerCase());
   if(local.length){
+    renderStoneSection(name, local);
     renderCollectionProducts(local);
     return;
   }
@@ -1887,6 +2216,7 @@ async function openCollection(id, name){
     if(Array.isArray(prods)){
       prods.forEach(p=>{if(!allProducts.find(x=>x.id===p.id))allProducts.push(p);});
     }
+    renderStoneSection(name, Array.isArray(prods)?prods:[]);
     renderCollectionProducts(prods);
   }catch{document.getElementById('cv-grid').innerHTML='<div class="loading">Could not load pieces</div>';}
 }
@@ -1911,6 +2241,52 @@ function pcardSizeText(p){
   return `${sizes[0]} – ${sizes[sizes.length-1]}`;
 }
 
+// Shared by renderCollectionProducts() and renderTennisBracelets() -- one
+// real product-card template, not duplicated inline in two places (a
+// future badge/wishlist/pricing change would otherwise need to be kept
+// in sync by hand across both).
+function productCardHTML(p){
+  const imgA = p.content_image_url || p.image_url || getPlaceholder();
+  const imgB = (p.image_url && p.content_image_url && p.image_url !== p.content_image_url) ? p.image_url : null;
+  const name = cleanName(p.name);
+  const outOfStock = !p.stock || p.stock === 0;
+  let badge='';
+  if(outOfStock) badge=`<div class="pcard-badge" style="background:var(--mid);letter-spacing:1px">Out of Stock</div>`;
+  else if(p.is_featured) badge=`<div class="pcard-badge badge-signature">✦ Signature</div>`;
+  else if(p.is_new) badge=`<div class="pcard-badge badge-new">New</div>`;
+  const liked = wishlist.includes(p.id);
+  const sizeText = pcardSizeText(p);
+  return `<div class="pcard${outOfStock?' pcard-oos':''}" data-id="${p.id}" onclick="openPP(${p.id})">
+    <div class="pcard-img">
+      <img src="${imgA}" alt="${name}"${imgB?` data-hover="${imgB}"`:''}  onerror="this.src='${getPlaceholder()}'" loading="lazy"/>
+      ${badge}
+      <button class="pcard-wish ${liked?'liked':''}" id="wish-${p.id}" onclick="event.stopPropagation();toggleWish(${p.id})">${liked?'♥':'♡'}</button>
+    </div>
+    <div class="pcard-info">
+      <div class="pcard-brand">Mikisi</div>
+      <div class="pcard-name">${name}</div>
+      ${sizeText?`<div class="pcard-size">${sizeText}</div>`:''}
+      <div class="pcard-price"${outOfStock?' style="color:var(--light)"':''}>$${p.final_price.toFixed(2)}</div>
+      ${p.original_price>p.final_price?`<div class="pcard-orig">$${p.original_price.toFixed(2)}</div>`:''}
+    </div>
+  </div>`;
+}
+// Fade-in + hover image swap, shared setup for any grid built from
+// productCardHTML() -- both renderCollectionProducts() and
+// renderTennisBracelets() call this on the container they just filled.
+function wireProductCardEffects(grid){
+  const fadeObs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');fadeObs.unobserve(e.target);}});
+  },{threshold:0.06});
+  grid.querySelectorAll('.pcard').forEach(el=>fadeObs.observe(el));
+  grid.querySelectorAll('.pcard-img img[data-hover]').forEach(img=>{
+    const hoverSrc=img.getAttribute('data-hover');
+    const origSrc=img.src;
+    new Image().src=hoverSrc;
+    img.addEventListener('mouseenter',()=>{img.style.opacity='0';setTimeout(()=>{img.src=hoverSrc;img.style.opacity='1';},120);});
+    img.addEventListener('mouseleave',()=>{img.style.opacity='0';setTimeout(()=>{img.src=origSrc;img.style.opacity='1';},120);});
+  });
+}
 function renderCollectionProducts(prods){
   const grid = document.getElementById('cv-grid');
   if(!prods||!prods.length){grid.innerHTML='<div class="loading">No pieces in this collection yet</div>';return;}
@@ -1923,46 +2299,68 @@ function renderCollectionProducts(prods){
     _ppEl.style.display='none';
     if(_collView && _ppEl.parentElement !== _collView) _collView.appendChild(_ppEl);
   }
-  grid.innerHTML = prods.map((p,i)=>{
-    const imgA = p.content_image_url || p.image_url || getPlaceholder();
-    const imgB = (p.image_url && p.content_image_url && p.image_url !== p.content_image_url) ? p.image_url : null;
-    const name = cleanName(p.name);
-    const outOfStock = !p.stock || p.stock === 0;
-    let badge='';
-    if(outOfStock) badge=`<div class="pcard-badge" style="background:var(--mid);letter-spacing:1px">Out of Stock</div>`;
-    else if(p.is_featured) badge=`<div class="pcard-badge badge-signature">✦ Signature</div>`;
-    else if(p.stock<=10) badge=`<div class="pcard-badge badge-limited">❋ Limited · ${p.stock} left</div>`;
-    else if(p.is_new) badge=`<div class="pcard-badge badge-new">New</div>`;
-    const liked = wishlist.includes(p.id);
-    const sizeText = pcardSizeText(p);
-    return `<div class="pcard${outOfStock?' pcard-oos':''}" data-id="${p.id}" onclick="openPP(${p.id})">
-      <div class="pcard-img">
-        <img src="${imgA}" alt="${name}"${imgB?` data-hover="${imgB}"`:''}  onerror="this.src='${getPlaceholder()}'" loading="lazy"/>
-        ${badge}
-        <button class="pcard-wish ${liked?'liked':''}" id="wish-${p.id}" onclick="event.stopPropagation();toggleWish(${p.id})">${liked?'♥':'♡'}</button>
-      </div>
-      <div class="pcard-info">
-        <div class="pcard-brand">Mikisi</div>
-        <div class="pcard-name">${name}</div>
-        ${sizeText?`<div class="pcard-size">${sizeText}</div>`:''}
-        <div class="pcard-price"${outOfStock?' style="color:var(--light)"':''}>$${p.final_price.toFixed(2)}</div>
-        ${p.original_price>p.final_price?`<div class="pcard-orig">$${p.original_price.toFixed(2)}</div>`:''}
-      </div>
-    </div>`;
-  }).join('');
-  // Scroll fade-in as cards enter viewport
-  const fadeObs=new IntersectionObserver(entries=>{
-    entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');fadeObs.unobserve(e.target);}});
-  },{threshold:0.06});
-  grid.querySelectorAll('.pcard').forEach(el=>fadeObs.observe(el));
-  // Hover image swap for cards with a second image
-  grid.querySelectorAll('.pcard-img img[data-hover]').forEach(img=>{
-    const hoverSrc=img.getAttribute('data-hover');
-    const origSrc=img.src;
-    new Image().src=hoverSrc;
-    img.addEventListener('mouseenter',()=>{img.style.opacity='0';setTimeout(()=>{img.src=hoverSrc;img.style.opacity='1';},120);});
-    img.addEventListener('mouseleave',()=>{img.style.opacity='0';setTimeout(()=>{img.src=origSrc;img.style.opacity='1';},120);});
-  });
+  grid.innerHTML = prods.map(p=>productCardHTML(p)).join('');
+  wireProductCardEffects(grid);
+}
+
+// ── TENNIS BRACELETS -- one real category, filtered client-side from the
+// same allProducts array everything else on the page already uses (no
+// dedicated endpoint needed for this). Shared by the homepage slider
+// (renderTennisBracelets) and its own dedicated collection page
+// (openTennisBracelets) so both always agree on exactly which products
+// count as a tennis bracelet. ──
+function _tennisBracelets(){
+  return allProducts
+    .filter(p => p.category === 'Bracelets' && /tennis/i.test(p.name))
+    .sort((a,b) => a.final_price - b.final_price);
+}
+function renderTennisBracelets(){
+  const grid = document.getElementById('signature-grid');
+  if(!grid) return;
+  const tennisBracelets = _tennisBracelets();
+  if(!tennisBracelets.length) return; // nothing published yet -- leave the section's static copy, empty track
+  grid.innerHTML = tennisBracelets.map(p=>productCardHTML(p)).join('');
+  wireProductCardEffects(grid);
+  grid.addEventListener('scroll', tbUpdateArrows, {passive:true});
+  tbUpdateArrows();
+}
+function tbScroll(dir){
+  const track = document.getElementById('signature-grid');
+  if(!track) return;
+  const card = track.querySelector('.pcard');
+  const amount = card ? card.getBoundingClientRect().width + 24 : track.clientWidth * 0.8;
+  track.scrollBy({left: dir * amount, behavior: 'smooth'});
+}
+function tbUpdateArrows(){
+  const track = document.getElementById('signature-grid');
+  const prev = document.getElementById('tb-prev');
+  const next = document.getElementById('tb-next');
+  if(!track || !prev || !next) return;
+  const max = track.scrollWidth - track.clientWidth - 1;
+  prev.disabled = track.scrollLeft <= 0;
+  next.disabled = track.scrollLeft >= max;
+}
+function shopTennisBracelets(){
+  openTennisBracelets();
+}
+// Tennis Bracelets gets its own dedicated collection page (real URL
+// /collections/tennis-bracelets), matching the demo's standalone
+// docs/demo-collections-tennis-bracelets.html -- distinct from the wider
+// Bracelets collection, not a filtered view bolted onto it. There's no
+// real collection_id for this (it's a name-based slice of Bracelets, not
+// its own category in the DB), so it can't reuse openCollection()'s
+// collection_id/API-fallback path; it renders straight from allProducts.
+async function openTennisBracelets(opts){
+  opts = opts || {};
+  if(!allProducts.length) await loadProducts(); // cold-open safety, e.g. a direct link before Promise.all in window.onload resolves
+  document.body.classList.add('collection-mode');
+  _updateNavAtHero();
+  document.getElementById('cv-title').textContent = 'Tennis Bracelets';
+  showBreadcrumb('Tennis Bracelets');
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(opts.pushUrl !== false) history.pushState(null, '', '/collections/tennis-bracelets');
+  document.getElementById('stone-section').style.display='none'; // never applicable here, see _STONE_FILTER_CATEGORIES
+  renderCollectionProducts(_tennisBracelets());
 }
 
 // ── PRODUCTS ──
@@ -2247,15 +2645,17 @@ function positionPPInline(productId){
     // panel actually has somewhere visible to render.
     if(!document.body.classList.contains('collection-mode')){
       document.body.classList.add('collection-mode');
+      _updateNavAtHero();
       ppEnteredCollectionModeForPreview=true;
       // No real collection was opened, so there's no name to show — the
       // markup's hardcoded default ("Necklaces") would otherwise leak
       // through and make this look like the customer browsed into the
-      // Necklaces collection (e.g. clicking a Style Guide card). The
-      // breadcrumb is forced visible by the same body.collection-mode CSS,
-      // so give it an honest label too instead of showing a stale one.
+      // Necklaces collection (e.g. clicking a Tennis Bracelets card on the
+      // homepage). The breadcrumb is forced visible by the same
+      // body.collection-mode CSS, so give it an honest generic label too
+      // instead of showing a stale one.
       document.getElementById('cv-title').textContent='';
-      document.getElementById('bc-current').textContent='Style Guide';
+      document.getElementById('bc-current').textContent='Discover';
     }
     grid.appendChild(ppEl);
     return;
@@ -2588,19 +2988,21 @@ async function openPP(id, presetVariantId=null){
       let adjRange='';
       try{
         const sp=p.specs?JSON.parse(p.specs):{};
-        if(sp.inner_diameter){adjRange=adjDiameterNote(sp.inner_diameter);}
-        if(!adjRange&&sp.ring_diameter){adjRange=adjDiameterNote(sp.ring_diameter);}
-        if(!adjRange&&sp.ring_size_range){
-          // ring_size_range is already normalized to "US #" or "US # - #" at import
-          // time (see _convert_ring_size_to_us in silverbene_adapter.py) — use that
-          // precise value as-is. Don't round/pad it into a fuzzy ±1 range; that
-          // turned an exact "US 7.5" into a wrong "US 7 – 9" for at least one product.
+        // Silverbene's own stated reference size is ground truth and must win
+        // over anything we derive ourselves from mm diameter — a 17mm inner
+        // diameter snaps to our table's "US 7" reference point, but e.g. the
+        // Olive Leaf Zirconia Ring's own spec text says "US Size 6". Check
+        // ring_size_range first, and allow the "US Size #" phrasing (not just
+        // "US #") since not every product's range was normalized at import.
+        if(sp.ring_size_range){
           const rsr=sp.ring_size_range.trim();
-          const usMatch=rsr.match(/^US\s*([\d.]+)\s*(?:[-–]\s*([\d.]+))?/i);
+          const usMatch=rsr.match(/^US\s*(?:size\s*)?([\d.]+)\s*(?:[-–]\s*([\d.]+))?/i);
           if(usMatch) adjRange = usMatch[2] ? `US ${usMatch[1]} – ${usMatch[2]}` : `US ${usMatch[1]}`;
           // else: plain text with no "US #" (e.g. "Adjustable") has no real number
-          // to show — falls through to the US5-8 default below.
+          // to show — falls through to the diameter derivation below.
         }
+        if(!adjRange&&sp.inner_diameter){adjRange=adjDiameterNote(sp.inner_diameter);}
+        if(!adjRange&&sp.ring_diameter){adjRange=adjDiameterNote(sp.ring_diameter);}
       }catch{}
       // No per-product diameter spec — every open/adjustable ring still gets a
       // customer-facing range instead of a bare "Open Size" label with no sizing info.
@@ -2787,6 +3189,7 @@ function closePP(){
     // collection-view with nothing in its grid.
     ppEnteredCollectionModeForPreview=false;
     document.body.classList.remove('collection-mode');
+    _updateNavAtHero();
     document.getElementById('breadcrumb').style.display='none';
     document.getElementById('collection-view').style.display='none';
   }
@@ -3548,7 +3951,8 @@ function updateAuthUI(){
   else{g.style.display='none';ab.style.display='block';lb.style.display='none';if(ob)ob.style.display='none';}
 }
 
-function goHome(){
+function goHome(opts){
+  opts = opts || {};
   // Rescue pp-inline back to collection-view before hiding
   const _ppEl = document.getElementById('pp-inline');
   const _collView = document.getElementById('collection-view');
@@ -3558,16 +3962,18 @@ function goHome(){
   }
   // Exit collection mode — restores all homepage sections
   document.body.classList.remove('collection-mode');
+  _updateNavAtHero();
   document.getElementById('breadcrumb').style.display='none';
   document.getElementById('collection-view').style.display='none';
-  document.getElementById('collections-title').textContent='Discover New Finds';
   window.scrollTo({top:0,behavior:'smooth'});
+  // Skipped when called from popstate (_routeFromPath's fallback) -- the
+  // URL is already "/" in that case, and pushing again would corrupt the
+  // back/forward stack the same way it would in openCollection().
+  if(opts.pushUrl !== false) history.pushState(null, '', '/');
 }
 function showCollections(){
   document.getElementById('collections-home').scrollIntoView({behavior:'smooth'});
 }
-function scrollToAbout(){const a=document.getElementById('about');a.style.display='flex';setTimeout(()=>a.scrollIntoView({behavior:'smooth'}),100);}
-
 // ── Back to Collections floating button ──
 // Only ever relevant while actively browsing products inside an open
 // collection — never on checkout/cart/auth/orders, and clicking it returns
@@ -3601,12 +4007,13 @@ function scrollToCollectionTop(){
     if(_collView && _ppEl.parentElement !== _collView) _collView.appendChild(_ppEl);
   }
   document.body.classList.remove('collection-mode');
+  _updateNavAtHero();
   document.getElementById('breadcrumb').style.display='none';
   document.getElementById('collection-view').style.display='none';
-  document.getElementById('collections-title').textContent='Discover New Finds';
+  history.pushState(null, '', '/'); // exits collection-mode entirely either way below
   if(ppEnteredCollectionModeForPreview){
-    // This "collection" was never real (e.g. opened from a Style Guide
-    // card on the homepage) — there's no collection to go "back" to, so
+    // This "collection" was never real (e.g. opened from a Tennis
+    // Bracelets card on the homepage) — there's no collection to go "back" to, so
     // take the customer all the way home instead of the mid-page
     // collections picker, same as goHome().
     ppEnteredCollectionModeForPreview=false;
@@ -3619,6 +4026,19 @@ function scrollToCollectionTop(){
   document.getElementById('collections-home').scrollIntoView({behavior:'smooth'});
 }
 window.addEventListener('scroll',_updateBackToColVisibility,{passive:true});
+
+// Nav used to go transparent while floating over the hero photo -- retired
+// per Dennis: it let the real nav controls (search, cart, orders, sign
+// in/out) get visually swallowed into whatever the hero photo looked like
+// at the top edge. Nav now stays solid everywhere, on every page. Kept as
+// a no-op (rather than deleting it and its ~6 call sites) since it just
+// guarantees the old .at-hero class never lingers on from before this
+// change, e.g. for anyone with the previous version still cached.
+function _updateNavAtHero(){
+  const nav = document.querySelector('nav');
+  if(nav) nav.classList.remove('at-hero');
+}
+
 // Modals/cart open via a plain class toggle with no dedicated event of their
 // own. Watch only the specific overlay elements this button cares about —
 // NOT the whole body subtree, which would re-fire on every unrelated class
@@ -3650,9 +4070,9 @@ const INFO_CONTENT = {
     body: `
       <p style="margin-bottom:16px;">Shipping is included in every price you see — no surprises at checkout.</p>
       <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Carrier</strong><br>
-      All orders ship via USPS with full tracking from dispatch to your door.</p>
+      All orders ship via express courier with full tracking from dispatch to your door.</p>
       <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Delivery Time</strong><br>
-      8–10 business days from order confirmation.</p>
+      4–5 business days from order confirmation.</p>
       <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Tracking</strong><br>
       You'll receive a tracking number by email once your order ships. You can follow your package every step of the way.</p>
       <p style="margin-bottom:12px;"><strong style="color:#0e0e0e;font-weight:500;">Customs & Duties</strong><br>

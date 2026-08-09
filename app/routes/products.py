@@ -195,6 +195,29 @@ def get_hero():
         "rotation":   rotation,
     }
 
+@router.get("/store/instagram")
+def get_instagram_posts(limit: int = Query(3, ge=1, le=12), session: Session = Depends(get_session)):
+    """
+    Public — real, already-published Instagram posts for the storefront's
+    "Life in Mikisi" homepage section. Only rows that actually made it to
+    Instagram (instagram_post_id set, excluding drafts/queued rows still
+    waiting to post), newest first. Internal analytics fields (likes/
+    comments/saves/shares/reach/engagement_score/engagement_pulled_at) and
+    the raw instagram_post_id are intentionally left out of this public
+    response.
+    """
+    from app.models.instagram_post import InstagramPost
+    posts = session.exec(
+        select(InstagramPost)
+        .where(InstagramPost.instagram_post_id.is_not(None))
+        .order_by(InstagramPost.posted_at.desc())
+        .limit(limit)
+    ).all()
+    return [
+        {"id": p.id, "image_url": p.image_url, "caption": p.caption, "posted_at": p.posted_at}
+        for p in posts
+    ]
+
 @router.put("/store/hero")
 def update_hero(data: HeroUpdate):
     """Command Center — update the hero banner URL/image and tagline."""
