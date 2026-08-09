@@ -157,7 +157,21 @@ nav{
 .pcard-info{text-align:center;padding-bottom:6px;}
 .pcard-name{font-size:12px;font-weight:300;color:var(--charcoal);margin-bottom:5px;line-height:1.4;}
 .pcard-price{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--black);}
-@media (max-width:900px){.pgrid{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:900px){
+  /* The Mikisi Edit: one sliding row instead of wrapping to a 2-column
+     grid, same horizontally scrollable, snap-aligned pattern as the
+     Collections carousel above -- 4 cards fit in a row on wide screens,
+     slide through them on narrow ones instead of stacking to 2 rows. */
+  .signature-section{padding-left:20px;padding-right:20px;}
+  .pgrid{
+    display:flex;grid-template-columns:none;gap:14px;max-width:none;
+    overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:20px;
+    padding:0 20px 10px;margin:0 -20px;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .pgrid::-webkit-scrollbar{display:none;}
+  .pcard{flex:0 0 68%;scroll-snap-align:start;}
+}
 
 /* ── THE MIKISI EXPERIENCE PHOTO — same universal rule as the hero:
    aspect-ratio matches the real photo (3:2) exactly, at every screen
