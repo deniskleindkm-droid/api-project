@@ -298,10 +298,12 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
    /collections API can return anywhere from 5 to 7+ categories, not a
    fixed 5. ── */
 .collections-home{padding:0 0 56px;background:var(--cream);position:relative;}
-/* Intro line keeps the section's old 48px inset for readability -- only
-   the grid itself goes edge-to-edge below. */
+/* No padding -- must start at the exact same left edge as the grid
+   below it (which now goes fully edge-to-edge), or the intro text reads
+   as misaligned/indented relative to the tiles under it. Confirmed live:
+   this used to have its own 48px inset left over from before the grid
+   went full-bleed, breaking the alignment between them. */
 .section-discover-note{
-  padding:0 48px;
   font-size:12px;font-weight:300;color:var(--mid);
   letter-spacing:0.2px;margin:0;max-width:480px;
   font-style:italic;text-align:left;
@@ -1012,7 +1014,13 @@ footer{background:var(--black);padding:40px 48px 36px;}
      .hero-overlay override, matching the demo exactly -- it never
      overrides position/background at any width for this photo either,
      since the left side is genuine negative space at any crop. */
-  .hero{aspect-ratio:auto;height:56vh;min-height:340px;max-height:520px;}
+  /* height:56vh recalculates (and visibly resizes) every time the mobile
+     browser's address bar collapses/expands during scroll -- a well-known
+     class of "things move/aren't anchored" complaints on real phones.
+     dvh tracks the actual visible viewport instead and stays stable; kept
+     the vh line above as a fallback for browsers that don't support dvh
+     (they just ignore this second declaration). */
+  .hero{aspect-ratio:auto;height:56vh;height:56dvh;min-height:340px;max-height:520px;}
   .hero-btns{gap:10px;margin-bottom:0;}
   .btn-black,.btn-ghost{padding:13px 26px;font-size:9px;letter-spacing:2px;}
 
@@ -1129,7 +1137,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
   .pcard-wish{width:24px;height:24px;font-size:11px;top:5px;right:5px;}
 
   /* Product inline view — single column on mobile */
-  .pp-inline-inner{grid-template-columns:1fr;height:auto;min-height:100vh;}
+  .pp-inline-inner{grid-template-columns:1fr;height:auto;min-height:100vh;min-height:100dvh;}
   .pp-inline-gallery{height:auto;aspect-ratio:1;min-height:unset;max-height:unset;}
   .pp-gallery img{object-fit:contain;}
   .pp-inline .pp-info{height:auto;overflow-y:visible;padding:0 20px 40px;}
@@ -2233,6 +2241,7 @@ function renderCollectionTiles(cols){
   // "already bound" state) is safe and simpler.
   grid.addEventListener('scroll', updateColHint, {passive:true});
   updateColHint();
+  _matchColHintHeight();
 }
 // Disappears the instant the row is scrolled at all (matches the same fix
 // already made on the demo's identical hint after it first shipped
@@ -2243,6 +2252,20 @@ function updateColHint(){
   if(!grid || !hint) return;
   hint.classList.toggle('col-slide-hint-hidden', grid.scrollLeft > 4);
 }
+// The hint used to span the whole tile (image + caption text below it),
+// centering the dot over the caption instead of the photo -- confirmed
+// live via a real bounding-box measurement, the dot's vertical center
+// landed ~56px below the photo's actual center. Image height isn't a
+// fixed number (real aspect-ratio, real tile width per breakpoint), so
+// it's measured from the first real tile rather than hardcoded.
+function _matchColHintHeight(){
+  const img = document.querySelector('#collections-grid .col-tile-img');
+  const hint = document.getElementById('col-slide-hint');
+  if(!img || !hint) return;
+  hint.style.bottom = 'auto';
+  hint.style.height = img.getBoundingClientRect().height + 'px';
+}
+window.addEventListener('resize', _matchColHintHeight);
 
 async function openCollection(id, name, opts){
   opts = opts || {};
