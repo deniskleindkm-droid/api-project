@@ -173,7 +173,13 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
 }
 .hero h1{
   font-family:'Cormorant Garamond',serif;
-  font-size:clamp(28px,4.5vw,72px);font-weight:300;
+  /* Matches the demo's exact clamp, no per-breakpoint override -- the old
+     mobile override (clamp(26px,7.5vw,38px), kept from before this photo
+     swap) ran noticeably bigger than the demo's own value at narrow
+     widths, wide enough to overflow the 46%-wide overlay box and get
+     clipped by .hero's overflow:hidden (confirmed live: "moments." was
+     visibly cut off on a real mobile screenshot). */
+  font-size:clamp(18px,4vw,54px);font-weight:300;
   line-height:1.05;color:var(--black);text-align:left;
   white-space:normal;margin-bottom:18px;letter-spacing:-0.5px;
 }
@@ -1000,7 +1006,6 @@ footer{background:var(--black);padding:40px 48px 36px;}
      overrides position/background at any width for this photo either,
      since the left side is genuine negative space at any crop. */
   .hero{aspect-ratio:auto;height:56vh;min-height:340px;max-height:520px;}
-  .hero h1{font-size:clamp(26px,7.5vw,38px);white-space:normal;text-align:left;line-height:1.1;}
   .hero-btns{gap:10px;margin-bottom:0;}
   .btn-black,.btn-ghost{padding:13px 26px;font-size:9px;letter-spacing:2px;}
 

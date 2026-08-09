@@ -10,6 +10,7 @@ from app.routes.auth import oauth2_scheme
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 import stripe
 import os
 import json
@@ -246,6 +247,27 @@ def _live_stock_check(product, explicit_option_id: str = None) -> Optional[str]:
     return None
 
 
+def _live_stock_check_many(pairs: list) -> Optional[str]:
+    """
+    Runs _live_stock_check for every (product, option_id) pair concurrently
+    instead of one at a time. Found live 2026-08-09: a cart with N items hit
+    N sequential Silverbene calls (each with its own timeout=4 in
+    _live_stock_check) before Stripe was even contacted -- "Pay Securely"
+    was already disabling itself correctly on the first click (see
+    docs/index.html's placeOrder()), there was just nothing to see for
+    several seconds while these ran one after another, which read as the
+    button needing "many clicks" to actually do anything. Total wait is now
+    roughly one call's worth of time regardless of cart size. Returns the
+    first real error found (if any), else None -- same contract as calling
+    _live_stock_check per item in a loop.
+    """
+    if not pairs:
+        return None
+    with ThreadPoolExecutor(max_workers=min(len(pairs), 8)) as pool:
+        errors = list(pool.map(lambda pair: _live_stock_check(pair[0], pair[1]), pairs))
+    return next((e for e in errors if e), None)
+
+
 class CheckoutRequest(BaseModel):
     shipping_address: str
     shipping_method: str = "usps"  # "fast_track" or "usps"
@@ -280,12 +302,13 @@ def create_checkout_session(
     # Live stock check — right before Stripe, not just our own last-synced
     # number (see _live_stock_check's docstring). Runs for every line item
     # so nothing in the cart can slip through; still fails open per-item.
-    for item in items:
-        product = session.get(Product, item.product_id)
-        if product:
-            stock_error = _live_stock_check(product, item.selected_option_id)
-            if stock_error:
-                raise HTTPException(status_code=400, detail=stock_error)
+    # Concurrent, not sequential (see _live_stock_check_many) -- a multi-
+    # item cart no longer waits on N calls back-to-back.
+    stock_pairs = [(session.get(Product, item.product_id), item.selected_option_id) for item in items]
+    stock_pairs = [(p, oid) for p, oid in stock_pairs if p]
+    stock_error = _live_stock_check_many(stock_pairs)
+    if stock_error:
+        raise HTTPException(status_code=400, detail=stock_error)
 
     line_items = []
     content_ids = []
@@ -383,10 +406,13 @@ def create_guest_checkout_session(
     if address_error:
         raise HTTPException(status_code=400, detail=address_error)
 
-    line_items = []
-    items_meta = []
-    content_ids = []
-    order_value = 0.0
+    # Pass 1: fast, local-DB-only checks per item (existence/active/
+    # published/hidden-category/zero-stock) -- resolved before any external
+    # call so an obviously-invalid item 404s/400s immediately rather than
+    # waiting on Silverbene first.
+    from app.agents.store_config import get_hidden_categories
+    hidden_categories = get_hidden_categories()
+    products_by_item = []
     for item in request.items:
         product = session.get(Product, item.product_id)
         if not product or not product.is_active or not product.is_published:
@@ -396,14 +422,25 @@ def create_guest_checkout_session(
         # somehow ended up in the cart (see the same fix in routes/cart.py's
         # add_to_cart; this is the actual money-taking step, so it gets its
         # own check rather than relying solely on that earlier gate).
-        from app.agents.store_config import get_hidden_categories
-        if product.category in get_hidden_categories():
+        if product.category in hidden_categories:
             raise HTTPException(status_code=404, detail=f"Product {item.product_id} is no longer available")
         if product.stock == 0:
             raise HTTPException(status_code=400, detail=f"'{product.name[:40]}' is out of stock")
-        stock_error = _live_stock_check(product, item.selected_option_id)
-        if stock_error:
-            raise HTTPException(status_code=400, detail=stock_error)
+        products_by_item.append((product, item))
+
+    # Pass 2: live Silverbene stock check, all items concurrently rather
+    # than one at a time (see _live_stock_check_many) -- this used to be
+    # the main reason a multi-item guest checkout felt stuck/unresponsive
+    # for several seconds after clicking "Pay Securely".
+    stock_error = _live_stock_check_many([(p, item.selected_option_id) for p, item in products_by_item])
+    if stock_error:
+        raise HTTPException(status_code=400, detail=stock_error)
+
+    line_items = []
+    items_meta = []
+    content_ids = []
+    order_value = 0.0
+    for product, item in products_by_item:
         line_items.append({
             "price_data": {
                 "currency": "usd",
