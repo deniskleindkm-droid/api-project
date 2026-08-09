@@ -257,7 +257,12 @@ nav{
   /* Tighter still than the desktop base padding (also just reduced from
      96px to 56px for the same reason) -- mobile screens have even less
      room to spare, so sections sit as close to each other as possible. */
-  .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding:44px 20px;}
+  .signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding:44px 20px;}
+  /* .section-wrap (Collections) keeps its own small top padding instead
+     of this shared 44px -- the 560px shared rule was quietly undoing the
+     "pull the intro up to the hero" fix, since it resets all four sides
+     including top. Bottom/sides still match everything else. */
+  .section-wrap{padding:20px 20px 44px;}
   .section-title{margin-bottom:8px;}
   .section-intro{margin-bottom:32px;}
   /* Hero gets one deliberate elongation on mobile -- a true 3:2 crop reads
@@ -267,6 +272,9 @@ nav{
      with empty cream bars. Experience/Lifestyle photos keep the base rule
      unchanged. */
   .hero-img{aspect-ratio:auto;height:40vh;min-height:300px;max-height:380px;}
+  /* Marquee bar under the hero photo: thinner on mobile only -- desktop
+     keeps its original weight. */
+  .marquee-wrap{padding:8px 0;}
   /* Crafted to Last: keep the same 3-across row as desktop instead of
      stacking to 1 column -- just tighten the gap and shrink the type so
      three columns actually fit a 375-430px phone without overflowing. */
