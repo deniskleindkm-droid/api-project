@@ -128,16 +128,19 @@ nav{
 .col-tile:hover .col-tile-name{border-color:var(--gold);}
 .col-tile-sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--mid);}
 @media (max-width:900px){
-  .col-grid{grid-template-columns:repeat(2,1fr);}
-  /* 5 collections in a 2-column grid leaves the last tile (Anklets) alone
-     on the left with an empty gap on the right. Span it across both
-     columns instead -- object-fit:cover means the photo just shows a wider
-     crop, no stretching/distortion, it becomes a full-width closing tile. */
-  .col-grid .col-tile:last-child{grid-column:1/-1;}
-  /* At full width, the base 2:3 portrait ratio would make this one tile
-     ~560px tall on a 375px phone -- switch to a wide banner ratio instead,
-     fitting for a full-width closing tile rather than a stretched portrait. */
-  .col-grid .col-tile:last-child .col-tile-img{aspect-ratio:16/9;}
+  /* All 5 tiles in one sliding row instead of a 2-column grid with an
+     odd-one-out Anklets tile spanning full width below -- a horizontally
+     scrollable, snap-aligned row instead, same idea as a native app
+     carousel. Each tile is a fixed % of the viewport so the next one
+     peeks in at the edge as a scroll affordance. */
+  .col-grid{
+    display:flex;grid-template-columns:none;gap:14px;max-width:none;
+    overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:20px;
+    padding:0 20px 10px;margin:0 -20px;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .col-grid::-webkit-scrollbar{display:none;}
+  .col-tile{flex:0 0 68%;scroll-snap-align:start;}
 }
 
 /* ── SIGNATURE PIECES ── */
@@ -177,7 +180,7 @@ nav{
   font-family:'Cormorant Garamond',serif;font-weight:400;font-size:22px;color:var(--black);margin-bottom:12px;
 }
 .silver-sub{font-size:13px;color:var(--mid);font-weight:300;line-height:1.75;}
-@media (max-width:800px){.silver-grid{grid-template-columns:1fr;gap:40px;}}
+@media (max-width:800px){.silver-grid{gap:24px;}}
 
 /* ── INSTAGRAM GALLERY ── */
 .ig-section{padding:96px 48px;text-align:center;}
@@ -231,6 +234,13 @@ nav{
      unchanged. */
   .hero-img{aspect-ratio:auto;height:40vh;min-height:300px;max-height:380px;}
   .experience-inner,.final-cta{padding-top:56px;padding-bottom:56px;}
+  /* Crafted to Last: keep the same 3-across row as desktop instead of
+     stacking to 1 column -- just tighten the gap and shrink the type so
+     three columns actually fit a 375-430px phone without overflowing. */
+  .silver-grid{gap:10px;}
+  .silver-num{font-size:11px;margin-bottom:6px;}
+  .silver-title{font-size:14px;line-height:1.25;margin-bottom:6px;}
+  .silver-sub{font-size:10.5px;line-height:1.45;}
 }
 </style>
 </head>
