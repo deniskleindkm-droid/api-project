@@ -291,8 +291,11 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
    auto-fill instead of the demo's fixed repeat(5,1fr), since the real
    /collections API can return anywhere from 5 to 7+ categories, not a
    fixed 5. ── */
-.collections-home{padding:0 48px 56px;background:var(--cream);position:relative;}
+.collections-home{padding:0 0 56px;background:var(--cream);position:relative;}
+/* Intro line keeps the section's old 48px inset for readability -- only
+   the grid itself goes edge-to-edge below. */
 .section-discover-note{
+  padding:0 48px;
   font-size:12px;font-weight:300;color:var(--mid);
   letter-spacing:0.2px;margin:0;max-width:480px;
   font-style:italic;text-align:left;
@@ -300,8 +303,8 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
 .collections-grid{
   position:relative;
   display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
-  gap:24px;margin-top:36px;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:2px;margin-top:36px;
 }
 .col-tile{cursor:pointer;text-align:left;}
 .col-tile-img{aspect-ratio:2/3;overflow:hidden;background:var(--ivory);margin-bottom:16px;transition:background 0.3s;}
@@ -977,6 +980,15 @@ footer{background:var(--black);padding:40px 48px 36px;}
   }
   .nav-links .nav-text-link{color:#fff;}
   .nav-links.nl-hidden{opacity:0;pointer-events:none;}
+  /* This fixed pill sits at the same top:66px;left:14px spot the
+     breadcrumb bar's own text occupies once a collection is open --
+     confirmed live via screenshot: opening a collection showed the
+     breadcrumb's "...ETS" (the tail of "BRACELETS") peeking out from
+     behind the pill. Hidden here (mobile-only -- desktop's About/FAQ
+     links live inline in the nav bar itself, not a floating pill, so
+     they're unaffected) rather than repositioned, since there's nothing
+     for it to float over once the hero is gone anyway. */
+  body.collection-mode .nav-links{display:none;}
   .nav-icon{font-size:17px;padding:2px;}
   .nav-sign-btn{padding:6px 11px;font-size:9px;letter-spacing:1.5px;}
 
@@ -1007,7 +1019,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
     padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
   }
   .collections-grid::-webkit-scrollbar{display:none;}
-  .col-tile{flex:0 0 68%;scroll-snap-align:start;}
+  .col-tile{flex:0 0 60%;scroll-snap-align:start;}
   /* Slide hint -- a nudging chevron on a dark dot backdrop. Confirmed live
      (real mobile-viewport screenshot test) that a plain white icon with
      only a drop-shadow is practically invisible against this catalog's
@@ -1086,18 +1098,19 @@ footer{background:var(--black);padding:40px 48px 36px;}
   .stone-grid::-webkit-scrollbar{display:none;}
   .stone-card{flex:0 0 68%;scroll-snap-align:start;}
 
-  /* Product grid inside collection — 3 per row on mobile */
+  /* Product grid inside collection — 4 per row on mobile (was 3), smaller
+     cards throughout to match. */
   .cv-grid{
-    grid-template-columns:repeat(3,1fr);
+    grid-template-columns:repeat(4,1fr);
     gap:1px;
   }
-  .pcard-info{padding:8px 7px 10px;}
+  .pcard-info{padding:6px 5px 8px;}
   .pcard-brand{display:none;}
-  .pcard-name{font-size:11px;margin-bottom:4px;-webkit-line-clamp:2;}
-  .pcard-price{font-size:13px;margin-bottom:1px;}
-  .pcard-orig{font-size:9px;}
-  .pcard-badge{font-size:7px;padding:2px 6px;top:6px;left:6px;}
-  .pcard-wish{width:24px;height:24px;font-size:11px;top:5px;right:5px;}
+  .pcard-name{font-size:9.5px;margin-bottom:3px;-webkit-line-clamp:2;}
+  .pcard-price{font-size:11px;margin-bottom:1px;}
+  .pcard-orig{font-size:8px;}
+  .pcard-badge{font-size:6px;padding:2px 5px;top:5px;left:5px;}
+  .pcard-wish{width:20px;height:20px;font-size:9px;top:4px;right:4px;}
 
   /* Product inline view — single column on mobile */
   .pp-inline-inner{grid-template-columns:1fr;height:auto;min-height:100vh;}
