@@ -1387,6 +1387,41 @@ def post_manually(product_id: int, post_type: str, image_count: Optional[int] = 
     if post_type not in ("product", "campaign", "reel", "video"):
         return {"success": False, "reason": "post_type must be 'product', 'campaign', 'reel', or 'video'"}
 
+    # Real posts only (dry runs stay freely repeatable for previewing) --
+    # this endpoint has no automatic-picker dedup of its own (see the
+    # module docstring above: it never touches instagram_recent_product_ids
+    # at all), so nothing else stops the same product being posted twice.
+    # Found live 2026-08-04: 3 near-identical real posts of the same
+    # product went out within under an hour, most likely 3 separate manual
+    # calls (e.g. a caller retrying after this endpoint's own long Graph
+    # API poll — up to ~200s, see _post_reel_to_instagram's max_attempts —
+    # timed out client-side while the post had actually already succeeded
+    # server-side).
+    if not dry_run:
+        with Session(engine) as session:
+            recent = session.exec(
+                select(InstagramPost)
+                .where(InstagramPost.product_id == product_id)
+                .where(InstagramPost.posted_at > datetime.utcnow() - timedelta(hours=24))
+                .order_by(InstagramPost.posted_at.desc())
+            ).first()
+        if recent:
+            return {
+                "success": False,
+                "reason": "already_posted_recently",
+                "existing_post_id": recent.id,
+                "posted_at": recent.posted_at.isoformat(),
+                "message": (
+                    f"Product {product_id} was already posted at "
+                    f"{recent.posted_at.isoformat()} (within the last 24h) -- "
+                    "refusing to post it again automatically, since back-to-"
+                    "back real calls for the same product are almost always "
+                    "an accidental duplicate (e.g. a timed-out retry), not a "
+                    "deliberate second post. Pass a different product_id, or "
+                    "wait for the 24h window to pass."
+                ),
+            }
+
     if post_type == "video":
         video_url = (image_urls[0] if image_urls else None) or product.video_url
         if not video_url:

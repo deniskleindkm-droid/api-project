@@ -479,7 +479,7 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
    stone (everything else is plain metal), not enough variety for a
    filter to earn its place. .collection-view already carries the 48px
    horizontal padding, so this only needs its own vertical spacing. */
-.stone-section{padding:56px 0 16px;text-align:center;}
+.stone-section{padding:56px 0 40px;margin-bottom:40px;border-bottom:1px solid var(--border);text-align:center;}
 .stone-grid{
   display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
   gap:32px;max-width:1000px;margin:0 auto;
@@ -496,6 +496,12 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
 .stone-card:hover .stone-card-name,.stone-card.active .stone-card-name{border-color:var(--gold);}
 .stone-card-tag{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--mid);line-height:1.5;}
 .stone-card.active .stone-card-tag{color:var(--pink-deep);}
+.stone-clear{
+  display:block;margin:28px auto 0;background:none;border:none;cursor:pointer;
+  font-family:'Jost',sans-serif;font-size:10px;font-weight:400;letter-spacing:2px;text-transform:uppercase;
+  color:var(--mid);border-bottom:1px solid var(--light);padding-bottom:4px;transition:all 0.2s;
+}
+.stone-clear:hover{color:var(--pink);border-color:var(--pink);}
 
 /* Product grid inside collection */
 .cv-grid{
@@ -974,20 +980,14 @@ footer{background:var(--black);padding:40px 48px 36px;}
   .nav-icon{font-size:17px;padding:2px;}
   .nav-sign-btn{padding:6px 11px;font-size:9px;letter-spacing:1.5px;}
 
-  /* Hero -- one deliberate exception here: at a true 8:5 ratio a narrow
-     phone only gets a short hero, which reads as cramped (same tension
-     the demo's own mobile pass already worked through for its hero).
-     Grow it taller instead of keeping the aspect-ratio, and anchor the
-     copy near the bottom rather than vertically centered in a 46%-wide
-     side column -- simpler and more robust at phone widths with this
-     site's real sentence-length tagline (vs. the demo's much shorter
-     placeholder copy). */
+  /* Hero -- same elongation idea the demo's own mobile pass already used
+     for this exact photo (a true 3:2 crop reads short/cramped on a
+     narrow phone): fixed height instead of the aspect-ratio, background-
+     size:cover crops in on the sides rather than letterboxing. No
+     .hero-overlay override, matching the demo exactly -- it never
+     overrides position/background at any width for this photo either,
+     since the left side is genuine negative space at any crop. */
   .hero{aspect-ratio:auto;height:56vh;min-height:340px;max-height:520px;}
-  .hero-overlay{
-    max-width:100%;align-items:flex-start;justify-content:flex-end;
-    padding:20px 20px 60px;
-    background:linear-gradient(180deg,rgba(253,249,246,0) 30%,rgba(253,249,246,0.92) 70%);
-  }
   .hero h1{font-size:clamp(26px,7.5vw,38px);white-space:normal;text-align:left;line-height:1.1;}
   .hero-btns{gap:10px;margin-bottom:0;}
   .btn-black,.btn-ghost{padding:13px 26px;font-size:9px;letter-spacing:2px;}
@@ -1008,23 +1008,29 @@ footer{background:var(--black);padding:40px 48px 36px;}
   }
   .collections-grid::-webkit-scrollbar{display:none;}
   .col-tile{flex:0 0 68%;scroll-snap-align:start;}
-  /* Slide hint -- just the nudging chevron, no gradient backdrop, same
-     design already settled on for the demo's identical hint. Hidden by
-     default (see the unconditional base rule below the desktop grid CSS)
-     -- omitting that let an earlier version of this same hint leak into
-     the desktop grid as a stray extra tile, so the default-off rule is
-     load-bearing, not just tidiness. */
+  /* Slide hint -- a nudging chevron on a dark dot backdrop. Confirmed live
+     (real mobile-viewport screenshot test) that a plain white icon with
+     only a drop-shadow is practically invisible against this catalog's
+     mostly white/light product photos -- the dot guarantees contrast
+     regardless of what's behind it, same reasoning as the wishlist
+     heart's own solid backdrop. Hidden by default (see the unconditional
+     base rule below the desktop grid CSS) -- omitting that let an
+     earlier version of this same hint leak into the desktop grid as a
+     stray extra tile, so the default-off rule is load-bearing, not just
+     tidiness. */
   .col-slide-hint{
     position:absolute;right:12px;top:0;bottom:0;
     display:flex;align-items:center;justify-content:center;
     pointer-events:none;z-index:3;
     transition:opacity 0.25s ease;
   }
-  .col-slide-hint svg{
-    width:22px;height:22px;color:white;
-    filter:drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+  .col-slide-hint-dot{
+    width:34px;height:34px;border-radius:50%;
+    background:rgba(14,14,14,0.45);
+    display:flex;align-items:center;justify-content:center;
     animation:colHintNudge 1.3s ease-in-out infinite;
   }
+  .col-slide-hint svg{width:18px;height:18px;color:white;}
   .col-slide-hint.col-slide-hint-hidden{opacity:0;}
   @keyframes colHintNudge{0%,100%{transform:translateX(0);}50%{transform:translateX(7px);}}
 
@@ -1071,7 +1077,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
      pattern already used for the homepage's Collections carousel and
      the Tennis Bracelets slider above, rather than wrapping to a
      cramped 2-column grid. */
-  .stone-section{padding:36px 0 8px;}
+  .stone-section{padding:36px 0 24px;margin-bottom:24px;}
   .stone-grid{
     display:flex;grid-template-columns:none;gap:14px;max-width:none;
     overflow-x:auto;scroll-snap-type:x mandatory;
@@ -1319,6 +1325,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
     <div class="section-title">Discover by Stone</div>
     <div class="section-intro">Every stone tells a different story. Explore the collection that speaks to you.</div>
     <div class="stone-grid" id="stone-grid"></div>
+    <button class="stone-clear" id="stone-clear" onclick="setStoneFilter(null)" style="display:none">Show All Pieces ✕</button>
   </div>
   <div class="cv-grid" id="cv-grid">
     <div class="loading">Discovering pieces…</div>
@@ -1942,6 +1949,10 @@ function showDemoHeroPhoto(){
   const ph=document.getElementById('hero-ph');
   const img=document.getElementById('hero-img');
   setHeroBg(img, 'https://res.cloudinary.com/ds8qviz1o/image/upload/v1786219332/mikisi/content/hero_flatlay.jpg');
+  // Matches the demo's object-position:60% 50% on its <img> -- keeps the
+  // pouch clear of the copy on the left at any crop, mobile's taller/
+  // narrower box included.
+  img.style.backgroundPosition='60% 50%';
   img.style.display='block';
   ph.style.display='none';
 }
@@ -2114,6 +2125,7 @@ function _stoneBucket(p){
 function renderStoneSection(name, prods){
   const section = document.getElementById('stone-section');
   activeStoneFilter = null;
+  document.getElementById('stone-clear').style.display = 'none';
   _stoneSectionProducts = prods;
   if(!_STONE_FILTER_CATEGORIES.has((name||'').toLowerCase())){ section.style.display='none'; return; }
   const counts = {};
@@ -2135,6 +2147,7 @@ function renderStoneSection(name, prods){
 function setStoneFilter(bucket){
   activeStoneFilter = (activeStoneFilter===bucket) ? null : bucket;
   document.querySelectorAll('.stone-card').forEach(el=>el.classList.toggle('active', el.dataset.bucket===activeStoneFilter));
+  document.getElementById('stone-clear').style.display = activeStoneFilter ? 'block' : 'none';
   const filtered = activeStoneFilter ? _stoneSectionProducts.filter(p=>_stoneBucket(p)===activeStoneFilter) : _stoneSectionProducts;
   renderCollectionProducts(filtered);
 }
@@ -2168,7 +2181,7 @@ function renderCollectionTiles(cols){
   // call sites), and grid.innerHTML=... wipes any previously-appended
   // child on every call. Only visible on mobile/tablet (max-width:900px);
   // on desktop all real categories already fit without scrolling.
-  '<div class="col-slide-hint" id="col-slide-hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div>';
+  '<div class="col-slide-hint" id="col-slide-hint"><div class="col-slide-hint-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></div></div>';
   // Duplicate identical addEventListener calls on the same element are a
   // no-op per spec, so binding this on every render (rather than tracking
   // "already bound" state) is safe and simpler.
