@@ -194,9 +194,13 @@ nav{
 }
 .experience-photo img{width:100%;height:100%;object-fit:cover;display:block;}
 
-/* ── MIKISI EXPERIENCE ── */
-.experience-section{padding:0;text-align:center;background:white;}
-.experience-inner{padding:56px 48px;}
+/* ── MIKISI EXPERIENCE — text left-aligned instead of centered, and
+   pulled up close to the bottom of Collections above it (same idea as
+   the hero->Collections gap fix), rather than the shared 56px top
+   padding stacking with Collections' own bottom padding. ── */
+.experience-section{padding:0;text-align:left;background:white;}
+.experience-inner{padding:20px 48px 56px;}
+.experience-inner .section-intro{margin:0 0 36px;}
 
 /* ── WHY STERLING SILVER ── */
 .silver-section{padding:56px 48px;text-align:center;background:var(--ivory);}
@@ -257,12 +261,14 @@ nav{
   /* Tighter still than the desktop base padding (also just reduced from
      96px to 56px for the same reason) -- mobile screens have even less
      room to spare, so sections sit as close to each other as possible. */
-  .signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding:44px 20px;}
-  /* .section-wrap (Collections) keeps its own small top padding instead
-     of this shared 44px -- the 560px shared rule was quietly undoing the
-     "pull the intro up to the hero" fix, since it resets all four sides
-     including top. Bottom/sides still match everything else. */
+  .signature-section,.silver-section,.ig-section,.final-cta{padding:44px 20px;}
+  /* .section-wrap (Collections) and .experience-inner (Mikisi Experience)
+     keep their own small top padding instead of this shared 44px -- the
+     560px shared rule was quietly undoing the "pull the text up close to
+     the section above" fixes, since it resets all four sides including
+     top. Bottom/sides still match everything else. */
   .section-wrap{padding:20px 20px 44px;}
+  .experience-inner{padding:20px 20px 44px;}
   .section-title{margin-bottom:8px;}
   .section-intro{margin-bottom:32px;}
   /* Hero gets one deliberate elongation on mobile -- a true 3:2 crop reads
