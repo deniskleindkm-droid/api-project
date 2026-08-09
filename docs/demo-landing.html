@@ -209,21 +209,28 @@ nav{
 .pcard-info{text-align:center;padding-bottom:6px;}
 .pcard-name{font-size:12px;font-weight:300;color:var(--charcoal);margin-bottom:5px;line-height:1.4;}
 .pcard-price{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--black);}
-/* Arrow buttons -- vertically centered on the image row (not the full
-   card height, so they don't drift down when the name/price text wraps
-   to different heights), hidden once a side has nothing left to scroll. */
+/* Arrow buttons -- same bare-chevron-with-nudge look as the Collections
+   slide hint (no circle/border/backdrop), vertically centered on the
+   image row so they don't drift when name/price text wraps to different
+   heights, hidden once a side has nothing left to scroll. Dark instead
+   of white here: these sit over the section's own light ivory
+   background at the row's edges, not over a photo, so a white arrow
+   would be invisible. */
 .tb-arrow{
-  position:absolute;top:0;bottom:38px;
-  width:40px;height:40px;margin:auto 0;
-  border-radius:50%;border:1px solid var(--border);background:white;
+  position:absolute;top:0;bottom:38px;width:32px;
+  border:none;background:none;padding:0;
   display:flex;align-items:center;justify-content:center;
-  font-size:16px;color:var(--black);cursor:pointer;
-  box-shadow:0 2px 10px rgba(0,0,0,0.08);transition:opacity 0.2s,background 0.2s;
-  z-index:2;
+  color:var(--black);cursor:pointer;
+  transition:opacity 0.2s;z-index:2;
 }
-.tb-arrow:hover{background:var(--pink-pale);}
-.tb-arrow.tb-prev{left:-4px;}
-.tb-arrow.tb-next{right:-4px;}
+.tb-arrow svg{width:22px;height:22px;}
+.tb-arrow.tb-prev{left:-30px;}
+.tb-arrow.tb-next{right:-30px;}
+.tb-arrow.tb-prev svg{animation:tbNudgeLeft 1.3s ease-in-out infinite;}
+.tb-arrow.tb-next svg{animation:tbNudgeRight 1.3s ease-in-out infinite;}
+@keyframes tbNudgeLeft{0%,100%{transform:translateX(0);}50%{transform:translateX(-7px);}}
+@keyframes tbNudgeRight{0%,100%{transform:translateX(0);}50%{transform:translateX(7px);}}
+.tb-arrow:hover{opacity:0.6;}
 .tb-arrow[disabled]{opacity:0;pointer-events:none;}
 .tb-shop-link{
   display:inline-block;margin:28px 0 56px;
@@ -234,9 +241,13 @@ nav{
 @media (max-width:900px){
   .signature-section{padding-left:20px;padding-right:20px;}
   .pcard{flex:0 0 44%;}
-  .tb-arrow{width:32px;height:32px;font-size:13px;}
-  .tb-arrow.tb-prev{left:2px;}
-  .tb-arrow.tb-next{right:2px;}
+  /* Section padding is only 20px here (vs. 48px on desktop), so the
+     arrows sit closer in -- still just outside the track edge, not
+     overlapping the cards. */
+  .tb-arrow{width:26px;}
+  .tb-arrow svg{width:18px;height:18px;}
+  .tb-arrow.tb-prev{left:-22px;}
+  .tb-arrow.tb-next{right:-22px;}
 }
 @media (max-width:560px){
   .pcard{flex:0 0 68%;}
@@ -455,9 +466,9 @@ nav{
   <div class="section-title">Tennis Bracelets</div>
   <div class="section-intro">Our most-loved silhouette, sparkling in every stone.</div>
   <div class="tb-track-wrap">
-    <button class="tb-arrow tb-prev" id="tb-prev" onclick="tbScroll(-1)" aria-label="Previous">‹</button>
+    <button class="tb-arrow tb-prev" id="tb-prev" onclick="tbScroll(-1)" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
     <div class="pgrid" id="signature-grid"><!-- filled by JS --></div>
-    <button class="tb-arrow tb-next" id="tb-next" onclick="tbScroll(1)" aria-label="Next">›</button>
+    <button class="tb-arrow tb-next" id="tb-next" onclick="tbScroll(1)" aria-label="Next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
   </div>
   <a href="demo-collections-tennis-bracelets.html" class="tb-shop-link">Shop Now</a>
 </div>
