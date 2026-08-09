@@ -201,18 +201,35 @@ def get_instagram_posts(limit: int = Query(3, ge=1, le=12), session: Session = D
     Public — real, already-published Instagram posts for the storefront's
     "Life in Mikisi" homepage section. Only rows that actually made it to
     Instagram (instagram_post_id set, excluding drafts/queued rows still
-    waiting to post), newest first. Internal analytics fields (likes/
-    comments/saves/shares/reach/engagement_score/engagement_pulled_at) and
-    the raw instagram_post_id are intentionally left out of this public
-    response.
+    waiting to post), newest first, deduplicated to one post per product
+    (found live 2026-08-09: a manual-posting gap let the same product get
+    posted 3 times in under an hour on 2026-08-04, and those 3 near-
+    identical rows were all still real/published, so they filled every
+    slot here even after that gap was closed -- this section should show
+    a variety of pieces, not the same one 3 times). Internal analytics
+    fields (likes/comments/saves/shares/reach/engagement_score/
+    engagement_pulled_at) and the raw instagram_post_id are intentionally
+    left out of this public response.
     """
     from app.models.instagram_post import InstagramPost
-    posts = session.exec(
+    # Over-fetch candidates since dedup can drop rows -- limit*8 comfortably
+    # covers even a run of many same-product duplicates without a second
+    # query round-trip in the common case.
+    candidates = session.exec(
         select(InstagramPost)
         .where(InstagramPost.instagram_post_id.is_not(None))
         .order_by(InstagramPost.posted_at.desc())
-        .limit(limit)
+        .limit(limit * 8)
     ).all()
+    seen_products = set()
+    posts = []
+    for p in candidates:
+        if p.product_id in seen_products:
+            continue
+        seen_products.add(p.product_id)
+        posts.append(p)
+        if len(posts) >= limit:
+            break
     return [
         {"id": p.id, "image_url": p.image_url, "caption": p.caption, "posted_at": p.posted_at}
         for p in posts
