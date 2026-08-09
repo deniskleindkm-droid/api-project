@@ -1,51 +1,93 @@
 """
 Mikisi pricing engine — single source of truth for import and bulk repricing.
-Tiered flat-profit model: fixed dollar profit per wholesale cost band.
-Real per-product shipping cost (see get_real_shipping_cost) and packaging
-are absorbed into the retail price.
+
+Flat-overhead luxury-ladder model (replaced the real-per-product-shipping-
+quote model 2026-08-09, per Dennis): every order ships free DHL Express to
+the customer, but that $50 plus $17 taxes/fees is a fixed $67 overhead
+absorbed into the retail price on every product, no live Silverbene
+shipping lookup needed. Retail price is picked from a fixed luxury price
+ladder (never an arbitrary number), so the storefront always shows round,
+intentional-looking prices.
 """
-import math
 
-USPS_SHIPPING = 9.51  # fallback only — used when a real per-option quote can't be fetched
-PACKAGING     = 3.00
-STRIPE_RATE   = 0.029
-STRIPE_FIXED  = 0.30
+# Constants ── everything a customer sees as "Free DHL Express Delivery"
+DHL_SHIPPING   = 50.0
+TAXES_AND_FEES = 17.0
+FIXED_OVERHEAD = DHL_SHIPPING + TAXES_AND_FEES  # $67, absorbed into every price
 
-# Reference US address used to price shipping at import time — no real
-# customer address exists yet, so this stands in purely to get a
-# representative Silverbene quote for the product/option itself.
-_REFERENCE_POSTCODE = "10001"
-_REFERENCE_CITY     = "New York"
+# Round to the nearest of these, never below — this is what makes the
+# storefront feel intentional instead of showing whatever number a formula
+# happened to spit out. $98/$128 are the only rungs below Dennis's stated
+# $128 floor; they exist for a deliberate low-cost/entry item, not the
+# typical product. Rungs above $698 (798+) extend Dennis's own ladder for
+# real catalog outliers his worked examples didn't cover — found live
+# 2026-08-09: a handful of real products (moissanite/zirconia pieces) cost
+# $150–961 wholesale, and hard-capping at $698 would sell several of them
+# at a real loss (e.g. a $958 cost item capped at $698 loses $327/unit).
+# Dennis confirmed extending the ladder upward rather than capping.
+LUXURY_LADDER = [98, 128, 148, 168, 198, 228, 248, 298, 348, 398, 448, 498, 598, 698,
+                  798, 898, 998, 1098, 1198, 1398, 1598]
+
+# (product_cost, selling_price) anchor points — Dennis's own worked
+# examples up to cost=120. Real costs get linearly interpolated between
+# these (and extrapolated beyond the ends using the nearest segment's
+# slope), then rounded UP to the nearest LUXURY_LADDER rung. This is a
+# lookup, not a closed-form formula, because the worked examples don't
+# follow one constant markup or margin: profit above (cost + $67) grows by
+# ~$4 per $1 of cost in the $60–80 segment but only ~$1.50 per $1 of cost
+# in the $100–120 segment — these prices were chosen by feel for "a good
+# round luxury number with healthy margin," not computed. Interpolating
+# between them is the only way to extend that judgment smoothly to costs
+# in between without silently drifting from the anchors Dennis actually
+# gave.
+#
+# Anchors above 120 (150 through 1000) are this codebase's own extension,
+# not from Dennis's worked examples — none of his examples went past
+# cost=120, but real products do (see LUXURY_LADDER's comment). Built by
+# continuing the same "round ladder number, healthy and still-growing
+# absolute profit" judgment the given examples already show, landing each
+# one exactly on a new ladder rung the same way the original anchors do.
+_PRICE_ANCHORS = [
+    (20, 148), (30, 198), (40, 228), (50, 248), (60, 298),
+    (70, 348), (80, 398), (100, 448), (120, 498),
+    (150, 598), (180, 698), (220, 798), (280, 898), (350, 998),
+    (450, 1098), (600, 1198), (800, 1398), (1000, 1598),
+]
 
 
-def get_real_shipping_cost(option_id: str) -> float:
-    """
-    Real cheapest Silverbene shipping cost for this option, or USPS_SHIPPING
-    if the lookup fails/returns nothing.
+def round_to_ladder(price: float) -> float:
+    """Rounds UP to the nearest LUXURY_LADDER rung — never down, so rounding never quietly gives away margin."""
+    for rung in LUXURY_LADDER:
+        if rung >= price - 0.001:
+            return float(rung)
+    return float(LUXURY_LADDER[-1])  # cost so high even the top rung would undercut it — capped; see price_tier_label
 
-    Why this exists: the flat $9.51 USPS assumption baked into every tier
-    was wrong whenever Silverbene doesn't offer USPS for a product (not a
-    clean price cutoff — confirmed live 2026-08-01 that a $40 item can lose
-    USPS eligibility while $50-58 items keep it, so it can't be predicted
-    from cost alone). When that happens, the real cheapest option is
-    DHL/FedEx at $58-88, not $9.51 — order #22 shipped at $53.12 real cost
-    against a $9.51 budget and kept only ~$4 of a stated $45 profit tier.
-    Querying Silverbene's real quote per product at import time closes that
-    gap for every tier, not just premium.
-    """
-    if not option_id:
-        return USPS_SHIPPING
-    try:
-        from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
-        methods = SilverbeneAdapter().get_shipping_methods(
-            "US", option_id=str(option_id), qty=1,
-            postcode=_REFERENCE_POSTCODE, city=_REFERENCE_CITY,
+
+def _interpolated_price(cost: float) -> float:
+    """Straight-line interpolation/extrapolation across _PRICE_ANCHORS. Internal — calculate_mikisi_price rounds the result to the real ladder."""
+    anchors = _PRICE_ANCHORS
+    if cost <= anchors[0][0]:
+        (x0, y0), (x1, y1) = anchors[0], anchors[1]
+    elif cost >= anchors[-1][0]:
+        (x0, y0), (x1, y1) = anchors[-2], anchors[-1]
+    else:
+        (x0, y0), (x1, y1) = next(
+            (anchors[i], anchors[i + 1]) for i in range(len(anchors) - 1)
+            if anchors[i][0] <= cost <= anchors[i + 1][0]
         )
-        if methods:
-            return min(m.get("price", USPS_SHIPPING) for m in methods)
-    except Exception as e:
-        print(f"[Pricing] Shipping cost lookup failed for option_id={option_id}: {e}")
-    return USPS_SHIPPING
+    slope = (y1 - y0) / (x1 - x0)
+    return y0 + slope * (cost - x0)
+
+
+def price_tier_label(retail: float) -> str:
+    """Everyday / Signature / Premium — matches Dennis's 3-tier naming, by final retail price rather than cost."""
+    if retail <= 198:
+        return "everyday"
+    elif retail <= 298:
+        return "signature"
+    else:
+        return "premium"
+
 
 # Checked in priority order — moissanite first so it wins over silver keywords
 MATERIAL_KEYWORDS = {
@@ -91,26 +133,6 @@ def detect_material(name: str, options: list = None) -> str:
     return "silver"
 
 
-def profit_tier(wholesale: float) -> tuple:
-    """Return (profit_amount, tier_label) for a given wholesale cost."""
-    if wholesale < 12:
-        return 30.0,          "entry"
-    elif wholesale <= 30:
-        return 45.0,          "core"
-    elif wholesale <= 60:
-        return 60.0,          "statement"
-    else:
-        return wholesale * 2, "premium"
-
-
-def elegant_round(price: float) -> float:
-    """Round up to nearest price ending in .00 or .90."""
-    whole = math.floor(price)
-    candidates = [float(whole), whole + 0.90, float(whole + 1)]
-    valid = [c for c in candidates if c >= price - 0.001]
-    return min(valid) if valid else float(whole + 1)
-
-
 def calculate_mikisi_price(silverbene_cost: float, material: str = None,
                            discount_percent: float = 0.0,
                            option_id: str = None,
@@ -118,39 +140,27 @@ def calculate_mikisi_price(silverbene_cost: float, material: str = None,
     """
     Calculate final Mikisi retail price from Silverbene wholesale cost.
 
-    Tiers (profit added on top of cost + shipping + packaging):
-      entry     cost < $12   → +$30
-      core      $12–$30      → +$45
-      statement $30–$60      → +$60
-      premium   > $60        → +cost × 2
+    Selling Price = Product Cost + $67 fixed overhead ($50 DHL Express +
+    $17 taxes/fees) + Desired Profit — where Desired Profit is read off
+    Dennis's own price ladder via interpolation (see _PRICE_ANCHORS)
+    rather than a fixed formula, then rounded UP to the nearest
+    LUXURY_LADDER rung.
 
-    Real shipping cost (see get_real_shipping_cost) + packaging ($3.00) +
-    Stripe (2.9% + $0.30) all absorbed.
-
-    Two ways to supply the real cost, checked in this order:
-      shipping_cost — an already-known real quote (e.g. Product.shipping_cost,
-        captured once at import time). Use this for recurring resyncs
-        (stock sync, price drift checks) so they reuse the real number
-        already on file instead of re-querying Silverbene's shipping API
-        on every cycle for every variant — that doesn't scale (hundreds of
-        products, every 6h).
-      option_id — fetches a fresh real quote via get_real_shipping_cost.
-        Use this only at the one-time pricing decision (new import, or a
-        genuine cost-change resync where no prior shipping_cost exists
-        yet) since it's a live API call.
-    Falls back to the flat $9.51 USPS assumption only if neither is given
-    — without one of these, every tier is exposed to the same profit-eating
-    gap that hit order #22 (see get_real_shipping_cost's docstring).
-    `material` is kept for backward compatibility but no longer affects pricing.
+    `option_id` and `shipping_cost` are accepted only for backward
+    compatibility with every existing call site (import, ProductVariant
+    creation, stock-sync resync, legacy fallback, pending backfill) — the
+    old model needed a real per-product Silverbene shipping quote here;
+    the new one doesn't, since shipping is always the flat $50 DHL
+    Express absorbed into the price (customers see "Free DHL Express
+    Delivery"). No live shipping API call happens in this function
+    anymore. `material` is kept for backward compatibility but doesn't
+    affect pricing.
     """
-    if shipping_cost is None:
-        shipping_cost = get_real_shipping_cost(option_id) if option_id else USPS_SHIPPING
-    profit, tier = profit_tier(silverbene_cost)
-    base   = silverbene_cost + shipping_cost + PACKAGING + profit
-    retail = elegant_round((base + STRIPE_FIXED) / (1 - STRIPE_RATE))
+    retail = round_to_ladder(_interpolated_price(silverbene_cost))
+    profit = retail - silverbene_cost - FIXED_OVERHEAD
 
     if discount_percent > 0:
-        original_price = elegant_round(retail / (1 - discount_percent / 100))
+        original_price = round_to_ladder(retail / (1 - discount_percent / 100))
     else:
         original_price = retail
 
@@ -158,10 +168,10 @@ def calculate_mikisi_price(silverbene_cost: float, material: str = None,
         "final_price":      retail,
         "original_price":   original_price,
         "discount_percent": discount_percent,
-        "shipping_cost":    shipping_cost,
+        "shipping_cost":    DHL_SHIPPING,
         "markup_used":      profit,
         "material":         material or "silver",
-        "tier":             tier,
+        "tier":             price_tier_label(retail),
     }
 
 
