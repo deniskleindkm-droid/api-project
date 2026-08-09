@@ -232,6 +232,26 @@ nav{
 .ig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:700px;margin:0 0 32px;}
 .ig-tile{aspect-ratio:1/1;overflow:hidden;background:var(--ivory);cursor:pointer;position:relative;}
 .ig-tile img{width:100%;height:100%;object-fit:cover;transition:transform 0.5s;}
+.ig-tile:hover img{transform:scale(1.05);}
+/* Hover overlay -- dark scrim + real caption snippet + IG glyph, so this
+   reads as an actual customer/social post rather than a plain photo grid.
+   Fades in on hover instead of sitting on the tile at rest, keeping the
+   grid clean until someone actually engages with it. */
+.ig-tile-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(14,14,14,0) 40%,rgba(14,14,14,0.78) 100%);
+  opacity:0;transition:opacity 0.35s ease;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:14px;
+}
+.ig-tile:hover .ig-tile-overlay{opacity:1;}
+.ig-tile-icon{color:white;margin-bottom:8px;}
+.ig-tile-icon svg{width:16px;height:16px;display:block;}
+.ig-tile-caption{
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;
+  font-size:13px;line-height:1.35;color:white;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
 .ig-view-link{
   display:block;width:fit-content;margin:0 auto;
   font-size:11px;letter-spacing:2px;text-transform:uppercase;
@@ -601,10 +621,21 @@ document.getElementById('signature-grid').innerHTML = SIGNATURE.slice(0,4).map(p
     </div>
   </div>`).join('');
 
-// Instagram gallery -- just 3 tiles, a preview that invites a click-through
-// to the real profile rather than a full grid
-document.getElementById('ig-grid').innerHTML = INSTAGRAM.slice(0,3).map(p => `
-  <div class="ig-tile"><img src="${p.image_url}" alt="Mikisi on Instagram" loading="lazy"/></div>`).join('');
+// Instagram gallery -- 3 tiles, a preview that invites a click-through to
+// the real profile rather than a full grid. Hover reveals the post's own
+// real caption hook line (the part before the first blank line, which is
+// always the actual opening thought -- body copy and "Tap to shop" CTA
+// are dropped since they're too long for a hover snippet).
+document.getElementById('ig-grid').innerHTML = INSTAGRAM.slice(0,3).map(p => {
+  const hook = (p.caption || '').split('\n\n')[0];
+  return `<div class="ig-tile">
+    <img src="${p.image_url}" alt="Mikisi on Instagram" loading="lazy"/>
+    <div class="ig-tile-overlay">
+      <div class="ig-tile-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="0.9" fill="currentColor" stroke="none"/></svg></div>
+      <div class="ig-tile-caption">${hook}</div>
+    </div>
+  </div>`;
+}).join('');
 </script>
 
 </body>
