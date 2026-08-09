@@ -140,7 +140,11 @@ nav{
     scrollbar-width:none;
   }
   .col-grid::-webkit-scrollbar{display:none;}
-  .col-tile{flex:0 0 68%;scroll-snap-align:start;}
+  /* Wider tile, same height as before -- 82% flex-basis instead of 68%,
+     paired with a less-narrow 4:5 image ratio instead of 2:3 so the box
+     grows wider without also growing taller. */
+  .col-tile{flex:0 0 82%;scroll-snap-align:start;}
+  .col-tile-img{aspect-ratio:4/5;}
 }
 
 /* ── SIGNATURE PIECES ── */
@@ -225,7 +229,13 @@ nav{
   .nav-links.open{display:flex;}
   .nav-links a{color:var(--charcoal);padding:16px 20px;border-bottom:1px solid var(--border);}
   .nav-links a.active{color:var(--black);}
-  .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding-left:20px;padding-right:20px;}
+  /* Every section had the full 96px desktop top/bottom padding, so two
+     adjacent sections stacked to ~192px of pure empty space between them
+     -- tightened to 44px each on mobile so sections sit close to each
+     other, and shrunk the title/intro margins the same way. */
+  .section-wrap,.signature-section,.experience-inner,.silver-section,.ig-section,.final-cta{padding:44px 20px;}
+  .section-title{margin-bottom:8px;}
+  .section-intro{margin-bottom:32px;}
   /* Hero gets one deliberate elongation on mobile -- a true 3:2 crop reads
      a bit short/cramped on a narrow phone. Fixed height + object-fit:cover
      (inherited from the base rule) instead of the old object-fit:contain
@@ -233,7 +243,6 @@ nav{
      with empty cream bars. Experience/Lifestyle photos keep the base rule
      unchanged. */
   .hero-img{aspect-ratio:auto;height:40vh;min-height:300px;max-height:380px;}
-  .experience-inner,.final-cta{padding-top:56px;padding-bottom:56px;}
   /* Crafted to Last: keep the same 3-across row as desktop instead of
      stacking to 1 column -- just tighten the gap and shrink the type so
      three columns actually fit a 375-430px phone without overflowing. */
