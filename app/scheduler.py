@@ -256,6 +256,16 @@ def run_tracking_check():
 
 def run_silverbene_shipping_monitor():
     """Every 2 hours: scan hello@mikisi.co for Silverbene shipping emails and auto-notify customers."""
+    # Found live 2026-08-09: this job (and dhl_monitor below) had no
+    # _recently_ran guard at all, unlike every other job in this file --
+    # next_run_time=utcnow() means it fires on EVERY deploy with no
+    # cooldown whatsoever. A burst of ~12 rapid deploys in one session
+    # re-ran this (and dhl_monitor) that many times back to back,
+    # contributing to the container becoming unresponsive under the
+    # combined load. Same guard pattern as every other job now.
+    if _recently_ran("silverbene_shipping_monitor", min_minutes=100):
+        print("[Scheduler] Skipping silverbene_shipping_monitor — ran recently (deploy re-fire guard)")
+        return
     try:
         from app.agents.silverbene_shipping_monitor import run_silverbene_shipping_monitor as _monitor
         result = _monitor()
@@ -274,6 +284,7 @@ def run_silverbene_shipping_monitor():
                 f"{len(result.get('unmatched', []))} unmatched, "
                 f"{len(result.get('skipped', []))} skipped"
             )
+        _mark_ran("silverbene_shipping_monitor")
     except Exception as e:
         _heartbeat("silverbene_shipping_monitor", f"error: {str(e)[:80]}")
         print(f"[Scheduler] Silverbene shipping monitor error: {e}")
@@ -282,6 +293,9 @@ def run_silverbene_shipping_monitor():
 def run_dhl_monitor():
     """Every 2 hours: scan hello@mikisi.co for DHL-direct emails (shipment notices,
     On Demand Delivery confirmations) and relay tracking/delivery-link info onto orders."""
+    if _recently_ran("dhl_monitor", min_minutes=100):
+        print("[Scheduler] Skipping dhl_monitor — ran recently (deploy re-fire guard)")
+        return
     try:
         from app.agents.dhl_monitor import run_dhl_monitor as _monitor
         result = _monitor()
@@ -294,6 +308,7 @@ def run_dhl_monitor():
                 f"{len(result.get('matched', []))} matched, "
                 f"{len(result.get('unmatched', []))} unmatched"
             )
+        _mark_ran("dhl_monitor")
     except Exception as e:
         _heartbeat("dhl_monitor", f"error: {str(e)[:80]}")
         print(f"[Scheduler] DHL monitor error: {e}")
