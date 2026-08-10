@@ -1873,6 +1873,22 @@ function applyVariantUI(chipLabel){
 if('scrollRestoration' in history){history.scrollRestoration='manual';}
 window.scrollTo(0,0);
 
+// Mobile browsers often restore a backgrounded tab from the back-forward
+// cache (bfcache) instead of reloading it -- a frozen snapshot of exactly
+// how the page looked the instant it was left, with none of this file's
+// init logic (window.onload, the collections/products fetch, etc.)
+// running again. There was zero handling for this at all, so "leave the
+// site and come back" could show a blank/frozen page (mid-load, or an
+// overlay/collection-view state) with nothing left to bring it back to
+// life -- confirmed as the reported symptom (blank on return). pageshow
+// fires on EVERY page view, including a normal fresh load, so this only
+// acts when event.persisted is true (a real bfcache restore) -- forcing
+// a real reload there is the standard fix, guaranteeing the page always
+// comes back fully alive rather than frozen.
+window.addEventListener('pageshow', (event)=>{
+  if(event.persisted) location.reload();
+});
+
 window.onload = async()=>{
   window.scrollTo(0,0);
   updateAuthUI();
