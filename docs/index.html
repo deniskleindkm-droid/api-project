@@ -1880,13 +1880,21 @@ window.scrollTo(0,0);
 // running again. There was zero handling for this at all, so "leave the
 // site and come back" could show a blank/frozen page (mid-load, or an
 // overlay/collection-view state) with nothing left to bring it back to
-// life -- confirmed as the reported symptom (blank on return). pageshow
-// fires on EVERY page view, including a normal fresh load, so this only
-// acts when event.persisted is true (a real bfcache restore) -- forcing
-// a real reload there is the standard fix, guaranteeing the page always
-// comes back fully alive rather than frozen.
+// life. pageshow fires on EVERY page view, including a normal fresh
+// load, so this only acts when event.persisted is true (a real bfcache
+// restore).
+//
+// Deliberately navigates to "/" rather than just reloading the same
+// URL -- per Dennis: coming back to the site shouldn't still remember
+// what was clicked last time (which collection/product was open, scroll
+// position). A real, fresh navigation from a shared/bookmarked link
+// (e.g. /collections/tennis-bracelets from Instagram) is a completely
+// different case -- that's never a bfcache restore, so it's untouched
+// and still opens exactly where the link points. This only resets
+// navigation state specifically; cart, wishlist, and sign-in stay
+// exactly as they were, same as any normal e-commerce site.
 window.addEventListener('pageshow', (event)=>{
-  if(event.persisted) location.reload();
+  if(event.persisted) location.href='/';
 });
 
 window.onload = async()=>{
