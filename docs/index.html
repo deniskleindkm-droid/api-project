@@ -1894,7 +1894,17 @@ window.scrollTo(0,0);
 // navigation state specifically; cart, wishlist, and sign-in stay
 // exactly as they were, same as any normal e-commerce site.
 window.addEventListener('pageshow', (event)=>{
-  if(event.persisted) location.href='/';
+  if(!event.persisted) return;
+  // location.href='/' when already sitting on "/" is a same-URL
+  // navigation -- some browsers are inconsistent about whether that
+  // actually forces a fresh document load or silently no-ops, which
+  // would leave the frozen bfcache snapshot exactly as it was (blank/
+  // stuck) with nothing to recover it. location.reload() has no such
+  // ambiguity -- it always forces a real fresh load of the current URL,
+  // no exceptions. Only paths other than "/" need an actual navigation
+  // (to satisfy "don't remember what was clicked last").
+  if(location.pathname==='/') location.reload();
+  else location.href='/';
 });
 
 window.onload = async()=>{
