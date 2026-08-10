@@ -1893,18 +1893,38 @@ window.scrollTo(0,0);
 // and still opens exactly where the link points. This only resets
 // navigation state specifically; cart, wishlist, and sign-in stay
 // exactly as they were, same as any normal e-commerce site.
-window.addEventListener('pageshow', (event)=>{
-  if(!event.persisted) return;
+function _resetOnReturn(){
   // location.href='/' when already sitting on "/" is a same-URL
   // navigation -- some browsers are inconsistent about whether that
   // actually forces a fresh document load or silently no-ops, which
-  // would leave the frozen bfcache snapshot exactly as it was (blank/
-  // stuck) with nothing to recover it. location.reload() has no such
-  // ambiguity -- it always forces a real fresh load of the current URL,
-  // no exceptions. Only paths other than "/" need an actual navigation
-  // (to satisfy "don't remember what was clicked last").
+  // would leave a frozen/stuck page exactly as it was with nothing to
+  // recover it. location.reload() has no such ambiguity -- it always
+  // forces a real fresh load of the current URL, no exceptions. Only
+  // paths other than "/" need an actual navigation (to satisfy "don't
+  // remember what was clicked last").
   if(location.pathname==='/') location.reload();
   else location.href='/';
+}
+window.addEventListener('pageshow', (event)=>{
+  if(event.persisted) _resetOnReturn();
+});
+// pageshow/persisted only fires for a genuine bfcache restore, which
+// some mobile browsers won't do for a short minimize -- confirmed
+// reported live: "minimize then reopen after a few seconds" not
+// triggering a reload. visibilitychange fires reliably for ANY tab
+// focus change regardless of bfcache internals, so this is the more
+// direct, dependable mechanism for exactly that case -- only acts past
+// a short threshold so a quick app-switcher glance (checking a
+// notification, then straight back) doesn't reset navigation state for
+// no reason.
+let _hiddenAt=null;
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='hidden'){
+    _hiddenAt=Date.now();
+  }else if(document.visibilityState==='visible' && _hiddenAt && Date.now()-_hiddenAt>3000){
+    _hiddenAt=null;
+    _resetOnReturn();
+  }
 });
 
 window.onload = async()=>{
