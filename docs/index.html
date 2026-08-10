@@ -1764,6 +1764,14 @@ function stripHtml(str){
 function cleanName(str){
   return stripHtml(str).replace(/^Mikisi\s*[-–—]\s*/i,'').trim();
 }
+// Cosmetic only -- strips a trailing "Certified" annotation (e.g. "Gold 1
+// Carat · Certified", "Silver（Certified）", "5mm(Certified)") from a
+// chip's DISPLAY label per Dennis's request; never touches data-raw, so
+// the real backend option text this matches against is untouched.
+function stripCertifiedLabel(label){
+  if(!label) return label;
+  return label.replace(/[\s·•\-|,]*[\(（]?\s*certified\s*[\)）]?\s*$/i,'').trim() || label;
+}
 function trunc(str,n){return str&&str.length>n?str.substring(0,n)+'…':str||'';}
 
 // ── VARIANT-AWARE HELPERS ──
@@ -1801,7 +1809,7 @@ function findVariantImage(chipLabel){
       if((attr.name||'').toLowerCase()!=='color'||!attr.value)continue;
       const cleaned=cleanVariantName(attr.value);
       const processed=processVariant(cleaned);
-      const displayLabel=COLOR_LABEL[processed.display.toLowerCase().trim()]||processed.display;
+      const displayLabel=stripCertifiedLabel(COLOR_LABEL[processed.display.toLowerCase().trim()]||processed.display);
       if(displayLabel===chipLabel)return opt.image_url;
       if(isCompoundVariant(cleaned)&&parseCompoundVariant(cleaned).metal===chipLabel)return opt.image_url;
     }
@@ -2942,7 +2950,7 @@ async function openPP(id, presetVariantId=null){
           document.getElementById('pp-colors-wrap').style.display='block';
           document.querySelector('#pp-colors-wrap .pp-section-title').textContent='Metal Finish';
           document.getElementById('pp-color-chips').innerHTML=uniqueMetals.map((m,i)=>
-            `<button class="pp-chip" data-raw="${m}" onclick="selectChip(this,'color')">${COLOR_LABEL[m.toLowerCase().trim()]||m}</button>`
+            `<button class="pp-chip" data-raw="${m}" onclick="selectChip(this,'color')">${stripCertifiedLabel(COLOR_LABEL[m.toLowerCase().trim()]||m)}</button>`
           ).join('');
         }else document.getElementById('pp-colors-wrap').style.display='none';
         // Chain Width (only show if multiple options)
@@ -2968,7 +2976,7 @@ async function openPP(id, presetVariantId=null){
           document.getElementById('pp-stone-wrap').style.display='block';
           document.querySelector('#pp-stone-wrap .pp-section-title').textContent='Color';
           document.getElementById('pp-stone-chips').innerHTML=part2.map((v,i)=>
-            `<button class="pp-chip" data-raw="${v}" onclick="selectChip(this,'stone')">${COLOR_LABEL[v.toLowerCase().trim()]||v}</button>`
+            `<button class="pp-chip" data-raw="${v}" onclick="selectChip(this,'stone')">${stripCertifiedLabel(COLOR_LABEL[v.toLowerCase().trim()]||v)}</button>`
           ).join('');
           stones=[];  // prevent duplicate stone section below
         }
@@ -2989,7 +2997,7 @@ async function openPP(id, presetVariantId=null){
         document.querySelector('#pp-colors-wrap .pp-section-title').textContent=
           isAllMetal?'Metal Finish':(isStoneSize?'Stone Size':'Color');
         document.getElementById('pp-color-chips').innerHTML=realChips.map((c,i)=>{
-          const label=COLOR_LABEL[c.toLowerCase().trim()]||c;
+          const label=stripCertifiedLabel(COLOR_LABEL[c.toLowerCase().trim()]||c);
           return `<button class="pp-chip" data-raw="${c}" onclick="selectChip(this,'color')">${label}</button>`;
         }).join('');
         document.getElementById('pp-width-wrap').style.display='none';
