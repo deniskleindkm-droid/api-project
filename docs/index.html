@@ -372,15 +372,18 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
 .tb-track-wrap{position:relative;}
 .pgrid{
   display:flex;gap:24px;max-width:1400px;margin:0;
-  overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:0;
+  /* touch-action:pan-x was tried here to stop cards "bouncing" against a
+     vertical page-scroll, but that fully blocks vertical scrolling for any
+     touch that starts on a card -- confirmed live: a finger placed on a
+     product photo inside this row couldn't scroll the page at all anymore,
+     a worse regression than the bounce it was meant to fix. proximity
+     (vs. mandatory) snap only pulls a card into place once the scroll
+     naturally settles near one, instead of fighting an in-progress drag,
+     which is what actually caused the bounce -- and it needs no
+     touch-action override, so normal vertical scrolling still works
+     everywhere in this row, images included. */
+  overflow-x:auto;scroll-snap-type:x proximity;scroll-padding-left:0;
   padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
-  /* Without this, a diagonal touch drag is ambiguous between "swipe the
-     row" and "scroll the page" -- the browser has to guess, and mandatory
-     snap fighting a vertical page-scroll gesture is exactly what reads as
-     cards "bouncing" while scrolling down. pan-x tells it this element
-     only handles horizontal drags, so vertical ones fall through to the
-     page immediately instead of fighting for it first. */
-  touch-action:pan-x;
 }
 .pgrid::-webkit-scrollbar{display:none;}
 /* Reuses the site's real .pcard/.pcard-img/.pcard-wish/.pcard-brand card
@@ -1035,9 +1038,11 @@ footer{background:var(--black);padding:40px 48px 36px;}
   .collections-home{padding:0 14px 40px;}
   .collections-grid{
     display:flex;grid-template-columns:none;gap:14px;margin-top:24px;
-    overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:0;
+    /* proximity, not mandatory/pan-x -- see .pgrid's comment. mandatory +
+       touch-action:pan-x blocked vertical scrolling entirely for a touch
+       starting on a tile's image. */
+    overflow-x:auto;scroll-snap-type:x proximity;scroll-padding-left:0;
     padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
-    touch-action:pan-x; /* see .pgrid's comment -- same fix, same reason */
   }
   .collections-grid::-webkit-scrollbar{display:none;}
   .col-tile{flex:0 0 60%;scroll-snap-align:start;}
@@ -1113,9 +1118,9 @@ footer{background:var(--black);padding:40px 48px 36px;}
   .stone-section{padding:36px 0 24px;margin-bottom:24px;}
   .stone-grid{
     display:flex;grid-template-columns:none;gap:14px;max-width:none;
-    overflow-x:auto;scroll-snap-type:x mandatory;
+    /* proximity, not mandatory/pan-x -- see .pgrid's comment. */
+    overflow-x:auto;scroll-snap-type:x proximity;
     padding:0 0 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
-    touch-action:pan-x; /* see .pgrid's comment -- same fix, same reason */
   }
   .stone-grid::-webkit-scrollbar{display:none;}
   .stone-card{flex:0 0 46%;scroll-snap-align:start;}
