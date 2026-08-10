@@ -2346,9 +2346,26 @@ function pcardSizeText(p){
 // real product-card template, not duplicated inline in two places (a
 // future badge/wishlist/pricing change would otherwise need to be kept
 // in sync by hand across both).
+// The hover-swap second photo -- Dennis: Silverbene should only ever be
+// touched during background sync/import, never on a live page load.
+// content_images is the already-Cloudinary-cached gallery (see
+// image_cdn_agent.py); if a second cached photo genuinely isn't there
+// yet for this product, this returns null and the card just has no
+// hover-swap -- it deliberately does NOT fall back to the raw Silverbene
+// image_url anymore (that was the actual cause of the 503 bursts).
+function getHoverImage(p){
+  try{
+    const imgs = p.content_images ? JSON.parse(p.content_images) : null;
+    if(Array.isArray(imgs)){
+      const second = imgs.find(u=>u && u!==p.content_image_url && u.includes('res.cloudinary.com'));
+      if(second) return second;
+    }
+  }catch{}
+  return null;
+}
 function productCardHTML(p){
   const imgA = cld(p.content_image_url || p.image_url || getPlaceholder(), 450);
-  const imgB = (p.image_url && p.content_image_url && p.image_url !== p.content_image_url) ? cld(p.image_url, 450) : null;
+  const imgB = cld(getHoverImage(p), 450);
   const name = cleanName(p.name);
   const outOfStock = !p.stock || p.stock === 0;
   let badge='';
@@ -2813,9 +2830,16 @@ async function openPP(id, presetVariantId=null){
   if(catNext) catNext.style.display='none';
 
   // ── Images ──
-  try{ppImages=p.images?JSON.parse(p.images):[];}catch{ppImages=[];}
+  // content_images (Cloudinary-cached gallery), never the raw images/
+  // image_url fields -- per Dennis: Silverbene should only ever be
+  // touched during background sync/import, never on a live page load.
+  // Any gallery slot that never got cached is just dropped rather than
+  // falling back to a live Silverbene fetch.
+  try{
+    const cachedGallery=p.content_images?JSON.parse(p.content_images):null;
+    ppImages=Array.isArray(cachedGallery)?cachedGallery.filter(u=>u&&u.includes('res.cloudinary.com')):[];
+  }catch{ppImages=[];}
   if(p.content_image_url)ppImages=[p.content_image_url,...ppImages.filter(u=>u!==p.content_image_url)];
-  else if(!ppImages.length&&p.image_url)ppImages=[p.image_url];
   ppImages=[...new Set(ppImages)];  // deduplicate identical URLs
   if(!ppImages.length)ppImages=[getPlaceholder()];
   ppImages=ppImages.map(u=>cld(u,900)); // full product-detail gallery -- larger than any grid thumbnail

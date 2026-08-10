@@ -93,6 +93,7 @@ class ProductPublic(SQLModel):
     needs_review: bool = False
     needs_length_review: bool = False
     content_image_url: Optional[str] = None
+    content_images: Optional[str] = None  # JSON array, Cloudinary-cached gallery -- never re-fetched from Silverbene once cached (see image_cdn_agent.py)
     content_lifestyle_url: Optional[str] = None
     video_url: Optional[str] = None
     content_generated_at: Optional[datetime] = None
