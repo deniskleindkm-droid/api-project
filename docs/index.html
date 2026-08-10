@@ -67,6 +67,13 @@ src="https://www.facebook.com/tr?id=4499184953626453&ev=PageView&noscript=1"/></
   --border:#ece5dd;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
+/* Images are natively draggable in most browsers -- a touch-hold-and-move
+   on a product photo picks the image up and drags it instead of just
+   scrolling the page underneath it, which reads exactly like "I can move
+   a product up and down" (confirmed reported live). No feature on this
+   site ever needs native image drag/save-image-callout, so this is safe
+   to disable everywhere rather than tile-by-tile. */
+img{-webkit-user-drag:none;user-drag:none;-webkit-touch-callout:none;}
 html{scroll-behavior:smooth;}
 body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--black);overflow-x:hidden;}
 
@@ -1051,7 +1058,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
     padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
   }
   .collections-grid::-webkit-scrollbar{display:none;}
-  .col-tile{flex:0 0 60%;scroll-snap-align:start;}
+  .col-tile{flex:0 0 48%;scroll-snap-align:start;}
   /* Slide hint -- a nudging chevron on a dark dot backdrop. Confirmed live
      (real mobile-viewport screenshot test) that a plain white icon with
      only a drop-shadow is practically invisible against this catalog's
@@ -1102,7 +1109,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
      specifically -- .pcard is also the real card design used site-wide
      in .cv-grid (a CSS grid, not a flex track), which must not pick up
      a flex-basis override meant only for this section's sliding track. */
-  .pgrid .pcard{flex:0 0 68%;}
+  .pgrid .pcard{flex:0 0 52%;}
   .tb-arrow{width:26px;}
   .tb-arrow svg{width:18px;height:18px;}
   .tb-arrow.tb-prev{left:-16px;}
