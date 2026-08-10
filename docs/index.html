@@ -2383,7 +2383,17 @@ function wireProductCardEffects(grid){
   grid.querySelectorAll('.pcard-img img[data-hover]').forEach(img=>{
     const hoverSrc=img.getAttribute('data-hover');
     const origSrc=img.src;
-    new Image().src=hoverSrc;
+    // No longer eagerly preloading hoverSrc on render -- found live: this
+    // fired a real request to Silverbene's own server (data-hover is
+    // p.image_url, the raw supplier photo, whenever it differs from the
+    // cached content_image_url) for EVERY card in the grid, all at once,
+    // the instant the page rendered. On a collection page with dozens of
+    // cards that's a burst of simultaneous hotlinked requests, and
+    // Silverbene's server was seen returning 503s for exactly this
+    // pattern (confirmed live -- likely rate-limiting/anti-hotlink
+    // protection). On mobile it was pure waste too, since touch has no
+    // hover state to ever benefit from the preload. Now genuinely lazy:
+    // only requested if a real mouseenter actually happens.
     img.addEventListener('mouseenter',()=>{img.style.opacity='0';setTimeout(()=>{img.src=hoverSrc;img.style.opacity='1';},120);});
     img.addEventListener('mouseleave',()=>{img.style.opacity='0';setTimeout(()=>{img.src=origSrc;img.style.opacity='1';},120);});
   });
