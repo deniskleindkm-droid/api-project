@@ -378,6 +378,38 @@ def get_product(product_id: int, preview_key: Optional[str] = None, session: Ses
     return _to_public(product)
 
 
+@router.get("/products/{product_id}/related", response_model=List[ProductPublic])
+def get_related_products(product_id: int, limit: int = 12, session: Session = Depends(get_session)):
+    """
+    "You may also like" — same collection, ranked by material/stone match
+    first then closest price. No style/occasion tagging exists on real
+    products yet (only prototyped in the Rings demo), so this is deliberately
+    v1: category + material + price proximity, using data that already
+    exists on every product rather than waiting on a new tagging pipeline.
+    """
+    product = session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    if not product.collection_id:
+        return []
+
+    query = select(Product).where(
+        Product.collection_id == product.collection_id,
+        Product.id != product_id,
+        Product.is_active == True,
+        Product.is_published == True,
+    )
+    candidates = session.exec(query).all()
+
+    def sort_key(p: Product):
+        same_material = 0 if (product.material and p.material == product.material) else 1
+        price_gap = abs((p.final_price or 0) - (product.final_price or 0))
+        return (same_material, price_gap)
+
+    candidates.sort(key=sort_key)
+    return [_to_public(p) for p in candidates[:limit]]
+
+
 @router.get("/products/{product_id}/variant-prices")
 def get_variant_prices(product_id: int, preview_key: Optional[str] = None, session: Session = Depends(get_session)):
     """
