@@ -39,6 +39,8 @@ class Product(SQLModel, table=True):
     # Product flags
     is_published: Optional[bool] = Field(default=True)   # False = staging; True = live on storefront; NULL treated as True
     published_at: Optional[datetime] = None               # set each time publish_products() makes this live -- drives "newest first" collection ordering, distinct from created_at (import time) since a product can sit unpublished for a while before going live
+    style_tags: Optional[str] = None  # JSON array, e.g. ["solitaire"] -- collection-specific "Shop by Style" taxonomy, hand-tagged per collection from real description/specs data (see per-collection demo dev-notes for methodology + audit history)
+    occasion: Optional[str] = None    # JSON array, e.g. ["everyday","polished"] -- shared "Shop by Occasion" vocabulary across every collection (everyday/polished/after_hours/occasion/weekend)
     is_reviewed: bool = Field(default=False)              # False = fresh import, no publish/unpublish decision made yet ("New" in admin)
     stock_auto_unpublished: bool = Field(default=False)  # True = system hid this due to OOS; auto-republish on restock
     sync_miss_count: int = Field(default=0)              # consecutive inconclusive (network/error) existence checks — never drives unpublish/delete on its own
@@ -98,6 +100,8 @@ class ProductPublic(SQLModel):
     content_lifestyle_url: Optional[str] = None
     video_url: Optional[str] = None
     content_generated_at: Optional[datetime] = None
+    style_tags: Optional[str] = None  # JSON array -- collection-specific "Shop by Style" taxonomy
+    occasion: Optional[str] = None    # JSON array -- shared "Shop by Occasion" vocabulary
     # Computed display metadata — populated by route, never stored in DB
     size_label: Optional[str] = None        # "Bracelet Length", "Chain Length", "Ring Size", …
     size_hint: Optional[str] = None         # one-line measurement guidance for the customer

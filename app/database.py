@@ -108,6 +108,12 @@ def create_db():
         # already published: created_at is the best available approximation.
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS published_at timestamp"))
         conn.execute(text("UPDATE product SET published_at = created_at WHERE is_published = true AND published_at IS NULL"))
+        # "Shop by Style" (per-collection taxonomy) / "Shop by Occasion" (shared
+        # 5-tag vocabulary) -- backfilled once from the already-researched and
+        # photo-audited demo tagging (Rings/Necklaces/Bracelets/Earrings demo
+        # pages), not computed here. See scripts/backfill_style_occasion.py.
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS style_tags text"))
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS occasion text"))
         conn.commit()
 
     _setup_defaults()
