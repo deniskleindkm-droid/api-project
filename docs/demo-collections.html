@@ -6,7 +6,7 @@
 <title>Mikisi — Editorial Collection Demo (Rings)</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 :root{
   --cream:#fdf9f6;
@@ -36,6 +36,54 @@ body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--black);}
 }
 .demo-notice strong{color:var(--gold-light);font-weight:500;}
 
+/* ── STICKY FILTER BAR — appears once you've scrolled past the Style/
+   Occasion/Stone tile sections, so the editorial browsing experience up top
+   stays intact but you're never stuck scrolling back up to see or change
+   what's active. Hidden entirely when no filter is active -- nothing to
+   show, no clutter. ── */
+.filter-bar{
+  position:fixed;top:76px;left:0;right:0;z-index:55;
+  background:var(--cream);border-bottom:1px solid var(--border);
+  padding:14px 48px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  opacity:0;transform:translateY(-8px);pointer-events:none;
+  transition:opacity 0.25s ease,transform 0.25s ease;
+  box-shadow:0 4px 16px rgba(0,0,0,0.04);
+}
+.filter-bar.visible{opacity:1;transform:none;pointer-events:auto;}
+.filter-bar-label{font-family:'Jost',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);}
+.filter-chip{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:'Jost',sans-serif;font-size:11px;letter-spacing:0.5px;
+  background:var(--pink-pale);color:var(--pink-deep);
+  padding:8px 8px 8px 14px;border-radius:20px;cursor:default;
+}
+.filter-chip button{
+  background:none;border:none;cursor:pointer;color:var(--pink-deep);
+  font-size:14px;line-height:1;padding:2px 4px;
+}
+.filter-chip button:hover{color:var(--black);}
+.filter-clear-all{
+  font-family:'Jost',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--mid);background:none;border:none;cursor:pointer;text-decoration:underline;
+  margin-left:auto;
+}
+.filter-clear-all:hover{color:var(--black);}
+
+/* ── EMPTY STATE ── */
+.empty-state{
+  grid-column:1/-1;text-align:center;padding:80px 20px;
+}
+.empty-state p{
+  font-family:'EB Garamond',serif;font-size:19px;color:var(--charcoal);margin-bottom:18px;
+}
+.empty-state button{
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--black);background:none;border:1px solid var(--black);
+  padding:12px 32px;cursor:pointer;font-family:'Jost',sans-serif;
+  transition:all 0.3s;
+}
+.empty-state button:hover{background:var(--black);color:white;}
+
 /* ── NAV (matches live site) ── */
 nav{
   background:var(--cream);padding:0 48px;
@@ -43,7 +91,7 @@ nav{
   height:76px;border-bottom:1px solid var(--border);
 }
 .logo{
-  font-family:'Cormorant Garamond',serif;font-size:26px;
+  font-family:'EB Garamond',serif;font-size:26px;
   font-weight:400;letter-spacing:6px;color:var(--black);
   text-transform:uppercase;
 }
@@ -59,7 +107,7 @@ nav{
   border-bottom:1px solid var(--border);
 }
 .col-hero h1{
-  font-family:'Cormorant Garamond',serif;font-weight:300;
+  font-family:'EB Garamond',serif;font-weight:400;
   font-size:clamp(36px,5vw,54px);letter-spacing:3px;
   text-transform:uppercase;margin-bottom:14px;
 }
@@ -68,45 +116,97 @@ nav{
   letter-spacing:0.3px;max-width:480px;margin:0 auto;line-height:1.7;
 }
 
-/* ── DISCOVER BY STONE ── */
-.stone-section{padding:88px 48px 16px;text-align:center;}
-.section-title{
-  font-family:'Cormorant Garamond',serif;font-weight:400;
-  font-size:clamp(26px,3.2vw,34px);letter-spacing:0.5px;color:var(--black);margin-bottom:14px;
+/* ── FILTER HUB — Style/Occasion/Stone as tabs sliding between one panel
+   each, instead of three full sections stacked vertically. Cuts the scroll
+   distance to the product grid dramatically; selections persist across tabs
+   so switching tabs to build a combo (e.g. Solitaire -> Polished -> Moissanite)
+   doesn't lose your place. Tap-only tab switching (not swipe-the-whole-panel)
+   -- on mobile the individual tile rows already scroll horizontally to fit
+   7 style tiles on a narrow screen, and a whole-panel swipe gesture would
+   fight that same touch direction. ── */
+.filter-hub{padding:56px 0 16px;text-align:center;}
+.filter-tabs{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:0 20px;}
+.filter-tab{
+  font-family:'Jost',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--black);background:none;border:1px solid var(--border);
+  padding:12px 22px;cursor:pointer;transition:all 0.25s;
 }
+.filter-tab:hover{border-color:var(--gold);}
+.filter-tab.active{background:var(--black);color:white;border-color:var(--black);}
+.tab-dot{
+  display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--pink);margin-left:7px;vertical-align:middle;opacity:0;transition:opacity 0.2s;
+}
+.filter-tab.active .tab-dot{background:var(--gold-light);}
+.tab-dot.active{opacity:1;}
+.filter-status{
+  font-family:'Jost',sans-serif;font-size:10px;letter-spacing:1px;color:var(--mid);
+  margin-top:14px;min-height:14px;
+}
+.filter-status button{
+  background:none;border:none;color:var(--pink-deep);cursor:pointer;
+  font-family:'Jost',sans-serif;font-size:10px;letter-spacing:1px;text-decoration:underline;
+}
+.filter-slider-viewport{overflow:hidden;margin-top:44px;}
+.filter-slider-track{display:flex;width:300%;transition:transform 0.45s cubic-bezier(0.65,0,0.35,1);}
+.filter-panel{flex:0 0 33.3333%;min-width:0;padding:0 48px 16px;}
+/* ── FILTER TILE ROWS — Style/Occasion/Stone all share one compact, always-
+   horizontally-sliding layout (previously Stone used its own larger grid
+   that wrapped to multiple rows on desktop -- inconsistent size vs
+   Style/Occasion, and wrapping made no sense once these sit inside a small
+   per-tab panel). Small fixed-width cards in a scroll-snap row at every
+   breakpoint, same interaction as the mobile-only pattern this replaces. ── */
 .section-intro{
   font-size:13px;color:var(--mid);font-weight:300;letter-spacing:0.2px;
-  max-width:440px;margin:0 auto 52px;line-height:1.8;
+  max-width:440px;margin:0 auto 28px;line-height:1.8;
 }
-.stone-grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:36px;max-width:1100px;margin:0 auto;
+.style-grid,.occasion-grid,.stone-grid{
+  display:flex;gap:14px;max-width:1300px;margin:0 auto;
+  overflow-x:auto;scroll-snap-type:x proximity;scroll-padding-left:48px;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 48px 10px;
 }
-.stone-card{cursor:pointer;text-align:left;}
-.stone-card-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);margin-bottom:18px;}
-.stone-card-img img{
+.style-grid::-webkit-scrollbar,.occasion-grid::-webkit-scrollbar,.stone-grid::-webkit-scrollbar{display:none;}
+.style-card,.occasion-card,.stone-card{
+  flex:0 0 140px;scroll-snap-align:start;cursor:pointer;text-align:left;
+}
+.style-card-img,.occasion-card-img,.stone-card-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);margin-bottom:10px;}
+.style-card-img img,.occasion-card-img img,.stone-card-img img{
   width:100%;height:100%;object-fit:cover;display:block;
   transition:transform 0.7s ease;
 }
+.style-card:hover .style-card-img img,.occasion-card:hover .occasion-card-img img,
 .stone-card:hover .stone-card-img img{transform:scale(1.05);}
-.stone-card-name{
+.style-card-name,.occasion-card-name,.stone-card-name{
   font-family:'Jost',sans-serif;font-weight:500;
-  font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--black);
-  margin-bottom:8px;
-  padding-bottom:10px;border-bottom:1px solid var(--border);
+  font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--black);
+  margin-bottom:6px;
+  padding-bottom:8px;border-bottom:1px solid var(--border);
   transition:border-color 0.3s;
 }
-.stone-card:hover .stone-card-name,
-.stone-card.active .stone-card-name{border-color:var(--gold);}
-.stone-card-tag{
-  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;
-  font-size:15px;color:var(--mid);line-height:1.55;
+.style-card:hover .style-card-name,.style-card.active .style-card-name,
+.occasion-card:hover .occasion-card-name,.occasion-card.active .occasion-card-name,
+.stone-card:hover .stone-card-name,.stone-card.active .stone-card-name{border-color:var(--gold);}
+.style-card-tag,.occasion-card-tag,.stone-card-tag{
+  font-family:'EB Garamond',serif;font-style:normal;font-weight:400;
+  font-size:12px;color:var(--mid);line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
 }
+.style-card.active .style-card-tag,.occasion-card.active .occasion-card-tag,
 .stone-card.active .stone-card-tag{color:var(--pink-deep);}
 
 
 /* ── PRODUCT GRID ── */
 .grid-section{padding:80px 48px 100px;}
+.grid-heading{
+  max-width:1400px;margin:0 auto 32px;text-align:center;
+}
+.grid-heading-title{
+  font-family:'EB Garamond',serif;font-weight:400;
+  font-size:clamp(24px,2.8vw,30px);color:var(--black);margin-bottom:8px;
+}
+.grid-heading-sub{
+  font-size:13px;color:var(--mid);font-weight:300;line-height:1.7;
+}
 /* Product grid + card now match the real live site's collection view
    exactly (hairline grid, wishlist heart, brand micro-label, scroll
    fade-in) instead of the demo's own plainer card. */
@@ -140,11 +240,11 @@ nav{
   letter-spacing:2.5px;text-transform:uppercase;margin-bottom:5px;
 }
 .pcard-name{
-  font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:400;color:var(--black);
+  font-family:'EB Garamond',serif;font-size:15px;font-weight:400;color:var(--black);
   line-height:1.3;margin-bottom:8px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
-.pcard-price{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:400;color:var(--black);}
+.pcard-price{font-family:'EB Garamond',serif;font-size:17px;font-weight:400;color:var(--black);}
 .pcard.hidden{display:none;}
 
 .load-more-wrap{text-align:center;margin-top:40px;}
@@ -169,20 +269,16 @@ nav{
   /* Product grid: 3 per row instead of 2, same as the real live site's
      collection view uses below its 1024px desktop breakpoint. */
   .pgrid{grid-template-columns:repeat(3,1fr);gap:1px;}
-  .stone-section{padding-left:20px;padding-right:20px;}
-  /* Discover by Stone becomes a sliding row instead of a 2-column grid --
-     same horizontally scrollable, snap-aligned pattern as the homepage's
-     Collections carousel. */
-  .stone-grid{
-    display:flex;grid-template-columns:none;gap:14px;max-width:none;
-    overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:20px;
-    padding:0 20px 10px;margin:0 -20px;-webkit-overflow-scrolling:touch;
-    scrollbar-width:none;
-  }
-  .stone-grid::-webkit-scrollbar{display:none;}
-  .stone-card{flex:0 0 68%;scroll-snap-align:start;}
+  .filter-panel{padding-left:20px;padding-right:20px;}
+  .filter-tabs{gap:6px;}
+  .filter-tab{padding:10px 14px;font-size:10px;}
+  /* Tile rows are already a small sliding carousel at every breakpoint (see
+     the base .style-grid,.occasion-grid,.stone-grid rule) -- just match the
+     narrower 20px side padding used everywhere else on mobile. */
+  .style-grid,.occasion-grid,.stone-grid{padding-left:20px;padding-right:20px;scroll-padding-left:20px;}
 }
 @media (max-width:560px){
+  .filter-bar{padding:12px 20px;top:auto;bottom:0;box-shadow:0 -4px 16px rgba(0,0,0,0.06);}
   nav{padding:0 20px;position:relative;}
   .nav-toggle{display:block;}
   .nav-links{
@@ -218,13 +314,37 @@ nav{
   <p>Crafted from genuine 925 sterling silver. Timeless pieces designed for everyday elegance.</p>
 </div>
 
-<div class="stone-section">
-  <div class="section-title">Discover by Stone</div>
-  <div class="section-intro">Every stone tells a different story. Explore the collection that speaks to you.</div>
-  <div class="stone-grid" id="stone-grid"><!-- filled by JS --></div>
+<div class="filter-hub">
+  <div class="filter-tabs" role="tablist">
+    <button class="filter-tab active" data-tab="0" onclick="setTab(0)">Shop by Style<span class="tab-dot" id="dot-style"></span></button>
+    <button class="filter-tab" data-tab="1" onclick="setTab(1)">Shop by Occasion<span class="tab-dot" id="dot-occasion"></span></button>
+    <button class="filter-tab" data-tab="2" onclick="setTab(2)">Discover by Stone<span class="tab-dot" id="dot-stone"></span></button>
+  </div>
+  <div class="filter-status" id="filter-status"><!-- filled by JS --></div>
+
+  <div class="filter-slider-viewport">
+    <div class="filter-slider-track" id="filter-slider-track">
+      <div class="filter-panel">
+        <div class="section-intro">Every ring has a shape. Find the one that matches yours.</div>
+        <div class="style-grid" id="style-grid"><!-- filled by JS --></div>
+      </div>
+      <div class="filter-panel">
+        <div class="section-intro">Where are you wearing it? Find the mood that fits your moment.</div>
+        <div class="occasion-grid" id="occasion-grid"><!-- filled by JS --></div>
+      </div>
+      <div class="filter-panel">
+        <div class="section-intro">Every stone tells a different story. Explore the collection that speaks to you.</div>
+        <div class="stone-grid" id="stone-grid"><!-- filled by JS --></div>
+      </div>
+    </div>
+  </div>
 </div>
 
+<div id="filter-sentinel"></div>
+<div class="filter-bar" id="filter-bar"><!-- filled by JS --></div>
+
 <div class="grid-section">
+  <div class="grid-heading" id="grid-heading"><!-- filled by JS --></div>
   <div class="pgrid" id="pgrid"><!-- filled by JS --></div>
   <div class="load-more-wrap">
     <button class="load-more" id="load-more" onclick="loadMore()">Load More</button>
@@ -232,17 +352,46 @@ nav{
 </div>
 
 <div class="dev-note">
-  <strong>Note for Dennis:</strong> Removed "Refine by Finish" per your request — "Discover by Stone" is the
-  only filter now. The stone cards above only show Moissanite, Cubic Zirconia and Gemstones because those are
-  the only stone types actually in the Rings collection right now — no Pearl rings exist in inventory, so I
-  left that tile out rather than show a card that leads to zero products. One thing to flag: today's material
-  data gives each product exactly one label (e.g. a product is either "Moissanite" or "Gold," never both), so
-  rings whose only label is a metal (not a stone) won't appear under any of these tiles — they still show in
-  the default unfiltered view, just aren't reachable via a filter click.
+  <strong>Note for Dennis:</strong> Added two new filters — "Shop by Style" and "Shop by Occasion" — on top of
+  "Discover by Stone." All three combine (e.g. Solitaire → Statement → Moissanite), and every tile's count
+  reflects the other two active filters, so a tile never promises products that don't exist.
+  <br><br>
+  Style and Occasion were tagged from the real product descriptions and specs already in our database (design,
+  ring_type, stone-setting fields) — not guessed from product names. The 7 style categories are cross-checked
+  against Silverbene's own published ring taxonomy (their "Open Rings" category is their single largest; they
+  also use "Tennis," "Signet," and "Vintage" as real categories) and 2025-26 market data (solitaire is still the
+  most-sold ring style overall; stacking/thin rings are the current dominant trend). Occasion reuses the exact
+  same 5-tag vocabulary already live on Bracelets, so the site has one consistent mood language instead of a new
+  one per collection. Two rings (Green Cactus Flower, Dual Pear Moissanite) have no real style signal, so they're
+  left untagged for Style rather than force-fit — they still show in the default unfiltered view.
+  <br><br>
+  <strong>Audit pass:</strong> after building this, I checked all 29 "Statement"-tagged rings against their real
+  photos, not just the text — "Statement" was the biggest, most subjective bucket and the one most likely to
+  absorb marketing-copy noise (products literally named "Statement Ring" that are actually delicate, thin bands).
+  Found and fixed 6 mistags this way: 704, 622, 1308 were reclassified to Stacking (thin bands, not bold pieces),
+  1157 dropped its Statement tag (kept Open & Adjustable), 1291 moved to Solitaire, and 1213 was left untagged.
+  The other 6 style categories were spot-checked but not fully audited the same way — worth doing before this
+  goes live for real.
+  <br><br>
+  The stone-filter gap from before still applies: today's material data gives each product exactly one label
+  (e.g. "Moissanite" or "Gold," never both), so rings whose only label is a metal won't appear under any Stone
+  tile — they're still reachable via Style/Occasion or the unfiltered view.
 </div>
 
 <script>
-const PRODUCTS = [{"id": 628, "name": "Geometric T Bar Open Ring", "price": 52.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922702/mikisi/products/628_primary.jpg", "mat": "gold"}, {"id": 525, "name": "Olive Leaf Zirconia Ring", "price": 54.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784918931/mikisi/products/525_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1157, "name": "Geometric Diamond Ring", "price": 55.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316789/mikisi/products/1157_primary.jpg", "mat": "silver"}, {"id": 622, "name": "Geometric Baguette Round Ring", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921725/mikisi/products/622_primary.jpg", "mat": "gold"}, {"id": 1213, "name": "Dual Pear Moissanite Ring", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785567590/mikisi/products/1213_primary.jpg", "mat": "moissanite"}, {"id": 1187, "name": "Brushed Star Pattern Ring", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785036545/mikisi/products/1187_primary.jpg", "mat": "silver"}, {"id": 620, "name": "Hugging Hands Open Ring", "price": 74.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922580/mikisi/products/620_primary.jpg", "mat": "gold"}, {"id": 625, "name": "Twisted Band Geometric Ring", "price": 75.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922712/mikisi/products/625_primary.jpg", "mat": "gold"}, {"id": 626, "name": "Square Cushion Cluster Ring", "price": 75.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920019/mikisi/products/626_primary.jpg", "mat": "gold"}, {"id": 597, "name": "Green Cactus Flower Ring", "price": 76.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1780941576/mikisi/products/597_clean.jpg", "mat": "gold"}, {"id": 1154, "name": "Crescent Moon and Eight Point Star Ring", "price": 76.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316789/mikisi/products/1154_primary.jpg", "mat": "white_gold"}, {"id": 656, "name": "Heart Halo Ring", "price": 78.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921736/mikisi/products/656_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1301, "name": "LOVE Letter Script Ring", "price": 79.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644469/mikisi/products/1301_primary.jpg", "mat": "silver"}, {"id": 699, "name": "Spinning Beads CZ Ring", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921132/mikisi/products/699_primary.jpg", "mat": "cubic_zirconia"}, {"id": 657, "name": "Brilliant Cut Stone Ring", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921460/mikisi/products/657_primary.jpg", "mat": "silver"}, {"id": 1169, "name": "Sun Moon Portrait Signet Ring", "price": 81.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784663061/mikisi/products/1169_primary.jpg", "mat": "gold"}, {"id": 701, "name": "Linear CZ Round Ring", "price": 81.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921949/mikisi/products/701_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1214, "name": "Round Moissanite Six Prong Ring", "price": 81.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560452/mikisi/products/1214_primary.jpg", "mat": "moissanite"}, {"id": 1310, "name": "Three Stone Moissanite Ring", "price": 81.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644672/mikisi/products/1310_primary.jpg", "mat": "moissanite"}, {"id": 1297, "name": "Pear Cut Moissanite Curved Wave Ring", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644378/mikisi/products/1297_primary.jpg", "mat": "moissanite"}, {"id": 623, "name": "Minimalist Geometric Wave Ring", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919812/mikisi/products/623_primary.jpg", "mat": "gold"}, {"id": 704, "name": "Wave & Flower Statement Ring", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921663/mikisi/products/704_primary.jpg", "mat": "silver"}, {"id": 698, "name": "Star & Crescent Moon Ring", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921905/mikisi/products/698_primary.jpg", "mat": "gold"}, {"id": 710, "name": "Sunflower CZ Ring", "price": 83.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922751/mikisi/products/710_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1258, "name": "Oval Six Prong Moissanite Ring", "price": 83.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643434/mikisi/products/1258_primary.jpg", "mat": "moissanite"}, {"id": 624, "name": "Multicolor Geometric Statement Ring", "price": 84.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784918885/mikisi/products/624_primary.jpg", "mat": "gold"}, {"id": 1291, "name": "Marquise Openwork Bypass Ring", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644267/mikisi/products/1291_primary.jpg", "mat": "gold"}, {"id": 1224, "name": "Pear Shaped Moissanite Solitaire Ring", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553304/mikisi/products/1224_primary.jpg", "mat": "moissanite"}, {"id": 1231, "name": "Alternating Round Square Eternity Ring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560465/mikisi/products/1231_primary.jpg", "mat": "moissanite"}, {"id": 1318, "name": "Green Marquise Moissanite Ring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644806/mikisi/products/1318_primary.jpg", "mat": "moissanite"}, {"id": 1233, "name": "Marquise Cut Moissanite Halo Ring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553310/mikisi/products/1233_primary.jpg", "mat": "moissanite"}, {"id": 615, "name": "Geometric Cubic Zirconia Multi Band", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921727/mikisi/products/615_primary.jpg", "mat": "cubic_zirconia"}, {"id": 712, "name": "Green Epoxy Snake Ring", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924658/mikisi/products/712_primary.jpg", "mat": "silver"}, {"id": 1299, "name": "Vintage Pear Cut Crown Ring", "price": 87.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644430/mikisi/products/1299_primary.jpg", "mat": "moissanite"}, {"id": 1305, "name": "Five Stone Crown Ring", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644546/mikisi/products/1305_primary.jpg", "mat": "moissanite"}, {"id": 571, "name": "Double Marquise Interlaced Ring", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1780941613/mikisi/products/571_clean.jpg", "mat": "white_gold"}, {"id": 1215, "name": "Oval Moissanite Three Stone Ring", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560470/mikisi/products/1215_primary.jpg", "mat": "moissanite"}, {"id": 1117, "name": "Vintage Faith Letter Cross Open Ring", "price": 89.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919156/mikisi/products/1117_primary.jpg", "mat": "gold"}, {"id": 1222, "name": "Geometric Four Stone Moissanite Ring", "price": 90.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553301/mikisi/products/1222_primary.jpg", "mat": "moissanite"}, {"id": 1292, "name": "Marquise Double Band Ring", "price": 104.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644287/mikisi/products/1292_primary.jpg", "mat": "gold"}, {"id": 1288, "name": "Blue Green Moissanite Stack Ring", "price": 104.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644202/mikisi/products/1288_primary.jpg", "mat": "moissanite"}, {"id": 1321, "name": "Geometric Multi-Stone Moissanite Ring", "price": 104.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644873/mikisi/products/1321_primary.jpg", "mat": "moissanite"}, {"id": 1290, "name": "Pear Cut Moissanite Ring", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644237/mikisi/products/1290_primary.jpg", "mat": "moissanite"}, {"id": 1122, "name": "Crown Wave Pear Moissanite Ring", "price": 107.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919889/mikisi/products/1122_primary.jpg", "mat": "moissanite"}, {"id": 720, "name": "Baguette Cubic Zirconia Statement Ring", "price": 107.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919469/mikisi/products/720_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1225, "name": "Oval Blue Green Moissanite Ring", "price": 108.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785567574/mikisi/products/1225_primary.jpg", "mat": "moissanite"}, {"id": 1289, "name": "Full Band Moissanite Ring", "price": 108.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644217/mikisi/products/1289_primary.jpg", "mat": "moissanite"}, {"id": 1306, "name": "Green Oval Moissanite Stacking Ring", "price": 110.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644568/mikisi/products/1306_primary.jpg", "mat": "moissanite"}, {"id": 1223, "name": "Marquise Cut Moissanite Twist Ring", "price": 110.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560456/mikisi/products/1223_primary.jpg", "mat": "moissanite"}, {"id": 700, "name": "Textured Pattern Open Ring", "price": 111.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920723/mikisi/products/700_primary.jpg", "mat": "gold"}, {"id": 1212, "name": "Pear Moissanite Stackable Ring Set", "price": 111.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553298/mikisi/products/1212_primary.jpg", "mat": "moissanite"}, {"id": 1210, "name": "Oval Moissanite Two Piece Ring Set", "price": 111.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785567588/mikisi/products/1210_primary.jpg", "mat": "moissanite"}, {"id": 1211, "name": "Round Moissanite Halo Flower Ring", "price": 112.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553299/mikisi/products/1211_primary.jpg", "mat": "moissanite"}, {"id": 1217, "name": "Pear Moissanite Double Band Ring", "price": 112.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553309/mikisi/products/1217_primary.jpg", "mat": "moissanite"}, {"id": 685, "name": "Peacock Feather Ring", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923355/mikisi/products/685_primary.jpg", "mat": "cubic_zirconia"}, {"id": 577, "name": "Diamond Teardrop Wedding Ring", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922925/mikisi/products/577_primary.jpg", "mat": "white_gold"}, {"id": 1232, "name": "Pear Cut Crown Cluster Ring", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553297/mikisi/products/1232_primary.jpg", "mat": "moissanite"}, {"id": 578, "name": "Rectangular Stone Teardrop Ring", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921290/mikisi/products/578_primary.jpg", "mat": "rose_gold"}, {"id": 1308, "name": "Marquise Moissanite Chevron Ring", "price": 115.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644616/mikisi/products/1308_primary.jpg", "mat": "moissanite"}, {"id": 684, "name": "Butterfly Ring", "price": 116.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923763/mikisi/products/684_primary.jpg", "mat": "cubic_zirconia"}, {"id": 1216, "name": "Emerald Cut Moissanite Ring Set", "price": 118.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560453/mikisi/products/1216_primary.jpg", "mat": "moissanite"}, {"id": 1218, "name": "Geometric Emerald Cut Moissanite Ring Set", "price": 118.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560467/mikisi/products/1218_primary.jpg", "mat": "moissanite"}, {"id": 1309, "name": "Marquise Moissanite Stack Ring", "price": 118.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644638/mikisi/products/1309_primary.jpg", "mat": "moissanite"}, {"id": 1220, "name": "Heart Shape Moissanite Wide Band Ring", "price": 120.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560468/mikisi/products/1220_primary.jpg", "mat": "moissanite"}, {"id": 574, "name": "Heart and Pear Gemstone Ring", "price": 122.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919604/mikisi/products/574_primary.jpg", "mat": "silver"}, {"id": 579, "name": "Light Yellow Cushion-Cut Zirconia Full-Band Eternity 925 Sterling Silver Ring", "price": 122.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784918953/mikisi/products/579_primary.jpg", "mat": "cubic_zirconia"}, {"id": 688, "name": "Vintage Heart Ring", "price": 126.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923608/mikisi/products/688_primary.jpg", "mat": "silver"}, {"id": 572, "name": "Green Emerald Crown Halo Ring", "price": 132.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784918861/mikisi/products/572_primary.jpg", "mat": "semi_precious"}, {"id": 573, "name": "Pink Oval Cocktail Ring", "price": 135.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919757/mikisi/products/573_primary.jpg", "mat": "rose_gold"}, {"id": 570, "name": "Bright Yellow Rectangular Halo Ring", "price": 249.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923580/mikisi/products/570_primary.jpg", "mat": "silver"}];
+const PRODUCTS = [{"id": 628, "name": "Geometric T Bar Open Ring", "price": 52.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922702/mikisi/products/628_primary.jpg", "mat": "gold", "style_tags": ["open_adjustable"], "occasion": ["everyday"]}, {"id": 525, "name": "Olive Leaf Zirconia Ring", "price": 54.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784918931/mikisi/products/525_primary.jpg", "mat": "cubic_zirconia", "style_tags": ["open_adjustable"], "occasion": ["everyday"]}, {"id": 1157, "name": "Geometric Diamond Ring", "price": 55.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316789/mikisi/products/1157_primary.jpg", "mat": "silver", "style_tags": ["open_adjustable"], "occasion": ["after_hours"]}, {"id": 622, "name": "Geometric Baguette Round Ring", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921725/mikisi/products/622_primary.jpg", "mat": "gold", "style_tags": ["stacking"], "occasion": ["polished"]}, {"id": 1213, "name": "Dual Pear Moissanite Ring", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785567590/mikisi/products/1213_primary.jpg", "mat": "moissanite", "occasion": ["occasion"]}, {"id": 1187, "name": "Brushed Star Pattern Ring", "price": 73.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785036545/mikisi/products/1187_primary.jpg", "mat": "silver", "style_tags": ["open_adjustable"], "occasion": ["everyday"]}, {"id": 620, "name": "Hugging Hands Open Ring", "price": 74.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922580/mikisi/products/620_primary.jpg", "mat": "gold", "style_tags": ["open_adjustable"], "occasion": ["everyday"]}, {"id": 625, "name": "Twisted Band Geometric Ring", "price": 75.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922712/mikisi/products/625_primary.jpg", "mat": "gold", "style_tags": ["solitaire"], "occasion": ["polished"]}, {"id": 626, "name": "Square Cushion Cluster Ring", "price": 75.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920019/mikisi/products/626_primary.jpg", "mat": "gold", "style_tags": ["open_adjustable", "statement"], "occasion": ["polished"]}, {"id": 597, "name": "Green Cactus Flower Ring", "price": 76.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1780941576/mikisi/products/597_clean.jpg", "mat": "gold", "occasion": ["weekend"]}, {"id": 1154, "name": "Crescent Moon and Eight Point Star Ring", "price": 76.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316789/mikisi/products/1154_primary.jpg", "mat": "white_gold", "style_tags": ["open_adjustable"], "occasion": ["weekend"]}, {"id": 656, "name": "Heart Halo Ring", "price": 78.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921736/mikisi/products/656_primary.jpg", "mat": "cubic_zirconia", "style_tags": ["statement"], "occasion": ["everyday"]}, {"id": 1301, "name": "LOVE Letter Script Ring", "price": 79.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644469/mikisi/products/1301_primary.jpg", "mat": "silver", "style_tags": ["signet"], "occasion": ["everyday"]}, {"id": 699, "name": "Spinning Beads CZ Ring", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921132/mikisi/products/699_primary.jpg", "mat": "cubic_zirconia", "style_tags": ["open_adjustable"], "occasion": ["weekend"]}, {"id": 657, "name": "Brilliant Cut Stone Ring", "price": 80.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921460/mikisi/products/657_primary.jpg", "mat": "silver", "style_tags": ["solitaire"], "occasion": ["polished"]}, {"id": 1169, "name": "Sun Moon Portrait Signet Ring", "price": 81.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784663061/mikisi/products/1169_primary.jpg", "mat": "gold", "style_tags": ["signet", "open_adjustable"], "occasion": ["everyday"]}, {"id": 701, "name": "Linear CZ Round Ring", "price": 81.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921949/mikisi/products/701_primary.jpg", "mat": "cubic_zirconia", "style_tags": ["open_adjustable"], "occasion": ["polished"]}, {"id": 1214, "name": "Round Moissanite Six Prong Ring", "price": 81.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560452/mikisi/products/1214_primary.jpg", "mat": "moissanite", "style_tags": ["solitaire"], "occasion": ["occasion"]}, {"id": 1310, "name": "Three Stone Moissanite Ring", "price": 81.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644672/mikisi/products/1310_primary.jpg", "mat": "moissanite", "style_tags": ["solitaire"], "occasion": ["occasion"]}, {"id": 1297, "name": "Pear Cut Moissanite Curved Wave Ring", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644378/mikisi/products/1297_primary.jpg", "mat": "moissanite", "style_tags": ["solitaire"], "occasion": ["everyday"]}, {"id": 623, "name": "Minimalist Geometric Wave Ring", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919812/mikisi/products/623_primary.jpg", "mat": "gold", "style_tags": ["stacking"], "occasion": ["everyday"]}, {"id": 704, "name": "Wave & Flower Statement Ring", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921663/mikisi/products/704_primary.jpg", "mat": "silver", "style_tags": ["stacking"], "occasion": ["everyday"]}, {"id": 698, "name": "Star & Crescent Moon Ring", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921905/mikisi/products/698_primary.jpg", "mat": "gold", "style_tags": ["open_adjustable"], "occasion": ["weekend"]}, {"id": 710, "name": "Sunflower CZ Ring", "price": 83.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922751/mikisi/products/710_primary.jpg", "mat": "cubic_zirconia", "style_tags": ["open_adjustable"], "occasion": ["weekend"]}, {"id": 1258, "name": "Oval Six Prong Moissanite Ring", "price": 83.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643434/mikisi/products/1258_primary.jpg", "mat": "moissanite", "style_tags": ["solitaire"], "occasion": ["polished"]}, {"id": 624, "name": "Multicolor Geometric Statement Ring", "price": 84.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784918885/mikisi/products/624_primary.jpg", "mat": "gold", "style_tags": ["statement"], "occasion": ["after_hours"]}, {"id": 1291, "name": "Marquise Openwork Bypass Ring", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644267/mikisi/products/1291_primary.jpg", "mat": "gold", "style_tags": ["solitaire"], "occasion": ["polished"]}, {"id": 1224, "name": "Pear Shaped Moissanite Solitaire Ring", "price": 84.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553304/mikisi/products/1224_primary.jpg", "mat": "moissanite", "style_tags": ["solitaire"], "occasion": ["everyday"]}, {"id": 1231, "name": "Alternating Round Square Eternity Ring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560465/mikisi/products/1231_primary.jpg", "mat": "moissanite", "style_tags": ["tennis"], "occasion": ["occasion"]}, {"id": 1318, "name": "Green Marquise Moissanite Ring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644806/mikisi/products/1318_primary.jpg", "mat": "moissanite", "style_tags": ["solitaire"], "occasion": ["everyday"]}, {"id": 1233, "name": "Marquise Cut Moissanite Halo Ring", "price": 85.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553310/mikisi/products/1233_primary.jpg", "mat": "moissanite", "style_tags": ["statement"], "occasion": ["after_hours"]}, {"id": 615, "name": "Geometric Cubic Zirconia Multi Band", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921727/mikisi/products/615_primary.jpg", "mat": "cubic_zirconia", "style_tags": ["open_adjustable"], "occasion": ["polished"]}, {"id": 712, "name": "Green Epoxy Snake Ring", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924658/mikisi/products/712_primary.jpg", "mat": "silver", "style_tags": ["open_adjustable", "statement"], "occasion": ["after_hours"]}, {"id": 1299, "name": "Vintage Pear Cut Crown Ring", "price": 87.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644430/mikisi/products/1299_primary.jpg", "mat": "moissanite", "style_tags": ["vintage", "statement"], "occasion": ["occasion"]}, {"id": 1305, "name": "Five Stone Crown Ring", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644546/mikisi/products/1305_primary.jpg", "mat": "moissanite", "style_tags": ["statement"], "occasion": ["occasion"]}, {"id": 571, "name": "Double Marquise Interlaced Ring", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1780941613/mikisi/products/571_clean.jpg", "mat": "white_gold", "style_tags": ["statement"], "occasion": ["polished"]}, {"id": 1215, "name": "Oval Moissanite Three Stone Ring", "price": 88.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560470/mikisi/products/1215_primary.jpg", "mat": "moissanite", "style_tags": ["solitaire"], "occasion": ["polished"]}, {"id": 1117, "name": "Vintage Faith Letter Cross Open Ring", "price": 89.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919156/mikisi/products/1117_primary.jpg", "mat": "gold", "style_tags": ["vintage", "signet"], "occasion": ["everyday"]}, {"id": 1222, "name": "Geometric Four Stone Moissanite Ring", "price": 90.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553301/mikisi/products/1222_primary.jpg", "mat": "moissanite", "style_tags": ["open_adjustable", "statement"], "occasion": ["everyday"]}, {"id": 1292, "name": "Marquise Double Band Ring", "price": 104.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644287/mikisi/products/1292_primary.jpg", "mat": "gold", "style_tags": ["stacking"], "occasion": ["polished"]}, {"id": 1288, "name": "Blue Green Moissanite Stack Ring", "price": 104.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644202/mikisi/products/1288_primary.jpg", "mat": "moissanite", "style_tags": ["stacking"], "occasion": ["everyday"]}, {"id": 1321, "name": "Geometric Multi-Stone Moissanite Ring", "price": 104.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644873/mikisi/products/1321_primary.jpg", "mat": "moissanite", "style_tags": ["statement"], "occasion": ["after_hours"]}, {"id": 1290, "name": "Pear Cut Moissanite Ring", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644237/mikisi/products/1290_primary.jpg", "mat": "moissanite", "style_tags": ["solitaire"], "occasion": ["occasion"]}, {"id": 1122, "name": "Crown Wave Pear Moissanite Ring", "price": 107.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919889/mikisi/products/1122_primary.jpg", "mat": "moissanite", "style_tags": ["statement"], "occasion": ["polished"]}, {"id": 720, "name": "Baguette Cubic Zirconia Statement Ring", "price": 107.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919469/mikisi/products/720_primary.jpg", "mat": "cubic_zirconia", "style_tags": ["statement"], "occasion": ["after_hours"]}, {"id": 1225, "name": "Oval Blue Green Moissanite Ring", "price": 108.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785567574/mikisi/products/1225_primary.jpg", "mat": "moissanite", "style_tags": ["solitaire"], "occasion": ["occasion"]}, {"id": 1289, "name": "Full Band Moissanite Ring", "price": 108.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644217/mikisi/products/1289_primary.jpg", "mat": "moissanite", "style_tags": ["tennis"], "occasion": ["polished"]}, {"id": 1306, "name": "Green Oval Moissanite Stacking Ring", "price": 110.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644568/mikisi/products/1306_primary.jpg", "mat": "moissanite", "style_tags": ["stacking"], "occasion": ["everyday"]}, {"id": 1223, "name": "Marquise Cut Moissanite Twist Ring", "price": 110.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560456/mikisi/products/1223_primary.jpg", "mat": "moissanite", "style_tags": ["solitaire"], "occasion": ["polished"]}, {"id": 700, "name": "Textured Pattern Open Ring", "price": 111.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920723/mikisi/products/700_primary.jpg", "mat": "gold", "style_tags": ["open_adjustable"], "occasion": ["weekend"]}, {"id": 1212, "name": "Pear Moissanite Stackable Ring Set", "price": 111.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553298/mikisi/products/1212_primary.jpg", "mat": "moissanite", "style_tags": ["stacking"], "occasion": ["polished"]}, {"id": 1210, "name": "Oval Moissanite Two Piece Ring Set", "price": 111.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785567588/mikisi/products/1210_primary.jpg", "mat": "moissanite", "style_tags": ["stacking"], "occasion": ["polished"]}, {"id": 1211, "name": "Round Moissanite Halo Flower Ring", "price": 112.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553299/mikisi/products/1211_primary.jpg", "mat": "moissanite", "style_tags": ["vintage", "statement"], "occasion": ["occasion"]}, {"id": 1217, "name": "Pear Moissanite Double Band Ring", "price": 112.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553309/mikisi/products/1217_primary.jpg", "mat": "moissanite", "style_tags": ["stacking"], "occasion": ["polished"]}, {"id": 685, "name": "Peacock Feather Ring", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923355/mikisi/products/685_primary.jpg", "mat": "cubic_zirconia", "style_tags": ["statement"], "occasion": ["after_hours"]}, {"id": 577, "name": "Diamond Teardrop Wedding Ring", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922925/mikisi/products/577_primary.jpg", "mat": "white_gold", "style_tags": ["statement"], "occasion": ["occasion"]}, {"id": 1232, "name": "Pear Cut Crown Cluster Ring", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785553297/mikisi/products/1232_primary.jpg", "mat": "moissanite", "style_tags": ["statement"], "occasion": ["after_hours"]}, {"id": 578, "name": "Rectangular Stone Teardrop Ring", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921290/mikisi/products/578_primary.jpg", "mat": "rose_gold", "style_tags": ["statement"], "occasion": ["polished"]}, {"id": 1308, "name": "Marquise Moissanite Chevron Ring", "price": 115.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644616/mikisi/products/1308_primary.jpg", "mat": "moissanite", "style_tags": ["stacking"], "occasion": ["after_hours"]}, {"id": 684, "name": "Butterfly Ring", "price": 116.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923763/mikisi/products/684_primary.jpg", "mat": "cubic_zirconia", "style_tags": ["statement"], "occasion": ["everyday"]}, {"id": 1216, "name": "Emerald Cut Moissanite Ring Set", "price": 118.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560453/mikisi/products/1216_primary.jpg", "mat": "moissanite", "style_tags": ["stacking"], "occasion": ["occasion"]}, {"id": 1218, "name": "Geometric Emerald Cut Moissanite Ring Set", "price": 118.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560467/mikisi/products/1218_primary.jpg", "mat": "moissanite", "style_tags": ["stacking", "statement"], "occasion": ["occasion"]}, {"id": 1309, "name": "Marquise Moissanite Stack Ring", "price": 118.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785644638/mikisi/products/1309_primary.jpg", "mat": "moissanite", "style_tags": ["stacking"], "occasion": ["occasion"]}, {"id": 1220, "name": "Heart Shape Moissanite Wide Band Ring", "price": 120.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785560468/mikisi/products/1220_primary.jpg", "mat": "moissanite", "style_tags": ["statement"], "occasion": ["after_hours"]}, {"id": 574, "name": "Heart and Pear Gemstone Ring", "price": 122.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919604/mikisi/products/574_primary.jpg", "mat": "silver", "style_tags": ["open_adjustable"], "occasion": ["everyday"]}, {"id": 579, "name": "Light Yellow Cushion-Cut Zirconia Full-Band Eternity 925 Sterling Silver Ring", "price": 122.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784918953/mikisi/products/579_primary.jpg", "mat": "cubic_zirconia", "style_tags": ["tennis"], "occasion": ["occasion"]}, {"id": 688, "name": "Vintage Heart Ring", "price": 126.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923608/mikisi/products/688_primary.jpg", "mat": "silver", "style_tags": ["vintage"], "occasion": ["everyday"]}, {"id": 572, "name": "Green Emerald Crown Halo Ring", "price": 132.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784918861/mikisi/products/572_primary.jpg", "mat": "semi_precious", "style_tags": ["statement"], "occasion": ["occasion"]}, {"id": 573, "name": "Pink Oval Cocktail Ring", "price": 135.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919757/mikisi/products/573_primary.jpg", "mat": "rose_gold", "style_tags": ["statement"], "occasion": ["occasion"]}, {"id": 570, "name": "Bright Yellow Rectangular Halo Ring", "price": 249.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923580/mikisi/products/570_primary.jpg", "mat": "silver", "style_tags": ["statement"], "occasion": ["after_hours"]}];
+
+// "The Edit" — curated picks lead the default (no-filter) view; one hero
+// pick per style category, weighted toward the categories with the deepest
+// real inventory (Statement/Tennis/Open & Adjustable get 2), spanning the
+// full price range ($54.90-$249.90) rather than just the cheapest items.
+// No separate "unfold" mode -- Load More just continues seamlessly from the
+// curated picks into the rest of the catalog, one flow instead of two.
+const EDIT_IDS = [1224, 700, 1210, 573, 570, 579, 1289, 1211, 1169, 525];
+const DEFAULT_ORDER = [
+  ...EDIT_IDS.map(id => PRODUCTS.find(p => p.id === id)).filter(Boolean),
+  ...PRODUCTS.filter(p => !EDIT_IDS.includes(p.id)),
+];
 
 const STONE_META = {
   moissanite:     { label:'Moissanite',     tag:'The brilliance of diamonds, crafted to shine for life.' },
@@ -252,9 +401,32 @@ const STONE_META = {
 };
 const STONE_ORDER = ['moissanite','cubic_zirconia','semi_precious','pearl'];
 
-let activeFilter = null; // e.g. 'moissanite' -- single bucket, see dev-note
-let visibleCount = 16;
-const PAGE_SIZE = 16;
+const STYLE_META = {
+  solitaire:       { label:'Solitaire',        tag:'One stone, quietly confident — the classic that never dates.' },
+  open_adjustable: { label:'Open & Adjustable', tag:'No guessing your size. Made to fit, right out of the box.' },
+  stacking:        { label:'Stacking',          tag:'Thin bands built to layer, mix, and make your own combination.' },
+  statement:       { label:'Statement',         tag:'Bold enough to wear alone and be the whole outfit.' },
+  tennis:          { label:'Tennis',            tag:'An unbroken line of light, worn as one continuous ring.' },
+  vintage:         { label:'Vintage',           tag:'Antique finishes and old-world detail, made to feel inherited.' },
+  signet:          { label:'Signet',            tag:'A personal mark — initials, symbols, quiet meaning.' },
+};
+const STYLE_ORDER = ['solitaire','open_adjustable','stacking','statement','tennis','vintage','signet'];
+
+const OCCASION_META = {
+  everyday:    { label:'Everyday',    tag:'Effortless pieces for wherever the day takes you.' },
+  polished:    { label:'Polished',    tag:'For the days you want everything to feel considered.' },
+  after_hours: { label:'After Hours', tag:'A little more sparkle after sunset.' },
+  occasion:    { label:'Occasion',    tag:'For moments worth dressing for.' },
+  weekend:     { label:'Weekend',     tag:'Easy pieces for slower days.' },
+};
+const OCCASION_ORDER = ['everyday','polished','after_hours','occasion','weekend'];
+
+let activeStone = null;
+let activeStyle = null;
+let activeOccasion = null;
+const INITIAL_COUNT = 8;  // ~2 rows on the 4-column desktop grid -- a taste, not the whole catalog at once
+const PAGE_SIZE = 16;     // each subsequent "Load More" click
+let visibleCount = INITIAL_COUNT;
 let wishlist = []; // visual-only in this demo -- no account/persistence layer here
 
 function toggleWish(id){
@@ -266,19 +438,27 @@ function toggleWish(id){
   btn.textContent = liked ? '♥' : '♡';
 }
 
-function counts(){
-  const c = {};
-  PRODUCTS.forEach(p => c[p.mat] = (c[p.mat]||0) + 1);
-  return c;
+// Every tile's count reflects the OTHER two active filters (not itself), so
+// a tile never promises products a combined filter would return zero of --
+// true bidirectional filtering across all three dimensions, not just a
+// single top-down hierarchy.
+function filteredExcept(exclude){
+  return PRODUCTS.filter(p => {
+    if (exclude !== 'stone' && activeStone && p.mat !== activeStone) return false;
+    if (exclude !== 'style' && activeStyle && !(p.style_tags||[]).includes(activeStyle)) return false;
+    if (exclude !== 'occasion' && activeOccasion && !(p.occasion||[]).includes(activeOccasion)) return false;
+    return true;
+  });
 }
 
 function renderStoneCards(){
-  const c = counts();
+  const c = {};
+  filteredExcept('stone').forEach(p => { if (p.mat) c[p.mat] = (c[p.mat]||0) + 1; });
   const wrap = document.getElementById('stone-grid');
   wrap.innerHTML = STONE_ORDER.filter(k => c[k] > 0).map(k => {
     const meta = STONE_META[k];
     const sample = PRODUCTS.find(p => p.mat === k);
-    return `<div class="stone-card" data-mat="${k}" onclick="setFilter('${k}')">
+    return `<div class="stone-card ${activeStone===k?'active':''}" data-mat="${k}" onclick="setStoneFilter('${k}')">
       <div class="stone-card-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
       <div class="stone-card-name">${meta.label}</div>
       <div class="stone-card-tag">${meta.tag}</div>
@@ -286,22 +466,136 @@ function renderStoneCards(){
   }).join('');
 }
 
-function setFilter(mat){
-  activeFilter = (activeFilter === mat) ? null : mat;
-  visibleCount = PAGE_SIZE;
-  render();
+function renderStyleCards(){
+  const c = {};
+  filteredExcept('style').forEach(p => (p.style_tags||[]).forEach(s => c[s] = (c[s]||0) + 1));
+  const wrap = document.getElementById('style-grid');
+  wrap.innerHTML = STYLE_ORDER.filter(k => c[k] > 0).map(k => {
+    const meta = STYLE_META[k];
+    const sample = PRODUCTS.find(p => (p.style_tags||[]).includes(k));
+    return `<div class="style-card ${activeStyle===k?'active':''}" data-style="${k}" onclick="setStyleFilter('${k}')">
+      <div class="style-card-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
+      <div class="style-card-name">${meta.label}</div>
+      <div class="style-card-tag">${meta.tag}</div>
+    </div>`;
+  }).join('');
 }
+
+function renderOccasionCards(){
+  const c = {};
+  filteredExcept('occasion').forEach(p => (p.occasion||[]).forEach(o => c[o] = (c[o]||0) + 1));
+  const wrap = document.getElementById('occasion-grid');
+  wrap.innerHTML = OCCASION_ORDER.filter(k => c[k] > 0).map(k => {
+    const meta = OCCASION_META[k];
+    const sample = PRODUCTS.find(p => (p.occasion||[]).includes(k));
+    return `<div class="occasion-card ${activeOccasion===k?'active':''}" data-occasion="${k}" onclick="setOccasionFilter('${k}')">
+      <div class="occasion-card-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
+      <div class="occasion-card-name">${meta.label}</div>
+      <div class="occasion-card-tag">${meta.tag}</div>
+    </div>`;
+  }).join('');
+}
+
+function setStoneFilter(mat){
+  activeStone = (activeStone === mat) ? null : mat;
+  visibleCount = INITIAL_COUNT;
+  renderStyleCards(); renderOccasionCards(); render();
+}
+function setStyleFilter(style){
+  activeStyle = (activeStyle === style) ? null : style;
+  visibleCount = INITIAL_COUNT;
+  renderStoneCards(); renderOccasionCards(); render();
+}
+function setOccasionFilter(occasion){
+  activeOccasion = (activeOccasion === occasion) ? null : occasion;
+  visibleCount = INITIAL_COUNT;
+  renderStoneCards(); renderStyleCards(); render();
+}
+
 function clearFilter(){
-  activeFilter = null;
-  visibleCount = PAGE_SIZE;
-  render();
+  activeStone = activeStyle = activeOccasion = null;
+  visibleCount = INITIAL_COUNT;
+  renderStoneCards(); renderStyleCards(); renderOccasionCards(); render();
+}
+
+// Chips reflect exactly what's active; bar visibility (scrolled-past-tiles
+// AND at least one filter set) is handled separately by the scroll observer.
+function renderFilterBar(){
+  const chips = [];
+  if (activeStyle) chips.push({ label: STYLE_META[activeStyle].label, clear: () => setStyleFilter(activeStyle) });
+  if (activeOccasion) chips.push({ label: OCCASION_META[activeOccasion].label, clear: () => setOccasionFilter(activeOccasion) });
+  if (activeStone) chips.push({ label: STONE_META[activeStone].label, clear: () => setStoneFilter(activeStone) });
+
+  window.__clearChip = (i) => chips[i].clear();
+
+  const bar = document.getElementById('filter-bar');
+  if (!chips.length) { bar.innerHTML = ''; updateFilterBarVisibility(); return; }
+  bar.innerHTML = `<span class="filter-bar-label">Filtering by</span>` +
+    chips.map((c,i) => `<span class="filter-chip">${c.label}<button onclick="__clearChip(${i})" aria-label="Remove ${c.label}">×</button></span>`).join('') +
+    `<button class="filter-clear-all" onclick="clearFilter()">Clear all</button>`;
+  updateFilterBarVisibility();
+}
+
+let scrolledPastTiles = false;
+function updateFilterBarVisibility(){
+  const bar = document.getElementById('filter-bar');
+  const hasFilter = activeStyle || activeOccasion || activeStone;
+  bar.classList.toggle('visible', scrolledPastTiles && !!hasFilter);
+}
+
+// ── Filter hub tabs (Style/Occasion/Stone) — selections persist across tabs,
+// switching tabs never clears activeStyle/activeOccasion/activeStone.
+let activeTab = 0;
+function setTab(i){
+  activeTab = i;
+  document.querySelectorAll('.filter-tab').forEach((el, idx) => el.classList.toggle('active', idx === i));
+  document.getElementById('filter-slider-track').style.transform = `translateX(-${i * 33.3333}%)`;
+}
+
+function renderTabStatus(){
+  const n = [activeStyle, activeOccasion, activeStone].filter(Boolean).length;
+  document.getElementById('filter-status').innerHTML = n
+    ? `${n} filter${n > 1 ? 's' : ''} active · <button onclick="clearFilter()">Clear all</button>`
+    : '';
+  document.getElementById('dot-style').classList.toggle('active', !!activeStyle);
+  document.getElementById('dot-occasion').classList.toggle('active', !!activeOccasion);
+  document.getElementById('dot-stone').classList.toggle('active', !!activeStone);
+}
+
+function renderGridHeading(hasActiveFilter, count){
+  const el = document.getElementById('grid-heading');
+  if (hasActiveFilter) {
+    el.innerHTML = `<div class="grid-heading-title">${count} Ring${count === 1 ? '' : 's'}</div>`;
+  } else {
+    el.innerHTML = `<div class="grid-heading-title">The Edit</div>
+      <div class="grid-heading-sub">A few of our favorites, one of every shape.</div>`;
+  }
 }
 
 function render(){
-  const filtered = activeFilter ? PRODUCTS.filter(p => p.mat === activeFilter) : PRODUCTS;
+  const hasActiveFilter = !!(activeStyle || activeOccasion || activeStone);
+  // No separate "unfold" mode -- Load More just keeps going, from the
+  // curated picks (DEFAULT_ORDER's first 10) into the rest of the catalog.
+  const filtered = hasActiveFilter ? filteredExcept(null) : DEFAULT_ORDER;
 
-  document.querySelectorAll('.stone-card').forEach(el =>
-    el.classList.toggle('active', el.dataset.mat === activeFilter));
+  document.querySelectorAll('.stone-card[data-mat]').forEach(el =>
+    el.classList.toggle('active', el.dataset.mat === activeStone));
+  document.querySelectorAll('.style-card[data-style]').forEach(el =>
+    el.classList.toggle('active', el.dataset.style === activeStyle));
+  document.querySelectorAll('.occasion-card[data-occasion]').forEach(el =>
+    el.classList.toggle('active', el.dataset.occasion === activeOccasion));
+  renderFilterBar();
+  renderTabStatus();
+  renderGridHeading(hasActiveFilter, filtered.length);
+
+  if (!filtered.length){
+    document.getElementById('pgrid').innerHTML = `<div class="empty-state">
+      <p>No pieces match this combination yet.</p>
+      <button onclick="clearFilter()">Clear filters</button>
+    </div>`;
+    document.getElementById('load-more').classList.add('done');
+    return;
+  }
 
   const shown = filtered.slice(0, visibleCount);
   document.getElementById('pgrid').innerHTML = shown.map(p => {
@@ -334,7 +628,20 @@ function loadMore(){
 }
 
 renderStoneCards();
+renderStyleCards();
+renderOccasionCards();
 render();
+
+// Sentinel sits right before the product grid -- once it scrolls out of
+// view (user has passed the Style/Occasion/Stone tiles), the sticky filter
+// bar is allowed to show, but only if a filter is actually active.
+const filterObs = new IntersectionObserver(entries => {
+  // boundingClientRect.top < 0 means the sentinel is above the viewport --
+  // i.e. actually scrolled past going down, not just "not reached yet"
+  // (which also reports isIntersecting:false and would show the bar too early).
+  entries.forEach(e => { scrolledPastTiles = e.boundingClientRect.top < 0; updateFilterBarVisibility(); });
+}, { threshold: 0 });
+filterObs.observe(document.getElementById('filter-sentinel'));
 </script>
 
 </body>

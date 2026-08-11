@@ -6,7 +6,7 @@
 <title>Mikisi — Editorial Collection Demo (Bracelets)</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Jost:wght@200;300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
 :root{
   --cream:#fdf9f6;
@@ -36,6 +36,54 @@ body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--black);}
 }
 .demo-notice strong{color:var(--gold-light);font-weight:500;}
 
+/* ── STICKY FILTER BAR — appears once you've scrolled past the Style/
+   Occasion/Stone tile sections, so the editorial browsing experience up top
+   stays intact but you're never stuck scrolling back up to see or change
+   what's active. Hidden entirely when no filter is active -- nothing to
+   show, no clutter. ── */
+.filter-bar{
+  position:fixed;top:76px;left:0;right:0;z-index:55;
+  background:var(--cream);border-bottom:1px solid var(--border);
+  padding:14px 48px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  opacity:0;transform:translateY(-8px);pointer-events:none;
+  transition:opacity 0.25s ease,transform 0.25s ease;
+  box-shadow:0 4px 16px rgba(0,0,0,0.04);
+}
+.filter-bar.visible{opacity:1;transform:none;pointer-events:auto;}
+.filter-bar-label{font-family:'Jost',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);}
+.filter-chip{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:'Jost',sans-serif;font-size:11px;letter-spacing:0.5px;
+  background:var(--pink-pale);color:var(--pink-deep);
+  padding:8px 8px 8px 14px;border-radius:20px;cursor:default;
+}
+.filter-chip button{
+  background:none;border:none;cursor:pointer;color:var(--pink-deep);
+  font-size:14px;line-height:1;padding:2px 4px;
+}
+.filter-chip button:hover{color:var(--black);}
+.filter-clear-all{
+  font-family:'Jost',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--mid);background:none;border:none;cursor:pointer;text-decoration:underline;
+  margin-left:auto;
+}
+.filter-clear-all:hover{color:var(--black);}
+
+/* ── EMPTY STATE ── */
+.empty-state{
+  grid-column:1/-1;text-align:center;padding:80px 20px;
+}
+.empty-state p{
+  font-family:'EB Garamond',serif;font-size:19px;color:var(--charcoal);margin-bottom:18px;
+}
+.empty-state button{
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--black);background:none;border:1px solid var(--black);
+  padding:12px 32px;cursor:pointer;font-family:'Jost',sans-serif;
+  transition:all 0.3s;
+}
+.empty-state button:hover{background:var(--black);color:white;}
+
 /* ── NAV (matches live site) ── */
 nav{
   background:var(--cream);padding:0 48px;
@@ -43,7 +91,7 @@ nav{
   height:76px;border-bottom:1px solid var(--border);
 }
 .logo{
-  font-family:'Cormorant Garamond',serif;font-size:26px;
+  font-family:'EB Garamond',serif;font-size:26px;
   font-weight:400;letter-spacing:6px;color:var(--black);
   text-transform:uppercase;
 }
@@ -59,7 +107,7 @@ nav{
   border-bottom:1px solid var(--border);
 }
 .col-hero h1{
-  font-family:'Cormorant Garamond',serif;font-weight:300;
+  font-family:'EB Garamond',serif;font-weight:400;
   font-size:clamp(36px,5vw,54px);letter-spacing:3px;
   text-transform:uppercase;margin-bottom:14px;
 }
@@ -68,44 +116,97 @@ nav{
   letter-spacing:0.3px;max-width:480px;margin:0 auto;line-height:1.7;
 }
 
-/* ── DISCOVER BY STONE ── */
-.stone-section{padding:72px 48px 16px;text-align:center;}
-.section-title{
-  font-family:'Cormorant Garamond',serif;font-weight:400;
-  font-size:clamp(26px,3.2vw,34px);letter-spacing:0.5px;color:var(--black);margin-bottom:14px;
+/* ── FILTER HUB — Style/Occasion/Stone as tabs sliding between one panel
+   each, instead of three full sections stacked vertically. Cuts the scroll
+   distance to the product grid dramatically; selections persist across tabs
+   so switching tabs to build a combo (e.g. Solitaire -> Polished -> Moissanite)
+   doesn't lose your place. Tap-only tab switching (not swipe-the-whole-panel)
+   -- on mobile the individual tile rows already scroll horizontally to fit
+   7 style tiles on a narrow screen, and a whole-panel swipe gesture would
+   fight that same touch direction. ── */
+.filter-hub{padding:56px 0 16px;text-align:center;}
+.filter-tabs{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:0 20px;}
+.filter-tab{
+  font-family:'Jost',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--black);background:none;border:1px solid var(--border);
+  padding:12px 22px;cursor:pointer;transition:all 0.25s;
 }
+.filter-tab:hover{border-color:var(--gold);}
+.filter-tab.active{background:var(--black);color:white;border-color:var(--black);}
+.tab-dot{
+  display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--pink);margin-left:7px;vertical-align:middle;opacity:0;transition:opacity 0.2s;
+}
+.filter-tab.active .tab-dot{background:var(--gold-light);}
+.tab-dot.active{opacity:1;}
+.filter-status{
+  font-family:'Jost',sans-serif;font-size:10px;letter-spacing:1px;color:var(--mid);
+  margin-top:14px;min-height:14px;
+}
+.filter-status button{
+  background:none;border:none;color:var(--pink-deep);cursor:pointer;
+  font-family:'Jost',sans-serif;font-size:10px;letter-spacing:1px;text-decoration:underline;
+}
+.filter-slider-viewport{overflow:hidden;margin-top:44px;}
+.filter-slider-track{display:flex;width:300%;transition:transform 0.45s cubic-bezier(0.65,0,0.35,1);}
+.filter-panel{flex:0 0 33.3333%;min-width:0;padding:0 48px 16px;}
+/* ── FILTER TILE ROWS — Style/Occasion/Stone all share one compact, always-
+   horizontally-sliding layout (previously Stone used its own larger grid
+   that wrapped to multiple rows on desktop -- inconsistent size vs
+   Style/Occasion, and wrapping made no sense once these sit inside a small
+   per-tab panel). Small fixed-width cards in a scroll-snap row at every
+   breakpoint, same interaction as the mobile-only pattern this replaces. ── */
 .section-intro{
   font-size:13px;color:var(--mid);font-weight:300;letter-spacing:0.2px;
-  max-width:440px;margin:0 auto 52px;line-height:1.8;
+  max-width:440px;margin:0 auto 28px;line-height:1.8;
 }
-.stone-grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  gap:36px;max-width:1100px;margin:0 auto;
+.style-grid,.occasion-grid,.stone-grid{
+  display:flex;gap:14px;max-width:1300px;margin:0 auto;
+  overflow-x:auto;scroll-snap-type:x proximity;scroll-padding-left:48px;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 48px 10px;
 }
-.stone-card{cursor:pointer;text-align:left;}
-.stone-card-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);margin-bottom:18px;}
-.stone-card-img img{
+.style-grid::-webkit-scrollbar,.occasion-grid::-webkit-scrollbar,.stone-grid::-webkit-scrollbar{display:none;}
+.style-card,.occasion-card,.stone-card{
+  flex:0 0 140px;scroll-snap-align:start;cursor:pointer;text-align:left;
+}
+.style-card-img,.occasion-card-img,.stone-card-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);margin-bottom:10px;}
+.style-card-img img,.occasion-card-img img,.stone-card-img img{
   width:100%;height:100%;object-fit:cover;display:block;
   transition:transform 0.7s ease;
 }
+.style-card:hover .style-card-img img,.occasion-card:hover .occasion-card-img img,
 .stone-card:hover .stone-card-img img{transform:scale(1.05);}
-.stone-card-name{
+.style-card-name,.occasion-card-name,.stone-card-name{
   font-family:'Jost',sans-serif;font-weight:500;
-  font-size:12px;letter-spacing:2.5px;text-transform:uppercase;color:var(--black);
-  margin-bottom:8px;
-  padding-bottom:10px;border-bottom:1px solid var(--border);
+  font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--black);
+  margin-bottom:6px;
+  padding-bottom:8px;border-bottom:1px solid var(--border);
   transition:border-color 0.3s;
 }
-.stone-card:hover .stone-card-name,
-.stone-card.active .stone-card-name{border-color:var(--gold);}
-.stone-card-tag{
-  font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:400;
-  font-size:15px;color:var(--mid);line-height:1.55;
+.style-card:hover .style-card-name,.style-card.active .style-card-name,
+.occasion-card:hover .occasion-card-name,.occasion-card.active .occasion-card-name,
+.stone-card:hover .stone-card-name,.stone-card.active .stone-card-name{border-color:var(--gold);}
+.style-card-tag,.occasion-card-tag,.stone-card-tag{
+  font-family:'EB Garamond',serif;font-style:normal;font-weight:400;
+  font-size:12px;color:var(--mid);line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
 }
+.style-card.active .style-card-tag,.occasion-card.active .occasion-card-tag,
 .stone-card.active .stone-card-tag{color:var(--pink-deep);}
+
 
 /* ── PRODUCT GRID ── */
 .grid-section{padding:80px 48px 100px;}
+.grid-heading{
+  max-width:1400px;margin:0 auto 32px;text-align:center;
+}
+.grid-heading-title{
+  font-family:'EB Garamond',serif;font-weight:400;
+  font-size:clamp(24px,2.8vw,30px);color:var(--black);margin-bottom:8px;
+}
+.grid-heading-sub{
+  font-size:13px;color:var(--mid);font-weight:300;line-height:1.7;
+}
 /* Product grid + card now match the real live site's collection view
    exactly (hairline grid, wishlist heart, brand micro-label, scroll
    fade-in) instead of the demo's own plainer card. */
@@ -139,11 +240,11 @@ nav{
   letter-spacing:2.5px;text-transform:uppercase;margin-bottom:5px;
 }
 .pcard-name{
-  font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:400;color:var(--black);
+  font-family:'EB Garamond',serif;font-size:15px;font-weight:400;color:var(--black);
   line-height:1.3;margin-bottom:8px;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
-.pcard-price{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:400;color:var(--black);}
+.pcard-price{font-family:'EB Garamond',serif;font-size:17px;font-weight:400;color:var(--black);}
 .pcard.hidden{display:none;}
 
 .load-more-wrap{text-align:center;margin-top:40px;}
@@ -168,20 +269,16 @@ nav{
   /* Product grid: 3 per row instead of 2, same as the real live site's
      collection view uses below its 1024px desktop breakpoint. */
   .pgrid{grid-template-columns:repeat(3,1fr);gap:1px;}
-  .stone-section{padding-left:20px;padding-right:20px;}
-  /* Discover by Stone becomes a sliding row instead of a 2-column grid --
-     same horizontally scrollable, snap-aligned pattern as the homepage's
-     Collections carousel. */
-  .stone-grid{
-    display:flex;grid-template-columns:none;gap:14px;max-width:none;
-    overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-left:20px;
-    padding:0 20px 10px;margin:0 -20px;-webkit-overflow-scrolling:touch;
-    scrollbar-width:none;
-  }
-  .stone-grid::-webkit-scrollbar{display:none;}
-  .stone-card{flex:0 0 68%;scroll-snap-align:start;}
+  .filter-panel{padding-left:20px;padding-right:20px;}
+  .filter-tabs{gap:6px;}
+  .filter-tab{padding:10px 14px;font-size:10px;}
+  /* Tile rows are already a small sliding carousel at every breakpoint (see
+     the base .style-grid,.occasion-grid,.stone-grid rule) -- just match the
+     narrower 20px side padding used everywhere else on mobile. */
+  .style-grid,.occasion-grid,.stone-grid{padding-left:20px;padding-right:20px;scroll-padding-left:20px;}
 }
 @media (max-width:560px){
+  .filter-bar{padding:12px 20px;top:auto;bottom:0;box-shadow:0 -4px 16px rgba(0,0,0,0.06);}
   nav{padding:0 20px;position:relative;}
   .nav-toggle{display:block;}
   .nav-links{
@@ -217,13 +314,37 @@ nav{
   <p>Crafted from genuine 925 sterling silver. Timeless pieces designed to stack and layer beautifully.</p>
 </div>
 
-<div class="stone-section">
-  <div class="section-title">Discover by Stone</div>
-  <div class="section-intro">Every stone tells a different story. Explore the collection that speaks to you.</div>
-  <div class="stone-grid" id="stone-grid"><!-- filled by JS --></div>
+<div class="filter-hub">
+  <div class="filter-tabs" role="tablist">
+    <button class="filter-tab active" data-tab="0" onclick="setTab(0)">Shop by Style<span class="tab-dot" id="dot-style"></span></button>
+    <button class="filter-tab" data-tab="1" onclick="setTab(1)">Shop by Occasion<span class="tab-dot" id="dot-occasion"></span></button>
+    <button class="filter-tab" data-tab="2" onclick="setTab(2)">Discover by Stone<span class="tab-dot" id="dot-stone"></span></button>
+  </div>
+  <div class="filter-status" id="filter-status"><!-- filled by JS --></div>
+
+  <div class="filter-slider-viewport">
+    <div class="filter-slider-track" id="filter-slider-track">
+      <div class="filter-panel">
+        <div class="section-intro">Every bracelet moves differently. Find the one that moves with you.</div>
+        <div class="style-grid" id="style-grid"><!-- filled by JS --></div>
+      </div>
+      <div class="filter-panel">
+        <div class="section-intro">Where are you wearing it? Find the mood that fits your moment.</div>
+        <div class="occasion-grid" id="occasion-grid"><!-- filled by JS --></div>
+      </div>
+      <div class="filter-panel">
+        <div class="section-intro">Every stone tells a different story. Explore the collection that speaks to you.</div>
+        <div class="stone-grid" id="stone-grid"><!-- filled by JS --></div>
+      </div>
+    </div>
+  </div>
 </div>
 
+<div id="filter-sentinel"></div>
+<div class="filter-bar" id="filter-bar"><!-- filled by JS --></div>
+
 <div class="grid-section">
+  <div class="grid-heading" id="grid-heading"><!-- filled by JS --></div>
   <div class="pgrid" id="pgrid"><!-- filled by JS --></div>
   <div class="load-more-wrap">
     <button class="load-more" id="load-more" onclick="loadMore()">Load More</button>
@@ -231,12 +352,41 @@ nav{
 </div>
 
 <div class="dev-note">
-  <strong>Note for Dennis:</strong> Removed "Shop by Style" (Tennis Bracelets) and now "Refine by Finish"
-  (Metal) too, per your requests — Stone is the only filter left, "Discover by Stone."
+  <strong>Note for Dennis:</strong> Same three-filter pattern as Rings and Necklaces, with a Style taxonomy built
+  for what Bracelets actually is. "Shop by Lifestyle" already existed here from our first pass -- renamed to
+  "Shop by Occasion" for consistency (same tags, same values, just matching the label used everywhere else now).
+  Style is new: 5 categories -- Tennis, Chain & Link, Charm & Station, Beaded, Nature-Inspired -- cross-checked
+  against Silverbene's own published bracelet taxonomy (Tennis, Chain, Bead, Gemstone, and Charm are their real
+  categories) and 2025-26 market data (tennis bracelets and stacking are the two biggest current trends). That's
+  2 fewer categories than Rings/Necklaces had -- not every collection needs 7, and forcing more here would've
+  meant padding real categories with weak fits.
+  <br><br>
+  <strong>Audit pass:</strong> checked all 9 "Geometric"-tagged bracelets against real photos before finalizing
+  (same proactive check as Necklaces) and found 6 mistags -- worse than either previous collection. Most were
+  actually chain or braided-chain constructions (a double-strand CZ bolo, a three-tone braided band, a thin
+  rainbow chain) wearing "Geometric" because the product name said so, not because the photo showed an
+  architectural shape; one was a charm-station piece with dangling round stones. After moving all 6 to where
+  they actually belonged, there wasn't a real Geometric category left to keep -- so it's gone, folded into
+  Chain & Link, rather than kept as a thin, dishonest bucket for symmetry with the other collections.
+  <br><br>
+  One bracelet (Colorful Mini Round CZ) has no clean fit in any of the 5 categories, so it's left untagged for
+  Style rather than force-fit -- it still shows in the default unfiltered view. Discover by Stone unchanged from
+  the original pass.
 </div>
 
 <script>
-const PRODUCTS = [{"id": 824, "name": "Minimalist Three Crystal Bracelet", "price": 51.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923189/mikisi/products/824_primary.jpg", "metal": "gold", "stone": "cubic_zirconia"}, {"id": 823, "name": "Golden Bubble Heart Bracelet", "price": 51.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923451/mikisi/products/823_primary.jpg", "metal": "gold"}, {"id": 934, "name": "Shell Pearl Bracelet", "price": 52.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921650/mikisi/products/934_primary.jpg", "metal": "gold", "stone": "pearl"}, {"id": 489, "name": "Sea Turtle Zirconia Bracelet", "price": 54.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919688/mikisi/products/489_primary.jpg", "metal": "silver", "stone": "cubic_zirconia"}, {"id": 833, "name": "Colorful Mini Round CZ Bracelet", "price": 54.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919465/mikisi/products/833_primary.jpg", "metal": "rose_gold", "stone": "cubic_zirconia"}, {"id": 819, "name": "Colorful Cubic Zirconia Bracelet", "price": 55.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921738/mikisi/products/819_primary.jpg", "metal": "gold", "stone": "cubic_zirconia"}, {"id": 1161, "name": "Bowknot Green Aventurine Bracelet", "price": 72.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316885/mikisi/products/1161_primary.jpg", "metal": "white_gold"}, {"id": 490, "name": "Teardrop Pendant Layered Bracelet", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921575/mikisi/products/490_primary.jpg", "metal": "silver"}, {"id": 1160, "name": "Four Petal Flower Station Bracelet", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316885/mikisi/products/1160_primary.jpg", "metal": "gold"}, {"id": 799, "name": "Minimalist Geometric Round Bead Bracelet", "price": 74.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924541/mikisi/products/799_primary.jpg", "metal": "silver"}, {"id": 796, "name": "Tiger Eye Stone Pearl Beaded Bracelet", "price": 80.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920038/mikisi/products/796_primary.jpg", "metal": "silver", "stone": "pearl"}, {"id": 803, "name": "Cubic Zirconia Tennis Bracelet", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924031/mikisi/products/803_primary.jpg", "metal": "rose_gold", "stone": "semi_precious", "style": "tennis"}, {"id": 947, "name": "Blue Sapphire Tennis Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919988/mikisi/products/947_primary.jpg", "metal": "white_gold", "stone": "semi_precious", "style": "tennis"}, {"id": 835, "name": "Double Layer Minimalist Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924215/mikisi/products/835_primary.jpg", "metal": "silver"}, {"id": 942, "name": "Emerald Tennis Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919992/mikisi/products/942_primary.jpg", "metal": "white_gold", "stone": "semi_precious", "style": "tennis"}, {"id": 948, "name": "Rainbow Love Heart Tennis Bracelet", "price": 87.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924552/mikisi/products/948_primary.jpg", "metal": "white_gold", "style": "tennis"}, {"id": 821, "name": "Shell Pearl Conch Bracelet", "price": 87.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920222/mikisi/products/821_primary.jpg", "metal": "silver", "stone": "pearl"}, {"id": 945, "name": "Diamond Zircon Tennis Bracelet", "price": 90.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921555/mikisi/products/945_primary.jpg", "metal": "white_gold", "stone": "cubic_zirconia", "style": "tennis"}, {"id": 804, "name": "Crystal Geometric Beaded Bracelet", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922045/mikisi/products/804_primary.jpg", "metal": "gold", "stone": "cubic_zirconia"}, {"id": 946, "name": "Rainbow Geometric Cubic Zirconia Bracelet", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923191/mikisi/products/946_primary.jpg", "metal": "white_gold", "stone": "cubic_zirconia"}, {"id": 1203, "name": "Vintage Silver Geometric Block Link Bracelet", "price": 109.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785036625/mikisi/products/1203_primary.jpg", "metal": "silver"}, {"id": 788, "name": "Minimalist Heart Letter Bracelet", "price": 110.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924121/mikisi/products/788_primary.jpg", "metal": "silver"}, {"id": 485, "name": "Turquoise Bezel Tennis Bracelet", "price": 112.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921571/mikisi/products/485_primary.png", "metal": "gold", "stone": "semi_precious", "style": "tennis"}, {"id": 830, "name": "Double Layer Rectangle Crystal Bracelet", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920212/mikisi/products/830_primary.jpg", "metal": "gold", "stone": "cubic_zirconia"}, {"id": 805, "name": "Bamboo Braided Three-Tone Bracelet", "price": 115.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921455/mikisi/products/805_primary.jpg", "metal": "gold"}, {"id": 807, "name": "Geometric Braided Silver Bracelet", "price": 117.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919998/mikisi/products/807_primary.jpg", "metal": "silver"}, {"id": 806, "name": "Mesh Geometric Pattern Bracelet", "price": 122.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919131/mikisi/products/806_primary.jpg", "metal": "white_gold"}, {"id": 798, "name": "Double Layer Cubic Zirconia Bracelet", "price": 123.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924134/mikisi/products/798_primary.jpg", "metal": "silver", "stone": "cubic_zirconia"}, {"id": 493, "name": "Blue Vine Sparkling Bracelet", "price": 127.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919941/mikisi/products/493_primary.jpg", "metal": "silver"}, {"id": 801, "name": "Luxury Moissanite Adjustable Bracelet", "price": 129.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920134/mikisi/products/801_primary.jpg", "metal": "silver", "stone": "moissanite"}, {"id": 487, "name": "Diamond Wheat Sheaf Bracelet", "price": 210.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922392/mikisi/products/487_primary.jpg", "metal": "white_gold"}, {"id": 787, "name": "Heart Charm Link Chain Bracelet", "price": 289.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920277/mikisi/products/787_primary.jpg", "metal": "silver"}, {"id": 1249, "name": "Oval & Round Moissanite Tennis Bracelet", "price": 292.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1249_primary.jpg", "metal": "white_gold", "stone": "moissanite", "style": "tennis"}, {"id": 1260, "name": "Moissanite Openwork Circle Bracelet", "price": 350.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643602/mikisi/products/1260_primary.jpg", "metal": "silver", "stone": "moissanite"}, {"id": 486, "name": "Marquise Vine Link Bracelet", "price": 374.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920145/mikisi/products/486_primary.jpg", "metal": "silver"}, {"id": 1259, "name": "Moissanite Flower Leaf Tennis Bracelet", "price": 392.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643516/mikisi/products/1259_primary.jpg", "metal": "white_gold", "stone": "moissanite", "style": "tennis"}, {"id": 1247, "name": "European Moissanite Tennis Bracelet", "price": 395.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1247_primary.jpg", "metal": "silver", "stone": "moissanite", "style": "tennis"}, {"id": 488, "name": "Emerald Cut Diamond Tennis Bracelet", "price": 548.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920296/mikisi/products/488_primary.jpg", "metal": "white_gold", "stone": "semi_precious", "style": "tennis"}];
+const PRODUCTS = [{"id": 824, "name": "Minimalist Three Crystal Bracelet", "price": 51.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923189/mikisi/products/824_primary.jpg", "metal": "gold", "stone": "cubic_zirconia", "occasion": ["everyday", "polished"], "style_tags": ["charm_station"]}, {"id": 823, "name": "Golden Bubble Heart Bracelet", "price": 51.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923451/mikisi/products/823_primary.jpg", "metal": "gold", "occasion": ["everyday", "weekend"], "style_tags": ["charm_station"]}, {"id": 934, "name": "Shell Pearl Bracelet", "price": 52.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921650/mikisi/products/934_primary.jpg", "metal": "gold", "stone": "pearl", "occasion": ["everyday", "weekend"], "style_tags": ["beaded"]}, {"id": 489, "name": "Sea Turtle Zirconia Bracelet", "price": 54.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919688/mikisi/products/489_primary.jpg", "metal": "silver", "stone": "cubic_zirconia", "occasion": ["weekend", "everyday"], "style_tags": ["nature"]}, {"id": 833, "name": "Colorful Mini Round CZ Bracelet", "price": 54.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919465/mikisi/products/833_primary.jpg", "metal": "rose_gold", "stone": "cubic_zirconia", "occasion": ["weekend", "everyday"]}, {"id": 819, "name": "Colorful Cubic Zirconia Bracelet", "price": 55.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921738/mikisi/products/819_primary.jpg", "metal": "gold", "stone": "cubic_zirconia", "occasion": ["weekend"], "style_tags": ["charm_station"]}, {"id": 1161, "name": "Bowknot Green Aventurine Bracelet", "price": 72.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316885/mikisi/products/1161_primary.jpg", "metal": "white_gold", "occasion": ["weekend", "occasion"], "style_tags": ["beaded"]}, {"id": 490, "name": "Teardrop Pendant Layered Bracelet", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921575/mikisi/products/490_primary.jpg", "metal": "silver", "occasion": ["everyday", "polished"], "style_tags": ["charm_station"]}, {"id": 1160, "name": "Four Petal Flower Station Bracelet", "price": 72.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784316885/mikisi/products/1160_primary.jpg", "metal": "gold", "occasion": ["everyday", "weekend"], "style_tags": ["charm_station"]}, {"id": 799, "name": "Minimalist Geometric Round Bead Bracelet", "price": 74.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924541/mikisi/products/799_primary.jpg", "metal": "silver", "occasion": ["everyday", "polished"], "style_tags": ["beaded"]}, {"id": 796, "name": "Tiger Eye Stone Pearl Beaded Bracelet", "price": 80.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920038/mikisi/products/796_primary.jpg", "metal": "silver", "stone": "pearl", "occasion": ["weekend", "occasion"], "style_tags": ["beaded"]}, {"id": 803, "name": "Cubic Zirconia Tennis Bracelet", "price": 82.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924031/mikisi/products/803_primary.jpg", "metal": "rose_gold", "stone": "semi_precious", "style": "tennis", "occasion": ["after_hours", "occasion"], "style_tags": ["tennis"]}, {"id": 947, "name": "Blue Sapphire Tennis Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919988/mikisi/products/947_primary.jpg", "metal": "white_gold", "stone": "semi_precious", "style": "tennis", "occasion": ["after_hours", "occasion"], "style_tags": ["tennis"]}, {"id": 835, "name": "Double Layer Minimalist Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924215/mikisi/products/835_primary.jpg", "metal": "silver", "occasion": ["everyday", "polished"], "style_tags": ["chain_link"]}, {"id": 942, "name": "Emerald Tennis Bracelet", "price": 86.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919992/mikisi/products/942_primary.jpg", "metal": "white_gold", "stone": "semi_precious", "style": "tennis", "occasion": ["after_hours", "occasion"], "style_tags": ["tennis"]}, {"id": 948, "name": "Rainbow Love Heart Tennis Bracelet", "price": 87.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924552/mikisi/products/948_primary.jpg", "metal": "white_gold", "style": "tennis", "occasion": ["after_hours", "weekend"], "style_tags": ["tennis"]}, {"id": 821, "name": "Shell Pearl Conch Bracelet", "price": 87.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920222/mikisi/products/821_primary.jpg", "metal": "silver", "stone": "pearl", "occasion": ["weekend", "occasion"], "style_tags": ["nature"]}, {"id": 945, "name": "Diamond Zircon Tennis Bracelet", "price": 90.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921555/mikisi/products/945_primary.jpg", "metal": "white_gold", "stone": "cubic_zirconia", "style": "tennis", "occasion": ["after_hours", "occasion"], "style_tags": ["tennis"]}, {"id": 804, "name": "Crystal Geometric Beaded Bracelet", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922045/mikisi/products/804_primary.jpg", "metal": "gold", "stone": "cubic_zirconia", "occasion": ["polished", "after_hours"], "style_tags": ["beaded"]}, {"id": 946, "name": "Rainbow Geometric Cubic Zirconia Bracelet", "price": 106.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784923191/mikisi/products/946_primary.jpg", "metal": "white_gold", "stone": "cubic_zirconia", "occasion": ["weekend", "after_hours"], "style_tags": ["chain_link"]}, {"id": 1203, "name": "Vintage Silver Geometric Block Link Bracelet", "price": 109.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785036625/mikisi/products/1203_primary.jpg", "metal": "silver", "occasion": ["polished", "everyday"], "style_tags": ["chain_link"]}, {"id": 788, "name": "Minimalist Heart Letter Bracelet", "price": 110.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924121/mikisi/products/788_primary.jpg", "metal": "silver", "occasion": ["everyday", "occasion"], "style_tags": ["charm_station"]}, {"id": 485, "name": "Turquoise Bezel Tennis Bracelet", "price": 112.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921571/mikisi/products/485_primary.png", "metal": "gold", "stone": "semi_precious", "style": "tennis", "occasion": ["after_hours", "occasion"], "style_tags": ["tennis"]}, {"id": 830, "name": "Double Layer Rectangle Crystal Bracelet", "price": 114.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920212/mikisi/products/830_primary.jpg", "metal": "gold", "stone": "cubic_zirconia", "occasion": ["polished", "after_hours"], "style_tags": ["chain_link"]}, {"id": 805, "name": "Bamboo Braided Three-Tone Bracelet", "price": 115.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784921455/mikisi/products/805_primary.jpg", "metal": "gold", "occasion": ["everyday", "weekend"], "style_tags": ["chain_link"]}, {"id": 807, "name": "Geometric Braided Silver Bracelet", "price": 117.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919998/mikisi/products/807_primary.jpg", "metal": "silver", "occasion": ["everyday", "polished"], "style_tags": ["chain_link"]}, {"id": 806, "name": "Mesh Geometric Pattern Bracelet", "price": 122.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919131/mikisi/products/806_primary.jpg", "metal": "white_gold", "occasion": ["polished", "everyday"], "style_tags": ["chain_link"]}, {"id": 798, "name": "Double Layer Cubic Zirconia Bracelet", "price": 123.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784924134/mikisi/products/798_primary.jpg", "metal": "silver", "stone": "cubic_zirconia", "occasion": ["polished", "after_hours"], "style_tags": ["chain_link"]}, {"id": 493, "name": "Blue Vine Sparkling Bracelet", "price": 127.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784919941/mikisi/products/493_primary.jpg", "metal": "silver", "occasion": ["after_hours", "occasion"], "style_tags": ["tennis"]}, {"id": 801, "name": "Luxury Moissanite Adjustable Bracelet", "price": 129.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920134/mikisi/products/801_primary.jpg", "metal": "silver", "stone": "moissanite", "occasion": ["after_hours", "occasion"], "style_tags": ["tennis"]}, {"id": 487, "name": "Diamond Wheat Sheaf Bracelet", "price": 210.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784922392/mikisi/products/487_primary.jpg", "metal": "white_gold", "occasion": ["occasion", "polished"], "style_tags": ["chain_link"]}, {"id": 787, "name": "Heart Charm Link Chain Bracelet", "price": 289.0, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920277/mikisi/products/787_primary.jpg", "metal": "silver", "occasion": ["occasion", "everyday"], "style_tags": ["chain_link"]}, {"id": 1249, "name": "Oval & Round Moissanite Tennis Bracelet", "price": 292.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1249_primary.jpg", "metal": "white_gold", "stone": "moissanite", "style": "tennis", "occasion": ["after_hours", "occasion"], "style_tags": ["tennis"]}, {"id": 1260, "name": "Moissanite Openwork Circle Bracelet", "price": 350.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643602/mikisi/products/1260_primary.jpg", "metal": "silver", "stone": "moissanite", "occasion": ["after_hours", "occasion"], "style_tags": ["chain_link"]}, {"id": 486, "name": "Marquise Vine Link Bracelet", "price": 374.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920145/mikisi/products/486_primary.jpg", "metal": "silver", "occasion": ["occasion", "polished"], "style_tags": ["chain_link"]}, {"id": 1259, "name": "Moissanite Flower Leaf Tennis Bracelet", "price": 392.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785643516/mikisi/products/1259_primary.jpg", "metal": "white_gold", "stone": "moissanite", "style": "tennis", "occasion": ["after_hours", "occasion"], "style_tags": ["tennis"]}, {"id": 1247, "name": "European Moissanite Tennis Bracelet", "price": 395.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1785552791/mikisi/products/1247_primary.jpg", "metal": "silver", "stone": "moissanite", "style": "tennis", "occasion": ["after_hours", "occasion"], "style_tags": ["tennis"]}, {"id": 488, "name": "Emerald Cut Diamond Tennis Bracelet", "price": 548.9, "img": "https://res.cloudinary.com/ds8qviz1o/image/upload/v1784920296/mikisi/products/488_primary.jpg", "metal": "white_gold", "stone": "semi_precious", "style": "tennis", "occasion": ["occasion", "after_hours"], "style_tags": ["tennis"]}];
+
+// "The Edit" — curated picks lead the default (no-filter) view; one hero
+// pick per style category (all 5), plus 5 more for price-range spread
+// ($51.90-$548.90) rather than just the cheapest items. No separate
+// "unfold" mode -- Load More just continues seamlessly from the curated
+// picks into the rest of the catalog, one flow instead of two.
+const EDIT_IDS = [947, 1203, 796, 1160, 489, 488, 824, 801, 830, 821];
+const DEFAULT_ORDER = [
+  ...EDIT_IDS.map(id => PRODUCTS.find(p => p.id === id)).filter(Boolean),
+  ...PRODUCTS.filter(p => !EDIT_IDS.includes(p.id)),
+];
 
 const STONE_META = {
   moissanite:     { label:'Moissanite',     tag:'The brilliance of diamonds, crafted to shine for life.' },
@@ -246,9 +396,30 @@ const STONE_META = {
 };
 const STONE_ORDER = ['moissanite','cubic_zirconia','semi_precious','pearl'];
 
+const STYLE_META = {
+  tennis:        { label:'Tennis',         tag:'An unbroken line of stones, all the way around your wrist.' },
+  chain_link:    { label:'Chain & Link',   tag:'Real chain, real presence — worn plain or piled high.' },
+  charm_station: { label:'Charm & Station',tag:'Little details, scattered along the chain with intention.' },
+  beaded:        { label:'Beaded',         tag:'Strung and grounded — texture you can feel.' },
+  nature:        { label:'Nature-Inspired',tag:'Motifs pulled from the natural world, worn close.' },
+};
+const STYLE_ORDER = ['tennis','chain_link','charm_station','beaded','nature'];
+
+const OCCASION_META = {
+  everyday:    { label:'Everyday',    tag:'Effortless pieces for wherever the day takes you.' },
+  polished:    { label:'Polished',    tag:'For the days you want everything to feel considered.' },
+  after_hours: { label:'After Hours', tag:'A little more sparkle after sunset.' },
+  occasion:    { label:'Occasion',    tag:'For moments worth dressing for.' },
+  weekend:     { label:'Weekend',     tag:'Easy pieces for slower days.' },
+};
+const OCCASION_ORDER = ['everyday','polished','after_hours','occasion','weekend'];
+
 let activeStone = null;
-let visibleCount = 16;
-const PAGE_SIZE = 16;
+let activeStyle = null;
+let activeOccasion = null;
+const INITIAL_COUNT = 8;  // ~2 rows on the 4-column desktop grid -- a taste, not the whole catalog at once
+const PAGE_SIZE = 16;     // each subsequent "Load More" click
+let visibleCount = INITIAL_COUNT;
 let wishlist = []; // visual-only in this demo -- no account/persistence layer here
 
 function toggleWish(id){
@@ -260,18 +431,27 @@ function toggleWish(id){
   btn.textContent = liked ? '♥' : '♡';
 }
 
-function stoneCounts(){
-  const c = {};
-  PRODUCTS.forEach(p => { if (p.stone) c[p.stone] = (c[p.stone]||0) + 1; });
-  return c;
+// Every tile's count reflects the OTHER two active filters (not itself), so
+// a tile never promises products a combined filter would return zero of --
+// true bidirectional filtering across all three dimensions, not just a
+// single top-down hierarchy.
+function filteredExcept(exclude){
+  return PRODUCTS.filter(p => {
+    if (exclude !== 'stone' && activeStone && p.stone !== activeStone) return false;
+    if (exclude !== 'style' && activeStyle && !(p.style_tags||[]).includes(activeStyle)) return false;
+    if (exclude !== 'occasion' && activeOccasion && !(p.occasion||[]).includes(activeOccasion)) return false;
+    return true;
+  });
 }
+
 function renderStoneCards(){
-  const c = stoneCounts();
+  const c = {};
+  filteredExcept('stone').forEach(p => { if (p.stone) c[p.stone] = (c[p.stone]||0) + 1; });
   const wrap = document.getElementById('stone-grid');
   wrap.innerHTML = STONE_ORDER.filter(k => c[k] > 0).map(k => {
     const meta = STONE_META[k];
     const sample = PRODUCTS.find(p => p.stone === k);
-    return `<div class="stone-card" data-stone="${k}" onclick="setStoneFilter('${k}')">
+    return `<div class="stone-card ${activeStone===k?'active':''}" data-stone="${k}" onclick="setStoneFilter('${k}')">
       <div class="stone-card-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
       <div class="stone-card-name">${meta.label}</div>
       <div class="stone-card-tag">${meta.tag}</div>
@@ -279,23 +459,136 @@ function renderStoneCards(){
   }).join('');
 }
 
-function setStoneFilter(stone){
-  activeStone = (activeStone === stone) ? null : stone;
-  visibleCount = PAGE_SIZE;
-  render();
+function renderStyleCards(){
+  const c = {};
+  filteredExcept('style').forEach(p => (p.style_tags||[]).forEach(s => c[s] = (c[s]||0) + 1));
+  const wrap = document.getElementById('style-grid');
+  wrap.innerHTML = STYLE_ORDER.filter(k => c[k] > 0).map(k => {
+    const meta = STYLE_META[k];
+    const sample = PRODUCTS.find(p => (p.style_tags||[]).includes(k));
+    return `<div class="style-card ${activeStyle===k?'active':''}" data-style="${k}" onclick="setStyleFilter('${k}')">
+      <div class="style-card-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
+      <div class="style-card-name">${meta.label}</div>
+      <div class="style-card-tag">${meta.tag}</div>
+    </div>`;
+  }).join('');
 }
+
+function renderOccasionCards(){
+  const c = {};
+  filteredExcept('occasion').forEach(p => (p.occasion||[]).forEach(o => c[o] = (c[o]||0) + 1));
+  const wrap = document.getElementById('occasion-grid');
+  wrap.innerHTML = OCCASION_ORDER.filter(k => c[k] > 0).map(k => {
+    const meta = OCCASION_META[k];
+    const sample = PRODUCTS.find(p => (p.occasion||[]).includes(k));
+    return `<div class="occasion-card ${activeOccasion===k?'active':''}" data-occasion="${k}" onclick="setOccasionFilter('${k}')">
+      <div class="occasion-card-img"><img src="${sample.img}" alt="${meta.label}" loading="lazy"/></div>
+      <div class="occasion-card-name">${meta.label}</div>
+      <div class="occasion-card-tag">${meta.tag}</div>
+    </div>`;
+  }).join('');
+}
+
+function setStoneFilter(mat){
+  activeStone = (activeStone === mat) ? null : mat;
+  visibleCount = INITIAL_COUNT;
+  renderStyleCards(); renderOccasionCards(); render();
+}
+function setStyleFilter(style){
+  activeStyle = (activeStyle === style) ? null : style;
+  visibleCount = INITIAL_COUNT;
+  renderStoneCards(); renderOccasionCards(); render();
+}
+function setOccasionFilter(occasion){
+  activeOccasion = (activeOccasion === occasion) ? null : occasion;
+  visibleCount = INITIAL_COUNT;
+  renderStoneCards(); renderStyleCards(); render();
+}
+
 function clearFilter(){
-  activeStone = null;
-  visibleCount = PAGE_SIZE;
-  render();
+  activeStone = activeStyle = activeOccasion = null;
+  visibleCount = INITIAL_COUNT;
+  renderStoneCards(); renderStyleCards(); renderOccasionCards(); render();
+}
+
+// Chips reflect exactly what's active; bar visibility (scrolled-past-tiles
+// AND at least one filter set) is handled separately by the scroll observer.
+function renderFilterBar(){
+  const chips = [];
+  if (activeStyle) chips.push({ label: STYLE_META[activeStyle].label, clear: () => setStyleFilter(activeStyle) });
+  if (activeOccasion) chips.push({ label: OCCASION_META[activeOccasion].label, clear: () => setOccasionFilter(activeOccasion) });
+  if (activeStone) chips.push({ label: STONE_META[activeStone].label, clear: () => setStoneFilter(activeStone) });
+
+  window.__clearChip = (i) => chips[i].clear();
+
+  const bar = document.getElementById('filter-bar');
+  if (!chips.length) { bar.innerHTML = ''; updateFilterBarVisibility(); return; }
+  bar.innerHTML = `<span class="filter-bar-label">Filtering by</span>` +
+    chips.map((c,i) => `<span class="filter-chip">${c.label}<button onclick="__clearChip(${i})" aria-label="Remove ${c.label}">×</button></span>`).join('') +
+    `<button class="filter-clear-all" onclick="clearFilter()">Clear all</button>`;
+  updateFilterBarVisibility();
+}
+
+let scrolledPastTiles = false;
+function updateFilterBarVisibility(){
+  const bar = document.getElementById('filter-bar');
+  const hasFilter = activeStyle || activeOccasion || activeStone;
+  bar.classList.toggle('visible', scrolledPastTiles && !!hasFilter);
+}
+
+// ── Filter hub tabs (Style/Occasion/Stone) — selections persist across tabs,
+// switching tabs never clears activeStyle/activeOccasion/activeStone.
+let activeTab = 0;
+function setTab(i){
+  activeTab = i;
+  document.querySelectorAll('.filter-tab').forEach((el, idx) => el.classList.toggle('active', idx === i));
+  document.getElementById('filter-slider-track').style.transform = `translateX(-${i * 33.3333}%)`;
+}
+
+function renderTabStatus(){
+  const n = [activeStyle, activeOccasion, activeStone].filter(Boolean).length;
+  document.getElementById('filter-status').innerHTML = n
+    ? `${n} filter${n > 1 ? 's' : ''} active · <button onclick="clearFilter()">Clear all</button>`
+    : '';
+  document.getElementById('dot-style').classList.toggle('active', !!activeStyle);
+  document.getElementById('dot-occasion').classList.toggle('active', !!activeOccasion);
+  document.getElementById('dot-stone').classList.toggle('active', !!activeStone);
+}
+
+function renderGridHeading(hasActiveFilter, count){
+  const el = document.getElementById('grid-heading');
+  if (hasActiveFilter) {
+    el.innerHTML = `<div class="grid-heading-title">${count} Bracelet${count === 1 ? '' : 's'}</div>`;
+  } else {
+    el.innerHTML = `<div class="grid-heading-title">The Edit</div>
+      <div class="grid-heading-sub">A few of our favorites, one of every shape.</div>`;
+  }
 }
 
 function render(){
-  let filtered = PRODUCTS;
-  if (activeStone) filtered = filtered.filter(p => p.stone === activeStone);
+  const hasActiveFilter = !!(activeStyle || activeOccasion || activeStone);
+  // No separate "unfold" mode -- Load More just keeps going, from the
+  // curated picks (DEFAULT_ORDER's first 10) into the rest of the catalog.
+  const filtered = hasActiveFilter ? filteredExcept(null) : DEFAULT_ORDER;
 
   document.querySelectorAll('.stone-card[data-stone]').forEach(el =>
     el.classList.toggle('active', el.dataset.stone === activeStone));
+  document.querySelectorAll('.style-card[data-style]').forEach(el =>
+    el.classList.toggle('active', el.dataset.style === activeStyle));
+  document.querySelectorAll('.occasion-card[data-occasion]').forEach(el =>
+    el.classList.toggle('active', el.dataset.occasion === activeOccasion));
+  renderFilterBar();
+  renderTabStatus();
+  renderGridHeading(hasActiveFilter, filtered.length);
+
+  if (!filtered.length){
+    document.getElementById('pgrid').innerHTML = `<div class="empty-state">
+      <p>No pieces match this combination yet.</p>
+      <button onclick="clearFilter()">Clear filters</button>
+    </div>`;
+    document.getElementById('load-more').classList.add('done');
+    return;
+  }
 
   const shown = filtered.slice(0, visibleCount);
   document.getElementById('pgrid').innerHTML = shown.map(p => {
@@ -328,7 +621,20 @@ function loadMore(){
 }
 
 renderStoneCards();
+renderStyleCards();
+renderOccasionCards();
 render();
+
+// Sentinel sits right before the product grid -- once it scrolls out of
+// view (user has passed the Style/Occasion/Stone tiles), the sticky filter
+// bar is allowed to show, but only if a filter is actually active.
+const filterObs = new IntersectionObserver(entries => {
+  // boundingClientRect.top < 0 means the sentinel is above the viewport --
+  // i.e. actually scrolled past going down, not just "not reached yet"
+  // (which also reports isIntersecting:false and would show the bar too early).
+  entries.forEach(e => { scrolledPastTiles = e.boundingClientRect.top < 0; updateFilterBarVisibility(); });
+}, { threshold: 0 });
+filterObs.observe(document.getElementById('filter-sentinel'));
 </script>
 
 </body>
