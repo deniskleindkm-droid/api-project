@@ -133,11 +133,12 @@ def get_collection_products(
         raise HTTPException(status_code=404, detail="Collection not found")
 
     from app.routes.products import _to_public
+    from sqlalchemy import func
     products = session.exec(
         select(Product).where(
             Product.collection_id == collection_id,
             Product.is_active == True,
             Product.is_published == True
-        )
+        ).order_by(func.coalesce(Product.published_at, Product.created_at).desc())  # newest-published first
     ).all()
     return [_to_public(p) for p in products]

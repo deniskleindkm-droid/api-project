@@ -1,13 +1,50 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlmodel import Session, select
 from app.models.product import Product, ProductCreate, ProductPublic
+from app.models.collection import Collection
 from app.database import get_session
 from typing import Optional, List
 from pydantic import BaseModel
+from datetime import datetime
 import json as _json
 import re as _re
 
 router = APIRouter()
+
+
+def _sync_category_collection(product: Product, session: Session) -> Optional[str]:
+    """
+    Keep product.category (string) and product.collection_id (FK) pointing at
+    the same collection. These are set by two independent mechanisms at
+    import time (see app/agents/product_rewriter.py) with no cross-check, so
+    they can drift -- a product can end up with a collection_id that doesn't
+    match its category, or no collection_id at all. Call this before any
+    product goes live (publish, manual collection reassignment) so a
+    published product is never misfiled.
+
+    Returns a short description of the correction made, or None if nothing
+    needed fixing.
+    """
+    if product.collection_id:
+        collection = session.get(Collection, product.collection_id)
+        if collection and product.category != collection.name:
+            old = product.category
+            product.category = collection.name
+            return f"category '{old}' -> '{collection.name}' (to match collection_id {product.collection_id})"
+        return None
+
+    # No collection_id at all -- try to derive one from the same keyword
+    # matcher used at import time, so a product never publishes "homeless".
+    from app.agents.product_rewriter import assign_collection
+    derived_id = assign_collection(product.name, product.category, product.description)
+    if derived_id:
+        collection = session.get(Collection, derived_id)
+        if collection:
+            product.collection_id = derived_id
+            old = product.category
+            product.category = collection.name
+            return f"collection_id assigned ({derived_id}, '{collection.name}'), category '{old}' -> '{collection.name}'"
+    return None
 
 
 # ── Size display metadata ──────────────────────────────────────────────────────
@@ -284,6 +321,13 @@ def get_products(
     if max_price:
         query = query.where(Product.final_price <= max_price)
 
+    # Newest-published first -- previously unordered (DB/insertion order),
+    # so a collection page never had a deliberate arrangement. Falls back to
+    # created_at for any row without a published_at (shouldn't happen after
+    # the migration backfill, but COALESCE is cheap insurance against a NULL
+    # sorting to the top under Postgres's default DESC-nulls-first behavior).
+    from sqlalchemy import func
+    query = query.order_by(func.coalesce(Product.published_at, Product.created_at).desc())
     products = session.exec(query).all()
     return [_to_public(p) for p in products]
 
@@ -676,8 +720,13 @@ def publish_products(data: PublishRequest, session: Session = Depends(get_sessio
     # discontinued product — the customer could order it, but Silverbene
     # would reject the order every time.
     eligible = [p for p in products if p.stock > 0 and p.is_active]
+    corrections = []
     for p in eligible:
+        fix = _sync_category_collection(p, session)
+        if fix:
+            corrections.append(f"#{p.id} {p.name}: {fix}")
         p.is_published = True
+        p.published_at = datetime.utcnow()  # drives "newest first" ordering — re-set on every publish, including republishing after a restock
         p.is_reviewed = True  # a deliberate decision was just made — no longer "New"
         session.add(p)
     session.commit()
@@ -698,7 +747,12 @@ def publish_products(data: PublishRequest, session: Session = Depends(get_sessio
             set_hidden_categories(sorted(hidden))
             category_unhidden = True
 
-    return {"published": len(eligible), "ids": [p.id for p in eligible], "category_unhidden": category_unhidden}
+    return {
+        "published": len(eligible),
+        "ids": [p.id for p in eligible],
+        "category_unhidden": category_unhidden,
+        "collection_corrections": corrections,
+    }
 
 
 @router.post("/admin/products/restore")
@@ -994,7 +1048,14 @@ def assign_collection(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     product.collection_id = collection_id
+    # Keep category (string) in lockstep with collection_id (FK) -- a manual
+    # reassignment here that only touched collection_id is exactly how these
+    # two fields drift out of sync (see _sync_category_collection).
+    if collection_id:
+        collection = session.get(Collection, collection_id)
+        if collection:
+            product.category = collection.name
     session.add(product)
     session.commit()
     session.refresh(product)
-    return {"product_id": product_id, "collection_id": collection_id, "message": "Collection assigned"}
+    return {"product_id": product_id, "collection_id": collection_id, "category": product.category, "message": "Collection assigned"}

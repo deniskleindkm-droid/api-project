@@ -102,6 +102,12 @@ def create_db():
         conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS dhl_odd_link varchar(1000)"))
         conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS delivery_alert_sent boolean NOT NULL DEFAULT false"))
         conn.execute(text("ALTER TABLE ordertracking ADD COLUMN IF NOT EXISTS delay_alerted boolean NOT NULL DEFAULT false"))
+        # published_at drives "newest first" collection ordering — distinct from
+        # created_at (import time), since a product can sit unpublished for a
+        # while before actually going live. One-time backfill for everything
+        # already published: created_at is the best available approximation.
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS published_at timestamp"))
+        conn.execute(text("UPDATE product SET published_at = created_at WHERE is_published = true AND published_at IS NULL"))
         conn.commit()
 
     _setup_defaults()
