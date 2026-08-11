@@ -537,6 +537,106 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
 }
 .stone-clear:hover{color:var(--pink);border-color:var(--pink);}
 
+/* ── SHOP BY STYLE / SHOP BY OCCASION FILTER HUB — live rollout of the
+   demo's tabbed hub, one collection at a time (see _HUB_CONFIG in the
+   script below). Collections not yet in _HUB_CONFIG keep the plain
+   .stone-section above, untouched. Namespaced "hub-"/".hub-tile" so
+   nothing here can leak onto the still-live Stone-only sections. */
+.filter-hub-section{padding:48px 0 8px;text-align:center;border-bottom:1px solid var(--border);margin-bottom:0;}
+.filter-tabs{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;}
+.filter-tab{
+  font-family:'Jost',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--black);background:none;border:1px solid var(--border);
+  padding:12px 22px;cursor:pointer;transition:all 0.25s;
+}
+.filter-tab:hover{border-color:var(--gold);}
+.filter-tab.active{background:var(--black);color:#fff;border-color:var(--black);}
+.tab-dot{
+  display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--pink);margin-left:7px;vertical-align:middle;opacity:0;transition:opacity 0.2s;
+}
+.filter-tab.active .tab-dot{background:var(--gold-light);}
+.tab-dot.active{opacity:1;}
+.filter-status{
+  font-family:'Jost',sans-serif;font-size:10px;letter-spacing:1px;color:var(--mid);
+  margin-top:14px;min-height:14px;
+}
+.filter-status button{
+  background:none;border:none;color:var(--pink-deep);cursor:pointer;
+  font-family:'Jost',sans-serif;font-size:10px;letter-spacing:1px;text-decoration:underline;
+}
+.filter-slider-viewport{overflow:hidden;margin-top:36px;}
+.filter-slider-track{display:flex;width:300%;transition:transform 0.45s cubic-bezier(0.65,0,0.35,1);}
+.filter-panel{flex:0 0 33.3333%;min-width:0;padding:0 0 24px;}
+
+.hub-tile-row{
+  display:flex;gap:14px;max-width:1300px;margin:0 auto;
+  overflow-x:auto;scroll-snap-type:x proximity;scroll-padding-left:48px;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 48px 10px;
+}
+.hub-tile-row::-webkit-scrollbar{display:none;}
+.hub-tile{flex:0 0 140px;scroll-snap-align:start;cursor:pointer;text-align:left;}
+.hub-tile-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);margin-bottom:10px;}
+.hub-tile-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.7s ease;}
+.hub-tile:hover .hub-tile-img img{transform:scale(1.05);}
+.hub-tile-name{
+  font-family:'Jost',sans-serif;font-weight:500;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--black);margin-bottom:6px;padding-bottom:8px;border-bottom:1px solid var(--border);
+  transition:border-color 0.3s;
+}
+.hub-tile:hover .hub-tile-name,.hub-tile.active .hub-tile-name{border-color:var(--gold);}
+.hub-tile-tag{
+  font-family:'EB Garamond',serif;font-weight:400;font-size:12px;color:var(--mid);line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+}
+.hub-tile.active .hub-tile-tag{color:var(--pink-deep);}
+
+/* Sticky bar of active filter chips -- appears once scrolled past the tile
+   rows, only when at least one filter is active. */
+.filter-bar{
+  position:fixed;top:76px;left:0;right:0;z-index:55;
+  background:var(--cream);border-bottom:1px solid var(--border);
+  padding:14px 48px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  opacity:0;transform:translateY(-8px);pointer-events:none;
+  transition:opacity 0.25s ease,transform 0.25s ease;
+  box-shadow:0 4px 16px rgba(0,0,0,0.04);
+}
+.filter-bar.visible{opacity:1;transform:none;pointer-events:auto;}
+.filter-bar-label{font-family:'Jost',sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);}
+.filter-chip{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:'Jost',sans-serif;font-size:11px;letter-spacing:0.5px;
+  background:var(--pink-pale);color:var(--pink-deep);
+  padding:8px 8px 8px 14px;border-radius:20px;cursor:default;
+}
+.filter-chip button{background:none;border:none;cursor:pointer;color:var(--pink-deep);font-size:14px;line-height:1;padding:2px 4px;}
+.filter-chip button:hover{color:var(--black);}
+.filter-clear-all{
+  font-family:'Jost',sans-serif;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--mid);background:none;border:none;cursor:pointer;text-decoration:underline;margin-left:auto;
+}
+.filter-clear-all:hover{color:var(--black);}
+
+.grid-heading{max-width:1400px;margin:32px auto 32px;text-align:center;}
+.grid-heading-title{font-family:'EB Garamond',serif;font-weight:400;font-size:clamp(24px,2.8vw,30px);color:var(--black);margin-bottom:8px;}
+.grid-heading-sub{font-size:13px;color:var(--mid);font-weight:300;line-height:1.7;}
+.empty-state{grid-column:1/-1;text-align:center;padding:80px 20px;}
+.empty-state p{font-family:'EB Garamond',serif;font-size:19px;color:var(--charcoal);margin-bottom:18px;}
+.empty-state button{
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--black);background:none;border:1px solid var(--black);
+  padding:12px 32px;cursor:pointer;font-family:'Jost',sans-serif;transition:all 0.3s;
+}
+.empty-state button:hover{background:var(--black);color:#fff;}
+.load-more-wrap{text-align:center;margin-top:40px;}
+.load-more{
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--black);background:none;border:1px solid var(--black);
+  padding:14px 40px;cursor:pointer;font-family:'Jost',sans-serif;transition:all 0.3s;
+}
+.load-more:hover{background:var(--black);color:#fff;}
+.load-more.done{display:none;}
+
 /* Product grid inside collection */
 .cv-grid{
   display:grid;
@@ -998,6 +1098,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
 @media(max-width:768px){
   /* Nav */
   nav{padding:0 14px;height:58px;gap:8px;}
+  .filter-bar{top:58px;padding:12px 14px;}
   .logo{font-size:17px;letter-spacing:3.5px;}
   .nav-center{flex:1;margin:0 8px;}
   .nav-search{max-width:none;width:100%;}
@@ -1156,6 +1257,13 @@ footer{background:var(--black);padding:40px 48px 36px;}
   .stone-card-name{font-size:10px;padding-bottom:8px;margin-bottom:6px;}
   .stone-card-tag{font-size:12px;}
   .stone-card-img{margin-bottom:10px;}
+
+  /* Shop by Style/Occasion hub */
+  .filter-hub-section{padding:32px 0 4px;}
+  .filter-panel{padding-left:0;padding-right:0;}
+  .filter-tabs{gap:6px;}
+  .filter-tab{padding:10px 14px;font-size:10px;}
+  .hub-tile-row{padding-left:14px;padding-right:14px;scroll-padding-left:14px;}
 
   /* Product grid inside collection — 3 per row on mobile */
   .cv-grid{
@@ -1398,8 +1506,39 @@ footer{background:var(--black);padding:40px 48px 36px;}
     <div class="stone-grid" id="stone-grid"></div>
     <button class="stone-clear" id="stone-clear" onclick="setStoneFilter(null)" style="display:none">Show All Pieces ✕</button>
   </div>
+  <!-- Shop by Style / Shop by Occasion / Discover by Stone tabbed hub --
+       live rollout of the demo's finalized hub, one collection at a time.
+       Hidden by default; renderFilterHub() shows it only for collections
+       present in _HUB_CONFIG (see script), and hides .stone-section above
+       instead so the two never show at once. -->
+  <div class="filter-hub-section" id="filter-hub-section" style="display:none">
+    <div class="filter-tabs" id="hub-tabs" role="tablist"></div>
+    <div class="filter-status" id="hub-filter-status"></div>
+    <div class="filter-slider-viewport">
+      <div class="filter-slider-track" id="hub-slider-track">
+        <div class="filter-panel">
+          <div class="section-intro" id="hub-style-intro"></div>
+          <div class="hub-tile-row" id="hub-style-grid"></div>
+        </div>
+        <div class="filter-panel">
+          <div class="section-intro" id="hub-occasion-intro"></div>
+          <div class="hub-tile-row" id="hub-occasion-grid"></div>
+        </div>
+        <div class="filter-panel">
+          <div class="section-intro" id="hub-stone-intro"></div>
+          <div class="hub-tile-row" id="hub-stone-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="hub-filter-sentinel"></div>
+  <div class="filter-bar" id="hub-filter-bar"></div>
+  <div class="grid-heading" id="grid-heading" style="display:none"></div>
   <div class="cv-grid" id="cv-grid">
     <div class="loading">Discovering pieces…</div>
+  </div>
+  <div class="load-more-wrap" id="load-more-wrap" style="display:none">
+    <button class="load-more" id="hub-load-more" onclick="hubLoadMore()">Load More</button>
   </div>
   <!-- Inline product view — expands below the grid on product click -->
   <div id="pp-inline" class="pp-inline" style="display:none">
@@ -2304,6 +2443,252 @@ function setStoneFilter(bucket){
   renderCollectionProducts(filtered);
 }
 
+// ── SHOP BY STYLE / SHOP BY OCCASION FILTER HUB — live rollout of the
+// demo's tabbed hub (Style/Occasion/Stone as sliding tab panels, sticky
+// filter bar, "The Edit" curated default + seamless Load More), one
+// collection at a time. _HUB_CONFIG holds each collection's own Style
+// taxonomy, already photo-audited against real product images in the demo
+// before being ported here verbatim. Occasion is one shared 5-tag
+// vocabulary reused by every collection that gets this hub. A collection
+// not yet present in _HUB_CONFIG keeps today's plain Stone-only section
+// (renderStoneSection above) completely untouched.
+const OCCASION_META = {
+  everyday:    { label:'Everyday',    tag:'Effortless pieces for wherever the day takes you.' },
+  polished:    { label:'Polished',    tag:'For the days you want everything to feel considered.' },
+  after_hours: { label:'After Hours', tag:'A little more sparkle after sunset.' },
+  occasion:    { label:'Occasion',    tag:'For moments worth dressing for.' },
+  weekend:     { label:'Weekend',     tag:'Easy pieces for slower days.' },
+};
+const OCCASION_ORDER = ['everyday','polished','after_hours','occasion','weekend'];
+const OCCASION_INTRO = 'Where are you wearing it? Find the mood that fits your moment.';
+const STONE_INTRO_HUB = 'Every stone tells a different story. Explore the collection that speaks to you.';
+
+const _HUB_CONFIG = {
+  rings: {
+    STYLE_META: {
+      solitaire:       { label:'Solitaire',        tag:'One stone, quietly confident — the classic that never dates.' },
+      open_adjustable: { label:'Open & Adjustable', tag:'No guessing your size. Made to fit, right out of the box.' },
+      stacking:        { label:'Stacking',          tag:'Thin bands built to layer, mix, and make your own combination.' },
+      statement:       { label:'Statement',         tag:'Bold enough to wear alone and be the whole outfit.' },
+      tennis:          { label:'Tennis',            tag:'An unbroken line of light, worn as one continuous ring.' },
+      vintage:         { label:'Vintage',           tag:'Antique finishes and old-world detail, made to feel inherited.' },
+      signet:          { label:'Signet',            tag:'A personal mark — initials, symbols, quiet meaning.' },
+    },
+    STYLE_ORDER: ['solitaire','open_adjustable','stacking','statement','tennis','vintage','signet'],
+    STYLE_INTRO: 'Every ring has a shape. Find the one that matches yours.',
+    EDIT_IDS: [1224, 700, 1210, 573, 570, 579, 1289, 1211, 1169, 525],
+  },
+};
+
+let hubCategory = null;
+let hubProducts = [];
+let hubActiveStyle = null;
+let hubActiveOccasion = null;
+let hubActiveStone = null;
+const HUB_INITIAL_COUNT = 8;  // ~2 rows on the 4-column desktop grid -- a taste, not the whole catalog at once
+const HUB_PAGE_SIZE = 16;
+let hubVisibleCount = HUB_INITIAL_COUNT;
+
+function _pStyleTags(p){ try{ return p.style_tags ? JSON.parse(p.style_tags) : []; }catch{ return []; } }
+function _pOccasion(p){ try{ return p.occasion ? JSON.parse(p.occasion) : []; }catch{ return []; } }
+
+// Every tile's count reflects the OTHER two active filters (not itself), so
+// a tile never promises a combination that would return zero results.
+function hubFilteredExcept(exclude){
+  return hubProducts.filter(p=>{
+    if(exclude!=='stone' && hubActiveStone && _stoneBucket(p)!==hubActiveStone) return false;
+    if(exclude!=='style' && hubActiveStyle && !_pStyleTags(p).includes(hubActiveStyle)) return false;
+    if(exclude!=='occasion' && hubActiveOccasion && !_pOccasion(p).includes(hubActiveOccasion)) return false;
+    return true;
+  });
+}
+
+function hubTileHTML(kind, key, meta, sampleImg, active){
+  const img = cld(sampleImg || getPlaceholder(), 400);
+  return `<div class="hub-tile ${active?'active':''}" data-kind="${kind}" data-val="${key}" onclick="hubSetFilter('${kind}','${key}')">
+    <div class="hub-tile-img"><img src="${img}" alt="${meta.label}" loading="lazy"/></div>
+    <div class="hub-tile-name">${meta.label}</div>
+    <div class="hub-tile-tag">${meta.tag}</div>
+  </div>`;
+}
+
+function renderHubStyleTiles(){
+  const cfg = _HUB_CONFIG[hubCategory];
+  const c = {};
+  hubFilteredExcept('style').forEach(p=>_pStyleTags(p).forEach(s=>c[s]=(c[s]||0)+1));
+  document.getElementById('hub-style-grid').innerHTML = cfg.STYLE_ORDER.filter(k=>c[k]>0).map(k=>{
+    const meta = cfg.STYLE_META[k];
+    const sample = hubProducts.find(p=>_pStyleTags(p).includes(k));
+    const img = sample ? (sample.content_image_url||sample.image_url) : null;
+    return hubTileHTML('style', k, meta, img, hubActiveStyle===k);
+  }).join('');
+}
+function renderHubOccasionTiles(){
+  const c = {};
+  hubFilteredExcept('occasion').forEach(p=>_pOccasion(p).forEach(o=>c[o]=(c[o]||0)+1));
+  document.getElementById('hub-occasion-grid').innerHTML = OCCASION_ORDER.filter(k=>c[k]>0).map(k=>{
+    const meta = OCCASION_META[k];
+    const sample = hubProducts.find(p=>_pOccasion(p).includes(k));
+    const img = sample ? (sample.content_image_url||sample.image_url) : null;
+    return hubTileHTML('occasion', k, meta, img, hubActiveOccasion===k);
+  }).join('');
+}
+function renderHubStoneTiles(){
+  const c = {};
+  hubFilteredExcept('stone').forEach(p=>{ const b=_stoneBucket(p); if(b) c[b]=(c[b]||0)+1; });
+  document.getElementById('hub-stone-grid').innerHTML = STONE_ORDER.filter(k=>c[k]>0).map(k=>{
+    const meta = STONE_META[k];
+    const sample = hubProducts.find(p=>_stoneBucket(p)===k);
+    const img = sample ? (sample.content_image_url||sample.image_url) : null;
+    return hubTileHTML('stone', k, meta, img, hubActiveStone===k);
+  }).join('');
+}
+
+function hubSetFilter(kind, val){
+  if(kind==='style') hubActiveStyle = (hubActiveStyle===val) ? null : val;
+  else if(kind==='occasion') hubActiveOccasion = (hubActiveOccasion===val) ? null : val;
+  else if(kind==='stone') hubActiveStone = (hubActiveStone===val) ? null : val;
+  hubVisibleCount = HUB_INITIAL_COUNT;
+  renderHubStyleTiles(); renderHubOccasionTiles(); renderHubStoneTiles();
+  renderHubGrid();
+}
+function hubClearFilter(){
+  hubActiveStyle = hubActiveOccasion = hubActiveStone = null;
+  hubVisibleCount = HUB_INITIAL_COUNT;
+  renderHubStyleTiles(); renderHubOccasionTiles(); renderHubStoneTiles();
+  renderHubGrid();
+}
+function hubSetTab(i){
+  document.querySelectorAll('#hub-tabs .filter-tab').forEach((el,idx)=>el.classList.toggle('active', idx===i));
+  document.getElementById('hub-slider-track').style.transform = `translateX(-${i*33.3333}%)`;
+}
+function renderHubTabStatus(){
+  const n = [hubActiveStyle, hubActiveOccasion, hubActiveStone].filter(Boolean).length;
+  document.getElementById('hub-filter-status').innerHTML = n
+    ? `${n} filter${n>1?'s':''} active · <button onclick="hubClearFilter()">Clear all</button>`
+    : '';
+  const dots = document.querySelectorAll('#hub-tabs .tab-dot');
+  if(dots[0]) dots[0].classList.toggle('active', !!hubActiveStyle);
+  if(dots[1]) dots[1].classList.toggle('active', !!hubActiveOccasion);
+  if(dots[2]) dots[2].classList.toggle('active', !!hubActiveStone);
+}
+function renderHubFilterBar(){
+  const cfg = _HUB_CONFIG[hubCategory];
+  const chips = [];
+  if(hubActiveStyle) chips.push({label:cfg.STYLE_META[hubActiveStyle].label, clear:()=>hubSetFilter('style',hubActiveStyle)});
+  if(hubActiveOccasion) chips.push({label:OCCASION_META[hubActiveOccasion].label, clear:()=>hubSetFilter('occasion',hubActiveOccasion)});
+  if(hubActiveStone) chips.push({label:STONE_META[hubActiveStone].label, clear:()=>hubSetFilter('stone',hubActiveStone)});
+  window.__hubClearChip = (i)=>chips[i].clear();
+  const bar = document.getElementById('hub-filter-bar');
+  if(!chips.length){ bar.innerHTML=''; _hubUpdateBarVisibility(); return; }
+  bar.innerHTML = `<span class="filter-bar-label">Filtering by</span>` +
+    chips.map((c,i)=>`<span class="filter-chip">${c.label}<button onclick="__hubClearChip(${i})" aria-label="Remove ${c.label}">×</button></span>`).join('') +
+    `<button class="filter-clear-all" onclick="hubClearFilter()">Clear all</button>`;
+  _hubUpdateBarVisibility();
+}
+let _hubScrolledPastTiles = false;
+function _hubUpdateBarVisibility(){
+  const bar = document.getElementById('hub-filter-bar');
+  const hasFilter = hubActiveStyle || hubActiveOccasion || hubActiveStone;
+  bar.classList.toggle('visible', _hubScrolledPastTiles && !!hasFilter);
+}
+function renderHubGridHeading(hasFilter, count){
+  const el = document.getElementById('grid-heading');
+  if(hasFilter){
+    el.innerHTML = `<div class="grid-heading-title">${count} Piece${count===1?'':'s'}</div>`;
+  } else {
+    el.innerHTML = `<div class="grid-heading-title">The Edit</div><div class="grid-heading-sub">A few of our favorites, one of every shape.</div>`;
+  }
+}
+function renderHubGrid(){
+  const cfg = _HUB_CONFIG[hubCategory];
+  const hasFilter = !!(hubActiveStyle || hubActiveOccasion || hubActiveStone);
+  const editOrder = cfg.EDIT_IDS
+    ? [...cfg.EDIT_IDS.map(id=>hubProducts.find(p=>p.id===id)).filter(Boolean),
+       ...hubProducts.filter(p=>!cfg.EDIT_IDS.includes(p.id))]
+    : hubProducts;
+  const filtered = hasFilter ? hubFilteredExcept(null) : editOrder;
+
+  renderHubFilterBar();
+  renderHubTabStatus();
+  renderHubGridHeading(hasFilter, filtered.length);
+
+  const grid = document.getElementById('cv-grid');
+  const wrap = document.getElementById('load-more-wrap');
+  if(!filtered.length){
+    grid.innerHTML = `<div class="empty-state"><p>No pieces match this combination yet.</p><button onclick="hubClearFilter()">Clear filters</button></div>`;
+    wrap.style.display = 'none';
+    return;
+  }
+  const shown = filtered.slice(0, hubVisibleCount);
+  ppNavList = shown;
+  // Rescue pp-inline before replacing innerHTML, same as renderCollectionProducts.
+  const _ppEl = document.getElementById('pp-inline');
+  const _collView = document.getElementById('collection-view');
+  if(_ppEl){ _ppEl.style.display='none'; if(_collView && _ppEl.parentElement!==_collView) _collView.appendChild(_ppEl); }
+  grid.innerHTML = shown.map(p=>productCardHTML(p)).join('');
+  wireProductCardEffects(grid);
+  wrap.style.display = 'block';
+  document.getElementById('hub-load-more').classList.toggle('done', hubVisibleCount >= filtered.length);
+}
+function hubLoadMore(){
+  hubVisibleCount += HUB_PAGE_SIZE;
+  renderHubGrid();
+}
+
+// Entry point from openCollection() -- only called when name.toLowerCase()
+// has a _HUB_CONFIG entry; caller falls back to renderStoneSection()
+// otherwise. Hides .stone-section so the two never show at once.
+function renderFilterHub(name, prods){
+  hubCategory = name.toLowerCase();
+  hubProducts = prods;
+  hubActiveStyle = hubActiveOccasion = hubActiveStone = null;
+  hubVisibleCount = HUB_INITIAL_COUNT;
+
+  document.getElementById('stone-section').style.display = 'none';
+  document.getElementById('filter-hub-section').style.display = 'block';
+  document.getElementById('grid-heading').style.display = 'block';
+
+  const cfg = _HUB_CONFIG[hubCategory];
+  document.getElementById('hub-tabs').innerHTML = `
+    <button class="filter-tab active" data-tab="0" onclick="hubSetTab(0)">Shop by Style<span class="tab-dot"></span></button>
+    <button class="filter-tab" data-tab="1" onclick="hubSetTab(1)">Shop by Occasion<span class="tab-dot"></span></button>
+    <button class="filter-tab" data-tab="2" onclick="hubSetTab(2)">Discover by Stone<span class="tab-dot"></span></button>`;
+  document.getElementById('hub-slider-track').style.transform = 'translateX(0%)';
+  document.getElementById('hub-style-intro').textContent = cfg.STYLE_INTRO;
+  document.getElementById('hub-occasion-intro').textContent = OCCASION_INTRO;
+  document.getElementById('hub-stone-intro').textContent = STONE_INTRO_HUB;
+
+  renderHubStyleTiles(); renderHubOccasionTiles(); renderHubStoneTiles();
+  renderHubGrid();
+
+  _hubScrolledPastTiles = false;
+  _hubUpdateBarVisibility();
+}
+// Called defensively at the top of every openCollection()/openTennisBracelets()
+// so switching from a hub collection to a non-hub one (or vice versa) always
+// leaves clean state, regardless of which was open before.
+function hideFilterHub(){
+  document.getElementById('filter-hub-section').style.display = 'none';
+  const bar = document.getElementById('hub-filter-bar');
+  bar.innerHTML = '';
+  bar.classList.remove('visible');
+  const heading = document.getElementById('grid-heading');
+  heading.innerHTML = '';
+  heading.style.display = 'none';
+  document.getElementById('load-more-wrap').style.display = 'none';
+}
+const hubFilterObs = new IntersectionObserver(entries=>{
+  // boundingClientRect.top < 0 means the sentinel is above the viewport --
+  // actually scrolled past going down, not just "not reached yet" (which
+  // also reports isIntersecting:false and would show the bar too early).
+  entries.forEach(e=>{ _hubScrolledPastTiles = e.boundingClientRect.top < 0; _hubUpdateBarVisibility(); });
+}, { threshold: 0 });
+{
+  const _hubSentinel = document.getElementById('hub-filter-sentinel');
+  if(_hubSentinel) hubFilterObs.observe(_hubSentinel);
+}
+
 function renderCollectionTiles(cols){
   const grid = document.getElementById('collections-grid');
   if(!cols||!cols.length){grid.innerHTML='<div style="color:var(--light);font-size:14px;grid-column:1/-1;padding:20px;font-family:\'EB Garamond\',serif;font-style:italic">Collections loading…</div>';return;}
@@ -2379,12 +2764,15 @@ async function openCollection(id, name, opts){
   // back/forward history stack.
   if(opts.pushUrl !== false) history.pushState(null, '', '/collections/'+_collSlug(name));
 
+  hideFilterHub(); // clean slate regardless of what was open before
+  const useHub = !!_HUB_CONFIG[name.toLowerCase()];
+
   // Filter locally — primary: by collection_id, fallback: by category name
   let local = allProducts.filter(p=>p.collection_id===id);
   if(!local.length) local = allProducts.filter(p=>(p.category||'').toLowerCase()===name.toLowerCase());
   if(local.length){
-    renderStoneSection(name, local);
-    renderCollectionProducts(local);
+    if(useHub) renderFilterHub(name, local);
+    else { renderStoneSection(name, local); renderCollectionProducts(local); }
     return;
   }
 
@@ -2396,8 +2784,8 @@ async function openCollection(id, name, opts){
     if(Array.isArray(prods)){
       prods.forEach(p=>{if(!allProducts.find(x=>x.id===p.id))allProducts.push(p);});
     }
-    renderStoneSection(name, Array.isArray(prods)?prods:[]);
-    renderCollectionProducts(prods);
+    if(useHub) renderFilterHub(name, Array.isArray(prods)?prods:[]);
+    else { renderStoneSection(name, Array.isArray(prods)?prods:[]); renderCollectionProducts(prods); }
   }catch{document.getElementById('cv-grid').innerHTML='<div class="loading">Could not load pieces</div>';}
 }
 
@@ -2567,6 +2955,7 @@ async function openTennisBracelets(opts){
   window.scrollTo({top:0,behavior:'smooth'});
   if(opts.pushUrl !== false) history.pushState(null, '', '/collections/tennis-bracelets');
   document.getElementById('stone-section').style.display='none'; // never applicable here, see _STONE_FILTER_CATEGORIES
+  hideFilterHub();
   renderCollectionProducts(_tennisBracelets());
 }
 
