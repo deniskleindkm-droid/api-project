@@ -802,8 +802,7 @@ details[open] .pp-accordion-arr{transform:rotate(180deg);}
 /* More from this collection */
 .pp-more-wrap{
   border-top:1px solid var(--border);
-  padding:28px 0 48px;
-  margin-top:4px;
+  padding:36px 48px 56px;
 }
 .pp-more-title{
   font-size:9px;font-weight:300;letter-spacing:3px;
@@ -811,14 +810,16 @@ details[open] .pp-accordion-arr{transform:rotate(180deg);}
 }
 /* Swipeable row, not a static grid -- "You may also like" needs to invite
    scrolling/swiping through several pieces, and clicking one swaps the
-   panel in place (openPP again) rather than navigating away. */
+   panel in place (openPP again) rather than navigating away. Full page
+   width now (moved out of the 45%-wide info column), so cards get real
+   room on a wide screen instead of being squeezed. */
 .pp-more-grid{
-  display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x proximity;
+  display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x proximity;
   -webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;
 }
 .pp-more-grid::-webkit-scrollbar{display:none;}
 .pp-more-card{
-  flex:0 0 130px;scroll-snap-align:start;cursor:pointer;
+  flex:0 0 180px;scroll-snap-align:start;cursor:pointer;
 }
 .pp-more-card-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);margin-bottom:8px;}
 .pp-more-card-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.5s ease;}
@@ -1177,8 +1178,8 @@ footer{background:var(--black);padding:40px 48px 36px;}
   .pp-inline-topbar{padding:18px 0 12px;}
   .pp-name{font-size:22px;}
   .pp-price{font-size:24px;}
-  .pp-more-wrap{padding:20px 0 36px;}
-  .pp-more-grid{grid-template-columns:repeat(2,1fr);}
+  .pp-more-wrap{padding:20px 20px 36px;}
+  .pp-more-card{flex:0 0 140px;}
 
   /* Cart */
   .cart-sidebar{width:100%;transform:translateX(100%);}
@@ -1486,12 +1487,14 @@ footer{background:var(--black);padding:40px 48px 36px;}
             <div class="pp-ship-row"><span>↺</span><span><strong>30-day returns</strong></span></div>
           </div>
         </details>
-        <!-- More from this collection — scrolls with info panel -->
-        <div class="pp-more-wrap" id="pp-more-wrap" style="display:none">
-          <div class="pp-more-title">You May Also Like</div>
-          <div class="pp-more-grid" id="pp-more-grid"></div>
-        </div>
       </div>
+    </div>
+    <!-- Full-width, below the gallery/info columns -- on a wide screen this
+         gets the whole panel's width to swipe through, not squeezed into
+         the 45% info column where it was easy to miss entirely. -->
+    <div class="pp-more-wrap" id="pp-more-wrap" style="display:none">
+      <div class="pp-more-title">You May Also Like</div>
+      <div class="pp-more-grid" id="pp-more-grid"></div>
     </div>
   </div>
 </div>
@@ -2886,7 +2889,13 @@ function positionPPInline(productId){
 // wrapping the whole card would need preventDefault too, everywhere pcard
 // is rendered). noopener since the new tab is fully independent.
 function openProductNewTab(id){
-  window.open('/products/'+id, '_blank', 'noopener');
+  // No 'noopener' here on purpose -- closeProductView() needs window.opener
+  // to detect "this tab exists only to show one product" and close it back
+  // to exactly where the customer was, rather than revealing an awkward
+  // empty-homepage state in a tab that never had a real collection loaded.
+  // Safe to omit: this opens our own /products/{id} page, same-origin, not
+  // a link to anywhere untrusted.
+  window.open('/products/'+id, '_blank');
 }
 
 async function openPP(id, presetVariantId=null){
