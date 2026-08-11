@@ -1902,6 +1902,19 @@ let _currentView = {type:'home'};
 // product panel (search results, cart items), which has a real collection
 // already sitting behind it and just needs a plain hide.
 let _isDedicatedProductLoad = false;
+// True only while _restoreReturnPosition() is rebuilding the collection
+// behind a closing product view. Suppresses the entrance fade (both the
+// container's and each card's) for that one render -- the customer never
+// actually left the collection in any way that should visibly replay an
+// "opening" animation; skipping it is what makes the close feel instant
+// instead of a second, unwanted jump.
+let _restoringView = false;
+// Scroll position from just before the in-page product panel opened (see
+// openPP()) -- opening auto-scrolls to bring the panel into view, but
+// nothing used to scroll back on close, leaving the customer stranded
+// wherever the panel happened to be instead of back where they clicked
+// from. closePP() restores and clears this.
+let _ppPreOpenScrollY = null;
 let ppSelectedSize = null;
 // True only when a real, clickable <button class="pp-chip"> size chip was
 // rendered — false for the open/adjustable-ring, bangle-diameter, and
@@ -2831,7 +2844,7 @@ function _fadeInCollectionView(){
 async function openCollection(id, name, opts){
   opts = opts || {};
   _currentView = {type:'collection', id, name};
-  _fadeInCollectionView();
+  if(!opts.restoreScroll) _fadeInCollectionView();
   document.body.classList.add('collection-mode');
   _updateNavAtHero(); // don't wait for a scroll event -- e.g. clicking a
                        // tile while already at scrollY 0 fires none at all
@@ -2944,10 +2957,18 @@ function productCardHTML(p){
 // productCardHTML() -- both renderCollectionProducts() and
 // renderTennisBracelets() call this on the container they just filled.
 function wireProductCardEffects(grid){
-  const fadeObs=new IntersectionObserver(entries=>{
-    entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');fadeObs.unobserve(e.target);}});
-  },{threshold:0.06});
-  grid.querySelectorAll('.pcard').forEach(el=>fadeObs.observe(el));
+  if(_restoringView){
+    // Restoring the collection behind a just-closed product view -- the
+    // customer never actually left it, so skip the entrance fade entirely
+    // and show every card at full opacity immediately instead of replaying
+    // the "opening" animation.
+    grid.querySelectorAll('.pcard').forEach(el=>el.classList.add('visible'));
+  } else {
+    const fadeObs=new IntersectionObserver(entries=>{
+      entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');fadeObs.unobserve(e.target);}});
+    },{threshold:0.06});
+    grid.querySelectorAll('.pcard').forEach(el=>fadeObs.observe(el));
+  }
   grid.querySelectorAll('.pcard-img img[data-hover]').forEach(img=>{
     const hoverSrc=img.getAttribute('data-hover');
     const origSrc=img.src;
@@ -3032,7 +3053,7 @@ function shopTennisBracelets(){
 async function openTennisBracelets(opts){
   opts = opts || {};
   _currentView = {type:'tennis'};
-  _fadeInCollectionView();
+  if(!opts.restoreScroll) _fadeInCollectionView();
   if(!allProducts.length) await loadProducts(); // cold-open safety, e.g. a direct link before Promise.all in window.onload resolves
   document.body.classList.add('collection-mode');
   _updateNavAtHero();
@@ -3357,26 +3378,33 @@ function positionPPInline(productId){
   if(anchor.nextSibling!==ppEl) grid.insertBefore(ppEl,anchor.nextSibling);
 }
 
-// Main product-grid cards open in a fresh tab at the product's real URL
-// instead of the in-page panel below -- window.open (not a real <a href>)
-// keeps the existing pcard markup/CSS untouched (the wishlist heart button
-// nested inside already relies on stopPropagation, which a real anchor
-// wrapping the whole card would need preventDefault too, everywhere pcard
-// is rendered). noopener since the new tab is fully independent.
+// Main product-grid cards open a fresh tab at the product's real URL on
+// desktop -- window.open (not a real <a href>) keeps the existing pcard
+// markup/CSS untouched (the wishlist heart button nested inside already
+// relies on stopPropagation, which a real anchor wrapping the whole card
+// would need preventDefault too, everywhere pcard is rendered).
+//
+// Below the mobile breakpoint, use the in-page panel instead (the same
+// mechanism search results and cart items already use) -- confirmed live
+// that several mobile browsers don't actually open a second tab for
+// window.open(url,'_blank') at all, they just navigate the CURRENT tab to
+// it, a real full-page refresh with window.opener left unset exactly like a
+// cold visit. That refresh was the root cause of both "clicking X takes me
+// to the homepage" and the visible jump on close -- no amount of restoring
+// scroll position after the fact makes a real page reload feel seamless.
+// The in-page panel never navigates at all, so there's nothing to refresh
+// and nothing to restore.
 function openProductNewTab(id){
+  if(window.innerWidth<=768){ openPP(id); return; }
   // No 'noopener' here on purpose -- closeProductView() needs window.opener
   // to detect "this tab exists only to show one product" and close it back
   // to exactly where the customer was. Safe to omit: this opens our own
   // /products/{id} page, same-origin, not a link to anywhere untrusted.
   //
-  // window.opener alone isn't reliable enough on its own though -- confirmed
-  // live on mobile: several mobile browsers don't open a real second tab for
-  // this at all, they just navigate the current tab in place, which leaves
-  // window.opener unset exactly like a cold visit would. closeProductView()
-  // used to fall back to "reveal the homepage" in that case, which is the
-  // "taken to homepage" bug Dennis reported. _saveReturnPosition() below
-  // records exactly where we were first, so that fallback can restore the
-  // real position instead of guessing.
+  // _saveReturnPosition() below still matters even on desktop -- a shared
+  // or bookmarked /products/{id} link opened directly has no window.opener
+  // either, and should restore to nothing (closePP()'s homepage fallback)
+  // rather than something stale.
   _saveReturnPosition();
   window.open('/products/'+id, '_blank');
 }
@@ -3411,9 +3439,15 @@ function _restoreReturnPosition(){
   const v=saved.view||{type:'home'};
   const restoreOpts={pushUrl:false, restoreScroll:true};
   let targetUrl='/';
+  _restoringView=true;
   if(v.type==='collection'){ targetUrl='/collections/'+_collSlug(v.name); openCollection(v.id, v.name, restoreOpts); }
   else if(v.type==='tennis'){ targetUrl='/collections/tennis-bracelets'; openTennisBracelets(restoreOpts); }
   else goHome(restoreOpts);
+  // Safe to reset synchronously right after -- the calls above only
+  // actually await anything if allProducts isn't loaded yet (rare: this
+  // page's own boot sequence already loads it, same as any other page),
+  // so the render they trigger has already run by this line.
+  _restoringView=false;
   // Replaces the still-showing /products/{id} URL from this cold load --
   // never pushes, so the back button isn't left pointing at a dead entry.
   history.replaceState(null, '', targetUrl);
@@ -3430,6 +3464,17 @@ async function openPP(id, presetVariantId=null){
   if(ppOpening)return;  // already opening — ignore extra clicks
   ppOpening=true;
   ppPresetVariantId = presetVariantId || null;
+
+  // Capture the scroll position from before the panel opens, but only on
+  // the first open of a chain -- opening a product then browsing to another
+  // via prev/next or "You may also like" calls openPP() again while the
+  // panel is already showing, and re-capturing at that point would save the
+  // wrong (panel-affected) position. closePP() restores this once the whole
+  // chain ends, matching the browsing-a-collection close experience.
+  const _ppInlineForCapture = document.getElementById('pp-inline');
+  if(!_ppInlineForCapture || _ppInlineForCapture.style.display !== 'block'){
+    _ppPreOpenScrollY = window.scrollY;
+  }
 
   let p = allProducts.find(x=>x.id===id);
   if(!p){
@@ -3979,6 +4024,12 @@ function closePP(){
     _updateNavAtHero();
     document.getElementById('breadcrumb').style.display='none';
     document.getElementById('collection-view').style.display='none';
+  }
+  // Undo openPP()'s auto-scroll-to-panel -- instant, not smooth, so closing
+  // reads as "nothing happened" rather than a second scroll animation to watch.
+  if(_ppPreOpenScrollY!==null){
+    window.scrollTo({top:_ppPreOpenScrollY, behavior:'auto'});
+    _ppPreOpenScrollY=null;
   }
 }
 // This tab may have been opened purely to view one product (window.open
