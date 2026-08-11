@@ -491,6 +491,12 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
 
 /* ── COLLECTION VIEW (inside a collection) ── */
 .collection-view{display:none;padding:0 48px 80px;}
+/* Fade-in on entry (collection tile click, Tennis Bracelets, or restoring
+   after a product page closes) instead of the instant display:none->block
+   cut, which read as a jarring "jump" rather than a real page opening.
+   Kept short (220ms) so it still feels immediate, not slow. */
+.collection-view.cv-enter{opacity:0;transform:translateY(10px);}
+.collection-view.cv-enter-active{opacity:1;transform:none;transition:opacity 0.22s ease,transform 0.22s ease;}
 .cv-header{
   padding:40px 0 24px;border-bottom:1px solid var(--border);
   margin-bottom:32px;
@@ -1501,7 +1507,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
        collection so a cold render of this markup never flashes stale
        tiles from whichever collection was open last. -->
   <div class="stone-section" id="stone-section" style="display:none">
-    <div class="section-title">Discover by Stone</div>
+    <div class="section-title">Shop by Stone</div>
     <div class="section-intro">Every stone tells a different story. Explore the collection that speaks to you.</div>
     <div class="stone-grid" id="stone-grid"></div>
     <button class="stone-clear" id="stone-clear" onclick="setStoneFilter(null)" style="display:none">Show All Pieces ✕</button>
@@ -1885,6 +1891,17 @@ let pendingVerifyEmail = '';
 let pendingResetEmail = '';
 let cartItems = [];
 let ppEnteredCollectionModeForPreview = false; // true when positionPPInline had to flip collection-mode on itself (no real collection was ever browsed into) — closePP() undoes it instead of leaving an empty collection-view showing
+// Tracks whatever's currently on screen (home / a real collection / Tennis
+// Bracelets) -- set at the top of goHome()/openCollection()/
+// openTennisBracelets(). Only real reason this exists: _saveReturnPosition()
+// needs to know what to restore the customer to after a product page closes.
+let _currentView = {type:'home'};
+// Set once, at boot, only when this document was itself loaded fresh at
+// /products/{id} (see the router below) -- gates closeProductView()'s
+// restore-position fallback so it can never misfire for the old in-page
+// product panel (search results, cart items), which has a real collection
+// already sitting behind it and just needs a plain hide.
+let _isDedicatedProductLoad = false;
 let ppSelectedSize = null;
 // True only when a real, clickable <button class="pp-chip"> size chip was
 // rendered — false for the open/adjustable-ring, bangle-diameter, and
@@ -2133,6 +2150,15 @@ window.onload = async()=>{
     history.replaceState(null, '', window.location.pathname);
   }
   const prodMatch = window.location.pathname.match(/^\/products\/(\d+)$/);
+  // True exactly when this document was itself loaded fresh at /products/{id}
+  // -- covers both a genuine window.open new tab AND a mobile browser that
+  // navigates the current tab in place instead (confirmed live -- several
+  // do). Distinct from opening the same panel in-page from search/cart
+  // while already browsing a collection, which never sets this and must
+  // never fall into the restore-position path in closeProductView() below
+  // (there's nothing to restore -- the real collection is already sitting
+  // right there behind the panel).
+  if(prodMatch) _isDedicatedProductLoad = true;
   // ?variant_id= (the internal ProductVariant id) is preferred; ?option_id=
   // (Silverbene's own id) is still accepted since already-tagged Instagram
   // posts and approved Meta catalog entries can't be changed retroactively —
@@ -2690,7 +2716,7 @@ function renderFilterHub(name, prods){
   document.getElementById('hub-tabs').innerHTML = `
     <button class="filter-tab active" data-tab="0" onclick="hubSetTab(0)">Shop by Style<span class="tab-dot"></span></button>
     <button class="filter-tab" data-tab="1" onclick="hubSetTab(1)">Shop by Occasion<span class="tab-dot"></span></button>
-    <button class="filter-tab" data-tab="2" onclick="hubSetTab(2)">Discover by Stone<span class="tab-dot"></span></button>`;
+    <button class="filter-tab" data-tab="2" onclick="hubSetTab(2)">Shop by Stone<span class="tab-dot"></span></button>`;
   document.getElementById('hub-slider-track').style.transform = 'translateX(0%)';
   document.getElementById('hub-style-intro').textContent = cfg.STYLE_INTRO;
   document.getElementById('hub-occasion-intro').textContent = OCCASION_INTRO;
@@ -2787,14 +2813,35 @@ function _matchColHintHeight(){
 }
 window.addEventListener('resize', _matchColHintHeight);
 
+// Triggers the fade-in defined by .cv-enter/.cv-enter-active above. Safe to
+// call every time a collection-type view opens (fresh open or restore) --
+// removing then re-adding the class on the next frame re-triggers the
+// transition even if it's already mid-flight from a previous call.
+function _fadeInCollectionView(){
+  const el = document.getElementById('collection-view');
+  if(!el) return;
+  el.classList.remove('cv-enter-active');
+  el.classList.add('cv-enter');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    el.classList.remove('cv-enter');
+    el.classList.add('cv-enter-active');
+  }));
+}
+
 async function openCollection(id, name, opts){
   opts = opts || {};
+  _currentView = {type:'collection', id, name};
+  _fadeInCollectionView();
   document.body.classList.add('collection-mode');
   _updateNavAtHero(); // don't wait for a scroll event -- e.g. clicking a
                        // tile while already at scrollY 0 fires none at all
   document.getElementById('cv-title').textContent = name;
   showBreadcrumb(name);
-  window.scrollTo({top:0,behavior:'smooth'});
+  // Skipped when restoring a saved scroll position after a product page
+  // closes (_restoreReturnPosition sets its own scrollY once render is
+  // done) -- scrolling to 0 first would flash the top of the page before
+  // jumping back down, exactly the "jumpy" navigation feel we're fixing.
+  if(!opts.restoreScroll) window.scrollTo({top:0,behavior:'smooth'});
   // Real per-collection URL -- skipped when this call came from popstate
   // (_routeFromPath) or the initial-load router, since the URL is already
   // correct in both of those cases and pushing again would corrupt the
@@ -2984,12 +3031,14 @@ function shopTennisBracelets(){
 // collection_id/API-fallback path; it renders straight from allProducts.
 async function openTennisBracelets(opts){
   opts = opts || {};
+  _currentView = {type:'tennis'};
+  _fadeInCollectionView();
   if(!allProducts.length) await loadProducts(); // cold-open safety, e.g. a direct link before Promise.all in window.onload resolves
   document.body.classList.add('collection-mode');
   _updateNavAtHero();
   document.getElementById('cv-title').textContent = 'Tennis Bracelets';
   showBreadcrumb('Tennis Bracelets');
-  window.scrollTo({top:0,behavior:'smooth'});
+  if(!opts.restoreScroll) window.scrollTo({top:0,behavior:'smooth'});
   if(opts.pushUrl !== false) history.pushState(null, '', '/collections/tennis-bracelets');
   document.getElementById('stone-section').style.display='none'; // never applicable here, see _STONE_FILTER_CATEGORIES
   hideFilterHub();
@@ -3317,11 +3366,64 @@ function positionPPInline(productId){
 function openProductNewTab(id){
   // No 'noopener' here on purpose -- closeProductView() needs window.opener
   // to detect "this tab exists only to show one product" and close it back
-  // to exactly where the customer was, rather than revealing an awkward
-  // empty-homepage state in a tab that never had a real collection loaded.
-  // Safe to omit: this opens our own /products/{id} page, same-origin, not
-  // a link to anywhere untrusted.
+  // to exactly where the customer was. Safe to omit: this opens our own
+  // /products/{id} page, same-origin, not a link to anywhere untrusted.
+  //
+  // window.opener alone isn't reliable enough on its own though -- confirmed
+  // live on mobile: several mobile browsers don't open a real second tab for
+  // this at all, they just navigate the current tab in place, which leaves
+  // window.opener unset exactly like a cold visit would. closeProductView()
+  // used to fall back to "reveal the homepage" in that case, which is the
+  // "taken to homepage" bug Dennis reported. _saveReturnPosition() below
+  // records exactly where we were first, so that fallback can restore the
+  // real position instead of guessing.
+  _saveReturnPosition();
   window.open('/products/'+id, '_blank');
+}
+// Session-scoped (not shared across a genuinely separate new tab, which is
+// exactly what we want -- a real new tab has nothing saved and correctly
+// falls through to today's homepage-reveal in _restoreReturnPosition below).
+function _saveReturnPosition(){
+  try{
+    sessionStorage.setItem('mikisi_return_pos', JSON.stringify({
+      view: _currentView,
+      scrollY: window.scrollY,
+    }));
+  }catch{}
+}
+// Used by closeProductView() when there's no window.opener to close back
+// to. Restores whatever _saveReturnPosition() captured -- the exact
+// collection/Tennis Bracelets/homepage view and scroll position -- instead
+// of always dumping the customer on the homepage. Falls back to closePP()'s
+// existing homepage-reveal only when nothing was ever saved (e.g. a shared
+// /products/{id} link opened cold, with no prior view to return to).
+function _restoreReturnPosition(){
+  let saved=null;
+  try{ saved=JSON.parse(sessionStorage.getItem('mikisi_return_pos')||'null'); }catch{}
+  if(!saved){ closePP(); return; }
+  sessionStorage.removeItem('mikisi_return_pos');
+
+  const ppInlineEl=document.getElementById('pp-inline');
+  if(ppInlineEl) ppInlineEl.style.display='none';
+  ppOpening=false;
+  ppEnteredCollectionModeForPreview=false;
+
+  const v=saved.view||{type:'home'};
+  const restoreOpts={pushUrl:false, restoreScroll:true};
+  let targetUrl='/';
+  if(v.type==='collection'){ targetUrl='/collections/'+_collSlug(v.name); openCollection(v.id, v.name, restoreOpts); }
+  else if(v.type==='tennis'){ targetUrl='/collections/tennis-bracelets'; openTennisBracelets(restoreOpts); }
+  else goHome(restoreOpts);
+  // Replaces the still-showing /products/{id} URL from this cold load --
+  // never pushes, so the back button isn't left pointing at a dead entry.
+  history.replaceState(null, '', targetUrl);
+
+  // Instant, not smooth -- this is a restoration, not a fresh scroll
+  // action, so it should land exactly like native browser back-navigation
+  // does: immediately, with no visible scroll animation to watch.
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    window.scrollTo({top:saved.scrollY||0, behavior:'auto'});
+  }));
 }
 
 async function openPP(id, presetVariantId=null){
@@ -3886,8 +3988,19 @@ function closePP(){
 // set in the former case, and only script-opened tabs can be script-closed
 // — closing here genuinely returns the customer to the tab they came from,
 // however many related products they clicked through in between.
+//
+// window.opener isn't reliable on every mobile browser though (confirmed
+// live -- several just navigate the current tab instead of opening a real
+// second one, which leaves window.opener unset same as a cold visit). When
+// that happens on a genuinely dedicated product-page load (see
+// _isDedicatedProductLoad), _restoreReturnPosition() puts the customer back
+// where they actually were instead of revealing the homepage. The old
+// same-tab flow (search/cart) never sets that flag, so it always falls
+// through to the plain closePP() hide, same as before -- nothing to
+// restore there, the real collection is already right behind the panel.
 function closeProductView(){
   if(window.opener){ window.close(); }
+  else if(_isDedicatedProductLoad){ _restoreReturnPosition(); }
   else { closePP(); }
 }
 function ppNavPrev(){if(ppNavIdx>0){ppOpening=false;openPP(ppNavList[ppNavIdx-1].id);}}
@@ -4649,6 +4762,7 @@ function updateAuthUI(){
 
 function goHome(opts){
   opts = opts || {};
+  _currentView = {type:'home'};
   // Rescue pp-inline back to collection-view before hiding
   const _ppEl = document.getElementById('pp-inline');
   const _collView = document.getElementById('collection-view');
@@ -4661,7 +4775,8 @@ function goHome(opts){
   _updateNavAtHero();
   document.getElementById('breadcrumb').style.display='none';
   document.getElementById('collection-view').style.display='none';
-  window.scrollTo({top:0,behavior:'smooth'});
+  document.getElementById('collection-view').classList.remove('cv-enter-active');
+  if(!opts.restoreScroll) window.scrollTo({top:0,behavior:'smooth'});
   // Skipped when called from popstate (_routeFromPath's fallback) -- the
   // URL is already "/" in that case, and pushing again would corrupt the
   // back/forward stack the same way it would in openCollection().
