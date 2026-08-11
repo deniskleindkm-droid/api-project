@@ -2435,7 +2435,7 @@ function productCardHTML(p){
   else if(p.is_new) badge=`<div class="pcard-badge badge-new">New</div>`;
   const liked = wishlist.includes(p.id);
   const sizeText = pcardSizeText(p);
-  return `<div class="pcard${outOfStock?' pcard-oos':''}" data-id="${p.id}" onclick="openPP(${p.id})">
+  return `<div class="pcard${outOfStock?' pcard-oos':''}" data-id="${p.id}" onclick="openProductNewTab(${p.id})">
     <div class="pcard-img">
       <img src="${imgA}" alt="${name}"${imgB?` data-hover="${imgB}"`:''}  onerror="this.src='${getPlaceholder()}'" loading="lazy"/>
       ${badge}
@@ -2858,6 +2858,16 @@ function positionPPInline(productId){
   }
   const anchor=cards[lastInRow];
   if(anchor.nextSibling!==ppEl) grid.insertBefore(ppEl,anchor.nextSibling);
+}
+
+// Main product-grid cards open in a fresh tab at the product's real URL
+// instead of the in-page panel below -- window.open (not a real <a href>)
+// keeps the existing pcard markup/CSS untouched (the wishlist heart button
+// nested inside already relies on stopPropagation, which a real anchor
+// wrapping the whole card would need preventDefault too, everywhere pcard
+// is rendered). noopener since the new tab is fully independent.
+function openProductNewTab(id){
+  window.open('/products/'+id, '_blank', 'noopener');
 }
 
 async function openPP(id, presetVariantId=null){
