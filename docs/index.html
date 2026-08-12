@@ -820,7 +820,17 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
   position:sticky;top:76px;background:white;z-index:2;
   padding:24px 0 16px;
 }
-.pp-inline-nav{display:flex;align-items:center;gap:6px;}
+.pp-inline-nav{display:flex;align-items:center;gap:14px;}
+/* Gives the close button a reason, instead of a bare X floating alone --
+   pairs it with exactly where closing actually goes. */
+.pp-back-label{
+  background:none;border:none;cursor:pointer;
+  font-family:'Jost',sans-serif;font-size:10px;font-weight:400;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--mid);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;
+  padding:0;transition:color 0.2s;
+}
+.pp-back-label:hover{color:var(--black);}
 .pp-inline-close{
   background:none;border:1px solid var(--border);
   color:var(--mid);width:30px;height:30px;font-size:18px;
@@ -868,24 +878,34 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
 .pp-chip.chip-out-of-stock{
   opacity:0.45;color:var(--mid);
 }
-.pp-desc{font-size:13px;font-weight:300;color:var(--mid);line-height:1.9;}
+/* Prose copy (description, materials, care) reads in EB Garamond now, not
+   the thin sans used for functional UI text (labels, chips, buttons) --
+   one clear voice for "what we're telling you about the piece" vs. one for
+   "how to interact with the page". Was 13px/300/var(--mid) sans, which
+   read thin and a little slight for a luxury brand's actual product copy;
+   serif needs a touch more size to breathe than sans does at the same
+   pixel count, so this is a legibility fix as much as a tone one. */
+.pp-desc{font-family:'EB Garamond',serif;font-size:15px;font-weight:400;color:var(--charcoal);line-height:1.75;}
 .pp-mat-body{display:flex;flex-direction:column;gap:10px;padding:8px 0 14px;}
-.pp-mat-desc{font-size:13px;font-weight:300;color:var(--charcoal);line-height:1.85;}
+.pp-mat-desc{font-family:'EB Garamond',serif;font-size:15px;font-weight:400;color:var(--charcoal);line-height:1.75;}
 .pp-mat-badges{font-size:10px;font-weight:300;color:var(--mid);letter-spacing:0.5px;}
 .pp-care-body{display:flex;flex-direction:column;gap:10px;padding:8px 0 14px;}
 .pp-care-title{font-family:'EB Garamond',serif;font-style:italic;font-size:16px;font-weight:400;color:var(--charcoal);margin:0;}
-.pp-care-intro{font-size:13px;font-weight:300;color:var(--charcoal);line-height:1.85;margin:0;}
-.pp-care-list{font-size:13px;font-weight:300;color:var(--charcoal);line-height:1.85;padding-left:16px;margin:0;display:flex;flex-direction:column;gap:3px;}
-.pp-care-note{font-size:12px;font-weight:300;color:var(--mid);font-style:italic;line-height:1.7;margin:0;}
+.pp-care-intro{font-family:'EB Garamond',serif;font-size:15px;font-weight:400;color:var(--charcoal);line-height:1.75;margin:0;}
+.pp-care-list{font-family:'EB Garamond',serif;font-size:15px;font-weight:400;color:var(--charcoal);line-height:1.75;padding-left:16px;margin:0;display:flex;flex-direction:column;gap:3px;}
+.pp-care-note{font-family:'EB Garamond',serif;font-style:italic;font-size:13px;font-weight:400;color:var(--mid);line-height:1.7;margin:0;}
 .pp-meta{display:flex;gap:10px;flex-wrap:wrap;padding:6px 0;}
 .pp-meta-item{
   display:flex;align-items:center;gap:6px;
   font-size:10px;font-weight:300;color:var(--mid);letter-spacing:0.5px;
   padding:7px 12px;background:var(--ivory);border:1px solid var(--border);
 }
+/* Real purchase-decision reassurance (in stock, low stock, out of stock) --
+   was 10px uppercase letter-spaced, which reads as a small structural
+   label rather than something worth trusting. Plain sentence case at a
+   size closer to the body copy gives it the weight of an actual statement. */
 .pp-stock-low{
-  font-size:10px;color:var(--pink);font-weight:400;
-  letter-spacing:1px;text-transform:uppercase;
+  font-size:12px;color:var(--pink);font-weight:500;
   display:flex;align-items:center;gap:6px;
 }
 .pp-atc{
@@ -910,9 +930,9 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
 .pp-accordion-arr{font-size:11px;color:var(--mid);transition:transform 0.2s;display:inline-block;}
 details[open] .pp-accordion-arr{transform:rotate(180deg);}
 .pp-accordion .pp-details{border-top:none;padding-top:0;margin-top:0;padding-bottom:14px;display:block;}
-.pp-ship-body{display:flex;flex-direction:column;gap:10px;padding:0 0 14px;}
-.pp-ship-row{display:flex;gap:10px;font-size:11px;font-weight:300;color:var(--charcoal);line-height:1.7;}
-.pp-ship-row span:first-child{flex-shrink:0;color:var(--gold);}
+.pp-ship-body{display:flex;flex-direction:column;gap:12px;padding:0 0 14px;}
+.pp-ship-row{display:flex;gap:10px;font-size:13px;font-weight:400;color:var(--charcoal);line-height:1.7;}
+.pp-ship-row span:first-child{flex-shrink:0;color:var(--gold);font-size:15px;}
 /* ── AUTH MODAL ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(14,14,14,0.6);z-index:300;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px);}
 .modal-overlay.open{display:flex;}
@@ -1270,6 +1290,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
   .pp-gallery img{object-fit:contain;}
   .pp-inline .pp-info{height:auto;overflow-y:visible;padding:0 20px 40px;}
   .pp-inline-topbar{top:58px;padding:18px 0 12px;}
+  .pp-back-label{max-width:90px;font-size:9px;}
   .pp-name{font-size:22px;}
   .pp-price{font-size:24px;}
 
@@ -1542,6 +1563,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
         <div class="pp-inline-topbar">
           <div class="pp-brand" id="pp-brand">Mikisi</div>
           <div class="pp-inline-nav">
+            <button class="pp-back-label" id="pp-back-label" onclick="closeProductView()" style="display:none"></button>
             <button class="pp-cat-nav pp-cat-prev" id="pp-cat-prev" onclick="ppNavPrev()" style="display:none" title="Previous">‹</button>
             <button class="pp-cat-nav pp-cat-next" id="pp-cat-next" onclick="ppNavNext()" style="display:none" title="Next">›</button>
             <button class="pp-inline-close" onclick="closeProductView()" title="Close">×</button>
@@ -3498,6 +3520,17 @@ async function openPP(id, presetVariantId=null){
 
   // ── Variant context — store for dynamic updates on chip selection ──
   ppCurrentProduct=p;
+  // Gives the close button a destination instead of just a bare X --
+  // hidden for the rare cold-preview case (no real category context, e.g.
+  // an admin preview link) where "closing" doesn't really go "back" to
+  // anything nameable.
+  {
+    const backLabel=document.getElementById('pp-back-label');
+    if(backLabel){
+      if(p.category){ backLabel.textContent='Back to '+p.category; backLabel.style.display='inline-block'; }
+      else backLabel.style.display='none';
+    }
+  }
   ppBaseMaterial=getMaterialLabel(p);
   try{ppVariants=p.variants?JSON.parse(p.variants):[];}catch{ppVariants=[];}
   ppBaseImages=[...ppImages];
