@@ -400,7 +400,7 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
      which is what actually caused the bounce -- and it needs no
      touch-action override, so normal vertical scrolling still works
      everywhere in this row, images included. */
-  overflow-x:auto;scroll-snap-type:x proximity;scroll-padding-left:0;
+  overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scroll-padding-left:0;
   padding-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
 }
 .pgrid::-webkit-scrollbar{display:none;}
@@ -3032,7 +3032,27 @@ function renderTennisBracelets(){
   grid.innerHTML = tennisBracelets.map(p=>productCardHTML(p)).join('');
   wireProductCardEffects(grid);
   grid.addEventListener('scroll', tbUpdateArrows, {passive:true});
+  // Unlike Collections above (a CSS grid on desktop -- no nested scroller
+  // at all, so page scroll just works normally over it), this row is
+  // ALWAYS a horizontally-scrolling strip, even on desktop -- there can be
+  // far more tennis bracelets than the ~4 that fit in view, unlike
+  // Collections' fixed handful of categories. A nested horizontal
+  // scroller sitting inside the page's own vertical scroll is a known
+  // trap: a mouse-wheel/trackpad gesture with any horizontal component
+  // can get consumed trying to scroll the row sideways, leaving the page
+  // itself feeling stuck while the cursor is over it -- reported live,
+  // Dennis 2026-08-12. touch-action:pan-x was already ruled out for the
+  // touch case (see .pgrid's CSS comment); this is the wheel/trackpad
+  // equivalent fix -- only take over the gesture when it's actually more
+  // horizontal than vertical, otherwise let it scroll the page like
+  // anywhere else on the site.
+  grid.addEventListener('wheel', _pgridWheelPassthrough, {passive:false});
   tbUpdateArrows();
+}
+function _pgridWheelPassthrough(e){
+  if(Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return; // genuinely horizontal -- let native overflow-x handle it
+  e.preventDefault();
+  document.documentElement.scrollTop += e.deltaY;
 }
 function tbScroll(dir){
   const track = document.getElementById('signature-grid');
