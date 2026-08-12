@@ -2672,11 +2672,17 @@ function _hubUpdateBarVisibility(){
   const hasFilter = hubActiveStyle || hubActiveOccasion || hubActiveStone;
   bar.classList.toggle('visible', _hubScrolledPastTiles && !!hasFilter);
 }
+// Dennis: no product count anywhere on the site, in any collection. The
+// filtered state used to show "${count} Pieces" -- now just hides the
+// heading entirely (nothing accurate to say without a number), same as
+// how the unfiltered "The Edit" heading was never about a count either.
 function renderHubGridHeading(hasFilter, count){
   const el = document.getElementById('grid-heading');
   if(hasFilter){
-    el.innerHTML = `<div class="grid-heading-title">${count} Piece${count===1?'':'s'}</div>`;
+    el.style.display = 'none';
+    el.innerHTML = '';
   } else {
+    el.style.display = 'block';
     el.innerHTML = `<div class="grid-heading-title">The Edit</div><div class="grid-heading-sub">A few of our favorites, one of every shape.</div>`;
   }
 }
