@@ -70,10 +70,15 @@ src="https://www.facebook.com/tr?id=4499184953626453&ev=PageView&noscript=1"/></
 /* Images are natively draggable in most browsers -- a touch-hold-and-move
    on a product photo picks the image up and drags it instead of just
    scrolling the page underneath it, which reads exactly like "I can move
-   a product up and down" (confirmed reported live). No feature on this
-   site ever needs native image drag/save-image-callout, so this is safe
-   to disable everywhere rather than tile-by-tile. */
-img{-webkit-user-drag:none;user-drag:none;-webkit-touch-callout:none;}
+   a product up and down" (confirmed reported live, still reported live a
+   second time on the Tennis Bracelets row specifically -- -webkit-user-
+   drag/-webkit-touch-callout alone don't fully suppress this on every
+   mobile browser; user-select:none closes the gap, since some browsers
+   route the same long-press-and-move gesture through text/image selection
+   rather than native drag). No feature on this site ever needs native
+   image drag/save-image-callout/selection, so this is safe to disable
+   everywhere rather than tile-by-tile. */
+img{-webkit-user-drag:none;user-drag:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
 html{scroll-behavior:smooth;}
 body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--black);overflow-x:hidden;}
 
