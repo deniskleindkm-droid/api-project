@@ -2565,9 +2565,12 @@ let hubActiveOccasion = null;
 let hubActiveStone = null;
 // 2 full rows, no partial row -- cv-grid is 4 columns on desktop but drops
 // to 3 columns at the mobile breakpoint (see .cv-grid's media queries), so
-// 8 (2x4) would render as 3+3+2 on mobile instead of two clean rows.
+// 8 (2x4) would render as 3+3+2 on mobile instead of two clean rows. Also
+// reused as the Load More increment (see hubLoadMore()) -- a flat
+// HUB_PAGE_SIZE=16 had the exact same partial-row problem this was
+// already built to avoid for the initial page (16/3 = 5 rows + 2 stray
+// cards on mobile). Dennis, 2026-08-12: "load 2 more rows" each click.
 function _hubInitialCount(){ return window.innerWidth<=768 ? 6 : 8; }
-const HUB_PAGE_SIZE = 16;
 let hubVisibleCount = _hubInitialCount();
 
 function _pStyleTags(p){ try{ return p.style_tags ? JSON.parse(p.style_tags) : []; }catch{ return []; } }
@@ -2725,7 +2728,7 @@ function renderHubGrid(){
   document.getElementById('hub-load-more').classList.toggle('done', hubVisibleCount >= filtered.length);
 }
 function hubLoadMore(){
-  hubVisibleCount += HUB_PAGE_SIZE;
+  hubVisibleCount += _hubInitialCount();
   renderHubGrid();
 }
 
