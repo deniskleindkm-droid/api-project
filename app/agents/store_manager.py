@@ -261,7 +261,8 @@ def import_product_from_supplier(standard_product: dict, markup: float = None) -
                 "name": name,
                 "category": category,
                 "description": description,
-                "final_price": cost_price * markup
+                "final_price": cost_price * markup,
+                "colors": standard_product.get("colors")
             })
 
             if not rewrite_result.get("accepted"):

@@ -71,6 +71,7 @@ def rewrite_product(cj_product: dict) -> dict:
     raw_description = cj_product.get("description", "")
     raw_category = cj_product.get("category", "")
     price = cj_product.get("final_price", 0)
+    raw_colors = cj_product.get("colors")
 
     brand_voice = get_config("brand_voice", default="Mikisi is elegant, empowering, intimate.")
     collection_id = assign_collection(raw_name, raw_category, raw_description)
@@ -98,6 +99,7 @@ PRODUCT FROM SUPPLIER:
 Name: {raw_name[:200]}
 Category: {raw_category}
 Description: {raw_description[:300]}
+Colors available: {raw_colors if raw_colors else "not specified"}
 Price: ${price}
 
 REJECTION RULES — reject if any apply:
@@ -111,11 +113,12 @@ ACCEPTANCE RULES:
 - Description makes a woman feel something — not a feature list
 
 FINISH RULE — critical for multi-variant products:
-- When a product has more than one finish option (e.g. gold + rhodium, gold + white gold), ALWAYS frame them as "available in [finish A] or [finish B]" — e.g. "available in polished silver or an 18K gold-plated finish". This exact "available in ___" construction is the required phrasing, not just an example. THREE OR MORE options: list every one of them, never just two — "available in [A], [B], or [C]".
+- "Colors available" above is ground truth, taken directly from the supplier's own real priced options — it is never wrong. Your description must name ONLY the metal/finish words that literally appear there. The full set of real finish words this catalog ever uses is: Silver, Yellow Gold, Rose Gold, White Gold, Champagne Gold, Rhodium, Black Rhodium, Platinum — these are each their own distinct, real finish. Platinum is NOT White Gold and must never be substituted for it (or for any other word on this list) just because it sounds similar — if "Colors available" says "Platinum", the description must say "platinum", never "white gold". Do not substitute, invent, or guess a different metal/finish word than what's actually listed in "Colors available". If "Colors available" is "not specified" or a single non-metal value (e.g. a bare product name or stone/certificate description), the piece has ONE real material and must NEVER be described as having a plating choice it doesn't have.
+- When a product has more than one REAL finish option (per "Colors available"), ALWAYS frame them as "available in [finish A] or [finish B]" — e.g. "available in polished silver or an 18K gold-plated finish". This exact "available in ___" construction is the required phrasing, not just an example. THREE OR MORE options: list every one of them, never just two — "available in [A], [B], or [C]".
 - NEVER write "with optional gold plating" — state both options directly.
 - NEVER write both finishes as if simultaneously applied — never "rhodium-plated 18K gold". One piece has ONE finish; the customer chooses which.
 - If only one finish exists, state it directly using the same construction: "available in rhodium-plated 925 sterling silver".
-- Every mention of ANY plated finish MUST say "-plated" or "plating" — silver (925 sterling silver) is the only SOLID metal this catalog sells; every other finish word (gold, rose gold, white gold, rhodium, black rhodium, or any other plating color) is always a plating over base metal, never solid, and writing it bare reads as solid to a customer. This applies to every finish color, not just gold — "Rose Gold" must say "Rose Gold-plated", "Black Rhodium" must say "Black Rhodium-plated", etc. Only "silver" itself is ever stated bare.
+- Every mention of ANY plated finish MUST say "-plated" or "plating" — silver (925 sterling silver) is the only SOLID metal this catalog sells; every other finish word (gold, rose gold, white gold, champagne gold, rhodium, black rhodium, platinum, or any other plating color) is always a plating over base metal, never solid, and writing it bare reads as solid to a customer. This applies to every finish color, not just gold — "Rose Gold" must say "Rose Gold-plated", "Black Rhodium" must say "Black Rhodium-plated", "Platinum" must say "Platinum-plated", etc. Only "silver" itself is ever stated bare.
 - NEVER write "18K YellowGold" — always space it: "18K Yellow Gold".
 
 DESCRIPTION TONE RULES — strictly enforced:
