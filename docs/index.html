@@ -853,11 +853,18 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
 .pp-save{font-size:10px;color:var(--pink);letter-spacing:1px;text-transform:uppercase;font-weight:300;}
 .pp-divider{height:1px;background:var(--border);}
 .pp-section-title{font-size:9px;font-weight:300;letter-spacing:2.5px;text-transform:uppercase;color:var(--mid);margin-bottom:8px;}
-/* Variant chips */
-.pp-chips{display:flex;gap:6px;flex-wrap:wrap;}
+/* Variant chips -- was border:1px solid var(--border) (#ece5dd, a near-
+   white divider color meant for subtle hairline rules, not a clickable
+   element's own boundary) at 300-weight/10px, which read faded even
+   though nothing was actually disabled. var(--light) gives the outline
+   real definition; the weight/size bump makes the option text itself
+   confidently legible instead of a thin whisper. chip-unavailable/
+   chip-out-of-stock below keep their own deliberate fade -- that opacity
+   is a real state (delisted / temporarily out of stock), untouched. */
+.pp-chips{display:flex;gap:8px;flex-wrap:wrap;}
 .pp-chip{
-  padding:6px 14px;border:1px solid var(--border);
-  font-size:10px;font-weight:300;letter-spacing:1px;
+  padding:8px 16px;border:1px solid var(--light);
+  font-size:11px;font-weight:400;letter-spacing:0.5px;
   cursor:pointer;transition:all 0.2s;
   background:none;font-family:'Jost',sans-serif;color:var(--charcoal);
 }
@@ -1035,30 +1042,6 @@ details[open] .pp-accordion-arr{transform:rotate(180deg);}
 .orders-loading{text-align:center;padding:60px;color:var(--light);font-family:'EB Garamond',serif;font-style:italic;font-size:17px;}
 .loading{text-align:center;padding:72px;color:var(--light);font-family:'EB Garamond',serif;font-style:italic;font-size:17px;grid-column:1/-1;}
 
-/* ── BACK-TO-COLLECTIONS FLOAT ── */
-.back-to-col-btn{
-  position:fixed;
-  bottom:28px;right:24px;
-  background:var(--black);color:white;
-  border:none;
-  font-family:'Jost',sans-serif;
-  font-size:9px;font-weight:400;letter-spacing:2px;text-transform:uppercase;
-  padding:11px 20px;
-  cursor:pointer;
-  display:flex;
-  align-items:center;gap:8px;
-  z-index:900;
-  transition:background 0.2s,opacity 0.3s,transform 0.3s;
-  opacity:0;transform:translateY(10px);pointer-events:none;
-  box-shadow:0 4px 20px rgba(0,0,0,0.18);
-}
-.back-to-col-btn.visible{
-  opacity:1;transform:translateY(0);pointer-events:auto;
-}
-.back-to-col-btn:hover{background:var(--pink);}
-@media(max-width:768px){
-  .back-to-col-btn{bottom:18px;right:14px;font-size:8px;padding:10px 16px;}
-}
 
 /* Collection mode — hide all homepage sections, show only the collection.
    Selector list updated for the new homepage section set (Mikisi
@@ -1120,7 +1103,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
      disappeared against this site's mostly white/cream background, so a
      solid, clearly-differentiated color was needed instead.
      Hidden while a modal/cart overlay is open (see .nl-hidden, toggled in
-     _updateBackToColVisibility). */
+     _updateOverlayNavVisibility). */
   .nav-links{
     display:flex;position:fixed;top:66px;left:14px;
     gap:14px;margin:0;z-index:150;
@@ -1840,11 +1823,6 @@ footer{background:var(--black);padding:40px 48px 36px;}
 </div>
 
 <div class="toast" id="toast"></div>
-
-<!-- BACK TO COLLECTIONS FLOAT -->
-<button class="back-to-col-btn" id="back-to-col-btn" onclick="scrollToCollectionTop()">
-  ↑ Back to Collections
-</button>
 
 <footer>
   <div class="footer-top">
@@ -4816,58 +4794,17 @@ function goHome(opts){
 function showCollections(){
   document.getElementById('collections-home').scrollIntoView({behavior:'smooth'});
 }
-// ── Back to Collections floating button ──
-// Only ever relevant while actively browsing products inside an open
-// collection — never on checkout/cart/auth/orders, and clicking it returns
-// to the collections picker, not the homepage hero.
-const _backBtn = document.getElementById('back-to-col-btn');
 const _navLinksEl = document.querySelector('.nav-links');
 function _anyOverlayOpen(){
   return !!document.querySelector('.modal-overlay.open, .cart-sidebar.open');
 }
-function _updateBackToColVisibility(){
-  const inCollection = document.body.classList.contains('collection-mode');
-  const overlayOpen = _anyOverlayOpen();
-  if(inCollection && window.scrollY > 320 && !overlayOpen){
-    _backBtn.classList.add('visible');
-  } else {
-    _backBtn.classList.remove('visible');
-  }
-  // Mobile floating About/FAQ links (see .nav-links in the mobile media
-  // query) — hide only while a modal/cart overlay is open. Unlike the
-  // collections button these aren't scroll- or collection-gated: they're
-  // meant to stay reachable everywhere on mobile, since they were dropped
-  // from the top nav entirely on small screens to make room for search.
-  if(_navLinksEl) _navLinksEl.classList.toggle('nl-hidden', overlayOpen);
+// Mobile floating About/FAQ links (see .nav-links in the mobile media
+// query) — hidden only while a modal/cart overlay is open, since they're
+// meant to stay reachable everywhere on mobile otherwise (dropped from the
+// top nav entirely on small screens to make room for search).
+function _updateOverlayNavVisibility(){
+  if(_navLinksEl) _navLinksEl.classList.toggle('nl-hidden', _anyOverlayOpen());
 }
-function scrollToCollectionTop(){
-  // Rescue pp-inline back to collection-view before hiding (same as goHome())
-  const _ppEl = document.getElementById('pp-inline');
-  const _collView = document.getElementById('collection-view');
-  if(_ppEl){
-    _ppEl.style.display='none';
-    if(_collView && _ppEl.parentElement !== _collView) _collView.appendChild(_ppEl);
-  }
-  document.body.classList.remove('collection-mode');
-  _updateNavAtHero();
-  document.getElementById('breadcrumb').style.display='none';
-  document.getElementById('collection-view').style.display='none';
-  history.pushState(null, '', '/'); // exits collection-mode entirely either way below
-  if(ppEnteredCollectionModeForPreview){
-    // This "collection" was never real (e.g. opened from a Tennis
-    // Bracelets card on the homepage) — there's no collection to go "back" to, so
-    // take the customer all the way home instead of the mid-page
-    // collections picker, same as goHome().
-    ppEnteredCollectionModeForPreview=false;
-    window.scrollTo({top:0,behavior:'smooth'});
-    return;
-  }
-  // Unlike goHome() (used by the logo/"Home" breadcrumb, which should reset
-  // all the way to the hero), this button's job is to return to the
-  // collections picker specifically — not the top of the page.
-  document.getElementById('collections-home').scrollIntoView({behavior:'smooth'});
-}
-window.addEventListener('scroll',_updateBackToColVisibility,{passive:true});
 
 // Nav used to go transparent while floating over the hero photo -- retired
 // per Dennis: it let the real nav controls (search, cart, orders, sign
@@ -4888,7 +4825,7 @@ function _updateNavAtHero(){
 // on a page that toggles classes this often.
 ['checkout-modal','checkout-entry-modal','auth-modal','guest-confirm-modal','orders-modal','cart-sidebar'].forEach(id=>{
   const el=document.getElementById(id);
-  if(el) new MutationObserver(_updateBackToColVisibility).observe(el,{attributes:true,attributeFilter:['class']});
+  if(el) new MutationObserver(_updateOverlayNavVisibility).observe(el,{attributes:true,attributeFilter:['class']});
 });
 
 const INFO_CONTENT = {
