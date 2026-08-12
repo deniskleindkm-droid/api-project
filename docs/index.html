@@ -1133,13 +1133,16 @@ footer{background:var(--black);padding:40px 48px 36px;}
      .hero-overlay override, matching the demo exactly -- it never
      overrides position/background at any width for this photo either,
      since the left side is genuine negative space at any crop. */
-  /* height:56vh recalculates (and visibly resizes) every time the mobile
-     browser's address bar collapses/expands during scroll -- a well-known
-     class of "things move/aren't anchored" complaints on real phones.
-     dvh tracks the actual visible viewport instead and stays stable; kept
-     the vh line above as a fallback for browsers that don't support dvh
-     (they just ignore this second declaration). */
-  .hero{aspect-ratio:auto;height:56vh;height:56dvh;min-height:340px;max-height:520px;}
+  /* Full-bleed, fills the rest of the screen below the 58px mobile nav --
+     matches the reference pattern (Mejuri): a full-viewport hero on first
+     load, nothing else visible until the customer scrolls, instead of the
+     old capped 56vh/520px box that left homepage content peeking in below
+     the fold. dvh tracks the actual visible viewport and stays stable as
+     the mobile browser's address bar collapses/expands during scroll (vh
+     recalculates on that and visibly resizes -- a well-known "things
+     move" complaint on real phones); kept the vh line as a fallback for
+     browsers that don't support dvh, which just ignore the second one. */
+  .hero{aspect-ratio:auto;height:calc(100vh - 58px);height:calc(100dvh - 58px);min-height:480px;max-height:900px;}
   .hero-btns{gap:10px;margin-bottom:0;}
   .btn-black,.btn-ghost{padding:13px 26px;font-size:9px;letter-spacing:2px;}
 
