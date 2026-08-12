@@ -135,6 +135,8 @@ def add_product_to_store(product_data):
             silverbene_cost=product_data.get("silverbene_cost"),
             markup_used=product_data.get("markup_used"),
             shipping_cost=product_data.get("shipping_cost"),
+            style_tags=product_data.get("style_tags") or None,
+            occasion=product_data.get("occasion") or None,
             last_price_sync=datetime.utcnow(),
             is_premium=product_data.get("is_premium", False),
             needs_review=product_data.get("needs_review", False),

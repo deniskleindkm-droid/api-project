@@ -8,6 +8,7 @@ import time
 import anthropic
 from datetime import datetime, timedelta
 from app.agents.store_config import get_config
+from app.agents.style_classifier import classify_style_from_photo
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -707,6 +708,11 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
             resolved_sizes = _resolve_sizes(product.get("sizes"), product.get("category", ""))
             needs_review  = cost_price > 40 or _implausible_bracelet_length(product["category"], resolved_sizes) or product.get("_rewrite_failed", False)
 
+            # Shop by Style/Occasion -- from the real photo, not text (see
+            # app/agents/style_classifier.py for why). Never blocks the
+            # import if it fails; just leaves the product untagged.
+            style_result = classify_style_from_photo(product["image_url"], product["category"])
+
             product_data = {
                 "name": product["mikisi_name"],
                 "brand": "Mikisi",
@@ -737,6 +743,9 @@ def import_for_collection(collection_name: str, strategy: dict) -> dict:
                 # Flags
                 "is_premium":   is_premium,
                 "needs_review": needs_review,
+                # Shop by Style/Occasion
+                "style_tags": _json.dumps(style_result["style_tags"]) if style_result["style_tags"] else None,
+                "occasion":   _json.dumps(style_result["occasion"]) if style_result["occasion"] else None,
             }
 
             p_obj, status = add_product_to_store(product_data)
@@ -922,6 +931,10 @@ def run_browse_import(months_back: int = 8, limit: int = 300) -> dict:
             resolved_sizes = _resolve_sizes(product.get("sizes"), resolved_category)
             needs_review = cost_price > 40 or _implausible_bracelet_length(resolved_category, resolved_sizes) or product.get("_rewrite_failed", False)
 
+            # Shop by Style/Occasion -- from the real photo, not text (see
+            # app/agents/style_classifier.py for why).
+            style_result = classify_style_from_photo(product["image_url"], resolved_category)
+
             product_data = {
                 "name": product["mikisi_name"],
                 "brand": "Mikisi",
@@ -949,6 +962,8 @@ def run_browse_import(months_back: int = 8, limit: int = 300) -> dict:
                 "shipping_cost": pricing["shipping_cost"],
                 "is_premium": is_premium,
                 "needs_review": needs_review,
+                "style_tags": _json.dumps(style_result["style_tags"]) if style_result["style_tags"] else None,
+                "occasion":   _json.dumps(style_result["occasion"]) if style_result["occasion"] else None,
             }
 
             p_obj, status = add_product_to_store(product_data)
