@@ -1142,7 +1142,15 @@ footer{background:var(--black);padding:40px 48px 36px;}
      recalculates on that and visibly resizes -- a well-known "things
      move" complaint on real phones); kept the vh line as a fallback for
      browsers that don't support dvh, which just ignore the second one. */
-  .hero{aspect-ratio:auto;height:calc(100vh - 58px);height:calc(100dvh - 58px);min-height:480px;max-height:900px;}
+  /* No max-height cap -- dvh is already tied to the real device viewport,
+     so the cap was the actual bug: on a tall phone it stopped the hero
+     short of the true bottom edge instead of ever needing a ceiling. */
+  .hero{aspect-ratio:auto;height:calc(100vh - 58px);height:calc(100dvh - 58px);min-height:480px;}
+  /* Same left alignment, just higher -- justify-content:center (the base
+     rule, fine on the old ~500px box) put the text too close to the
+     vertical middle of this much taller full-screen hero, past the
+     photo's own negative space near the top. */
+  .hero-overlay{justify-content:flex-start;padding-top:20vh;padding-top:20dvh;}
   .hero-btns{gap:10px;margin-bottom:0;}
   .btn-black,.btn-ghost{padding:13px 26px;font-size:9px;letter-spacing:2px;}
 
