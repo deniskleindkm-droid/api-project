@@ -2058,67 +2058,49 @@ window.scrollTo(0,0);
 // cache (bfcache) instead of reloading it -- a frozen snapshot of exactly
 // how the page looked the instant it was left, with none of this file's
 // init logic (window.onload, the collections/products fetch, etc.)
-// running again. There was zero handling for this at all, so "leave the
-// site and come back" could show a blank/frozen page (mid-load, or an
-// overlay/collection-view state) with nothing left to bring it back to
-// life. pageshow fires on EVERY page view, including a normal fresh
-// load, so this only acts when event.persisted is true (a real bfcache
-// restore).
+// running again. Confirmed live multiple times (Aug 2026): this could
+// leave the page visually blank/frozen -- hero and everything below it
+// gone, nothing clickable.
 //
-// Deliberately navigates to "/" rather than just reloading the same
-// URL -- per Dennis: coming back to the site shouldn't still remember
-// what was clicked last time (which collection/product was open, scroll
-// position). A real, fresh navigation from a shared/bookmarked link
-// (e.g. /collections/tennis-bracelets from Instagram) is a completely
-// different case -- that's never a bfcache restore, so it's untouched
-// and still opens exactly where the link points. This only resets
-// navigation state specifically; cart, wishlist, and sign-in stay
-// exactly as they were, same as any normal e-commerce site.
-// Both pageshow/persisted and visibilitychange below can fire for the
-// SAME return-to-tab event on mobile (bfcache restore fires pageshow,
-// then visibilitychange flips to 'visible' right after on that same
-// restored instance) -- without this guard both handlers call
-// _resetOnReturn(), firing a second reload/navigation while the first
-// is already in flight. Two overlapping navigations racing each other
-// is what was hanging mobile tabs ("stuck" until fully minimized and
-// reopened, which kills the stuck process); desktop rarely bfcache-
-// restores on a simple tab switch so it only ever hit this once, which
-// is why the same code looked "fine" there. A page reload/redirect
-// always tears down this JS context, so the flag never needs resetting.
-let _resettingOnReturn=false;
-function _resetOnReturn(){
-  if(_resettingOnReturn) return;
-  _resettingOnReturn=true;
-  // location.href='/' when already sitting on "/" is a same-URL
-  // navigation -- some browsers are inconsistent about whether that
-  // actually forces a fresh document load or silently no-ops, which
-  // would leave a frozen/stuck page exactly as it was with nothing to
-  // recover it. location.reload() has no such ambiguity -- it always
-  // forces a real fresh load of the current URL, no exceptions. Only
-  // paths other than "/" need an actual navigation (to satisfy "don't
-  // remember what was clicked last").
-  if(location.pathname==='/') location.reload();
-  else location.href='/';
+// The original fix forced a full page reload/navigation on every return
+// to the tab, which solved that but came with its own real cost:
+// confirmed disruptive on ordinary use (Dennis, 2026-08-12) -- switching
+// away for even a few seconds (checking a notification, another app)
+// reloaded the page and dropped whatever you were doing, every time.
+// Replaced with a quiet, non-disruptive check instead: on returning to
+// the tab, look at whether the page's own content actually rendered.
+// Only if it's genuinely empty (the broken case this was built for in
+// the first place) silently re-run the same data load the page does on
+// a fresh visit, in place -- no navigation, no visible reload, current
+// scroll position/open panels/cart are left exactly as they were. A
+// working page is never touched.
+let _initialLoadDone=false;
+async function _recoverIfBroken(){
+  if(!_initialLoadDone) return; // still on the real first load -- nothing to recover from yet
+  const grid = document.getElementById('collections-grid');
+  if(grid && grid.childElementCount>0) return; // rendered fine, nothing to do
+  await Promise.all([loadCollections(), loadProducts()]);
+  renderTennisBracelets();
 }
 window.addEventListener('pageshow', (event)=>{
-  if(event.persisted) _resetOnReturn();
+  if(event.persisted) _recoverIfBroken();
 });
 // pageshow/persisted only fires for a genuine bfcache restore, which
 // some mobile browsers won't do for a short minimize -- confirmed
 // reported live: "minimize then reopen after a few seconds" not
 // triggering a reload. visibilitychange fires reliably for ANY tab
 // focus change regardless of bfcache internals, so this is the more
-// direct, dependable mechanism for exactly that case -- only acts past
-// a short threshold so a quick app-switcher glance (checking a
-// notification, then straight back) doesn't reset navigation state for
-// no reason.
+// direct, dependable backup check -- only acts past a short threshold
+// so a quick app-switcher glance (checking a notification, then
+// straight back) doesn't run the check for no reason. Cheap either way
+// since it's a no-op whenever the page is already fine.
 let _hiddenAt=null;
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState==='hidden'){
     _hiddenAt=Date.now();
   }else if(document.visibilityState==='visible' && _hiddenAt && Date.now()-_hiddenAt>3000){
     _hiddenAt=null;
-    _resetOnReturn();
+    _recoverIfBroken();
   }
 });
 
@@ -2128,6 +2110,7 @@ window.onload = async()=>{
   _updateNavAtHero();
   showDemoHeroPhoto();
   await Promise.all([loadCollections(),loadProducts()]);
+  _initialLoadDone=true;
   renderTennisBracelets();
   loadInstagramPosts();
   loadCart();
