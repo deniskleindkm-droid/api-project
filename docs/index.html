@@ -1398,13 +1398,13 @@ footer{background:var(--black);padding:40px 48px 36px;}
   <div class="marquee-wrap">
     <div class="marquee-track">
       <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
-      <span>DHL Express · 4–6 Days</span><span class="dot">✦</span>
+      <span>Fast Express Shipping · 4–5 Business Days</span><span class="dot">✦</span>
       <span>Crafted to Last</span><span class="dot">✦</span>
       <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
-      <span>DHL Express · 4–6 Days</span><span class="dot">✦</span>
+      <span>Fast Express Shipping · 4–5 Business Days</span><span class="dot">✦</span>
       <span>Crafted to Last</span><span class="dot">✦</span>
       <span>Complimentary Luxury Packaging</span><span class="dot">✦</span>
-      <span>DHL Express · 4–6 Days</span><span class="dot">✦</span>
+      <span>Fast Express Shipping · 4–5 Business Days</span><span class="dot">✦</span>
       <span>Crafted to Last</span><span class="dot">✦</span>
     </div>
   </div>
@@ -2559,9 +2559,12 @@ let hubProducts = [];
 let hubActiveStyle = null;
 let hubActiveOccasion = null;
 let hubActiveStone = null;
-const HUB_INITIAL_COUNT = 8;  // ~2 rows on the 4-column desktop grid -- a taste, not the whole catalog at once
+// 2 full rows, no partial row -- cv-grid is 4 columns on desktop but drops
+// to 3 columns at the mobile breakpoint (see .cv-grid's media queries), so
+// 8 (2x4) would render as 3+3+2 on mobile instead of two clean rows.
+function _hubInitialCount(){ return window.innerWidth<=768 ? 6 : 8; }
 const HUB_PAGE_SIZE = 16;
-let hubVisibleCount = HUB_INITIAL_COUNT;
+let hubVisibleCount = _hubInitialCount();
 
 function _pStyleTags(p){ try{ return p.style_tags ? JSON.parse(p.style_tags) : []; }catch{ return []; } }
 function _pOccasion(p){ try{ return p.occasion ? JSON.parse(p.occasion) : []; }catch{ return []; } }
@@ -2628,13 +2631,13 @@ function hubSetFilter(kind, val){
   if(kind==='style') hubActiveStyle = (hubActiveStyle===val) ? null : val;
   else if(kind==='occasion') hubActiveOccasion = (hubActiveOccasion===val) ? null : val;
   else if(kind==='stone') hubActiveStone = (hubActiveStone===val) ? null : val;
-  hubVisibleCount = HUB_INITIAL_COUNT;
+  hubVisibleCount = _hubInitialCount();
   renderHubStyleTiles(); renderHubOccasionTiles(); renderHubStoneTiles();
   renderHubGrid();
 }
 function hubClearFilter(){
   hubActiveStyle = hubActiveOccasion = hubActiveStone = null;
-  hubVisibleCount = HUB_INITIAL_COUNT;
+  hubVisibleCount = _hubInitialCount();
   renderHubStyleTiles(); renderHubOccasionTiles(); renderHubStoneTiles();
   renderHubGrid();
 }
@@ -2729,7 +2732,7 @@ function renderFilterHub(name, prods){
   hubCategory = name.toLowerCase();
   hubProducts = prods;
   hubActiveStyle = hubActiveOccasion = hubActiveStone = null;
-  hubVisibleCount = HUB_INITIAL_COUNT;
+  hubVisibleCount = _hubInitialCount();
 
   document.getElementById('stone-section').style.display = 'none';
   document.getElementById('filter-hub-section').style.display = 'block';
