@@ -61,22 +61,27 @@ STYLE_TAXONOMY = {
     },
 }
 
-# Default 5-tag Occasion vocabulary, shared by most collections.
+# Default 5-tag Occasion vocabulary, shared by most collections. The
+# 5th tag was originally named "occasion" -- confirmed live as a
+# confusing duplicate under a section literally called "Shop by
+# Occasion" (Dennis, 2026-08-12); renamed to date_night, same meaning.
 OCCASION_TAXONOMY_DEFAULT = {
     "everyday": "Effortless, simple pieces for wherever the day takes you.",
     "polished": "For days you want everything to feel considered -- refined but not flashy.",
     "after_hours": "A little more sparkle after sunset -- eye-catching, dressier.",
-    "occasion": "For moments worth dressing for -- special-occasion pieces.",
+    "date_night": "Dressed-up sparkle for an evening out -- the moments worth getting ready for.",
     "weekend": "Easy, casual pieces for slower days.",
 }
 # Per-collection override -- only Rings has its own simpler split so far
-# (Dennis: just two real buckets, everyday wear or statement). Must be kept
-# in sync by hand with _HUB_CONFIG[category].OCCASION_META in
-# docs/index.html if either side ever changes.
+# (Dennis: originally just two real buckets, everyday wear or statement;
+# added date_night as a third bucket 2026-08-12). Must be kept in sync by
+# hand with _HUB_CONFIG[category].OCCASION_META in docs/index.html if
+# either side ever changes.
 OCCASION_TAXONOMY_OVERRIDES = {
     "Rings": {
         "everyday_wear": "Simple, considered pieces made for constant wear.",
         "statement": "Bold enough to be the moment, not just part of it.",
+        "date_night": "Dressed-up sparkle for an evening out with someone -- eye-catching but still wearable, not a full red-carpet statement piece.",
     },
 }
 
