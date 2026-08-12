@@ -2074,7 +2074,21 @@ window.scrollTo(0,0);
 // and still opens exactly where the link points. This only resets
 // navigation state specifically; cart, wishlist, and sign-in stay
 // exactly as they were, same as any normal e-commerce site.
+// Both pageshow/persisted and visibilitychange below can fire for the
+// SAME return-to-tab event on mobile (bfcache restore fires pageshow,
+// then visibilitychange flips to 'visible' right after on that same
+// restored instance) -- without this guard both handlers call
+// _resetOnReturn(), firing a second reload/navigation while the first
+// is already in flight. Two overlapping navigations racing each other
+// is what was hanging mobile tabs ("stuck" until fully minimized and
+// reopened, which kills the stuck process); desktop rarely bfcache-
+// restores on a simple tab switch so it only ever hit this once, which
+// is why the same code looked "fine" there. A page reload/redirect
+// always tears down this JS context, so the flag never needs resetting.
+let _resettingOnReturn=false;
 function _resetOnReturn(){
+  if(_resettingOnReturn) return;
+  _resettingOnReturn=true;
   // location.href='/' when already sitting on "/" is a same-URL
   // navigation -- some browsers are inconsistent about whether that
   // actually forces a fresh document load or silently no-ops, which
