@@ -773,9 +773,18 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
   scroll-margin-top:68px;
   transition:opacity 0.35s ease;
 }
-.pp-inline-inner{display:grid;grid-template-columns:55% 45%;height:100vh;}
+/* Both columns used to be forced to a fixed height:100vh, which matched
+   perfectly while "You May Also Like" filled any leftover space in the
+   shorter column -- once that section was removed, a short product
+   description left a bare, awkward gap under it. Sizing each column to its
+   own natural content instead (align-items:start) fixes that; the gallery
+   keeps its tall, immersive feel via aspect-ratio + a sticky position, so
+   it stays in view while a taller info column scrolls past it, rather than
+   both being locked to the same arbitrary height regardless of content. */
+.pp-inline-inner{display:grid;grid-template-columns:55% 45%;align-items:start;}
 .pp-inline-gallery{
-  height:100vh;
+  position:sticky;top:76px;
+  aspect-ratio:4/5;max-height:calc(100vh - 76px);
   background:var(--ivory);overflow:hidden;
   display:flex;flex-direction:column;
 }
@@ -805,11 +814,10 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
 .pp-inline .pp-info{
   padding:0 48px 60px;
   display:flex;flex-direction:column;gap:14px;
-  height:100vh;overflow-y:auto;
 }
 .pp-inline-topbar{
   display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;background:white;z-index:2;
+  position:sticky;top:76px;background:white;z-index:2;
   padding:24px 0 16px;
 }
 .pp-inline-nav{display:flex;align-items:center;gap:6px;}
@@ -905,37 +913,6 @@ details[open] .pp-accordion-arr{transform:rotate(180deg);}
 .pp-ship-body{display:flex;flex-direction:column;gap:10px;padding:0 0 14px;}
 .pp-ship-row{display:flex;gap:10px;font-size:11px;font-weight:300;color:var(--charcoal);line-height:1.7;}
 .pp-ship-row span:first-child{flex-shrink:0;color:var(--gold);}
-/* More from this collection */
-.pp-more-wrap{
-  border-top:1px solid var(--border);
-  padding:36px 48px 56px;
-}
-.pp-more-title{
-  font-size:9px;font-weight:300;letter-spacing:3px;
-  text-transform:uppercase;color:var(--mid);margin-bottom:18px;
-}
-/* Swipeable row, not a static grid -- "You may also like" needs to invite
-   scrolling/swiping through several pieces, and clicking one swaps the
-   panel in place (openPP again) rather than navigating away. Full page
-   width now (moved out of the 45%-wide info column), so cards get real
-   room on a wide screen instead of being squeezed. */
-.pp-more-grid{
-  display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x proximity;
-  -webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;
-}
-.pp-more-grid::-webkit-scrollbar{display:none;}
-.pp-more-card{
-  flex:0 0 180px;scroll-snap-align:start;cursor:pointer;
-}
-.pp-more-card-img{aspect-ratio:3/4;overflow:hidden;background:var(--ivory);margin-bottom:8px;}
-.pp-more-card-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.5s ease;}
-.pp-more-card:hover .pp-more-card-img img{transform:scale(1.05);}
-.pp-more-card-name{
-  font-family:'EB Garamond',serif;font-size:13px;color:var(--black);line-height:1.3;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:3px;
-}
-.pp-more-card-price{font-family:'EB Garamond',serif;font-size:13px;color:var(--mid);}
-
 /* ── AUTH MODAL ── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(14,14,14,0.6);z-index:300;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px);}
 .modal-overlay.open{display:flex;}
@@ -1284,16 +1261,17 @@ footer{background:var(--black);padding:40px 48px 36px;}
   .pcard-badge{font-size:7px;padding:2px 6px;top:6px;left:6px;}
   .pcard-wish{width:24px;height:24px;font-size:11px;top:5px;right:5px;}
 
-  /* Product inline view — single column on mobile */
-  .pp-inline-inner{grid-template-columns:1fr;height:auto;min-height:100vh;min-height:100dvh;}
-  .pp-inline-gallery{height:auto;aspect-ratio:1;min-height:unset;max-height:unset;}
+  /* Product inline view — single column on mobile, stacked not side-by-side,
+     so the gallery's sticky desktop behavior would just pin the image
+     awkwardly while the page scrolls past it -- static instead, natural
+     height (no forced min-height, see the desktop rule's comment for why). */
+  .pp-inline-inner{grid-template-columns:1fr;}
+  .pp-inline-gallery{position:static;aspect-ratio:1;max-height:none;}
   .pp-gallery img{object-fit:contain;}
   .pp-inline .pp-info{height:auto;overflow-y:visible;padding:0 20px 40px;}
-  .pp-inline-topbar{padding:18px 0 12px;}
+  .pp-inline-topbar{top:58px;padding:18px 0 12px;}
   .pp-name{font-size:22px;}
   .pp-price{font-size:24px;}
-  .pp-more-wrap{padding:20px 20px 36px;}
-  .pp-more-card{flex:0 0 140px;}
 
   /* Cart */
   .cart-sidebar{width:100%;transform:translateX(100%);}
@@ -1633,13 +1611,6 @@ footer{background:var(--black);padding:40px 48px 36px;}
           </div>
         </details>
       </div>
-    </div>
-    <!-- Full-width, below the gallery/info columns -- on a wide screen this
-         gets the whole panel's width to swipe through, not squeezed into
-         the 45% info column where it was easy to miss entirely. -->
-    <div class="pp-more-wrap" id="pp-more-wrap" style="display:none">
-      <div class="pp-more-title">You May Also Like</div>
-      <div class="pp-more-grid" id="pp-more-grid"></div>
     </div>
   </div>
 </div>
@@ -3964,31 +3935,7 @@ async function openPP(id, presetVariantId=null){
   });
   ppOpening=false;
   if(!atcBtn.disabled){atcBtn.style.pointerEvents='none';setTimeout(()=>{atcBtn.style.pointerEvents='';},220);}
-  loadRelatedProducts(p);  // fire-and-forget -- never blocks the main product render
   }catch(e){ppOpening=false;console.error('openPP render error:',e);}
-}
-
-// "You may also like" -- clicking a card swaps the panel in place via
-// openPP again (same proven mechanism ppNavPrev/ppNavNext already use),
-// never opens another tab -- the customer is already inside a dedicated
-// product view.
-async function loadRelatedProducts(product){
-  const wrap=document.getElementById('pp-more-wrap');
-  const grid=document.getElementById('pp-more-grid');
-  if(!wrap||!grid)return;
-  wrap.style.display='none';
-  try{
-    const res=await fetch(`${API}/products/${product.id}/related`);
-    if(!res.ok)return;
-    const related=await res.json();
-    if(!related.length)return;
-    grid.innerHTML=related.map(r=>`<div class="pp-more-card" onclick="openPP(${r.id})">
-      <div class="pp-more-card-img"><img src="${r.image_url||getPlaceholder()}" alt="${cleanName(r.name)}" onerror="this.src='${getPlaceholder()}'" loading="lazy"/></div>
-      <div class="pp-more-card-name">${cleanName(r.name)}</div>
-      <div class="pp-more-card-price">$${Number(r.final_price).toFixed(2)}</div>
-    </div>`).join('');
-    wrap.style.display='block';
-  }catch(e){console.error('loadRelatedProducts error:',e);}
 }
 
 function updatePPGallery(){
