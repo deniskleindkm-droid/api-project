@@ -482,6 +482,19 @@ Return ONLY valid JSON array. No other text."""
             )
             product["material"] = result.get("mikisi_material") or product.get("material", "")
 
+            # Ground the finish/material clause in the real color data instead of
+            # trusting the batch LLM's free-form reading of it -- prompt wording
+            # alone (the FINISH RULE section above) already failed to stop
+            # "Platinum" being misread as "White Gold" live (products #823, #1268,
+            # +10 more, 2026-08-12); build_finish_clause() is the deterministic
+            # source of truth product_rewriter.py's fix_finish_wording() already
+            # uses for backfills, applied here at generation time instead.
+            if product["mikisi_description"] and product.get("colors"):
+                from app.agents.product_rewriter import fix_finish_wording
+                corrected = fix_finish_wording(product["mikisi_description"], product["colors"])
+                if corrected:
+                    product["mikisi_description"] = corrected
+
             # If ARIA identified a different collection, look up its ID
             aria_collection = (result.get("correct_collection") or "").strip()
             if aria_collection and aria_collection != collection_name and aria_collection in _collection_map:

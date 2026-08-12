@@ -184,6 +184,16 @@ Return JSON only:
             print(f"[Rewriter] mikisi_name implies {implied} but collection is {result_collection} — keeping original name")
             result["mikisi_name"] = raw_name[:60].strip()
 
+        # Ground the finish/material clause in the real color data instead of
+        # trusting the LLM's free-form reading of it -- see build_finish_clause's
+        # docstring for the exact live cases (fabricated finish choice, dropped
+        # finish, "Platinum" misread as "White Gold") this closes.
+        if result.get("accepted") and result.get("mikisi_description") and raw_colors:
+            colors_json = raw_colors if isinstance(raw_colors, str) else json.dumps(raw_colors)
+            corrected = fix_finish_wording(result["mikisi_description"], colors_json)
+            if corrected:
+                result["mikisi_description"] = corrected
+
         print(f"[Rewriter] {'✅' if result.get('accepted') else '❌'} {raw_name[:50]} → {result.get('mikisi_name', 'rejected')}")
         return result
 
