@@ -277,14 +277,25 @@ def build_finish_clause(colors: list) -> str | None:
     # Bare "yellow" alone is NOT enough to imply gold -- confirmed live, a
     # stone-color entry like "Yellow CZ" or "Yellow Jade" would otherwise be
     # misread as a yellow-gold finish claim (product #863). Only a literal
-    # "gold" word, or a karat number directly attached to "Yellow" (matching
-    # Silverbene's own abbreviated "18K Yellow" shorthand, seen live on
-    # product #739 with no "Gold" word at all), counts as gold.
-    yellow_or_gold_re = re.compile(r'\bgold\b|\b\d{1,2}K\s*Yellow\b', re.I)
+    # "gold" word (or "golden" -- confirmed live as Silverbene's own word
+    # form on products #1152/#1155/#1160, e.g. colors=["Platinum",
+    # "Golden"], which this previously missed entirely because "golden"
+    # doesn't satisfy a bare \bgold\b boundary), or a karat number directly
+    # attached to "Yellow" (matching Silverbene's own abbreviated "18K
+    # Yellow" shorthand, seen live on product #739 with no "Gold" word at
+    # all), counts as gold.
+    yellow_or_gold_re = re.compile(r'\bgold(en)?\b|\b\d{1,2}K\s*Yellow\b', re.I)
 
     finishes = []
     for c in colors or []:
-        for part in str(c).split('·'):
+        # '·' is Silverbene's normal compound-attribute separator, but raw
+        # data has also been seen live joining two real finishes with '+'
+        # or '&' instead (products #603 "Silver+18K Yellow Gold", #683
+        # "Silver & 18K Gold") -- splitting on '·' alone left the whole
+        # string as one unsplit part, which only ever matched the FIRST
+        # pattern found (silver) and silently dropped the second real
+        # option entirely.
+        for part in re.split(r'[·+&]', str(c)):
             part = part.strip()
             matched = False
             for pattern, label in named_patterns:
@@ -374,7 +385,17 @@ Return ONLY valid JSON, no other text: {{"description": "corrected description"}
                 text = m2.group(1)
         result = json.loads(text)
         new_desc = result.get("description", "").strip()
-        if not new_desc or any(p in new_desc.lower() for p in _FINISH_BANNED_PHRASES):
+        if not new_desc:
+            return None
+        # Only reject a banned phrase this call itself introduced -- many older
+        # descriptions predate the ban and still carry one in the untouched
+        # emotional sentence this function was never asked to change. A blanket
+        # check against the whole output silently discarded a correct finish-
+        # clause fix just because the rest of the sentence was old (confirmed
+        # live 2026-08-12: ~15 legit corrections dropped this way).
+        original_lower = description.lower()
+        new_lower = new_desc.lower()
+        if any(p in new_lower and p not in original_lower for p in _FINISH_BANNED_PHRASES):
             return None
         return new_desc
     except Exception as e:
