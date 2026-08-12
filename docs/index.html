@@ -2487,6 +2487,17 @@ const _HUB_CONFIG = {
     STYLE_ORDER: ['solitaire','open_adjustable','stacking','statement','tennis','vintage','signet'],
     STYLE_INTRO: 'Every ring has a shape. Find the one that matches yours.',
     EDIT_IDS: [1224, 700, 1210, 573, 570, 579, 1289, 1211, 1169, 525],
+    // Rings gets its own simpler Occasion split instead of the shared
+    // 5-tag vocabulary -- Dennis: just two real buckets for rings, everyday
+    // wear or statement. Collapsed from the original 5 tags by keeping
+    // whatever was already "everyday" and folding polished/after_hours/
+    // occasion/weekend into "statement".
+    OCCASION_META: {
+      everyday_wear: { label:'Everyday Wear', tag:'Simple, considered pieces made for constant wear.' },
+      statement:     { label:'Statement',     tag:'Bold enough to be the moment, not just part of it.' },
+    },
+    OCCASION_ORDER: ['everyday_wear','statement'],
+    OCCASION_INTRO: 'Wear it every day, or make it the whole point.',
   },
   necklaces: {
     STYLE_META: {
@@ -2570,11 +2581,17 @@ function renderHubStyleTiles(){
     return hubTileHTML('style', k, meta, img, hubActiveStyle===k);
   }).join('');
 }
+// Most collections share the one 5-tag OCCASION_META/OCCASION_ORDER
+// defined above; a collection can override both (see rings' 2-tag
+// Everyday Wear/Statement split) by setting its own in _HUB_CONFIG.
+function _occasionMeta(){ return _HUB_CONFIG[hubCategory].OCCASION_META || OCCASION_META; }
+function _occasionOrder(){ return _HUB_CONFIG[hubCategory].OCCASION_ORDER || OCCASION_ORDER; }
 function renderHubOccasionTiles(){
+  const om = _occasionMeta(), oo = _occasionOrder();
   const c = {};
   hubFilteredExcept('occasion').forEach(p=>_pOccasion(p).forEach(o=>c[o]=(c[o]||0)+1));
-  document.getElementById('hub-occasion-grid').innerHTML = OCCASION_ORDER.filter(k=>c[k]>0).map(k=>{
-    const meta = OCCASION_META[k];
+  document.getElementById('hub-occasion-grid').innerHTML = oo.filter(k=>c[k]>0).map(k=>{
+    const meta = om[k];
     const sample = hubProducts.find(p=>_pOccasion(p).includes(k));
     const img = sample ? (sample.content_image_url||sample.image_url) : null;
     return hubTileHTML('occasion', k, meta, img, hubActiveOccasion===k);
@@ -2623,7 +2640,7 @@ function renderHubFilterBar(){
   const cfg = _HUB_CONFIG[hubCategory];
   const chips = [];
   if(hubActiveStyle) chips.push({label:cfg.STYLE_META[hubActiveStyle].label, clear:()=>hubSetFilter('style',hubActiveStyle)});
-  if(hubActiveOccasion) chips.push({label:OCCASION_META[hubActiveOccasion].label, clear:()=>hubSetFilter('occasion',hubActiveOccasion)});
+  if(hubActiveOccasion) chips.push({label:_occasionMeta()[hubActiveOccasion].label, clear:()=>hubSetFilter('occasion',hubActiveOccasion)});
   if(hubActiveStone) chips.push({label:STONE_META[hubActiveStone].label, clear:()=>hubSetFilter('stone',hubActiveStone)});
   window.__hubClearChip = (i)=>chips[i].clear();
   const bar = document.getElementById('hub-filter-bar');
@@ -2703,7 +2720,7 @@ function renderFilterHub(name, prods){
     <button class="filter-tab" data-tab="2" onclick="hubSetTab(2)">Shop by Stone<span class="tab-dot"></span></button>`;
   document.getElementById('hub-slider-track').style.transform = 'translateX(0%)';
   document.getElementById('hub-style-intro').textContent = cfg.STYLE_INTRO;
-  document.getElementById('hub-occasion-intro').textContent = OCCASION_INTRO;
+  document.getElementById('hub-occasion-intro').textContent = cfg.OCCASION_INTRO || OCCASION_INTRO;
   document.getElementById('hub-stone-intro').textContent = STONE_INTRO_HUB;
 
   renderHubStyleTiles(); renderHubOccasionTiles(); renderHubStoneTiles();

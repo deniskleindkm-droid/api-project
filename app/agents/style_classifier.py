@@ -61,13 +61,28 @@ STYLE_TAXONOMY = {
     },
 }
 
-OCCASION_TAXONOMY = {
+# Default 5-tag Occasion vocabulary, shared by most collections.
+OCCASION_TAXONOMY_DEFAULT = {
     "everyday": "Effortless, simple pieces for wherever the day takes you.",
     "polished": "For days you want everything to feel considered -- refined but not flashy.",
     "after_hours": "A little more sparkle after sunset -- eye-catching, dressier.",
     "occasion": "For moments worth dressing for -- special-occasion pieces.",
     "weekend": "Easy, casual pieces for slower days.",
 }
+# Per-collection override -- only Rings has its own simpler split so far
+# (Dennis: just two real buckets, everyday wear or statement). Must be kept
+# in sync by hand with _HUB_CONFIG[category].OCCASION_META in
+# docs/index.html if either side ever changes.
+OCCASION_TAXONOMY_OVERRIDES = {
+    "Rings": {
+        "everyday_wear": "Simple, considered pieces made for constant wear.",
+        "statement": "Bold enough to be the moment, not just part of it.",
+    },
+}
+
+
+def _occasion_taxonomy(category: str) -> dict:
+    return OCCASION_TAXONOMY_OVERRIDES.get(category, OCCASION_TAXONOMY_DEFAULT)
 
 
 def classify_style_from_photo(image_url: str, category: str) -> dict:
@@ -92,8 +107,9 @@ def classify_style_from_photo(image_url: str, category: str) -> dict:
         print(f"[StyleClassify] Could not fetch image for classification: {e}")
         return {"style_tags": [], "occasion": []}
 
+    occasion_taxonomy = _occasion_taxonomy(category)
     style_options = "\n".join(f"- {k}: {v}" for k, v in taxonomy.items())
-    occasion_options = "\n".join(f"- {k}: {v}" for k, v in OCCASION_TAXONOMY.items())
+    occasion_options = "\n".join(f"- {k}: {v}" for k, v in occasion_taxonomy.items())
 
     prompt = f"""Look at this real product photo of a piece of jewelry (category: {category}) and classify it.
 
@@ -126,7 +142,7 @@ Return ONLY this JSON, no other text, using the exact keys above:
                 text = text[4:]
         result = json.loads(text.strip())
         valid_styles = set(taxonomy.keys())
-        valid_occasions = set(OCCASION_TAXONOMY.keys())
+        valid_occasions = set(occasion_taxonomy.keys())
         style_tags = [t for t in result.get("style_tags", []) if t in valid_styles]
         occasion = [t for t in result.get("occasion", []) if t in valid_occasions]
         return {"style_tags": style_tags, "occasion": occasion}
