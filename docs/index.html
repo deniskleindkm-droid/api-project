@@ -827,15 +827,29 @@ nav{transition:background 0.3s ease,border-color 0.3s ease;}
 }
 .pp-inline-nav{display:flex;align-items:center;gap:14px;}
 /* Gives the close button a reason, instead of a bare X floating alone --
-   pairs it with exactly where closing actually goes. */
+   pairs it with exactly where closing actually goes. max-width was
+   150px/90px(mobile) -- too tight for real category names ("Back to
+   Bracelets", "Back to Necklaces", "Back to Jewelry Sets"), which
+   silently ellipsis-truncated mid-word ("BACK TO BRAC...", "BACK TO
+   NECK...") -- confirmed live on an iPhone, Dennis 2026-08-13. The
+   topbar row is justify-content:space-between with nothing else
+   competing for room (see .pp-inline-topbar), so there was no actual
+   space constraint forcing this -- widened to comfortably fit the
+   longest real category ("Back to Jewelry Sets") in full on every
+   breakpoint. overflow/ellipsis kept only as a safety net for a future
+   category name longer than anticipated.
+   Styling matches .cv-back (the "← All Collections" link) below --
+   same leading arrow, same pink hover -- so this reads as an obvious
+   clickable "go back" affordance instead of plain static label text,
+   consistent with the rest of the site rather than a one-off style. */
 .pp-back-label{
   background:none;border:none;cursor:pointer;
-  font-family:'Jost',sans-serif;font-size:10px;font-weight:400;
+  font-family:'Jost',sans-serif;font-size:10px;font-weight:300;
   letter-spacing:1.5px;text-transform:uppercase;color:var(--mid);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;
   padding:0;transition:color 0.2s;
 }
-.pp-back-label:hover{color:var(--black);}
+.pp-back-label:hover{color:var(--pink);}
 .pp-inline-close{
   background:none;border:1px solid var(--border);
   color:var(--mid);width:30px;height:30px;font-size:18px;
@@ -1289,7 +1303,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
   .pp-gallery img{object-fit:contain;}
   .pp-inline .pp-info{height:auto;overflow-y:visible;padding:0 20px 40px;}
   .pp-inline-topbar{top:58px;padding:18px 0 12px;}
-  .pp-back-label{max-width:90px;font-size:9px;}
+  .pp-back-label{max-width:170px;font-size:9.5px;}
   .pp-name{font-size:22px;}
   .pp-price{font-size:24px;}
 
@@ -3574,7 +3588,11 @@ async function openPP(id, presetVariantId=null){
   {
     const backLabel=document.getElementById('pp-back-label');
     if(backLabel){
-      if(p.category){ backLabel.textContent='Back to '+p.category; backLabel.style.display='inline-block'; }
+      // "← " prefix matches .cv-back ("← All Collections") -- same
+      // clickable-affordance convention used elsewhere on the site,
+      // rather than plain text with no visual cue it's interactive
+      // (confirmed live as unclear on mobile, Dennis 2026-08-13).
+      if(p.category){ backLabel.textContent='← Back to '+p.category; backLabel.style.display='inline-block'; }
       else backLabel.style.display='none';
     }
   }
