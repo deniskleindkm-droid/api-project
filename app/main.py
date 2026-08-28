@@ -74,6 +74,10 @@ def serve_terms():
 def serve_privacy():
     return FileResponse("docs/privacy.html", headers=_NO_CACHE)
 
+@app.get("/rat-vs-snake/privacy")
+def serve_rat_vs_snake_privacy():
+    return FileResponse("docs/rat-vs-snake/privacy.html", headers=_NO_CACHE)
+
 @app.get("/returns")
 def serve_returns():
     return FileResponse("docs/returns.html", headers=_NO_CACHE)
