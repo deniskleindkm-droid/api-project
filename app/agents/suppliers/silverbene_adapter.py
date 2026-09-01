@@ -577,7 +577,13 @@ class SilverbeneAdapter(SupplierAdapter):
         if resp.get("code") == 0:
             items = resp.get("data", [])
             if items and isinstance(items, list):
-                return int(items[0].get("qty", 999))
+                # Silverbene's own key here is "qyt", not "qty" -- confirmed live
+                # 2026-09-01. Reading "qty" silently missed every response and
+                # always fell through to the 999 fallback below, so this
+                # checkout-time stockout check never actually caught a real
+                # stockout. Falling back to "qty" too in case Silverbene ever
+                # corrects their own typo.
+                return int(items[0].get("qyt", items[0].get("qty", 999)))
         return 999
 
     # ── ORDERS ────────────────────────────────────────────────────────────────
