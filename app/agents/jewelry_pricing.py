@@ -15,6 +15,11 @@ DHL_SHIPPING   = 50.0
 TAXES_AND_FEES = 17.0
 FIXED_OVERHEAD = DHL_SHIPPING + TAXES_AND_FEES  # $67, absorbed into every price
 
+# Extra margin Dennis asked to add on top of the ladder formula, 2026-08-21 —
+# applied before ladder rounding (not as a flat add-on after) so every price
+# still lands on a real LUXURY_LADDER rung.
+EXTRA_MARGIN = 30.0
+
 # Round to the nearest of these, never below — this is what makes the
 # storefront feel intentional instead of showing whatever number a formula
 # happened to spit out. $98/$128 are the only rungs below Dennis's stated
@@ -156,7 +161,7 @@ def calculate_mikisi_price(silverbene_cost: float, material: str = None,
     anymore. `material` is kept for backward compatibility but doesn't
     affect pricing.
     """
-    retail = round_to_ladder(_interpolated_price(silverbene_cost))
+    retail = round_to_ladder(_interpolated_price(silverbene_cost) + EXTRA_MARGIN)
     profit = retail - silverbene_cost - FIXED_OVERHEAD
 
     if discount_percent > 0:
