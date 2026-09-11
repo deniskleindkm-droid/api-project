@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
+from pydantic import BaseModel
 import httpx
 import os
 
@@ -243,6 +244,93 @@ async def tiktok_test_inbox():
     return JSONResponse(status_code=200, content={
         "publish_id": publish_id,
         "upload_status": put_resp.status_code,
+        "video_size_bytes": video_size,
+    })
+
+
+class InboxDraftRequest(BaseModel):
+    master_key: str
+    video_url: str
+
+
+@router.post("/inbox-draft")
+async def tiktok_inbox_draft(data: InboxDraftRequest):
+    """
+    Admin — pushes an arbitrary video (by URL, e.g. a Cloudinary-hosted
+    product video) into the connected TikTok account's inbox as a draft,
+    via the Content Posting API's inbox/video/init flow (same mechanism as
+    /test-inbox above, generalized to take any video_url).
+
+    This does NOT publish anything publicly — it only deposits a draft in
+    the TikTok app's inbox. A human still has to open the app, add a sound
+    (TikTok's API has no endpoint for that — see app/agents/tiktok_token.py
+    and the 2026-09-11 TikTok posting research), write/paste a caption, and
+    tap Post themselves. Kept as a real admin route (not a local script)
+    specifically so it always runs against the live, auto-refreshed access
+    token in this app's own StoreConfig — a locally-held copy of
+    TIKTOK_ACCESS_TOKEN goes stale within 24h since only this deployed
+    app's scheduler ever calls tiktok_token.refresh().
+    """
+    from app.agents.aria_security import verify_master_key
+    if not verify_master_key(data.master_key):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    from app.agents.tiktok_token import get_access_token
+    access_token = get_access_token()
+    if not access_token:
+        return JSONResponse(status_code=400, content={"error": "No TikTok access token available"})
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        video_resp = await client.get(data.video_url)
+        if video_resp.status_code != 200:
+            return JSONResponse(status_code=502, content={
+                "error": "Failed to fetch video_url",
+                "status_code": video_resp.status_code,
+            })
+        video_bytes = video_resp.content
+        video_size = len(video_bytes)
+
+        init_resp = await client.post(
+            "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/",
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "source_info": {
+                    "source": "FILE_UPLOAD",
+                    "video_size": video_size,
+                    "chunk_size": video_size,
+                    "total_chunk_count": 1,
+                },
+            },
+        )
+        init_data = init_resp.json()
+        if init_resp.status_code != 200 or "data" not in init_data:
+            return JSONResponse(status_code=init_resp.status_code, content={
+                "stage": "init", "detail": init_data,
+            })
+
+        publish_id = init_data["data"]["publish_id"]
+        upload_url = init_data["data"]["upload_url"]
+
+        put_resp = await client.put(
+            upload_url,
+            headers={
+                "Content-Type": "video/mp4",
+                "Content-Range": f"bytes 0-{video_size - 1}/{video_size}",
+            },
+            content=video_bytes,
+        )
+        if put_resp.status_code not in (200, 201, 206):
+            return JSONResponse(status_code=502, content={
+                "stage": "upload", "status_code": put_resp.status_code,
+                "detail": put_resp.text[:500],
+            })
+
+    return JSONResponse(status_code=200, content={
+        "success": True,
+        "publish_id": publish_id,
         "video_size_bytes": video_size,
     })
 
