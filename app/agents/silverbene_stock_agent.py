@@ -537,7 +537,14 @@ def _reconcile_variant_rows(session, product, live_options: list) -> None:
         row = existing.get(oid)
         if row:
             row.stock = int(live_opt.get("qty", 0))
-            row.available = True
+            # Never resurrect a variant an admin deliberately hid (e.g. a
+            # redundant certificate-less duplicate at an identical price) --
+            # found live 2026-09-12 reverting product 1405's fix within 24h,
+            # since this unconditionally flipped `available` back to True
+            # for anything still live on Silverbene regardless of why it had
+            # been set False.
+            if not row.admin_hidden:
+                row.available = True
             if base_price:
                 row.base_price = base_price
                 # Reuse the real per-product shipping quote already on file
@@ -800,6 +807,7 @@ def _refresh_earring_details(sb) -> tuple:
                     Product.supplier_name == "Silverbene",
                     Product.category == "Earrings",
                     Product.is_active == True,
+                    Product.sizes_locked == False,
                 )
             ).all()
 
@@ -902,6 +910,7 @@ def _refresh_necklace_specs(sb) -> tuple:
                     Product.supplier_name == "Silverbene",
                     Product.category == "Necklaces",
                     Product.is_active == True,
+                    Product.sizes_locked == False,
                 )
             ).all()
 
@@ -979,6 +988,7 @@ def _refresh_ear_cuffs_specs(sb) -> tuple:
                     Product.supplier_name == "Silverbene",
                     Product.category == "Ear Cuffs",
                     Product.is_active == True,
+                    Product.sizes_locked == False,
                 )
             ).all()
 
@@ -1054,6 +1064,7 @@ def _refresh_ring_specs(sb) -> tuple:
                     Product.supplier_name == "Silverbene",
                     Product.category == "Rings",
                     Product.is_active == True,
+                    Product.sizes_locked == False,
                 )
             ).all()
 
@@ -1130,6 +1141,7 @@ def _refresh_bracelet_specs(sb) -> tuple:
                     Product.supplier_name == "Silverbene",
                     Product.category == "Bracelets",
                     Product.is_active == True,
+                    Product.sizes_locked == False,
                 )
             ).all()
 
@@ -1230,6 +1242,7 @@ def _refresh_anklet_specs(sb) -> tuple:
                     Product.supplier_name == "Silverbene",
                     Product.category == "Anklets",
                     Product.is_active == True,
+                    Product.sizes_locked == False,
                 )
             ).all()
 

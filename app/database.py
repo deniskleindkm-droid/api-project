@@ -114,6 +114,24 @@ def create_db():
         # pages), not computed here. See scripts/backfill_style_occasion.py.
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS style_tags text"))
         conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS occasion text"))
+        # An admin's manual fix to sizes/specs (e.g. a real bracelet/chain
+        # length given by Dennis, replacing a bogus stone-size-derived one)
+        # was getting silently reverted every 6h by _refresh_bracelet_specs /
+        # _refresh_necklace_specs re-deriving the same wrong value from
+        # Silverbene's own data and overwriting it — found live 2026-09-12
+        # on product 1405 within 24h of the fix. This flag lets those
+        # refreshers skip a product once a human has locked its sizes/specs.
+        conn.execute(text("ALTER TABLE product ADD COLUMN IF NOT EXISTS sizes_locked boolean NOT NULL DEFAULT false"))
+        # Same reversion problem as sizes_locked above, but for a specific
+        # ProductVariant an admin deliberately hid (e.g. the certificate-less
+        # half of a with/without-certificate pair, once the price is
+        # identical either way — see silverbene_adapter.py's certificate
+        # cleanup). _reconcile_variant_rows() unconditionally flips
+        # `available` back to True for any option still live on Silverbene,
+        # with no way to tell "hidden on purpose" apart from "temporarily
+        # out of stock" — found live 2026-09-12 reverting product 1405's fix
+        # within 24h. This flag is the missing distinction.
+        conn.execute(text("ALTER TABLE product_variant ADD COLUMN IF NOT EXISTS admin_hidden boolean NOT NULL DEFAULT false"))
         conn.commit()
 
     _setup_defaults()

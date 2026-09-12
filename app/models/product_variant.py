@@ -46,6 +46,7 @@ class ProductVariant(SQLModel, table=True):
     final_price:         float         = 0.0
     stock:               int           = 0
     available:           bool          = True
+    admin_hidden:        bool          = False  # True = an admin deliberately hid this option (e.g. redundant certificate-less duplicate at an identical price) -- _reconcile_variant_rows must never flip `available` back to True over this
     sort_order:          int           = 0
 
     created_at:          datetime      = Field(default_factory=datetime.utcnow)

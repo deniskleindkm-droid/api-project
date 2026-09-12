@@ -160,10 +160,29 @@ _CERTIFICATE_TEXT_RE = re.compile(
     re.I,
 )
 
+# The certificate-LESS half of the same choice ("without certificate",
+# "without a certificate") needs the opposite treatment from the regex
+# above: because "with"/"including" is only an OPTIONAL prefix there, that
+# regex still matches the bare word "certificate" inside "without
+# certificate" and replaces just that word with "Certified" — leaving the
+# literal "without" sitting in front of it (e.g. "Silver without
+# Certified"). Found live 2026-09-10 across 7+ pendant-necklace products
+# (Dennis: "that without should never be displayed like that ... it looks
+# bad"). A certificate-less option needs no negative-sounding marker at
+# all, unlike the real "with certificate" case, so this strips the whole
+# qualifying phrase (plus a leading comma/space) down to nothing instead of
+# rewording it. Must run BEFORE _CERTIFICATE_TEXT_RE so that regex never
+# gets a chance to touch the "certificate" word first.
+_WITHOUT_CERTIFICATE_RE = re.compile(
+    r'[\s,，]*[(（]?\s*without\s+(?:an?\s+)?certif\w*(?:\s+included)?\s*[)）]?',
+    re.I,
+)
+
 
 def _clean_certificate_text(value: str) -> str:
+    value = _WITHOUT_CERTIFICATE_RE.sub('', value)
     cleaned = _CERTIFICATE_TEXT_RE.sub('Certified', value)
-    return re.sub(r'\s{2,}', ' ', cleaned).strip()
+    return re.sub(r'\s{2,}', ' ', cleaned).strip().rstrip(',').strip()
 
 
 def _purity_length_chips(value: str, denom: int = 2) -> list:

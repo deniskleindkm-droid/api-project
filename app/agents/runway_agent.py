@@ -1,9 +1,18 @@
 """
-Runway ML Gen-3 Alpha — product and collection videos for Mikisi.
+Runway ML Gen-4 Turbo — product and collection videos for Mikisi.
 Takes a fal.ai-generated image as the input frame, adds motion on top.
 Videos: top 20 products + 6 collection tiles + 1 hero banner.
 Daily: 2 new videos per category (12/day).
-Cost: ~$0.25 per 5s clip, ~$0.30 per 6s clip, ~$0.50 per 10s hero.
+Cost: ~$0.25 per 5s clip, ~$0.50 per 10s hero.
+
+Switched from gen3a_turbo to gen4_turbo 2026-09-11 — gen3a_turbo was
+deprecated and sunset by Runway on 2026-07-30, so every call silently
+failed (task creation errored, generate_product_video returned "") from
+that date until this fix; every video generated in that window is
+missing, not just lower quality. gen4_turbo only accepts duration 5 or
+10 (not 6) and a fixed set of "W:H" ratio strings, not the old free-form
+768:1280 — 720:1280 is gen4_turbo's actual portrait option (confirmed
+against Runway's own docs.dev.runwayml.com/assets/inputs/ reference).
 """
 import os
 import time
@@ -23,8 +32,14 @@ HEADERS = {
 
 # Motion prompts per category — applied on top of the fal.ai input image
 CATEGORY_MOTION = {
-    "rings":     ("Light moves slowly across the ring, catching the stone once and holding, "
-                  "fingers breathe very slowly, 5 seconds, almost still, elegant intimate",
+    "rings":     ("Premium jewelry product campaign. The camera makes a smooth small arc "
+                  "around the stationary ring, moving from the initial view to a "
+                  "three-quarter angle while gently moving closer. Show the stone facets "
+                  "and side of the setting clearly. Bright soft studio lighting produces "
+                  "distinct natural glints across several facets. Keep the entire ring "
+                  "sharp and in frame. Preserve the exact ring geometry, stones, colors "
+                  "and metal from the first frame. No text, no engravings, no logos, "
+                  "no writing on the metal.",
                   5),
     "necklaces": ("Light moves slowly left to right across the necklace catching silver and stone, "
                   "breathing motion on skin, 5 seconds, seamless, no sudden movement",
@@ -36,8 +51,8 @@ CATEGORY_MOTION = {
                   "5 seconds, slow intimate",
                   5),
     "anklets":   ("Foot shifts weight softly once, anklet catches light, "
-                  "6 seconds, golden afternoon feel",
-                  6),
+                  "5 seconds, golden afternoon feel",
+                  5),
     "ear cuffs": ("Hair settles back slowly over ear, ear cuff visible in full light, "
                   "5 seconds total, intimate close-up",
                   5),
@@ -46,8 +61,8 @@ CATEGORY_MOTION = {
 COLLECTION_MOTION = (
     "Cinematic slow drift across jewelry pieces on cream marble surface, "
     "light moves gently catching silver details, "
-    "6 seconds seamless loop, luxury editorial",
-    6,
+    "5 seconds seamless loop, luxury editorial",
+    5,
 )
 
 HERO_MOTION = (
@@ -66,11 +81,11 @@ def _create_task(image_url: str, prompt: str, duration: int) -> str:
             f"{RUNWAY_BASE}/image_to_video",
             headers=HEADERS,
             json={
-                "model":        "gen3a_turbo",
+                "model":        "gen4_turbo",
                 "promptImage":  image_url,
                 "promptText":   prompt,
                 "duration":     duration,
-                "ratio":        "768:1280",  # portrait 9:16 for social
+                "ratio":        "720:1280",  # gen4_turbo's actual portrait option
             },
             timeout=30,
         )

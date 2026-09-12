@@ -48,6 +48,7 @@ class Product(SQLModel, table=True):
     is_premium: bool = False
     needs_review: bool = False
     needs_length_review: bool = False
+    sizes_locked: bool = False  # True once an admin has manually corrected sizes/specs -- _refresh_bracelet_specs/_refresh_necklace_specs must skip re-deriving over it
     # Generated content — Cloudinary URLs only, never fal.ai/Runway (they expire)
     content_image_url: Optional[str] = None      # clean product shot
     content_lifestyle_url: Optional[str] = None  # lifestyle shot (skin tone rotated)
