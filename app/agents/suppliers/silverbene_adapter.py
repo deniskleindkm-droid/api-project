@@ -673,16 +673,35 @@ class SilverbeneAdapter(SupplierAdapter):
             print(f"[Silverbene] No shipping methods returned for option_id={use_option} — cannot place order")
             return self.standard_order(success=False, supplier_order_id="", reason="No shipping methods available")
 
-        # Always the cheapest option, never methods[0] — Silverbene's own
-        # ordering isn't a price ranking (order #22, 2026-08-01: methods[0]
-        # picked DHL Express at $53.12 over USPS at $7.24 for the exact same
-        # address/product, a $45.88 hit that ate nearly this store's entire
-        # margin on an $86.90 sale). shipping_method ("fast_track"/"usps")
-        # is a checkout-facing label only and was never actually wired to a
-        # carrier choice, so cost is the only signal we have to optimize on.
-        cheapest = min(methods, key=lambda m: m.get("price", float("inf")))
-        carrier_code = cheapest.get("carrier_code", "")
-        print(f"[Silverbene] Selected cheapest shipping method: {cheapest.get('title', carrier_code)} (${cheapest.get('price', '?')})")
+        # DHL only, always (Dennis, 2026-09-12) — now that the Mikisi-branded-
+        # shipping question with Jacky is resolved, every order should ship
+        # DHL specifically, not whichever carrier is cheapest. Matched on the
+        # human-readable title/carrier_code text since Silverbene's "way"
+        # codes aren't a documented enum. Supersedes the 2026-08-01
+        # cheapest-carrier fix (order #22 ate its margin on a surprise DHL
+        # Express charge) — that fix optimized cost when carrier didn't
+        # matter; now carrier is the actual requirement, and pricing is a
+        # secondary concern. Falls back to cheapest + alerts Dennis only if
+        # Silverbene genuinely doesn't offer DHL for this address/product,
+        # so checkout never silently blocks over a missing carrier option.
+        dhl_methods = [m for m in methods if "dhl" in (m.get("title") or m.get("carrier_code") or "").lower()]
+        if dhl_methods:
+            chosen = min(dhl_methods, key=lambda m: m.get("price", float("inf")))
+        else:
+            chosen = min(methods, key=lambda m: m.get("price", float("inf")))
+            print(f"[Silverbene] No DHL method offered for option_id={use_option} — falling back to cheapest: {chosen.get('title', chosen.get('carrier_code',''))}")
+            self._alert_low_credit(
+                subject="⚠️ Order shipped without DHL — not offered by Silverbene",
+                body=(
+                    f"<p>Silverbene didn't offer a DHL shipping option for option_id "
+                    f"<b>{use_option}</b> to this address, so it fell back to the cheapest "
+                    f"available carrier instead: <b>{chosen.get('title', chosen.get('carrier_code',''))}</b> "
+                    f"(${chosen.get('price', '?')}).</p>"
+                    f"<p>Every other order is going out DHL per your instruction — this one is the exception.</p>"
+                ),
+            )
+        carrier_code = chosen.get("carrier_code", "")
+        print(f"[Silverbene] Selected shipping method: {chosen.get('title', carrier_code)} (${chosen.get('price', '?')})")
 
         order_option_id = option_id or product_id
         admin_email = "hello@mikisi.co"  # Silverbene must never have the customer's real email
@@ -720,8 +739,8 @@ class SilverbeneAdapter(SupplierAdapter):
         # though today's known fields are only a subset of it.
         import json as _json
         cost_detail = {
-            "shipping_cost":    cheapest.get("price"),
-            "shipping_carrier": cheapest.get("title", carrier_code),
+            "shipping_cost":    chosen.get("price"),
+            "shipping_carrier": chosen.get("title", carrier_code),
             "total_charged":    data.get("amount_due") or data.get("total_price"),
             "currency":         result.get("currency", "USD"),
             "raw_response":     _json.dumps(result),
