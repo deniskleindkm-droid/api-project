@@ -134,13 +134,13 @@ def run_quote(checkout_id: str, fetcher: Optional[RateFetcher] = None) -> None:
 
 
 def _apply_cart_rules(session: Session, tx: CheckoutTransaction, quote: dict) -> dict:
-    """Manual Standard is only valid for small carts (Silverbene's USPS lane 'accepts packages under $60')."""
+    """Fixed USPS Standard is only valid for small carts (Silverbene's USPS lane 'accepts packages under $60')."""
     from app.checkout_intl import catalog
     from app.models.product import Product
-    manual = catalog.MANUAL_STANDARD.get(tx.country_code)
+    manual = catalog.FIXED_STANDARD.get(tx.country_code)
     if not manual or not quote.get("class_quote"):
         return quote
-    std = next((o for o in quote["options"] if o["method_id"] == "STANDARD" and o.get("manual")), None)
+    std = next((o for o in quote["options"] if o["method_id"] == "STANDARD" and o.get("fixed")), None)
     if std is None:
         return quote
     wholesale = 0.0

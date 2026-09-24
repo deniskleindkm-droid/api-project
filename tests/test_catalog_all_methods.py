@@ -71,7 +71,7 @@ SLOW_OR_UNWANTED = {"ITDIDA_ECO", "cainiao", "Fedex", "FedexI"}
 @pytest.mark.parametrize("cc", WAVE1)
 def test_standard_is_offered_only_where_an_acceptable_non_express_method_exists(cc):
     opts = catalog.class_options(cc)
-    expected = ["EXPRESS", "STANDARD"]                                         # US Standard = manual USPS (owner-handled)
+    expected = ["EXPRESS", "STANDARD"]                                         # US Standard = USPS (fixed lane, way SUX)
     assert [o["method_id"] for o in opts] == expected
     assert opts[0]["name"] == "Express delivery (DHL)"
     assert all(o["basis"] == "max_observed" and o["supplier_price"] > 0 for o in opts)
@@ -84,7 +84,7 @@ def test_slow_china_system_methods_never_count_toward_standard():
         assert not std or not (set(std["ways"]) & SLOW_OR_UNWANTED), (cc, std)
         assert not (set(catalog.STANDARD_ALLOWED[cc]) & SLOW_OR_UNWANTED)
     us_std = catalog.ratecard()["US"]["standard"]
-    assert us_std["manual"] and us_std["max"] == 7.28 and us_std["eta"] == (8, 10)   # from the owner's real USPS order
+    assert us_std["fixed"] and us_std["ways"] == ["SUX"] and us_std["max"] == 7.28 and us_std["eta"] == (8, 10)  # owner's real USPS order
     assert catalog.STANDARD_ALLOWED["US"] == ()                                       # never an automatic US Standard
     for cc in ("DE", "FR", "AU", "CA"):
         assert catalog.STANDARD_ALLOWED[cc] == ("BKPHR",)
@@ -141,47 +141,33 @@ def test_uk_standard_is_not_limited_by_cart_value(client, session, flag_on, no_s
     assert [o["method_id"] for o in body["options"]] == ["EXPRESS", "STANDARD"]
 
 
-def test_us_standard_paid_order_is_marked_needs_manual_and_the_owner_is_emailed(session, monkeypatch):
+def test_us_standard_is_sent_to_silverbene_automatically_as_usps_without_a_rate_lookup(session, monkeypatch):
+    """Orders still go to Silverbene through the API; only PAYMENT is manual (owner pays on their page)."""
     from sqlmodel import select
-    from types import SimpleNamespace
     from app.models.order import Order
     from app.routes.payments import process_order_background
     from test_intl_checkout import FakeSilverbene, _paid_metadata
     FakeSilverbene.placed, FakeSilverbene.rate_lookups = [], 0
-    emails = []
     monkeypatch.setattr("app.agents.suppliers.silverbene_adapter.SilverbeneAdapter", FakeSilverbene)
     monkeypatch.setattr("app.agents.tracking_agent.create_tracking_entry", lambda **kw: None)
-    monkeypatch.setattr("app.agents.email_partner.send_email", lambda **kw: emails.append(kw))
+    monkeypatch.setattr("app.agents.order_variant_tracker.check_order_item", lambda **kw: SimpleNamespace(match_status="ok"))
+    monkeypatch.setattr("app.agents.order_variant_tracker.send_batched_order_alert", lambda *a, **k: None)
+    monkeypatch.setattr("app.agents.email_partner.send_email", lambda **kw: None)
     monkeypatch.setattr("app.routes.payments._send_meta_capi_event", lambda *a, **k: None)
     monkeypatch.setenv("PAYPAL_MODE", "live")
-    monkeypatch.setenv("DENNIS_EMAIL", "owner@example.com")
-    monkeypatch.setattr(txn, "default_rate_fetcher", lambda *a: (_ for _ in ()).throw(AssertionError("no live lookup for manual orders")))
+    monkeypatch.setattr(txn, "default_rate_fetcher", lambda *a: (_ for _ in ()).throw(AssertionError("USPS is a fixed lane: no live lookup")))
     make_product(session)
     a = addr_mod.StructuredAddress(**valid_address("US"))
     tx = quoted_tx(session, a, [{"product_id": 1, "quantity": 1, "supplier_option_id": "OPT1"}])
     tx = txn.lock_for_payment(session, tx, "STANDARD")
-    process_order_background(_paid_metadata(tx.id, "cs_manual"))
-    assert FakeSilverbene.placed == [] and FakeSilverbene.rate_lookups == 0          # nothing sent to the supplier
+    process_order_background(_paid_metadata(tx.id, "cs_us_std"))
+    assert len(FakeSilverbene.placed) == 1
+    placed = FakeSilverbene.placed[0]
+    assert placed["shipping_method"] == "SUX" and placed["shipping_price"] == 7.28
+    assert placed["address"]["country_code"] == "US"
     session.expire_all()
-    assert session.exec(select(Order)).first().status == "needs_manual"
-    mail = next(e for e in emails if "manual" in e["subject"].lower())
-    assert "1 Main St" in mail["body"] and "New York" in mail["body"] and "USPS" in mail["body"]
-    assert "+44 20 7946 0958" in mail["body"]                                          # customer's phone, for the owner's use
-
-
-def test_recovery_agent_never_touches_needs_manual_orders(session, monkeypatch):
-    from app.agents import order_recovery_agent
-    from app.models.order import Order
-    from test_intl_checkout import FakeSilverbene
-    FakeSilverbene.placed = []
-    monkeypatch.setattr("app.agents.suppliers.silverbene_adapter.SilverbeneAdapter", FakeSilverbene)
-    make_product(session)
-    session.add(Order(user_id="a@b.co", product_id=1, quantity=1, total_price=1.0, status="needs_manual",
-                      shipping_address="x, y, z, 10001, US", created_at=datetime.utcnow() - timedelta(hours=5)))
-    session.commit()
-    monkeypatch.setattr(order_recovery_agent, "engine", session.get_bind())
-    order_recovery_agent.run_order_recovery_agent()
-    assert FakeSilverbene.placed == []
+    assert session.exec(select(Order)).first().status == "processing"          # a normal order, not held or "manual"
+    assert json.loads(session.get(type(tx), tx.id).shipping_resolved_json)["method_id"] == "SUX"
 
 
 def test_unknown_choice_is_refused(client, session, flag_on, no_supplier_calls):

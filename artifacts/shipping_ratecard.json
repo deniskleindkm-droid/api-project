@@ -20,13 +20,13 @@
    "median": 7.28,
    "n": 1,
    "ways": [
-    "USPS-manual"
+    "SUX"
    ],
    "eta": [
     8,
     10
    ],
-   "manual": true
+   "fixed": true
   }
  },
  "GB": {

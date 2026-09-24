@@ -41,14 +41,15 @@ STANDARD_ALLOWED: Dict[str, Tuple[str, ...]] = {
     "CA": ("BKPHR",),
 }
 
-# Standard handled BY HAND by the owner on Silverbene's own site (owner, 2026-09-24: automatic fulfillment is
-# disabled so the owner can choose the transport). Offered as "Standard delivery"; a paid order is NOT sent to
-# the supplier automatically -- it is marked needs_manual and the owner is emailed everything needed.
-# Cost basis / ETA come from the owner's real Silverbene order: "Silverbene Partner - USPS(8-10 workdays,
-# accepts packages under $60, customs duty included)" = $7.28. Because of the $60 limit it is only offered when
-# the cart's wholesale (Silverbene) cost is under `max_wholesale`.
-MANUAL_STANDARD: Dict[str, dict] = {
-    "US": {"price": 7.28, "eta": (8, 10), "carrier": "USPS", "max_wholesale": 60.0},
+# FIXED Standard lanes that the Silverbene RATE API does not return but its ORDER API accepts. Owner, 2026-09-24:
+# orders still go to Silverbene automatically through the API; only PAYMENT is manual (use_credit=False -> the
+# owner pays on Silverbene's page and can review the transport there). US Standard = USPS, way "SUX" (the adapter's
+# long-standing "known US method"; the owner's real order: "Silverbene Partner - USPS(8-10 workdays, accepts
+# packages under $60, customs duty included)" = $7.28). Because of the $60 limit it is only offered when the
+# cart's wholesale (Silverbene) cost is under `max_wholesale`.
+FIXED_STANDARD: Dict[str, dict] = {
+    "US": {"way": "SUX", "price": 7.28, "eta": (8, 10), "name": "USPS(8-10 workdays, accepts packages under $60, customs duty included)",
+           "max_wholesale": 60.0},
 }
 
 _ART = os.path.join(os.path.dirname(__file__), "..", "..", "artifacts")
@@ -126,10 +127,10 @@ def _build() -> Dict[str, dict]:
         if std_prices:
             entry["standard"] = {**_stats(std_prices), "ways": sorted(std_ways),
                                  "eta": (min(e[0] for e in std_etas), max(e[1] for e in std_etas)) if std_etas else None}
-        m = MANUAL_STANDARD.get(code)
+        m = FIXED_STANDARD.get(code)
         if m and "standard" not in entry:
             entry["standard"] = {"max": m["price"], "min": m["price"], "median": m["price"], "n": 1,
-                                 "ways": ["USPS-manual"], "eta": m["eta"], "manual": True}
+                                 "ways": [m["way"]], "eta": m["eta"], "fixed": True}
         if "express" in entry or "standard" in entry:
             card[code] = entry
     return card
@@ -163,7 +164,7 @@ def class_options(country: str) -> Optional[List[dict]]:
         opts.append({"method_id": "STANDARD", "name": "Standard delivery", "family": "other", "tier": "STANDARD",
                      "eta": _eta_dict(s["eta"]), "supplier_price": s["max"], "class_choice": True,
                      "basis": "max_observed", "observed": {k: s[k] for k in ("min", "median", "max", "n")},
-                     **({"manual": True} if s.get("manual") else {})})
+                     **({"fixed": True} if s.get("fixed") else {})})
     return opts or None
 
 
