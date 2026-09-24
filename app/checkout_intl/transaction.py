@@ -66,9 +66,14 @@ def fetch_quote(address: addr_mod.StructuredAddress, items: List[dict],
                 fetcher: Optional[RateFetcher] = None) -> dict:
     """Live Silverbene rates for the actual cart + destination.
     Returns {"options": every normalized method with its tier, "offered": ids a customer may pick}."""
-    fetcher = fetcher or default_rate_fetcher
     parsed = addr_mod.to_parsed_address(address)
-    raw = fetcher(parsed["country_code"], parsed["postal_code"], parsed["city"], _supplier_products(items))
+    raw = None
+    if fetcher is None and flags.quote_source() == "catalog":
+        from app.checkout_intl import catalog
+        raw = catalog.methods_for(parsed["country_code"])      # instant; None if the country isn't catalogued
+    if raw is None:
+        fetcher = fetcher or default_rate_fetcher
+        raw = fetcher(parsed["country_code"], parsed["postal_code"], parsed["city"], _supplier_products(items))
     options = rates.normalize(raw, parsed["country_code"])
     offered = rates.present(options)
     return {"options": options, "offered": [o["method_id"] for o in offered],
@@ -156,7 +161,12 @@ def load_items(tx: CheckoutTransaction) -> List[dict]:
 
 
 def _snapshot(options: List[dict]) -> dict:
-    return {o["tier"]: {"method_id": o["method_id"], "price": o["supplier_price"]} for o in options}
+    """What the customer was shown: per method id, plus a per-tier entry (first option of that tier)
+    so a choice made by TIER still notices when the method behind the tier changed."""
+    snap = {o["method_id"]: {"method_id": o["method_id"], "price": o["supplier_price"]} for o in options}
+    for o in options:
+        snap.setdefault("tier:" + o["tier"], {"method_id": o["method_id"], "price": o["supplier_price"]})
+    return snap
 
 
 def _same_price(a: Optional[float], b: Optional[float]) -> bool:
@@ -199,12 +209,14 @@ def lock_for_payment(session: Session, tx: CheckoutTransaction, tier: str,
         raise RequoteRequired("Refreshing your delivery options", [], pending=True)
 
     offered = offered_options(tx)
-    chosen = next((o for o in offered if o["tier"] == tier), None)
+    # `tier` may be a supplier method id (all-methods mode) or a tier name (single-option modes).
+    by_id = next((o for o in offered if o["method_id"] == tier), None)
+    chosen = by_id or next((o for o in offered if o["tier"] == tier), None)
     if chosen is None:
         raise RequoteRequired("That delivery option is no longer available", offered)
 
     ack = json.loads(tx.ack_json) if tx.ack_json else None
-    seen = (ack or {}).get(tier)
+    seen = (ack or {}).get(chosen["method_id"] if by_id else "tier:" + chosen["tier"]) if chosen else None
     if seen is not None and (seen["method_id"] != chosen["method_id"]
                              or not _same_price(seen["price"], chosen["supplier_price"])):
         tx.ack_json = json.dumps(_snapshot(offered))         # they are about to be shown the new offer

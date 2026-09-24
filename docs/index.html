@@ -4693,11 +4693,11 @@ function icBack(){
 }
 function _icRenderOptions(options){
   const box=document.getElementById('ic-options');
-  window._icChosen=options.length===1?options[0].tier:null;
+  window._icChosen=options.length===1?options[0].method_id:null;
   box.innerHTML=options.map(o=>`<label style="display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);margin-bottom:10px;cursor:pointer;">
-    <input type="radio" name="ic-ship" value="${_icEsc(o.tier)}" ${options.length===1?'checked':''} onchange="window._icChosen=this.value" style="width:auto;"/>
+    <input type="radio" name="ic-ship" value="${_icEsc(o.method_id)}" ${options.length===1?'checked':''} onchange="window._icChosen=this.value" style="width:auto;"/>
     <span style="flex:1"><span style="font-size:13px;color:var(--black);display:block;">${_icEsc(o.name)}</span>
-    ${o.eta_text?`<span style="font-size:11px;color:var(--mid);">${_icEsc(o.eta_text)}</span>`:''}</span>
+    <span style="font-size:11px;color:var(--mid);">${o.tier==='EXPRESS'?'Express':'Standard'}${o.eta_text?' · '+_icEsc(o.eta_text):''}</span></span>
     <span style="font-size:12px;color:var(--gold);">${o.included?'Included':'$'+Number(o.customer_price).toFixed(2)}</span></label>`).join('');
 }
 function _icShowShipping(options){
@@ -4753,7 +4753,7 @@ async function icPay(provider){
   btn.textContent='Preparing payment…';_icMsg('');
   const headers={'Content-Type':'application/json'};if(token)headers['Authorization']=`Bearer ${token}`;
   try{
-    const res=await fetch(`${API}/checkout/${window._icCheckoutId}/pay`,{method:'POST',headers,body:JSON.stringify({shipping_tier:window._icChosen,payment_provider:provider})});
+    const res=await fetch(`${API}/checkout/${window._icCheckoutId}/pay`,{method:'POST',headers,body:JSON.stringify({shipping_method_id:window._icChosen,payment_provider:provider})});
     const data=await res.json();
     if(res.ok){if(!token)sessionStorage.removeItem('mikisi_guest_cart');window.location.href=data.checkout_url;return;}
     const d=data.detail;

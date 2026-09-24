@@ -32,8 +32,19 @@ def tier_exposure() -> str:
     STANDARD. This mirrors today's "everything ships fast, cost absorbed in the
     price" economics, so exposing a cheaper/dearer choice cannot silently move
     margin before pricing can charge for it.
-    'both': the cheapest STANDARD and the cheapest EXPRESS. Enable only once the
-    pricing stage charges for the chosen tier.
+    'both': the cheapest STANDARD and the cheapest EXPRESS.
+    'all' (default, owner decision 2026-09-24): every method the supplier offers for the
+    country, each chosen individually. Prices are not charged yet (pricing stage).
     """
-    v = os.getenv("INTL_TIER_EXPOSURE", "frozen").strip().lower()
-    return v if v in ("frozen", "both") else "frozen"
+    v = os.getenv("INTL_TIER_EXPOSURE", "all").strip().lower()
+    return v if v in ("frozen", "both", "all") else "all"
+
+
+def quote_source() -> str:
+    """
+    'catalog' (default): delivery options come instantly from the Silverbene probe catalog
+    (app/checkout_intl/catalog.py); countries not catalogued fall back to the live lookup.
+    'live': always ask Silverbene at checkout (6-110 s per call).
+    """
+    v = os.getenv("INTL_QUOTE_SOURCE", "catalog").strip().lower()
+    return v if v in ("catalog", "live") else "catalog"

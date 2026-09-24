@@ -71,7 +71,8 @@ class DeliveryRequest(BaseModel):
 
 
 class PayRequest(BaseModel):
-    shipping_tier: str                   # "STANDARD" | "EXPRESS" -- never a supplier method id
+    shipping_method_id: str = ""         # a method_id from GET /checkout/{id}/options
+    shipping_tier: str = ""              # "STANDARD" | "EXPRESS" (single-option modes)
     payment_provider: str = "stripe"
 
 
@@ -244,7 +245,7 @@ def pay_step(checkout_id: str, body: PayRequest, request: Request, background_ta
         raise HTTPException(status_code=400, detail=str(e))
 
     try:
-        tx = txn.lock_for_payment(session, tx, body.shipping_tier.upper())
+        tx = txn.lock_for_payment(session, tx, body.shipping_method_id or body.shipping_tier.upper())
     except txn.RequoteRequired as e:
         body_409 = {"detail": {"code": "requote", "message": e.reason, "pending": e.pending,
                                "options": [rates.customer_view(o) for o in e.options],

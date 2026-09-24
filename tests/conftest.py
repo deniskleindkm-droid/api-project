@@ -12,6 +12,14 @@ os.environ.setdefault("STRIPE_SECRET_KEY", "sk_test_dummy")
 import app.database  # noqa: E402,F401  (registers every table on SQLModel.metadata)
 
 
+@pytest.fixture(autouse=True)
+def _legacy_test_modes(monkeypatch):
+    """Existing tests exercise the single-option ('frozen') + live-lookup modes; the new defaults
+    (all methods, catalog-first) have their own tests in test_catalog_all_methods.py."""
+    monkeypatch.setenv("INTL_TIER_EXPOSURE", "frozen")
+    monkeypatch.setenv("INTL_QUOTE_SOURCE", "live")
+
+
 @pytest.fixture()
 def engine(monkeypatch):
     eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)

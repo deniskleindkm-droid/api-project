@@ -127,6 +127,10 @@ def present(options: List[dict]) -> List[dict]:
     """
     if not options:
         return []
+    if flags.tier_exposure() == "all":
+        # Fastest tier first, then cheapest within a tier, so the list reads naturally.
+        return sorted(options, key=lambda o: (o["tier"] != EXPRESS, o["supplier_price"] is None,
+                                              o["supplier_price"] or 0))
     std = _by_price([o for o in options if o["tier"] == STANDARD])
     exp = _by_price([o for o in options if o["tier"] == EXPRESS])
     if flags.tier_exposure() == "both":
@@ -139,11 +143,19 @@ def present(options: List[dict]) -> List[dict]:
     return [{**std[0], "fallback": True}] if std else []
 
 
+def display_name(option: dict) -> str:
+    """Customer-facing label: the service name with the supplier's parenthetical ETA/notes removed."""
+    base = re.sub(r"\s*\(.*?\)\s*", " ", option.get("name") or "").strip()
+    base = re.sub(r"\s+", " ", base) or ("Express delivery" if option["tier"] == EXPRESS else "Standard delivery")
+    return base
+
+
 def customer_view(option: dict) -> dict:
-    """What the browser sees. No supplier cost, no supplier or carrier name."""
+    """What the browser sees. Never the supplier price."""
     return {
-        "tier": option["tier"],         # the customer's handle; the supplier method id stays server-side
-        "name": "Express delivery" if option["tier"] == EXPRESS else "Standard delivery",
+        "method_id": option["method_id"],   # opaque choice key sent back on pay
+        "tier": option["tier"],
+        "name": display_name(option),
         "eta_text": (option.get("eta") or {}).get("text"),
         "customer_price": 0.0,          # pricing frozen: shipping absorbed in product price
         "included": True,

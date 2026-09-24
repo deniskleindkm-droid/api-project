@@ -157,7 +157,8 @@ def test_customer_view_hides_supplier_cost_and_route_wording():
     v = rates.customer_view(rates.normalize([DHL])[0])
     assert "supplier_price" not in v and "31.5" not in json.dumps(v)
     assert v["customer_price"] == 0.0 and "Silverbene" not in json.dumps(v)
-    assert "DHL" not in json.dumps(v) and v["tier"] == "EXPRESS"       # neither carrier names nor supplier ids reach the customer
+    assert v["tier"] == "EXPRESS" and v["name"] == "DHL Express"        # service names are shown (owner decision); costs never are
+    assert "31.5" not in json.dumps(v) and "supplier" not in json.dumps(v)
 
 
 # ── endpoints ─────────────────────────────────────────────────────────────────
