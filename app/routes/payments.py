@@ -510,6 +510,11 @@ def process_order_background(checkout_data: dict):
         # Present only for the international two-step checkout (app/checkout_intl);
         # every legacy order leaves this None and follows the untouched legacy path.
         checkout_id = checkout_data["metadata"].get("checkout_id") or None
+        # A PayPal SANDBOX payment ("pp_" reference while PAYPAL_MODE is not live) is play money:
+        # it is recorded as a test order and must never reach the supplier, decrement real stock,
+        # fire a Meta Purchase, or be picked up by the recovery agent. Automatic -- no flag to forget.
+        sandbox_test = bool(stripe_session_id and str(stripe_session_id).startswith("pp_")
+                            and os.getenv("PAYPAL_MODE", "sandbox").strip().lower() != "live")
 
         # Idempotency guard — Stripe explicitly documents that the same webhook
         # event can be delivered more than once, and the admin recover-order
@@ -604,8 +609,9 @@ def process_order_background(checkout_data: dict):
                             stripe_session_id=stripe_session_id,
                             checkout_id=checkout_id,
                         )
-                        product.stock -= qty
-                        _decrement_variant_stock(session, sel_variant_id, qty)
+                        if not sandbox_test:
+                            product.stock -= qty
+                            _decrement_variant_stock(session, sel_variant_id, qty)
                         session.add(order)
                         session.add(product)
                 session.commit()
@@ -655,8 +661,9 @@ def process_order_background(checkout_data: dict):
                             stripe_session_id=stripe_session_id,
                             checkout_id=checkout_id,
                         )
-                        product.stock -= item.quantity
-                        _decrement_variant_stock(session, item.variant_id, item.quantity)
+                        if not sandbox_test:
+                            product.stock -= item.quantity
+                            _decrement_variant_stock(session, item.variant_id, item.quantity)
                         session.add(order)
                         session.add(product)
                         session.delete(item)
@@ -670,13 +677,25 @@ def process_order_background(checkout_data: dict):
         # (see docs/index.html) — Meta dedupes on event_id, so this must
         # never fire without a real session id, or a webhook retry replaying
         # a duplicate id would double-count real revenue.
-        if stripe_session_id:
+        if stripe_session_id and not sandbox_test:
             _send_meta_capi_event(
                 "Purchase", total,
                 [d["product_id"] for d in order_details],
                 email=user_email,
                 event_id=stripe_session_id,
             )
+
+        if sandbox_test:
+            with Session(engine) as _sb_session:
+                for _o in _sb_session.exec(select(Order).where(Order.stripe_session_id == stripe_session_id)).all():
+                    _o.status = "sandbox_test"      # excluded from recovery (which only retries paid/pending_credit)
+                    _sb_session.add(_o)
+                _sb_session.commit()
+            if checkout_id:
+                from app.checkout_intl import fulfillment as _sb_fulfillment
+                _sb_fulfillment.mark_paid(checkout_id, stripe_session_id)
+            print(f"[Payments] SANDBOX TEST order {stripe_session_id} recorded — supplier, stock, Meta and emails skipped")
+            return
 
         # Auto-forward to Silverbene
         try:

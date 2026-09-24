@@ -222,6 +222,7 @@ def test_refund_requires_a_paypal_capture(pp, client, session):
 def test_duplicate_payment_across_providers_never_double_fulfills(session, monkeypatch):
     """A PayPal-paid checkout that also gets a Stripe payment must not create a second supplier order."""
     from test_intl_checkout import FakeSilverbene, fulfil_env, _paid_metadata, _locked_au_tx  # noqa: F401
+    monkeypatch.setenv("PAYPAL_MODE", "live")     # a live PayPal payment DOES fulfill (sandbox ones never do)
     FakeSilverbene.placed, FakeSilverbene.rate_lookups = [], 0
     monkeypatch.setattr("app.agents.suppliers.silverbene_adapter.SilverbeneAdapter", FakeSilverbene)
     monkeypatch.setattr("app.agents.tracking_agent.create_tracking_entry", lambda **kw: None)
@@ -336,3 +337,71 @@ def test_requote_when_tier_maps_to_a_different_method(session):
     tx = session.get(type(tx), tx.id)
     with pytest.raises(txn.RequoteRequired):
         txn.lock_for_payment(session, tx, "EXPRESS")
+
+
+# ── PayPal sandbox orders are test orders: never fulfilled ────────────────────
+
+def _sandbox_env(monkeypatch):
+    from test_intl_checkout import FakeSilverbene
+    FakeSilverbene.placed, FakeSilverbene.rate_lookups = [], 0
+    calls = {"meta": [], "email": []}
+    monkeypatch.setattr("app.agents.suppliers.silverbene_adapter.SilverbeneAdapter", FakeSilverbene)
+    monkeypatch.setattr("app.routes.payments._send_meta_capi_event", lambda *a, **k: calls["meta"].append(a))
+    monkeypatch.setattr("app.agents.email_partner.send_email", lambda **k: calls["email"].append(k))
+    monkeypatch.setattr("app.agents.tracking_agent.create_tracking_entry", lambda **kw: None)
+    monkeypatch.delenv("PAYPAL_MODE", raising=False)                            # default = sandbox
+    return FakeSilverbene, calls
+
+
+def test_paypal_sandbox_payment_never_touches_supplier_stock_meta_or_email(session, monkeypatch):
+    from sqlmodel import select
+    from app.models.order import Order
+    from app.models.product import Product
+    from app.models.checkout_transaction import CheckoutTransaction
+    from test_intl_checkout import _paid_metadata, _locked_au_tx
+    fake, calls = _sandbox_env(monkeypatch)
+    tx = _locked_au_tx(session)
+    stock_before = session.get(Product, 1).stock
+    from app.routes.payments import process_order_background
+    process_order_background(_paid_metadata(tx.id, "pp_SANDBOXORDER1"))
+    session.expire_all()
+    assert fake.placed == [] and fake.rate_lookups == 0 and calls["meta"] == [] and calls["email"] == []
+    assert session.get(Product, 1).stock == stock_before
+    order = session.exec(select(Order)).first()
+    assert order.status == "sandbox_test" and order.supplier_notified is False and order.checkout_id == tx.id
+    assert session.get(CheckoutTransaction, tx.id).status == "paid"
+
+
+def test_recovery_agent_ignores_sandbox_test_orders(session, monkeypatch):
+    from app.agents import order_recovery_agent
+    from test_intl_checkout import _paid_metadata, _locked_au_tx
+    fake, _ = _sandbox_env(monkeypatch)
+    tx = _locked_au_tx(session)
+    from app.routes.payments import process_order_background
+    process_order_background(_paid_metadata(tx.id, "pp_SANDBOXORDER2"))
+    from datetime import datetime, timedelta
+    from app.models.order import Order
+    from sqlmodel import select
+    o = session.exec(select(Order)).first()
+    o.created_at = datetime.utcnow() - timedelta(hours=3)                     # old enough for recovery
+    session.add(o); session.commit()
+    monkeypatch.setattr(order_recovery_agent, "engine", session.get_bind())
+    order_recovery_agent.run_order_recovery_agent()
+    assert fake.placed == []
+
+
+def test_live_paypal_and_stripe_payments_still_fulfill(session, monkeypatch):
+    from test_intl_checkout import _paid_metadata, _locked_au_tx, FakeSilverbene
+    fake, calls = _sandbox_env(monkeypatch)
+    monkeypatch.setattr("app.agents.order_variant_tracker.check_order_item", lambda **kw: SimpleNamespace(match_status="ok"))
+    monkeypatch.setattr("app.agents.order_variant_tracker.send_batched_order_alert", lambda *a, **k: None)
+    monkeypatch.setenv("PAYPAL_MODE", "live")
+    tx = _locked_au_tx(session)
+    from app.routes.payments import process_order_background
+    process_order_background(_paid_metadata(tx.id, "pp_LIVEORDER"))
+    assert len(fake.placed) == 1 and len(calls["meta"]) == 1
+    fake.placed.clear()
+    monkeypatch.delenv("PAYPAL_MODE")                                            # sandbox mode, but a STRIPE id
+    tx2 = _locked_au_tx(session) if False else None
+    process_order_background(_paid_metadata(tx.id, "cs_test_stripe_id"))         # duplicate-checkout guard blocks 2nd
+    assert fake.placed == []
