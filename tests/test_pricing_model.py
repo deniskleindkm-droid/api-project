@@ -1,4 +1,4 @@
-"""Pricing model v0 (review-only): the solved price must leave exactly the target contribution."""
+"""Pricing model v1 (review-only): one worldwide price paying for DHL Express, no tax collection."""
 import pytest
 
 from app.checkout_intl import catalog
@@ -6,64 +6,74 @@ from app.commerce import pricing_model as pm
 
 COUNTRIES = ("US", "GB", "DE", "FR", "AU", "CA")
 RC = catalog.ratecard()
+EXPRESS = {cc: RC[cc]["express"]["max"] for cc in COUNTRIES}
+MODES = ("prepaid", "receiver_pays")
 
 
-def ship(cc, cls):
-    return RC[cc][cls]["max"]
-
-
+@pytest.mark.parametrize("mode", MODES)
 @pytest.mark.parametrize("cc", COUNTRIES)
 @pytest.mark.parametrize("w", [5, 10, 40, 100, 300])
-def test_solved_price_leaves_exactly_the_target_contribution(cc, w):
-    r = pm.solve(pm.MARKETS[cc], w, ship(cc, "express"))
+def test_solved_price_leaves_exactly_the_target_contribution(cc, w, mode):
+    r = pm.solve(pm.MARKETS[cc], w, EXPRESS[cc], pm.Params(tax_mode=mode))
     assert r["contribution"] == pytest.approx(pm.TARGET_CONTRIBUTION, abs=1e-6)
-    assert r["net_price"] > w + ship(cc, "express")
+    assert r["price"] > w + EXPRESS[cc]
 
 
 @pytest.mark.parametrize("cc", COUNTRIES)
 def test_rounding_up_never_drops_below_the_target(cc):
     for w in (7, 13, 29, 57, 111):
-        n = pm.solve(pm.MARKETS[cc], w, ship(cc, "express"))["net_price"]
-        assert pm.contribution_at(pm.MARKETS[cc], pm.round_up(n), w, ship(cc, "express")) >= pm.TARGET_CONTRIBUTION - 1e-6
+        p = pm.solve(pm.MARKETS[cc], w, EXPRESS[cc])["price"]
+        assert pm.contribution_at(pm.MARKETS[cc], pm.round_up(p), w, EXPRESS[cc]) >= pm.TARGET_CONTRIBUTION - 1e-6
 
 
-def test_vat_is_a_pass_through_not_revenue():
-    gb = pm.MARKETS["GB"]
-    r = pm.solve(gb, 40, ship("GB", "express"))
-    assert r["gross_price"] == pytest.approx(r["net_price"] * 1.20)
-    assert r["vat"] == pytest.approx(r["net_price"] * 0.20)
-    # VAT enlarges the payment-provider fee base, so the same costs need a higher NET price than a no-VAT market would
-    no_vat = pm.Market("XX", "x", 0.0, 0.0, None, 0.0, False, False, "assumed")
-    assert r["net_price"] > pm.solve(no_vat, 40, ship("GB", "express"))["net_price"]
+def test_there_is_no_tax_collection_mode():
+    with pytest.raises(ValueError):
+        pm.solve(pm.MARKETS["GB"], 40, EXPRESS["GB"], pm.Params(tax_mode="collect"))
+    assert "vat_rate" not in pm.Market.__dataclass_fields__ and "vat_registered" not in pm.Market.__dataclass_fields__
+
+
+def test_prepaid_builds_duty_and_import_vat_into_the_price_and_the_customer_pays_nothing_at_the_door():
+    gb_pre = pm.solve(pm.MARKETS["GB"], 40, EXPRESS["GB"], pm.Params(tax_mode="prepaid"))
+    gb_rec = pm.solve(pm.MARKETS["GB"], 40, EXPRESS["GB"], pm.Params(tax_mode="receiver_pays"))
+    assert gb_pre["door_bill"] == 0 and gb_pre["import_vat_borne"] == pytest.approx(0.20 * (40 + EXPRESS["GB"]))
+    assert gb_pre["price"] > gb_rec["price"]                          # prepaying costs Mikisi -> higher price
+    assert gb_rec["door_bill"] == pytest.approx(0.20 * (40 + EXPRESS["GB"])) and gb_rec["import_vat_borne"] == 0
+
+
+def test_receiver_pays_door_bill_is_the_customers_surprise_and_is_zero_where_nothing_is_due():
+    au = pm.solve(pm.MARKETS["AU"], 40, EXPRESS["AU"], pm.Params(tax_mode="receiver_pays"))
+    assert au["door_bill"] == 0                                        # <= A$1,000 generally exempt (unverified)
+    de = pm.solve(pm.MARKETS["DE"], 40, EXPRESS["DE"], pm.Params(tax_mode="receiver_pays", courier_handling_fee=10))
+    flat = 3 * pm.EUR_USD
+    assert de["door_bill"] == pytest.approx(flat + 0.19 * (40 + EXPRESS["DE"] + flat) + 10)
 
 
 def test_eu_flat_duty_replaces_ad_valorem_below_the_threshold_only():
     de = pm.MARKETS["DE"]
-    low = pm.duty_cost(de, 40, pm.Params())
-    assert low == pytest.approx(3 * pm.EUR_USD)                           # EUR3 flat for a small parcel
-    high = pm.duty_cost(de, 300, pm.Params())
-    assert high == pytest.approx(300 * 0.025)                             # 2.5% above EUR150
+    assert pm.duty_cost(de, 40, pm.Params()) == pytest.approx(3 * pm.EUR_USD)
+    assert pm.duty_cost(de, 300, pm.Params()) == pytest.approx(300 * 0.025)
 
 
 def test_us_duty_range_and_declared_value_sensitivity():
-    base = pm.solve(pm.MARKETS["US"], 40, ship("US", "express"))["net_price"]
-    low = pm.solve(pm.MARKETS["US"], 40, ship("US", "express"), pm.Params(duty_rate_override={"US": pm.US_DUTY_LOW}))["net_price"]
-    retail = pm.solve(pm.MARKETS["US"], 40, ship("US", "express"), pm.Params(declared_basis="retail"))["net_price"]
-    assert low < base < retail                                            # worst case: customs uses the selling price
+    us = lambda **k: pm.solve(pm.MARKETS["US"], 40, EXPRESS["US"], pm.Params(**k))["price"]
+    assert us(duty_rate_override={"US": pm.US_DUTY_LOW}) < us() < us(declared_basis="retail")
 
 
 def test_unknown_costs_move_the_price_in_the_expected_direction():
-    p = lambda **k: pm.solve(pm.MARKETS["DE"], 40, ship("DE", "express"), pm.Params(**k))["net_price"]
+    p = lambda **k: pm.solve(pm.MARKETS["DE"], 40, EXPRESS["DE"], pm.Params(**k))["price"]
     assert p(supplier_pct=0.03) > p() and p(dtp_fixed=19) > p() and p(reserve_pct=0.05) > p() and p(provider="paypal") > p()
 
 
-def test_us_standard_is_far_cheaper_than_express_and_target_holds_for_every_class():
-    for cc in COUNTRIES:
-        e = pm.solve(pm.MARKETS[cc], 40, ship(cc, "express"))
-        s = pm.solve(pm.MARKETS[cc], 40, ship(cc, "standard"))
-        assert s["net_price"] < e["net_price"]
-        assert s["contribution"] == pytest.approx(45, abs=1e-6) == pytest.approx(e["contribution"], abs=1e-6)
-    assert ship("US", "standard") == 7.28
+@pytest.mark.parametrize("mode", MODES)
+def test_one_global_price_meets_the_target_everywhere_and_the_costliest_country_drives_it(mode):
+    prm = pm.Params(tax_mode=mode)
+    for w in (10, 40, 100):
+        g = pm.global_price(w, EXPRESS, prm)
+        assert all(profit >= pm.TARGET_CONTRIBUTION - 1e-6 for profit in g["profit_at_price"].values())
+        assert g["driver"] == max(g["required"], key=g["required"].get)
+        assert g["price"] >= max(g["required"].values()) - 1e-9
+        assert min(g["profit_at_price"].values()) == pytest.approx(pm.TARGET_CONTRIBUTION, abs=1.0)   # the driver is ~exact
+    assert pm.global_price(40, EXPRESS, prm)["driver"] == "US"          # US Express + the 43.8% duty stack is the costliest
 
 
 def test_assumptions_are_listed_and_every_market_has_a_status():
