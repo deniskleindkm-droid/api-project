@@ -16,7 +16,7 @@ from typing import Optional
 from sqlmodel import Session
 
 from app.checkout_intl import address as addr_mod
-from app.checkout_intl import rates
+from app.checkout_intl import catalog, rates
 from app.checkout_intl import transaction as txn
 from app.database import engine
 from app.models.checkout_transaction import CheckoutTransaction
@@ -45,7 +45,7 @@ def load_context(checkout_id: Optional[str]) -> Optional[dict]:
             # Already resolved once (a retry): keep the same real method instead of re-deciding.
             r = json.loads(tx.shipping_resolved_json)
             a0 = txn.load_address(tx)
-            return {"checkout_id": tx.id, "resolution_failed": False, "resolution_note": None,
+            return {"checkout_id": tx.id, "manual_fulfillment": False, "resolution_failed": False, "resolution_note": None,
                     "customer": txn.addr_mod.to_supplier_customer(a0), "address": txn.addr_mod.to_parsed_address(a0),
                     "customer_first": a0.first_name.strip().capitalize() or "Customer",
                     "customer_last": a0.last_name.strip().capitalize() or "Customer",
@@ -55,7 +55,11 @@ def load_context(checkout_id: Optional[str]) -> Optional[dict]:
         chosen_method = tx.shipping_method_id
         chosen_price, chosen_title = tx.shipping_supplier_price, tx.shipping_method_name
         resolution_failed, resolution_note = False, None
-        if tx.shipping_method_id in ("STANDARD", "EXPRESS"):
+        manual_fulfillment = bool(tx.shipping_method_id == "STANDARD"
+                                  and tx.country_code in catalog.MANUAL_STANDARD)
+        if manual_fulfillment:
+            resolution_note = f"manual: {catalog.MANUAL_STANDARD[tx.country_code]['carrier']} Standard on the Silverbene site"
+        elif tx.shipping_method_id in ("STANDARD", "EXPRESS"):
             # Class choice: pick the real carrier NOW from live rates for this exact cart + address.
             try:
                 live = txn.default_rate_fetcher(
@@ -76,6 +80,7 @@ def load_context(checkout_id: Optional[str]) -> Optional[dict]:
                 session.add(tx)
                 session.commit()
         return {
+            "manual_fulfillment": manual_fulfillment,
             "resolution_failed": resolution_failed, "resolution_note": resolution_note,
             "checkout_id": tx.id,
             "customer": addr_mod.to_supplier_customer(a),

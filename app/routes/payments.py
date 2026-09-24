@@ -777,7 +777,43 @@ def process_order_background(checkout_data: dict):
                 )
             print(f"[Payments] Silverbene balance: {'${:.2f}'.format(sb_balance) if sb_balance >= 0 else 'unknown'} — proceed={balance_ok}")
 
+            _manual = bool(_intl_ctx and _intl_ctx.get("manual_fulfillment"))
+            if _manual:
+                # Owner-handled order (e.g. US Standard via the Silverbene site): no automatic supplier order.
+                # Status needs_manual keeps order_recovery_agent (paid/pending_credit only) away from it.
+                with Session(engine) as _m_session:
+                    _mine = _m_session.exec(select(Order).where(Order.stripe_session_id == stripe_session_id)).all() \
+                        if stripe_session_id else []
+                    for _o in _mine:
+                        _o.status = "needs_manual"
+                        _m_session.add(_o)
+                    _m_session.commit()
+                    _ids = [o.id for o in _mine]
+                _a = _intl_ctx["address"]
+                _lines = "".join(f"<li>{d['name']} × {d['qty']} — option_id {d.get('selected_option_id') or d.get('cj_sku')}"
+                                 f" — <a href='{d.get('supplier_url') or ''}'>{d.get('supplier_url') or ''}</a></li>"
+                                 for d in order_details)
+                _phone = phone or ""
+                try:
+                    from app.agents.email_partner import send_email
+                    _owner = os.getenv("DENNIS_EMAIL")
+                    if _owner:
+                        send_email(
+                            to=_owner,
+                            subject=f"✋ Manual fulfillment needed — order(s) {', '.join('#' + str(i) for i in _ids) or checkout_id}",
+                            body=(f"<p>A customer chose <b>Standard delivery</b> ({_intl_ctx.get('resolution_note')}). "
+                                  f"Automatic fulfillment was skipped — please place it on the Silverbene site and choose the transport yourself.</p>"
+                                  f"<ul>{_lines}</ul>"
+                                  f"<p><b>Ship to:</b> {customer_first} {customer_last}<br>{_a['line1']}<br>{_a['city']}, {_a['state']} "
+                                  f"{_a['postal_code']}, {_a['country_code']}<br>Customer phone: {_phone}</p>"
+                                  f"<p>Checkout {checkout_id}. Suggested method: USPS (8–10 workdays) — Silverbene accepts it for packages under $60.</p>"),
+                            is_html=True)
+                except Exception as _e:
+                    print(f"[Payments] manual-fulfillment email failed: {_e}")
+                print(f"[Payments] checkout {checkout_id}: manual fulfillment — orders {_ids} marked needs_manual, owner emailed")
             for i, d in enumerate(order_details):
+                if _manual:
+                    continue
                 if _intl_ctx and _intl_ctx.get("resolution_failed"):
                     # Class choice could not be turned into a real supplier method right now
                     # (supplier slow/down, or nothing suitable). Leave the order paid + un-notified:

@@ -116,6 +116,7 @@ def run_quote(checkout_id: str, fetcher: Optional[RateFetcher] = None) -> None:
                 return
             try:
                 quote = fetch_quote(load_address(tx), load_items(tx), fetcher)
+                quote = _apply_cart_rules(session, tx, quote)
                 error = None
             except Exception as e:                       # supplier down / timeout: fail closed, retryable
                 quote, error = {"options": [], "offered": [], "fallback": False}, f"{type(e).__name__}: {e}"
@@ -130,6 +131,29 @@ def run_quote(checkout_id: str, fetcher: Optional[RateFetcher] = None) -> None:
             session.commit()
     except Exception as e:                               # noqa: BLE001 - background jobs must not crash the worker
         print(f"[IntlCheckout] run_quote({checkout_id}) failed: {e}")
+
+
+def _apply_cart_rules(session: Session, tx: CheckoutTransaction, quote: dict) -> dict:
+    """Manual Standard is only valid for small carts (Silverbene's USPS lane 'accepts packages under $60')."""
+    from app.checkout_intl import catalog
+    from app.models.product import Product
+    manual = catalog.MANUAL_STANDARD.get(tx.country_code)
+    if not manual or not quote.get("class_quote"):
+        return quote
+    std = next((o for o in quote["options"] if o["method_id"] == "STANDARD" and o.get("manual")), None)
+    if std is None:
+        return quote
+    wholesale = 0.0
+    for line in load_items(tx):
+        p = session.get(Product, line["product_id"])
+        if p is None or p.silverbene_cost is None:
+            wholesale = float("inf")                    # unknown cost -> do not offer the limited lane
+            break
+        wholesale += float(p.silverbene_cost) * int(line.get("quantity") or 1)
+    if wholesale >= manual["max_wholesale"]:
+        quote = {**quote, "options": [o for o in quote["options"] if o["method_id"] != "STANDARD"],
+                 "offered": [i for i in quote["offered"] if i != "STANDARD"]}
+    return quote
 
 
 def begin_requote(session: Session, tx: CheckoutTransaction) -> CheckoutTransaction:

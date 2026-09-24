@@ -13,6 +13,20 @@
     4,
     9
    ]
+  },
+  "standard": {
+   "max": 7.28,
+   "min": 7.28,
+   "median": 7.28,
+   "n": 1,
+   "ways": [
+    "USPS-manual"
+   ],
+   "eta": [
+    8,
+    10
+   ],
+   "manual": true
   }
  },
  "GB": {
