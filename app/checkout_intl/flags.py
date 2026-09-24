@@ -23,11 +23,17 @@ def quote_ttl_minutes() -> int:
         return 15
 
 
-def shipping_policy() -> str:
+def tier_exposure() -> str:
     """
-    'dhl_only' (default) preserves today's economics -- Dennis's standing rule
-    is every order ships DHL, with the cost absorbed in the price. 'all'
-    presents every Silverbene method to the customer; enable it only once
-    pricing (a later stage) can charge for the chosen service.
+    Which delivery tiers customers may choose (both tiers are always quoted and
+    persisted; this only controls what is OFFERED).
+
+    'frozen' (default): ONE option -- EXPRESS when the supplier has one, else
+    STANDARD. This mirrors today's "everything ships fast, cost absorbed in the
+    price" economics, so exposing a cheaper/dearer choice cannot silently move
+    margin before pricing can charge for it.
+    'both': the cheapest STANDARD and the cheapest EXPRESS. Enable only once the
+    pricing stage charges for the chosen tier.
     """
-    return os.getenv("INTL_SHIPPING_POLICY", "dhl_only").strip().lower()
+    v = os.getenv("INTL_TIER_EXPOSURE", "frozen").strip().lower()
+    return v if v in ("frozen", "both") else "frozen"

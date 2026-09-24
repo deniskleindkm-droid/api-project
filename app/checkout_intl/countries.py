@@ -10,7 +10,7 @@ because it exists. A market is enabled only when BOTH hold:
 
 Silverbene's `country_id` is the ISO alpha-2 code in the only contract this
 repo proves (place_order sends address["country_code"] straight through, and
-US/CA/GB/AU/NG/GH orders have flowed that way). SUPPLIER_COUNTRY_ID_OVERRIDES
+US/CA/GB/AU orders have flowed that way). SUPPLIER_COUNTRY_ID_OVERRIDES
 is the single place to record any country where authenticated docs / a live
 probe show Silverbene uses a different id.
 
@@ -28,12 +28,23 @@ from typing import Dict, List, Optional
 
 from app.checkout_intl._iso_countries import ISO_COUNTRIES
 
-# Countries offered by the legacy dropdown; preserved so turning the flag on
-# does not silently drop a market that works today. Nothing else is enabled.
-DEFAULT_ENABLED = ("US", "CA", "GB", "AU", "NG", "GH")
+# Launch plan (evidence: Silverbene runs dedicated fast dropshipping lanes to exactly
+# these six -- US/USPS, GB/Hermes, DE/DHL Global Mail, FR/La Poste, AU/Australia Post,
+# CA/Canada Post). "Candidate" means engineering/qualification priority, NOT
+# production enablement.
+LAUNCH_WAVE_1 = ("US", "GB", "DE", "FR", "AU", "CA")
+LAUNCH_WAVE_2_CANDIDATE = ("CH", "JP", "SG", "NZ")
 
-# Never selectable regardless of config (comprehensively sanctioned).
-NEVER_ENABLE = frozenset({"KP", "IR", "CU", "SY"})
+# Markets that are checkout-enabled by default when the flag is on. DE and FR are
+# Wave-1 candidates that stay OFF until they are qualified (shipping probe, EU
+# VAT/payment work) and enabled explicitly via INTL_ENABLED_COUNTRIES or
+# StoreConfig 'intl_enabled_countries'. NG and GH were removed from the rollout:
+# they remain inert ISO records (checkout_enabled=False, no qualification work).
+DEFAULT_ENABLED = ("US", "GB", "AU", "CA")
+
+# Legal/payment-provider market restrictions are NOT a constant here -- they live
+# in the versioned compliance policy (app/checkout_intl/compliance.py) with
+# source, jurisdiction, effective date, reason and review date.
 
 # ISO -> Silverbene country_id where they differ. Empty until proven.
 SUPPLIER_COUNTRY_ID_OVERRIDES: Dict[str, str] = {}
@@ -84,8 +95,6 @@ _ADDRESS_RULES: Dict[str, AddressRules] = {
     "AE": _R(True, "Emirate", False, "Postal code (optional)"),
     "HK": _R(False, "District (optional)", False, "Postal code (optional)"),
     "QA": _R(False, "Region (optional)", False, "Postal code (optional)"),
-    "GH": _R(True, "Region", False, "Digital address / postal code (optional)"),
-    "NG": _R(True, "State", False, "Postal code (optional)"),
     "KE": _R(False, "County (optional)", False, "Postal code (optional)"),
     "IL": _R(False, "District (optional)", True, "Postal code", r"^\d{5,7}$", "6100000"),
 }
@@ -141,17 +150,21 @@ def reset_probe_cache() -> None:
 
 
 def enabled_country_codes() -> set:
-    raw = None
-    try:
-        from app.agents.store_config import get_config
-        raw = get_config("intl_enabled_countries", default=None)
-    except Exception:
-        raw = None
+    """Env INTL_ENABLED_COUNTRIES > StoreConfig 'intl_enabled_countries' > DEFAULT_ENABLED,
+    minus anything the compliance policy currently blocks."""
+    from app.checkout_intl import compliance
+    raw = os.getenv("INTL_ENABLED_COUNTRIES")
+    if not raw:
+        try:
+            from app.agents.store_config import get_config
+            raw = get_config("intl_enabled_countries", default=None)
+        except Exception:
+            raw = None
     codes = (
         {c.strip().upper() for c in str(raw).split(",") if c.strip()}
         if raw else set(DEFAULT_ENABLED)
     )
-    return {c for c in codes if c in _NAMES and c not in NEVER_ENABLE}
+    return {c for c in codes if c in _NAMES and not compliance.is_blocked(c)}
 
 
 def get_market(code: str) -> Optional[SupplierMarket]:
@@ -192,8 +205,8 @@ def validate_postal(code: str, postal: str) -> Optional[str]:
     rules = m.address_rules if m else AddressRules()
     postal = (postal or "").strip()
     if not postal:
-        return f"Please enter your {rules.postal_label.lower()}" if rules.postal_required else None
+        return f"Please enter your {rules.postal_label}" if rules.postal_required else None
     if not re.match(rules.postal_regex, postal):
         hint = f" (e.g. {rules.postal_example})" if rules.postal_example else ""
-        return f"Please enter a valid {rules.postal_label.lower()}{hint}"
+        return f"Please enter a valid {rules.postal_label}{hint}"
     return None

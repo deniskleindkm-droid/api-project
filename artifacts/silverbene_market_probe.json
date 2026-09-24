@@ -1,0 +1,2836 @@
+{
+ "probed_at": "2026-09-24T01:31:18.920224+00:00",
+ "analysed_at": "2026-09-24T01:43:44.090809+00:00",
+ "option_ids": [
+  "57451",
+  "57442",
+  "57439"
+ ],
+ "note": "Read-only shipping-rate lookups only. No orders created.",
+ "latency_seconds": {
+  "n": 31,
+  "min": 6.21,
+  "median": 51.42,
+  "max": 110.02
+ },
+ "country_list_endpoints_tried": [
+  {
+   "endpoint": "/api/dropshipping/get_country",
+   "http_status": 404,
+   "body_head": "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\">\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\n        <title>Not Found</title>\n\n        <!-- "
+  },
+  {
+   "endpoint": "/api/dropshipping/country_list",
+   "http_status": 404,
+   "body_head": "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\">\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\n        <title>Not Found</title>\n\n        <!-- "
+  },
+  {
+   "endpoint": "/api/dropshipping/countries",
+   "http_status": 404,
+   "body_head": "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\">\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\n        <title>Not Found</title>\n\n        <!-- "
+  },
+  {
+   "endpoint": "/api/dropshipping/get_countries",
+   "error": "HTTPSConnectionPool(host='s.silverbene.com', port=443): Max retries exceeded with url: /api/dropshipping/get_countries?token=<redacted> (Caused by ConnectTimeoutError(<HTTPSConnection(host='s.silverbene.com', port=443) at 0x14f97a47250>, 'Connection to s.silverbene.com timed out. (connect timeout=20)'))"
+  }
+ ],
+ "markets": {
+  "GB": {
+   "supplier_country_id": "GB",
+   "locations": {
+    "London SW1A 1AA": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 26.55,
+      "at": "2026-09-24T01:42:04.185788+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 45.89
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 27.56
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 10.64
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 4.21
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 45.89,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 27.56,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 10.64,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 4.21,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     },
+     "single_B": {
+      "outcome": "ok",
+      "seconds": 83.48,
+      "at": "2026-09-24T01:39:06.068448+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "GTG",
+        "title": "Royal Mail(5-9 workdays)",
+        "price": 5
+       },
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 45.89
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 27.56
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 10.09
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 10.64
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 4.21
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "GTG",
+        "name": "Royal Mail(5-9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 5.0,
+        "eta": {
+         "min_days": 5,
+         "max_days": 9,
+         "text": "5–9 business days"
+        }
+       },
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 45.89,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 27.56,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 10.09,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 10.64,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 4.21,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     },
+     "single_C": {
+      "outcome": "ok",
+      "seconds": 70.59,
+      "at": "2026-09-24T01:39:17.125669+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "GTG",
+        "title": "Royal Mail(5-9 workdays)",
+        "price": 5
+       },
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 45.89
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 27.56
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 11.51
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 10.64
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 4.21
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "GTG",
+        "name": "Royal Mail(5-9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 5.0,
+        "eta": {
+         "min_days": 5,
+         "max_days": 9,
+         "text": "5–9 business days"
+        }
+       },
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 45.89,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 27.56,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 11.51,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 10.64,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 4.21,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     },
+     "combined_ABC": {
+      "outcome": "ok",
+      "seconds": 58.27,
+      "at": "2026-09-24T01:39:34.361437+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 27.56
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 24.47
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 10.64
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 4.21
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 27.56,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 24.47,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 10.64,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 4.21,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     }
+    },
+    "Manchester M1 1AE": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 76.22,
+      "at": "2026-09-24T01:36:11.065697+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 45.89
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 27.56
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 13.22
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 10.64
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 4.21
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 45.89,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 27.56,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 13.22,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 10.64,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 4.21,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     }
+    }
+   },
+   "supplier_supported": true,
+   "standard": true,
+   "express": true,
+   "families": [
+    "dhl",
+    "fedex",
+    "other"
+   ],
+   "method_ids_by_tier": {
+    "EXPRESS": [
+     "DHL",
+     "Fedex"
+    ],
+    "STANDARD": [
+     "BKPHR",
+     "ITDIDA_ECO",
+     "cainiao"
+    ]
+   },
+   "ambiguous_method_ids": [],
+   "usable_for_dropshipping": "undetermined: rate lookup succeeded; wholesale-only restrictions are not exposed by the rate API",
+   "price_by_method_across_locations": {
+    "DHL": [
+     45.89
+    ],
+    "Fedex": [
+     27.56
+    ],
+    "cainiao": [
+     10.64
+    ],
+    "ITDIDA_ECO": [
+     4.21
+    ],
+    "BKPHR": [
+     13.22
+    ]
+   },
+   "combined_vs_separate": [
+    {
+     "location": "London SW1A 1AA",
+     "method_id": "Fedex",
+     "title": "FedEx(4 - 9 workdays)",
+     "tier": "EXPRESS",
+     "combined_price": 27.56,
+     "sum_of_three_separate_orders": 82.68
+    },
+    {
+     "location": "London SW1A 1AA",
+     "method_id": "BKPHR",
+     "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+     "tier": "STANDARD",
+     "combined_price": 24.47,
+     "sum_of_three_separate_orders": null
+    },
+    {
+     "location": "London SW1A 1AA",
+     "method_id": "cainiao",
+     "title": "Cainiao International",
+     "tier": "STANDARD",
+     "combined_price": 10.64,
+     "sum_of_three_separate_orders": 31.92
+    },
+    {
+     "location": "London SW1A 1AA",
+     "method_id": "ITDIDA_ECO",
+     "title": "International Economy(9 workdays)",
+     "tier": "STANDARD",
+     "combined_price": 4.21,
+     "sum_of_three_separate_orders": 12.63
+    }
+   ]
+  },
+  "US": {
+   "supplier_country_id": "US",
+   "locations": {
+    "Chicago 60601": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 30.87,
+      "at": "2026-09-24T01:42:37.055432+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHLI",
+        "title": "DHL Express(4 - 9 workdays, customs duty included)",
+        "price": 57.83
+       },
+       {
+        "way": "FedexI",
+        "title": "FedEx(4 - 9 workdays, customs duty included)",
+        "price": 62.41
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(10-15 workdays)",
+        "price": 3.5
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Standard(12-20 workdays)",
+        "price": 5.52
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHLI",
+        "name": "DHL Express(4 - 9 workdays, customs duty included)",
+        "tier": "EXPRESS",
+        "supplier_price": 57.83,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "FedexI",
+        "name": "FedEx(4 - 9 workdays, customs duty included)",
+        "tier": "EXPRESS",
+        "supplier_price": 62.41,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Standard(12-20 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 5.52,
+        "eta": {
+         "min_days": 12,
+         "max_days": 20,
+         "text": "12–20 business days"
+        },
+        "ambiguous_method_id": true,
+        "alternatives": [
+         {
+          "title": "International Economy(10-15 workdays)",
+          "price": 3.5
+         }
+        ]
+       }
+      ]
+     },
+     "single_B": {
+      "outcome": "ok",
+      "seconds": 34.6,
+      "at": "2026-09-24T01:38:06.253604+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHLI",
+        "title": "DHL Express(4 - 9 workdays, customs duty included)",
+        "price": 55.49
+       },
+       {
+        "way": "FedexI",
+        "title": "FedEx(4 - 9 workdays, customs duty included)",
+        "price": 60.07
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(10-15 workdays)",
+        "price": 3.5
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Standard(12-20 workdays)",
+        "price": 5.52
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHLI",
+        "name": "DHL Express(4 - 9 workdays, customs duty included)",
+        "tier": "EXPRESS",
+        "supplier_price": 55.49,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "FedexI",
+        "name": "FedEx(4 - 9 workdays, customs duty included)",
+        "tier": "EXPRESS",
+        "supplier_price": 60.07,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Standard(12-20 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 5.52,
+        "eta": {
+         "min_days": 12,
+         "max_days": 20,
+         "text": "12–20 business days"
+        },
+        "ambiguous_method_id": true,
+        "alternatives": [
+         {
+          "title": "International Economy(10-15 workdays)",
+          "price": 3.5
+         }
+        ]
+       }
+      ]
+     },
+     "single_C": {
+      "outcome": "ok",
+      "seconds": 59.22,
+      "at": "2026-09-24T01:38:35.813673+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHLI",
+        "title": "DHL Express(4 - 9 workdays, customs duty included)",
+        "price": 56.55
+       },
+       {
+        "way": "FedexI",
+        "title": "FedEx(4 - 9 workdays, customs duty included)",
+        "price": 61.13
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(10-15 workdays)",
+        "price": 3.5
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Standard(12-20 workdays)",
+        "price": 5.52
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHLI",
+        "name": "DHL Express(4 - 9 workdays, customs duty included)",
+        "tier": "EXPRESS",
+        "supplier_price": 56.55,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "FedexI",
+        "name": "FedEx(4 - 9 workdays, customs duty included)",
+        "tier": "EXPRESS",
+        "supplier_price": 61.13,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Standard(12-20 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 5.52,
+        "eta": {
+         "min_days": 12,
+         "max_days": 20,
+         "text": "12–20 business days"
+        },
+        "ambiguous_method_id": true,
+        "alternatives": [
+         {
+          "title": "International Economy(10-15 workdays)",
+          "price": 3.5
+         }
+        ]
+       }
+      ]
+     },
+     "combined_ABC": {
+      "outcome": "ok",
+      "seconds": 74.04,
+      "at": "2026-09-24T01:38:53.797543+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHLI",
+        "title": "DHL Express(4 - 9 workdays, customs duty included)",
+        "price": 66.22
+       },
+       {
+        "way": "FedexI",
+        "title": "FedEx(4 - 9 workdays, customs duty included)",
+        "price": 70.79
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Standard(12-20 workdays)",
+        "price": 5.52
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHLI",
+        "name": "DHL Express(4 - 9 workdays, customs duty included)",
+        "tier": "EXPRESS",
+        "supplier_price": 66.22,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "FedexI",
+        "name": "FedEx(4 - 9 workdays, customs duty included)",
+        "tier": "EXPRESS",
+        "supplier_price": 70.79,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Standard(12-20 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 5.52,
+        "eta": {
+         "min_days": 12,
+         "max_days": 20,
+         "text": "12–20 business days"
+        }
+       }
+      ]
+     }
+    },
+    "Atlanta 30303": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 53.36,
+      "at": "2026-09-24T01:35:26.897679+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHLI",
+        "title": "DHL Express(4 - 9 workdays, customs duty included)",
+        "price": 57.83
+       },
+       {
+        "way": "FedexI",
+        "title": "FedEx(4 - 9 workdays, customs duty included)",
+        "price": 62.41
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(10-15 workdays)",
+        "price": 3.5
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Standard(12-20 workdays)",
+        "price": 5.52
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHLI",
+        "name": "DHL Express(4 - 9 workdays, customs duty included)",
+        "tier": "EXPRESS",
+        "supplier_price": 57.83,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "FedexI",
+        "name": "FedEx(4 - 9 workdays, customs duty included)",
+        "tier": "EXPRESS",
+        "supplier_price": 62.41,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Standard(12-20 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 5.52,
+        "eta": {
+         "min_days": 12,
+         "max_days": 20,
+         "text": "12–20 business days"
+        },
+        "ambiguous_method_id": true,
+        "alternatives": [
+         {
+          "title": "International Economy(10-15 workdays)",
+          "price": 3.5
+         }
+        ]
+       }
+      ]
+     }
+    },
+    "Los Angeles 90012": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 75.32,
+      "at": "2026-09-24T01:35:48.866057+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHLI",
+        "title": "DHL Express(4 - 9 workdays, customs duty included)",
+        "price": 57.83
+       },
+       {
+        "way": "FedexI",
+        "title": "FedEx(4 - 9 workdays, customs duty included)",
+        "price": 62.61
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(10-15 workdays)",
+        "price": 3.5
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Standard(12-20 workdays)",
+        "price": 5.52
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHLI",
+        "name": "DHL Express(4 - 9 workdays, customs duty included)",
+        "tier": "EXPRESS",
+        "supplier_price": 57.83,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "FedexI",
+        "name": "FedEx(4 - 9 workdays, customs duty included)",
+        "tier": "EXPRESS",
+        "supplier_price": 62.61,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Standard(12-20 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 5.52,
+        "eta": {
+         "min_days": 12,
+         "max_days": 20,
+         "text": "12–20 business days"
+        },
+        "ambiguous_method_id": true,
+        "alternatives": [
+         {
+          "title": "International Economy(10-15 workdays)",
+          "price": 3.5
+         }
+        ]
+       }
+      ]
+     }
+    }
+   },
+   "supplier_supported": true,
+   "standard": true,
+   "express": true,
+   "families": [
+    "dhl",
+    "fedex",
+    "other"
+   ],
+   "method_ids_by_tier": {
+    "EXPRESS": [
+     "DHLI",
+     "FedexI"
+    ],
+    "STANDARD": [
+     "ITDIDA_ECO"
+    ]
+   },
+   "ambiguous_method_ids": [
+    "ITDIDA_ECO"
+   ],
+   "usable_for_dropshipping": "undetermined: rate lookup succeeded; wholesale-only restrictions are not exposed by the rate API",
+   "price_by_method_across_locations": {
+    "DHLI": [
+     57.83
+    ],
+    "FedexI": [
+     62.41,
+     62.61
+    ],
+    "ITDIDA_ECO": [
+     5.52
+    ]
+   },
+   "combined_vs_separate": [
+    {
+     "location": "Chicago 60601",
+     "method_id": "DHLI",
+     "title": "DHL Express(4 - 9 workdays, customs duty included)",
+     "tier": "EXPRESS",
+     "combined_price": 66.22,
+     "sum_of_three_separate_orders": 169.87
+    },
+    {
+     "location": "Chicago 60601",
+     "method_id": "FedexI",
+     "title": "FedEx(4 - 9 workdays, customs duty included)",
+     "tier": "EXPRESS",
+     "combined_price": 70.79,
+     "sum_of_three_separate_orders": 183.61
+    },
+    {
+     "location": "Chicago 60601",
+     "method_id": "ITDIDA_ECO",
+     "title": "International Standard(12-20 workdays)",
+     "tier": "STANDARD",
+     "combined_price": 5.52,
+     "sum_of_three_separate_orders": 16.56
+    }
+   ]
+  },
+  "DE": {
+   "supplier_country_id": "DE",
+   "locations": {
+    "Berlin 10115": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 110.02,
+      "at": "2026-09-24T01:36:44.881125+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 49.37
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 32.13
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 17.76
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 15.57
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 49.37,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 32.13,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 17.76,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 15.57,
+        "eta": null
+       }
+      ]
+     },
+     "single_B": {
+      "outcome": "ok",
+      "seconds": 51.08,
+      "at": "2026-09-24T01:39:45.177099+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 49.37
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 32.13
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 14.62
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 15.57
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 12.18
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 49.37,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 32.13,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 14.62,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 15.57,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 12.18,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     },
+     "single_C": {
+      "outcome": "ok",
+      "seconds": 55.4,
+      "at": "2026-09-24T01:40:01.761030+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 49.37
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 32.13
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 15.57
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 12.18
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 49.37,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 32.13,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 15.57,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 12.18,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     },
+     "combined_ABC": {
+      "outcome": "ok",
+      "seconds": 57.5,
+      "at": "2026-09-24T01:40:14.904779+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 49.37
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 32.13
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 29.03
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 15.57
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 12.18
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 49.37,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 32.13,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 29.03,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 15.57,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 12.18,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     }
+    },
+    "Munich 80331": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 93.17,
+      "at": "2026-09-24T01:37:00.356438+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 49.37
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 32.13
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 17.76
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 15.57
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 12.18
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 49.37,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 32.13,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 17.76,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 15.57,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 12.18,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     }
+    }
+   },
+   "supplier_supported": true,
+   "standard": true,
+   "express": true,
+   "families": [
+    "dhl",
+    "fedex",
+    "other"
+   ],
+   "method_ids_by_tier": {
+    "EXPRESS": [
+     "DHL",
+     "Fedex"
+    ],
+    "STANDARD": [
+     "BKPHR",
+     "ITDIDA_ECO",
+     "cainiao"
+    ]
+   },
+   "ambiguous_method_ids": [],
+   "usable_for_dropshipping": "undetermined: rate lookup succeeded; wholesale-only restrictions are not exposed by the rate API",
+   "price_by_method_across_locations": {
+    "DHL": [
+     49.37
+    ],
+    "Fedex": [
+     32.13
+    ],
+    "BKPHR": [
+     17.76
+    ],
+    "cainiao": [
+     15.57
+    ],
+    "ITDIDA_ECO": [
+     12.18
+    ]
+   },
+   "combined_vs_separate": [
+    {
+     "location": "Berlin 10115",
+     "method_id": "DHL",
+     "title": "DHL Express(4 - 9 workdays)",
+     "tier": "EXPRESS",
+     "combined_price": 49.37,
+     "sum_of_three_separate_orders": 148.11
+    },
+    {
+     "location": "Berlin 10115",
+     "method_id": "Fedex",
+     "title": "FedEx(4 - 9 workdays)",
+     "tier": "EXPRESS",
+     "combined_price": 32.13,
+     "sum_of_three_separate_orders": 96.39
+    },
+    {
+     "location": "Berlin 10115",
+     "method_id": "BKPHR",
+     "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+     "tier": "STANDARD",
+     "combined_price": 29.03,
+     "sum_of_three_separate_orders": null
+    },
+    {
+     "location": "Berlin 10115",
+     "method_id": "cainiao",
+     "title": "Cainiao International",
+     "tier": "STANDARD",
+     "combined_price": 15.57,
+     "sum_of_three_separate_orders": 46.71
+    },
+    {
+     "location": "Berlin 10115",
+     "method_id": "ITDIDA_ECO",
+     "title": "International Economy(9 workdays)",
+     "tier": "STANDARD",
+     "combined_price": 12.18,
+     "sum_of_three_separate_orders": null
+    }
+   ]
+  },
+  "FR": {
+   "supplier_country_id": "FR",
+   "locations": {
+    "Paris 75001": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 86.85,
+      "at": "2026-09-24T01:37:16.005418+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 49.37
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 32.13
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 17.9
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 16.48
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 11.93
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 49.37,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 32.13,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 17.9,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 16.48,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 11.93,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     },
+     "single_C": {
+      "outcome": "ok",
+      "seconds": 42.03,
+      "at": "2026-09-24T01:40:27.492139+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 49.37
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 32.13
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 16.18
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 16.48
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 11.93
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 49.37,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 32.13,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 16.18,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 16.48,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 11.93,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     },
+     "single_B": {
+      "outcome": "ok",
+      "seconds": 66.34,
+      "at": "2026-09-24T01:40:40.969506+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 49.37
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 32.13
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 14.76
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 16.48
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 11.93
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 49.37,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 32.13,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 14.76,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 16.48,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 11.93,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     },
+     "combined_ABC": {
+      "outcome": "ok",
+      "seconds": 51.42,
+      "at": "2026-09-24T01:40:53.468131+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 49.37
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 32.13
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 29.16
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 16.48
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 11.93
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 49.37,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 32.13,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 29.16,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 16.48,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 11.93,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     }
+    },
+    "Lyon 69001": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 80.02,
+      "at": "2026-09-24T01:37:31.364759+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 49.37
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 32.13
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 17.9
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 16.48
+       },
+       {
+        "way": "ITDIDA_ECO",
+        "title": "International Economy(9 workdays)",
+        "price": 11.93
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 49.37,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 32.13,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 17.9,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 16.48,
+        "eta": null
+       },
+       {
+        "method_id": "ITDIDA_ECO",
+        "name": "International Economy(9 workdays)",
+        "tier": "STANDARD",
+        "supplier_price": 11.93,
+        "eta": {
+         "min_days": 9,
+         "max_days": 9,
+         "text": "9 business days"
+        }
+       }
+      ]
+     }
+    }
+   },
+   "supplier_supported": true,
+   "standard": true,
+   "express": true,
+   "families": [
+    "dhl",
+    "fedex",
+    "other"
+   ],
+   "method_ids_by_tier": {
+    "EXPRESS": [
+     "DHL",
+     "Fedex"
+    ],
+    "STANDARD": [
+     "BKPHR",
+     "ITDIDA_ECO",
+     "cainiao"
+    ]
+   },
+   "ambiguous_method_ids": [],
+   "usable_for_dropshipping": "undetermined: rate lookup succeeded; wholesale-only restrictions are not exposed by the rate API",
+   "price_by_method_across_locations": {
+    "DHL": [
+     49.37
+    ],
+    "Fedex": [
+     32.13
+    ],
+    "BKPHR": [
+     17.9
+    ],
+    "cainiao": [
+     16.48
+    ],
+    "ITDIDA_ECO": [
+     11.93
+    ]
+   },
+   "combined_vs_separate": [
+    {
+     "location": "Paris 75001",
+     "method_id": "DHL",
+     "title": "DHL Express(4 - 9 workdays)",
+     "tier": "EXPRESS",
+     "combined_price": 49.37,
+     "sum_of_three_separate_orders": 148.11
+    },
+    {
+     "location": "Paris 75001",
+     "method_id": "Fedex",
+     "title": "FedEx(4 - 9 workdays)",
+     "tier": "EXPRESS",
+     "combined_price": 32.13,
+     "sum_of_three_separate_orders": 96.39
+    },
+    {
+     "location": "Paris 75001",
+     "method_id": "BKPHR",
+     "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+     "tier": "STANDARD",
+     "combined_price": 29.16,
+     "sum_of_three_separate_orders": 48.84
+    },
+    {
+     "location": "Paris 75001",
+     "method_id": "cainiao",
+     "title": "Cainiao International",
+     "tier": "STANDARD",
+     "combined_price": 16.48,
+     "sum_of_three_separate_orders": 49.44
+    },
+    {
+     "location": "Paris 75001",
+     "method_id": "ITDIDA_ECO",
+     "title": "International Economy(9 workdays)",
+     "tier": "STANDARD",
+     "combined_price": 11.93,
+     "sum_of_three_separate_orders": 35.79
+    }
+   ]
+  },
+  "AU": {
+   "supplier_country_id": "AU",
+   "locations": {
+    "Melbourne 3000": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 6.21,
+      "at": "2026-09-24T01:43:42.079417+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 36.02
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 36.36
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 16.34
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 9.96
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.02,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.36,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 16.34,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 9.96,
+        "eta": null
+       }
+      ]
+     }
+    },
+    "Sydney 2000": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 51.15,
+      "at": "2026-09-24T01:37:36.309140+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 36.02
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 36.36
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 16.34
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 9.96
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.02,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.36,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 16.34,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 9.96,
+        "eta": null
+       }
+      ]
+     },
+     "single_B": {
+      "outcome": "ok",
+      "seconds": 45.52,
+      "at": "2026-09-24T01:41:00.701855+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 36.02
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 36.36
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 9.96
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.02,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.36,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 9.96,
+        "eta": null
+       }
+      ]
+     },
+     "single_C": {
+      "outcome": "ok",
+      "seconds": 38.19,
+      "at": "2026-09-24T01:41:05.962838+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 36.02
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 36.36
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 14.62
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 9.96
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.02,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.36,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 14.62,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 9.96,
+        "eta": null
+       }
+      ]
+     },
+     "combined_ABC": {
+      "outcome": "ok",
+      "seconds": 27.72,
+      "at": "2026-09-24T01:41:08.982251+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 36.02
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 36.36
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 27.57
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 9.96
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.02,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.36,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 27.57,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 9.96,
+        "eta": null
+       }
+      ]
+     }
+    }
+   },
+   "supplier_supported": true,
+   "standard": true,
+   "express": true,
+   "families": [
+    "dhl",
+    "fedex",
+    "other"
+   ],
+   "method_ids_by_tier": {
+    "EXPRESS": [
+     "DHL",
+     "Fedex"
+    ],
+    "STANDARD": [
+     "BKPHR",
+     "cainiao"
+    ]
+   },
+   "ambiguous_method_ids": [],
+   "usable_for_dropshipping": "undetermined: rate lookup succeeded; wholesale-only restrictions are not exposed by the rate API",
+   "price_by_method_across_locations": {
+    "DHL": [
+     36.02
+    ],
+    "Fedex": [
+     36.36
+    ],
+    "BKPHR": [
+     16.34
+    ],
+    "cainiao": [
+     9.96
+    ]
+   },
+   "combined_vs_separate": [
+    {
+     "location": "Sydney 2000",
+     "method_id": "DHL",
+     "title": "DHL Express(4 - 9 workdays)",
+     "tier": "EXPRESS",
+     "combined_price": 36.02,
+     "sum_of_three_separate_orders": 108.06
+    },
+    {
+     "location": "Sydney 2000",
+     "method_id": "Fedex",
+     "title": "FedEx(4 - 9 workdays)",
+     "tier": "EXPRESS",
+     "combined_price": 36.36,
+     "sum_of_three_separate_orders": 109.08
+    },
+    {
+     "location": "Sydney 2000",
+     "method_id": "BKPHR",
+     "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+     "tier": "STANDARD",
+     "combined_price": 27.57,
+     "sum_of_three_separate_orders": null
+    },
+    {
+     "location": "Sydney 2000",
+     "method_id": "cainiao",
+     "title": "Cainiao International",
+     "tier": "STANDARD",
+     "combined_price": 9.96,
+     "sum_of_three_separate_orders": 29.88
+    }
+   ]
+  },
+  "CA": {
+   "supplier_country_id": "CA",
+   "locations": {
+    "Vancouver V6B 1A1": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 17.52,
+      "at": "2026-09-24T01:37:39.470774+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 36.93
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 33.71
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 15.02
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 14.13
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.93,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 33.71,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 15.02,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 14.13,
+        "eta": null
+       }
+      ]
+     }
+    },
+    "Toronto M5H 2N2": {
+     "single_A": {
+      "outcome": "ok",
+      "seconds": 26.0,
+      "at": "2026-09-24T01:37:42.301105+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 36.93
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 33.71
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 15.02
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 14.13
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.93,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 33.71,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 15.02,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 14.13,
+        "eta": null
+       }
+      ]
+     },
+     "single_B": {
+      "outcome": "ok",
+      "seconds": 20.44,
+      "at": "2026-09-24T01:41:14.190611+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 36.93
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 33.71
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 11.9
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.93,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 33.71,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 11.9,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       }
+      ]
+     },
+     "single_C": {
+      "outcome": "ok",
+      "seconds": 31.77,
+      "at": "2026-09-24T01:43:33.869130+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 36.93
+       },
+       {
+        "way": "Fedex",
+        "title": "FedEx(4 - 9 workdays)",
+        "price": 33.71
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 13.32
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 14.13
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.93,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "Fedex",
+        "name": "FedEx(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 33.71,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 13.32,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 14.13,
+        "eta": null
+       }
+      ]
+     },
+     "combined_ABC": {
+      "outcome": "ok",
+      "seconds": 24.55,
+      "at": "2026-09-24T01:41:30.797253+00:00",
+      "currency": "USD",
+      "raw_methods": [
+       {
+        "way": "DHL",
+        "title": "DHL Express(4 - 9 workdays)",
+        "price": 36.93
+       },
+       {
+        "way": "BKPHR",
+        "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "price": 26.2
+       },
+       {
+        "way": "cainiao",
+        "title": "Cainiao International",
+        "price": 14.13
+       }
+      ],
+      "normalized": [
+       {
+        "method_id": "DHL",
+        "name": "DHL Express(4 - 9 workdays)",
+        "tier": "EXPRESS",
+        "supplier_price": 36.93,
+        "eta": {
+         "min_days": 4,
+         "max_days": 9,
+         "text": "4–9 business days"
+        }
+       },
+       {
+        "method_id": "BKPHR",
+        "name": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+        "tier": "STANDARD",
+        "supplier_price": 26.2,
+        "eta": {
+         "min_days": 2,
+         "max_days": 10,
+         "text": "2–10 business days"
+        }
+       },
+       {
+        "method_id": "cainiao",
+        "name": "Cainiao International",
+        "tier": "STANDARD",
+        "supplier_price": 14.13,
+        "eta": null
+       }
+      ]
+     }
+    }
+   },
+   "supplier_supported": true,
+   "standard": true,
+   "express": true,
+   "families": [
+    "dhl",
+    "fedex",
+    "other"
+   ],
+   "method_ids_by_tier": {
+    "EXPRESS": [
+     "DHL",
+     "Fedex"
+    ],
+    "STANDARD": [
+     "BKPHR",
+     "cainiao"
+    ]
+   },
+   "ambiguous_method_ids": [],
+   "usable_for_dropshipping": "undetermined: rate lookup succeeded; wholesale-only restrictions are not exposed by the rate API",
+   "price_by_method_across_locations": {
+    "DHL": [
+     36.93
+    ],
+    "Fedex": [
+     33.71
+    ],
+    "BKPHR": [
+     15.02
+    ],
+    "cainiao": [
+     14.13
+    ]
+   },
+   "combined_vs_separate": [
+    {
+     "location": "Toronto M5H 2N2",
+     "method_id": "DHL",
+     "title": "DHL Express(4 - 9 workdays)",
+     "tier": "EXPRESS",
+     "combined_price": 36.93,
+     "sum_of_three_separate_orders": 110.79
+    },
+    {
+     "location": "Toronto M5H 2N2",
+     "method_id": "BKPHR",
+     "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+     "tier": "STANDARD",
+     "combined_price": 26.2,
+     "sum_of_three_separate_orders": 40.24
+    },
+    {
+     "location": "Toronto M5H 2N2",
+     "method_id": "cainiao",
+     "title": "Cainiao International",
+     "tier": "STANDARD",
+     "combined_price": 14.13,
+     "sum_of_three_separate_orders": null
+    }
+   ]
+  }
+ }
+}

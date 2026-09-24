@@ -1,0 +1,5 @@
+{
+  "_comment": "Versioned market restrictions. Empty by design: nothing is blocked on an unsourced assumption. Each entry needs country, action, jurisdiction, source, reason, effective_from, review_date (ISO dates). See compliance.py.",
+  "version": 1,
+  "restrictions": []
+}

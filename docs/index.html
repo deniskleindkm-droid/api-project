@@ -4691,9 +4691,9 @@ function icBack(){
 }
 function _icRenderOptions(options){
   const box=document.getElementById('ic-options');
-  window._icChosen=options.length===1?options[0].method_id:null;
+  window._icChosen=options.length===1?options[0].tier:null;
   box.innerHTML=options.map(o=>`<label style="display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);margin-bottom:10px;cursor:pointer;">
-    <input type="radio" name="ic-ship" value="${_icEsc(o.method_id)}" ${options.length===1?'checked':''} onchange="window._icChosen=this.value" style="width:auto;"/>
+    <input type="radio" name="ic-ship" value="${_icEsc(o.tier)}" ${options.length===1?'checked':''} onchange="window._icChosen=this.value" style="width:auto;"/>
     <span style="flex:1"><span style="font-size:13px;color:var(--black);display:block;">${_icEsc(o.name)}</span>
     ${o.eta_text?`<span style="font-size:11px;color:var(--mid);">${_icEsc(o.eta_text)}</span>`:''}</span>
     <span style="font-size:12px;color:var(--gold);">${o.included?'Included':'$'+Number(o.customer_price).toFixed(2)}</span></label>`).join('');
@@ -4705,12 +4705,26 @@ function _icShowShipping(options){
   document.getElementById('ic-title').textContent='Delivery method';
   document.getElementById('ic-sub').textContent='Choose how your order should travel';
 }
+function _icSleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function _icPollOptions(headers,{maxMs=240000}={}){
+  // Delivery rates come from the supplier and can take a minute: poll instead of blocking one request.
+  const t0=Date.now();
+  while(Date.now()-t0<maxMs){
+    const res=await fetch(`${API}/checkout/${window._icCheckoutId}/options`,{headers});
+    const data=await res.json();
+    if(!res.ok)return {status:'error',message:typeof data.detail==='string'?data.detail:'Please try again'};
+    if(data.status!=='pending')return data;
+    await _icSleep(2500);
+  }
+  return {status:'error',message:'Delivery options are taking longer than expected. Please try again.'};
+}
 async function icContinue(){
   const v=id=>document.getElementById(id).value.trim();
   const address={first_name:v('ic-fname'),last_name:v('ic-lname'),email:v('ic-email'),phone:v('ic-phone'),
     country_code:v('ic-country'),line1:v('ic-line1'),line2:v('ic-line2'),city:v('ic-city'),
     admin_area:v('ic-state'),postal_code:v('ic-zip'),company:v('ic-company')};
-  const btn=document.getElementById('ic-continue');btn.disabled=true;btn.textContent='Checking delivery…';_icMsg('');
+  const btn=document.getElementById('ic-continue');if(btn.disabled)return;   // double-submit guard
+  btn.disabled=true;btn.textContent='Checking delivery…';_icMsg('');
   const headers={'Content-Type':'application/json'};if(token)headers['Authorization']=`Bearer ${token}`;
   const items=token?[]:getGuestCart().map(i=>({product_id:i.product_id,quantity:i.quantity,selected_size:i.selected_size||null,selected_color:i.selected_color||null,selected_option_id:i.selected_option_id||null,variant_id:i.variant_id||null}));
   try{
@@ -4718,20 +4732,35 @@ async function icContinue(){
     const data=await res.json();
     if(res.status===401){_sessionExpired();closeIntlCheckout();openAuth();return;}
     if(!res.ok){_icMsg(typeof data.detail==='string'?data.detail:'Please check your details','error');return;}
-    window._icCheckoutId=data.checkout_id;_icShowShipping(data.options);
+    window._icCheckoutId=data.checkout_id;
+    btn.textContent='Finding delivery options…';
+    const result=await _icPollOptions(headers);
+    if(result.status==='ready'){_icShowShipping(result.options);}
+    else{_icMsg(result.message||'We can\'t offer delivery to that address right now.','error');}
   }catch{_icMsg('Connection error','error');}
   finally{btn.disabled=false;btn.textContent='Continue to delivery options';}
 }
 async function icPay(){
   if(!window._icChosen){_icMsg('Please choose a delivery method','error');return;}
-  const btn=document.getElementById('ic-pay');btn.disabled=true;btn.textContent='Preparing payment…';_icMsg('');
+  const btn=document.getElementById('ic-pay');if(btn.disabled)return;   // double-submit guard
+  btn.disabled=true;btn.textContent='Preparing payment…';_icMsg('');
   const headers={'Content-Type':'application/json'};if(token)headers['Authorization']=`Bearer ${token}`;
   try{
-    const res=await fetch(`${API}/checkout/${window._icCheckoutId}/pay`,{method:'POST',headers,body:JSON.stringify({shipping_method_id:window._icChosen})});
+    const res=await fetch(`${API}/checkout/${window._icCheckoutId}/pay`,{method:'POST',headers,body:JSON.stringify({shipping_tier:window._icChosen})});
     const data=await res.json();
     if(res.ok){if(!token)sessionStorage.removeItem('mikisi_guest_cart');window.location.href=data.checkout_url;return;}
     const d=data.detail;
-    if(d&&d.code==='requote'){_icMsg(d.message+' — please choose again.','error');_icRenderOptions(d.options||[]);if(!(d.options||[]).length)icBack();}
+    if(d&&d.code==='requote'&&d.pending){
+      // Stale quote is being refreshed in the background; wait, then continue only if nothing changed.
+      _icMsg('Refreshing your delivery options…','info');
+      const fresh=await _icPollOptions(headers);
+      if(fresh.status==='ready'&&fresh.options.length){
+        _icRenderOptions(fresh.options);
+        if(fresh.changed){_icMsg('Delivery options changed — please choose again.','error');}
+        else{_icMsg('');btn.disabled=false;btn.textContent='Pay Securely';return icPay();}
+      }else{_icMsg(fresh.message||'Delivery is currently unavailable to that address.','error');icBack();}
+    }
+    else if(d&&d.code==='requote'){_icMsg(d.message+' — please choose again.','error');_icRenderOptions(d.options||[]);if(!(d.options||[]).length)icBack();}
     else if(d&&d.code==='cart_changed'){_icMsg(d.message,'error');icBack();}
     else _icMsg(typeof d==='string'?d:'Something went wrong','error');
   }catch{_icMsg('Connection error','error');}

@@ -1,0 +1,71 @@
+{
+ "legacy_card_only": {
+  "id": "cs_test_a1Qoj6JfVPTjDYdP6txb3vw3Quoqu4NTaooAufyt2xAD2eWykFrtGnLWzk",
+  "livemode": false,
+  "payment_method_types_resolved": [
+   "card"
+  ],
+  "url_host": "checkout.stripe.com",
+  "currency": "usd",
+  "amount_total": 29800
+ },
+ "dynamic_methods": {
+  "id": "cs_test_a18PtQX1qT7afY7MeF0UcoJZnB4ywJjgQQSmnS9DeSuuk2su7sJke4QtTf",
+  "livemode": false,
+  "payment_method_types_resolved": [
+   "card",
+   "klarna",
+   "link",
+   "affirm",
+   "cashapp",
+   "amazon_pay"
+  ],
+  "url_host": "checkout.stripe.com",
+  "currency": "usd",
+  "amount_total": 29800
+ },
+ "dynamic_methods_by_currency": {
+  "usd": [
+   "card",
+   "klarna",
+   "link",
+   "affirm",
+   "cashapp",
+   "amazon_pay"
+  ],
+  "gbp": [
+   "card",
+   "link"
+  ],
+  "eur": [
+   "card",
+   "bancontact",
+   "eps",
+   "link",
+   "mb_way"
+  ],
+  "aud": [
+   "card",
+   "link"
+  ],
+  "cad": [
+   "card",
+   "link"
+  ]
+ },
+ "payment_method_configurations": [
+  {
+   "id": "pmc_1TWgtIE64Tmp4SxQxwJtrdwO",
+   "name": "Default",
+   "is_default": true,
+   "card": "on",
+   "link": "on",
+   "apple_pay": "on",
+   "google_pay": "off",
+   "paypal": null,
+   "klarna": "on",
+   "ideal": "off",
+   "bancontact": "on"
+  }
+ ]
+}

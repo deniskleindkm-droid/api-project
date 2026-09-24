@@ -66,6 +66,15 @@ def make_product(session, *, pid=1, name="Ring", price=298.0, cost=40.0, cj_sku=
     return p
 
 
+def quoted_tx(session, address, items, is_guest=True, fetcher=None):
+    """Synchronous stand-in for the background quote: create_pending + run_quote."""
+    from app.checkout_intl import transaction as txn
+    tx = txn.create_pending(session, address=address, items=items, is_guest=is_guest)
+    txn.run_quote(tx.id, fetcher)
+    session.expire_all()
+    return session.get(type(tx), tx.id)
+
+
 def valid_address(country="US", **over):
     base = {
         "US": dict(line1="1 Main St", city="New York", admin_area="NY", postal_code="10001"),

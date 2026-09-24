@@ -10,7 +10,7 @@ class CheckoutTransaction(SQLModel, table=True):
     app/checkout_intl). Payment and fulfillment read only from here, so
     fulfillment never re-decides the shipping method or re-parses an address.
 
-    Statuses: quoted -> locked -> paid -> (fulfilled | needs_attention).
+    Statuses: quoting -> quoted | unavailable -> locked -> paid -> (fulfilled | needs_attention | refunded).
     JSON columns are stored as text for SQLite/Postgres parity with the
     rest of this schema.
     """
@@ -33,17 +33,24 @@ class CheckoutTransaction(SQLModel, table=True):
     quote_json: str = "{}"                            # normalized Silverbene rate snapshot (internal costs included)
     quote_fetched_at: Optional[datetime] = None
     quote_expires_at: Optional[datetime] = None
+    quote_error: Optional[str] = None                 # supplier failure detail when quoting could not complete
+    ack_json: Optional[str] = None                    # what the customer last SAW: {tier: {method_id, price}}
+    quote_error: Optional[str] = None                 # supplier failure detail when quoting could not complete
+    ack_json: Optional[str] = None                    # what the customer last SAW: {tier: {method_id, price}}
 
     shipping_method_id: Optional[str] = None          # exact Silverbene "way" chosen by the customer
     shipping_method_name: Optional[str] = None
     shipping_eta: Optional[str] = None
+    shipping_tier: Optional[str] = None               # STANDARD | EXPRESS (customer-facing service tier)
     shipping_supplier_price: Optional[float] = None   # supplier cost snapshot (internal; never shown to customers)
 
     # Customer -> Mikisi payment layer. Deliberately separate from the
     # Mikisi -> Silverbene settlement layer below.
     presentment_currency: str = "USD"
     payment_provider: str = "stripe"
-    payment_ref: Optional[str] = None                 # Stripe checkout session id (or other provider ref)
+    payment_ref: Optional[str] = None                 # Stripe checkout session id, or "pp_<PayPal order id>"
+    payment_capture_id: Optional[str] = None          # PayPal capture id (needed for refunds)
+    payment_attempts: int = 0                         # provider sessions/orders created for this checkout
     # Mikisi -> Silverbene settlement layer. Silverbene's pay link is USD
     # and is only ever handled by the owner alert path, never customers.
     supplier_settlement_currency: str = "USD"

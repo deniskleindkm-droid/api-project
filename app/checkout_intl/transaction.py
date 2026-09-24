@@ -1,16 +1,22 @@
 """
-CheckoutTransaction lifecycle: quote -> select -> lock -> (paid) and re-quote.
+CheckoutTransaction lifecycle: pending -> quoted -> locked -> paid, with async (re-)quoting.
 
-The Delivery step calls `create_quoted()`. The Payment step calls
-`lock_for_payment()`, which is the ONLY place a shipping method can become
-the one that gets fulfilled, and it refuses to proceed on a stale or vanished
-rate instead of quietly swapping in another one:
+WHY ASYNC: Silverbene's rate endpoint measured 40-90 s per call (Stage 1B probe), far
+beyond any acceptable request time. The Delivery step therefore returns immediately
+with a `quoting` transaction; the rate fetch runs in the background and the browser
+polls GET /checkout/{id}/options. A stale quote is likewise refreshed in the
+background, never inline in the Pay request.
 
-  - quote still fresh + chosen method present            -> lock as chosen
-  - quote expired -> re-quote:
-        same method, same supplier price                 -> refresh + lock
-        method gone or price changed                     -> RequoteRequired
-  - re-quote returns nothing                             -> RequoteRequired(options=[])
+Customers choose a TIER (STANDARD / EXPRESS); the supplier method id behind it stays
+server-side and is what gets locked and fulfilled.
+
+Rules that keep the customer's choice honest:
+  - lock only ever uses a method that was OFFERED for the chosen tier;
+  - an expired quote is refreshed (background) before anything is locked;
+  - if what the customer last SAW (ack) differs from the current offer -- different
+    supplier method or different supplier price for that tier -- lock refuses with
+    RequoteRequired instead of silently swapping;
+  - nothing is fulfilled with a method the customer did not choose.
 """
 from __future__ import annotations
 
@@ -21,6 +27,7 @@ from typing import Callable, List, Optional
 
 from sqlmodel import Session
 
+import app.database as _db
 from app.checkout_intl import address as addr_mod
 from app.checkout_intl import countries, flags, rates
 from app.models.checkout_transaction import CheckoutTransaction
@@ -29,10 +36,11 @@ RateFetcher = Callable[[str, str, str, List[dict]], list]   # (country_id, postc
 
 
 class RequoteRequired(Exception):
-    def __init__(self, reason: str, options: List[dict]):
+    def __init__(self, reason: str, options: List[dict], pending: bool = False):
         super().__init__(reason)
         self.reason = reason
         self.options = options
+        self.pending = pending            # True: a background re-quote was started; poll /options
 
 
 class NoShippingAvailable(Exception):
@@ -51,25 +59,27 @@ def _supplier_products(items: List[dict]) -> List[dict]:
     return [{"option_id": i["supplier_option_id"], "qty": i["quantity"]} for i in items]
 
 
-def fetch_options(address: addr_mod.StructuredAddress, items: List[dict],
-                  fetcher: Optional[RateFetcher] = None) -> List[dict]:
-    """Live Silverbene rates for the actual cart + destination -> policy-filtered internal options."""
+def fetch_quote(address: addr_mod.StructuredAddress, items: List[dict],
+                fetcher: Optional[RateFetcher] = None) -> dict:
+    """Live Silverbene rates for the actual cart + destination.
+    Returns {"options": every normalized method with its tier, "offered": ids a customer may pick}."""
     fetcher = fetcher or default_rate_fetcher
     parsed = addr_mod.to_parsed_address(address)
     raw = fetcher(parsed["country_code"], parsed["postal_code"], parsed["city"], _supplier_products(items))
-    return rates.present(rates.normalize(raw))
+    options = rates.normalize(raw, parsed["country_code"])
+    offered = rates.present(options)
+    return {"options": options, "offered": [o["method_id"] for o in offered],
+            "fallback": any(o.get("fallback") for o in offered)}
 
 
-def create_quoted(session: Session, *, address: addr_mod.StructuredAddress, items: List[dict],
-                  is_guest: bool, fetcher: Optional[RateFetcher] = None) -> CheckoutTransaction:
-    options = fetch_options(address, items, fetcher)
-    if not options:
-        raise NoShippingAvailable()
-    now = datetime.utcnow()
+# ── creation / background quoting ─────────────────────────────────────────────
+
+def create_pending(session: Session, *, address: addr_mod.StructuredAddress, items: List[dict],
+                   is_guest: bool) -> CheckoutTransaction:
     market = countries.get_market(address.country_code)
     tx = CheckoutTransaction(
         id=uuid.uuid4().hex,
-        status="quoted",
+        status="quoting",
         user_email=address.email.strip().lower(),
         is_guest=is_guest,
         first_name=address.first_name.strip(),
@@ -79,9 +89,6 @@ def create_quoted(session: Session, *, address: addr_mod.StructuredAddress, item
         address_json=address.model_dump_json(),
         supplier_address_json=json.dumps(addr_mod.to_parsed_address(address)),
         items_json=json.dumps(items),
-        quote_json=json.dumps({"options": options}),
-        quote_fetched_at=now,
-        quote_expires_at=now + timedelta(minutes=flags.quote_ttl_minutes()),
     )
     session.add(tx)
     session.commit()
@@ -89,8 +96,52 @@ def create_quoted(session: Session, *, address: addr_mod.StructuredAddress, item
     return tx
 
 
+def run_quote(checkout_id: str, fetcher: Optional[RateFetcher] = None) -> None:
+    """Background job: fetch rates and move the transaction quoting -> quoted | unavailable. Never raises."""
+    try:
+        with Session(_db.engine) as session:
+            tx = session.get(CheckoutTransaction, checkout_id)
+            if tx is None or tx.status != "quoting":
+                return
+            try:
+                quote = fetch_quote(load_address(tx), load_items(tx), fetcher)
+                error = None
+            except Exception as e:                       # supplier down / timeout: fail closed, retryable
+                quote, error = {"options": [], "offered": [], "fallback": False}, f"{type(e).__name__}: {e}"
+            now = datetime.utcnow()
+            tx.quote_json = json.dumps(quote)
+            tx.quote_fetched_at = now
+            tx.quote_expires_at = now + timedelta(minutes=flags.quote_ttl_minutes())
+            tx.quote_error = error
+            tx.status = "quoted" if quote["offered"] else "unavailable"
+            tx.updated_at = now
+            session.add(tx)
+            session.commit()
+    except Exception as e:                               # noqa: BLE001 - background jobs must not crash the worker
+        print(f"[IntlCheckout] run_quote({checkout_id}) failed: {e}")
+
+
+def begin_requote(session: Session, tx: CheckoutTransaction) -> CheckoutTransaction:
+    tx.status = "quoting"
+    tx.quote_error = None
+    tx.updated_at = datetime.utcnow()
+    session.add(tx)
+    session.commit()
+    session.refresh(tx)
+    return tx
+
+
+# ── reading ───────────────────────────────────────────────────────────────────
+
 def load_options(tx: CheckoutTransaction) -> List[dict]:
+    """Every quoted method (both tiers), regardless of what is currently offered."""
     return json.loads(tx.quote_json or "{}").get("options", [])
+
+
+def offered_options(tx: CheckoutTransaction) -> List[dict]:
+    doc = json.loads(tx.quote_json or "{}")
+    by_id = {o["method_id"]: o for o in doc.get("options", [])}
+    return [by_id[i] for i in doc.get("offered", []) if i in by_id]
 
 
 def load_address(tx: CheckoutTransaction) -> addr_mod.StructuredAddress:
@@ -101,44 +152,68 @@ def load_items(tx: CheckoutTransaction) -> List[dict]:
     return json.loads(tx.items_json or "[]")
 
 
+def _snapshot(options: List[dict]) -> dict:
+    return {o["tier"]: {"method_id": o["method_id"], "price": o["supplier_price"]} for o in options}
+
+
 def _same_price(a: Optional[float], b: Optional[float]) -> bool:
     return (a is None and b is None) or (a is not None and b is not None and abs(a - b) < 0.005)
 
 
-def lock_for_payment(session: Session, tx: CheckoutTransaction, method_id: str,
-                     fetcher: Optional[RateFetcher] = None,
+def view_options(session: Session, tx: CheckoutTransaction) -> dict:
+    """
+    Polling read. Marks the currently offered options as SEEN by the customer (ack) and
+    reports whether they differ from what the customer had seen before, so the UI can
+    require a fresh choice instead of continuing on stale assumptions.
+    """
+    if tx.status == "quoting":
+        return {"status": "pending", "options": [], "changed": False}
+    if tx.status == "unavailable":
+        return {"status": "unavailable", "options": [], "changed": False}
+    offered = offered_options(tx)
+    prev = json.loads(tx.ack_json) if tx.ack_json else None
+    now_snap = _snapshot(offered)
+    changed = prev is not None and prev != now_snap
+    if prev != now_snap:
+        tx.ack_json = json.dumps(now_snap)
+        session.add(tx)
+        session.commit()
+    return {"status": "ready", "options": offered, "changed": changed}
+
+
+# ── locking ───────────────────────────────────────────────────────────────────
+
+def lock_for_payment(session: Session, tx: CheckoutTransaction, tier: str,
                      now: Optional[datetime] = None) -> CheckoutTransaction:
+    if tx.status == "quoting":
+        raise RequoteRequired("Still finding delivery options", [], pending=True)
     if tx.status not in ("quoted", "locked"):
         raise ValueError(f"checkout is {tx.status}; cannot lock")
     now = now or datetime.utcnow()
-    options = load_options(tx)
-    chosen = next((o for o in options if o["method_id"] == method_id), None)
-    if chosen is None:
-        raise RequoteRequired("That delivery option is no longer available", [])
 
     if tx.quote_expires_at is None or now >= tx.quote_expires_at:
-        fresh = fetch_options(load_address(tx), load_items(tx), fetcher)
-        fresh_match = next((o for o in fresh if o["method_id"] == method_id), None)
-        if fresh_match is None or not _same_price(fresh_match["supplier_price"], chosen["supplier_price"]):
-            # Persist the new rates so the customer re-chooses against real ones.
-            tx.quote_json = json.dumps({"options": fresh})
-            tx.quote_fetched_at = now
-            tx.quote_expires_at = now + timedelta(minutes=flags.quote_ttl_minutes())
-            tx.updated_at = now
-            session.add(tx)
-            session.commit()
-            raise RequoteRequired(
-                "Delivery options changed while you were checking out" if fresh
-                else "Delivery is currently unavailable to that address", fresh)
-        chosen = fresh_match
-        tx.quote_json = json.dumps({"options": fresh})
-        tx.quote_fetched_at = now
-        tx.quote_expires_at = now + timedelta(minutes=flags.quote_ttl_minutes())
+        begin_requote(session, tx)         # refresh in the background; caller schedules run_quote
+        raise RequoteRequired("Refreshing your delivery options", [], pending=True)
+
+    offered = offered_options(tx)
+    chosen = next((o for o in offered if o["tier"] == tier), None)
+    if chosen is None:
+        raise RequoteRequired("That delivery option is no longer available", offered)
+
+    ack = json.loads(tx.ack_json) if tx.ack_json else None
+    seen = (ack or {}).get(tier)
+    if seen is not None and (seen["method_id"] != chosen["method_id"]
+                             or not _same_price(seen["price"], chosen["supplier_price"])):
+        tx.ack_json = json.dumps(_snapshot(offered))         # they are about to be shown the new offer
+        session.add(tx)
+        session.commit()
+        raise RequoteRequired("Delivery options changed while you were checking out", offered)
 
     tx.shipping_method_id = chosen["method_id"]
     tx.shipping_method_name = chosen["name"]
     tx.shipping_eta = (chosen.get("eta") or {}).get("text")
     tx.shipping_supplier_price = chosen["supplier_price"]
+    tx.shipping_tier = chosen["tier"]
     tx.status = "locked"
     tx.updated_at = now
     session.add(tx)

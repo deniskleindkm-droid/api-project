@@ -8,7 +8,7 @@ import pytest
 from app.checkout_intl import address as addr_mod
 from app.checkout_intl import countries, rates
 from app.checkout_intl import transaction as txn
-from conftest import make_product, valid_address
+from conftest import make_product, quoted_tx, valid_address
 
 DHL = {"way": "DHL_X", "title": "DHL Express(3-7 workdays)", "price": 31.5}
 EPACKET = {"way": "EPK", "title": "ePacket(15-25 workdays)", "price": 4.2}
@@ -45,12 +45,30 @@ def test_registry_covers_every_iso_country_but_enables_only_defaults():
     assert enabled == set(countries.DEFAULT_ENABLED)
 
 
-def test_other_and_garbage_are_not_countries_and_sanctioned_never_enable(monkeypatch):
+def test_other_and_garbage_are_not_countries():
     for bad in ("other", "", "XX", "USA"):
         assert countries.get_market(bad) is None
         assert not countries.is_checkout_country(bad)
-    monkeypatch.setattr("app.agents.store_config.get_config", lambda k, default=None: "KP,IR,US")
-    assert countries.enabled_country_codes() == {"US"}
+
+
+def test_launch_waves_and_removed_markets():
+    assert countries.LAUNCH_WAVE_1 == ("US", "GB", "DE", "FR", "AU", "CA")
+    assert countries.LAUNCH_WAVE_2_CANDIDATE == ("CH", "JP", "SG", "NZ")
+    # DE/FR are Wave-1 candidates but NOT enabled by default; NG/GH are inert ISO records.
+    assert {"DE", "FR"}.isdisjoint(countries.enabled_country_codes())
+    assert set(countries.DEFAULT_ENABLED) <= set(countries.LAUNCH_WAVE_1)
+    for code in ("NG", "GH"):
+        m = countries.get_market(code)
+        assert m is not None and not m.checkout_enabled and not countries.is_checkout_country(code)
+    assert "NG" not in {m.iso_country_code for m in countries.checkout_markets()}
+
+
+def test_no_unsourced_country_constants_in_core_policy():
+    import inspect
+    src = inspect.getsource(countries)
+    for code in ('"KP"', '"IR"', '"CU"', '"SY"'):
+        assert code not in src
+    assert not hasattr(countries, "NEVER_ENABLE")
 
 
 def test_enabling_a_market_is_config_only(monkeypatch):
@@ -64,7 +82,7 @@ def test_probed_unsupported_market_is_hidden(monkeypatch):
     assert not countries.is_checkout_country("US")
 
 
-@pytest.mark.parametrize("cc", ["US", "CA", "GB", "AU", "NG"])
+@pytest.mark.parametrize("cc", ["US", "CA", "GB", "AU"])
 def test_valid_addresses_pass_when_enabled(cc):
     assert addr_mod.validate(addr_mod.StructuredAddress(**valid_address(cc))) is None
 
@@ -77,7 +95,7 @@ def test_eu_and_asia_addresses_pass_once_market_enabled(cc, monkeypatch):
 
 def test_invalid_postcode_missing_phone_and_missing_state():
     bad_zip = addr_mod.StructuredAddress(**valid_address("US", postal_code="ABC"))
-    assert "zip" in addr_mod.validate(bad_zip).lower()
+    assert "zip" in addr_mod.validate(bad_zip).lower() and "ZIP code" in addr_mod.validate(bad_zip)
     no_phone = addr_mod.StructuredAddress(**valid_address("US", phone=""))
     assert "phone" in addr_mod.validate(no_phone).lower()
     same_digits = addr_mod.StructuredAddress(**valid_address("US", phone="0000000000"))
@@ -108,20 +126,39 @@ def test_eta_parsed_from_title_never_invented():
     assert rates.parse_eta("China Post") is None
 
 
-def test_dhl_only_policy_and_fallback(monkeypatch):
+def test_tiers_frozen_exposure_offers_one_express_and_both_mode_offers_two(monkeypatch):
     opts = rates.normalize([DHL, EPACKET])
-    assert [o["method_id"] for o in rates.present(opts)] == ["DHL_X"]
+    assert {o["method_id"]: o["tier"] for o in opts} == {"DHL_X": "EXPRESS", "EPK": "STANDARD"}
+    assert [o["method_id"] for o in rates.present(opts)] == ["DHL_X"]           # frozen (default)
     only_epacket = rates.present(rates.normalize([EPACKET]))
     assert only_epacket[0]["method_id"] == "EPK" and only_epacket[0]["fallback"] is True
-    monkeypatch.setenv("INTL_SHIPPING_POLICY", "all")
+    monkeypatch.setenv("INTL_TIER_EXPOSURE", "both")
     assert [o["method_id"] for o in rates.present(opts)] == ["EPK", "DHL_X"]
     assert rates.present([]) == []
+
+
+@pytest.mark.parametrize("title,expected", [
+    ("DHL Express(3-7 workdays)", "EXPRESS"), ("DHL Global Mail(5-9 workdays)", "STANDARD"),
+    ("Economic Express(8-15 workdays)", "STANDARD"), ("FedEx International Priority", "EXPRESS"),
+    ("ePacket(15-25 workdays)", "STANDARD"), ("Hermes(4-10 workdays)", "STANDARD"),
+    ("La Poste(4-8 workdays)", "STANDARD"), ("Canada Post(5-10 workdays)", "STANDARD"),
+    ("Australia Post(6-10 workdays)", "STANDARD"), ("USPS(5-10 workdays)", "STANDARD"),
+    ("Mystery Air(3-5 workdays)", "EXPRESS"), ("Mystery Boat(30-40 workdays)", "STANDARD"),
+])
+def test_tier_classification(title, expected):
+    assert rates.classify_tier(title, "X", rates.parse_eta(title)) == expected
+
+
+def test_tier_override_wins(monkeypatch):
+    monkeypatch.setitem(rates.TIER_OVERRIDES, ("DE", "W1"), "STANDARD")
+    assert rates.classify_tier("DHL Express", "W1", None, "DE") == "STANDARD"
 
 
 def test_customer_view_hides_supplier_cost_and_route_wording():
     v = rates.customer_view(rates.normalize([DHL])[0])
     assert "supplier_price" not in v and "31.5" not in json.dumps(v)
     assert v["customer_price"] == 0.0 and "Silverbene" not in json.dumps(v)
+    assert "DHL" not in json.dumps(v) and v["tier"] == "EXPRESS"       # neither carrier names nor supplier ids reach the customer
 
 
 # ── endpoints ─────────────────────────────────────────────────────────────────
@@ -138,10 +175,26 @@ def test_config_lists_only_enabled_markets(client, flag_on):
     assert cfg["enabled"] and codes == set(countries.DEFAULT_ENABLED) and "other" not in codes
 
 
+class _Resp:
+    def __init__(self, status_code, data):
+        self.status_code, self._d = status_code, data
+        self.text = json.dumps(data)
+
+    def json(self):
+        return self._d
+
+
 def _delivery(client, country="US", items=None, **addr):
-    return client.post("/checkout/delivery", json={
+    """Delivery is async: POST returns pending (background task runs), then poll /options."""
+    r = client.post("/checkout/delivery", json={
         "address": valid_address(country, **addr),
         "items": items or [{"product_id": 1, "quantity": 1}]})
+    if r.status_code != 200:
+        return r
+    cid = r.json()["checkout_id"]
+    assert r.json()["status"] == "pending" and "options" not in r.json()
+    o = client.get(f"/checkout/{cid}/options")
+    return _Resp(o.status_code, o.json())
 
 
 def test_domestic_and_international_quote_uses_real_cart_and_destination(
@@ -151,7 +204,7 @@ def test_domestic_and_international_quote_uses_real_cart_and_destination(
         r = _delivery(client, cc)
         assert r.status_code == 200, r.text
         body = r.json()
-        assert [o["method_id"] for o in body["options"]] == ["DHL_X"]
+        assert [o["tier"] for o in body["options"]] == ["EXPRESS"]
         country_id, postcode, city, products = fake_rates["calls"][-1]
         assert country_id == cc and postcode == postal
         assert products == [{"option_id": "OPT1", "qty": 1}]
@@ -170,9 +223,35 @@ def test_no_shipping_available_is_a_clean_422(client, session, flag_on, fake_rat
     make_product(session)
     fake_rates["methods"] = []
     r = _delivery(client, "US")
-    assert r.status_code == 422 and "can't offer delivery" in r.json()["detail"]
-    assert session.exec(__import__("sqlmodel").select(__import__(
-        "app.models.checkout_transaction", fromlist=["x"]).CheckoutTransaction)).first() is None
+    assert r.json()["status"] == "unavailable" and "can't offer delivery" in r.json()["message"]
+    assert r.json()["options"] == []
+    # ...and such a checkout can never reach a payment provider
+    pay = client.post(f"/checkout/{r.json()['checkout_id']}/pay", json={"shipping_tier": "EXPRESS"})
+    assert pay.status_code == 409 and pay.json()["detail"]["code"] == "requote"
+
+
+def test_supplier_failure_fails_closed_as_unavailable(client, session, flag_on, monkeypatch, stock_ok):
+    make_product(session)
+    def boom(*a):
+        raise TimeoutError("supplier timed out")
+    monkeypatch.setattr(txn, "default_rate_fetcher", boom)
+    r = _delivery(client, "US")
+    assert r.json()["status"] == "unavailable"
+    from app.models.checkout_transaction import CheckoutTransaction
+    session.expire_all()
+    assert "TimeoutError" in session.get(CheckoutTransaction, r.json()["checkout_id"]).quote_error
+
+
+def test_delivery_post_returns_immediately_while_quote_is_pending(client, session, flag_on, stock_ok, monkeypatch):
+    make_product(session)
+    started = []
+    monkeypatch.setattr(txn, "run_quote", lambda cid, fetcher=None: started.append(cid))   # simulate slow supplier
+    r = client.post("/checkout/delivery", json={"address": valid_address("US"), "items": [{"product_id": 1}]})
+    cid = r.json()["checkout_id"]
+    assert r.json() == {"checkout_id": cid, "status": "pending"} and started == [cid]
+    assert client.get(f"/checkout/{cid}/options").json()["status"] == "pending"
+    pay = client.post(f"/checkout/{cid}/pay", json={"shipping_tier": "EXPRESS"})
+    assert pay.status_code == 409 and pay.json()["detail"]["pending"] is True
 
 
 def test_unsupported_country_rejected_before_any_supplier_call(client, session, flag_on, fake_rates, stock_ok):
@@ -200,50 +279,95 @@ def test_confirmed_sold_out_blocks_quote(client, session, flag_on, fake_rates, m
 
 # ── lock / expiry / requote ───────────────────────────────────────────────────
 
-def _quoted(session, fake_rates, stock_ok_=None):
+def _quoted(session, fake_rates=None, methods=None):
     make_product(session)
     a = addr_mod.StructuredAddress(**valid_address("US"))
     items = [{"product_id": 1, "quantity": 1, "supplier_option_id": "OPT1"}]
-    return txn.create_quoted(session, address=a, items=items, is_guest=True,
-                             fetcher=fetcher_returning([DHL, EPACKET]))
+    return quoted_tx(session, a, items, fetcher=fetcher_returning(methods or [DHL, EPACKET]))
 
 
 def test_lock_records_exact_method_and_supplier_snapshot(session, fake_rates):
-    tx = _quoted(session, fake_rates)
-    tx = txn.lock_for_payment(session, tx, "DHL_X")
+    tx = txn.lock_for_payment(session, _quoted(session), "EXPRESS")
     assert (tx.status, tx.shipping_method_id, tx.shipping_supplier_price) == ("locked", "DHL_X", 31.5)
     assert tx.presentment_currency == "USD" and tx.supplier_settlement_currency == "USD"
 
 
-def test_selecting_an_unquoted_method_requires_requote(session, fake_rates):
-    tx = _quoted(session, fake_rates)
+def test_selecting_an_unoffered_tier_requires_requote(session, fake_rates):
     with pytest.raises(txn.RequoteRequired):
-        txn.lock_for_payment(session, tx, "SOMETHING_ELSE")
+        txn.lock_for_payment(session, _quoted(session), "STANDARD")        # frozen exposure offers EXPRESS only
 
 
-def test_expired_quote_same_method_same_price_refreshes_silently(session, fake_rates):
-    tx = _quoted(session, fake_rates)
-    later = tx.quote_expires_at + timedelta(minutes=1)
-    tx = txn.lock_for_payment(session, tx, "DHL_X", fetcher=fetcher_returning([DHL]), now=later)
-    assert tx.shipping_method_id == "DHL_X" and tx.quote_expires_at > later
-
-
-def test_expired_quote_price_change_never_silently_swaps(session, fake_rates):
-    tx = _quoted(session, fake_rates)
-    later = tx.quote_expires_at + timedelta(minutes=1)
-    pricier = dict(DHL, price=71.5)
-    with pytest.raises(txn.RequoteRequired) as e:
-        txn.lock_for_payment(session, tx, "DHL_X", fetcher=fetcher_returning([pricier]), now=later)
-    assert e.value.options and tx.shipping_method_id is None       # nothing locked
-    assert txn.load_options(tx)[0]["supplier_price"] == 71.5        # fresh rates stored for re-choice
-
-
-def test_method_becoming_unavailable_after_expiry_requotes(session, fake_rates):
-    tx = _quoted(session, fake_rates)
+def test_expired_quote_is_refreshed_in_background_never_inline(session, fake_rates):
+    tx = _quoted(session)
     later = tx.quote_expires_at + timedelta(minutes=1)
     with pytest.raises(txn.RequoteRequired) as e:
-        txn.lock_for_payment(session, tx, "DHL_X", fetcher=fetcher_returning([]), now=later)
-    assert e.value.options == []
+        txn.lock_for_payment(session, tx, "EXPRESS", now=later)
+    assert e.value.pending and tx.status == "quoting" and tx.shipping_method_id is None
+    txn.run_quote(tx.id, fetcher_returning([DHL]))                              # the background job finishes
+    session.expire_all()
+    tx = session.get(type(tx), tx.id)
+    assert tx.status == "quoted" and tx.quote_expires_at > datetime.utcnow()
+    assert txn.lock_for_payment(session, tx, "EXPRESS").shipping_method_id == "DHL_X"
+
+
+def test_price_change_after_refresh_is_shown_and_never_silently_locked(session, fake_rates):
+    tx = _quoted(session)
+    assert txn.view_options(session, tx)["changed"] is False                   # customer saw $31.5 EXPRESS
+    later = tx.quote_expires_at + timedelta(minutes=1)
+    with pytest.raises(txn.RequoteRequired):
+        txn.lock_for_payment(session, tx, "EXPRESS", now=later)
+    txn.run_quote(tx.id, fetcher_returning([dict(DHL, price=71.5)]))
+    session.expire_all()
+    tx = session.get(type(tx), tx.id)
+    with pytest.raises(txn.RequoteRequired) as e:                                # client that skipped /options
+        txn.lock_for_payment(session, tx, "EXPRESS")
+    assert e.value.options[0]["supplier_price"] == 71.5 and tx.shipping_method_id is None
+    tx = txn.lock_for_payment(session, tx, "EXPRESS")                          # after being shown the new offer
+    assert tx.shipping_supplier_price == 71.5
+
+
+def test_options_view_flags_changes_so_the_ui_can_require_a_fresh_choice(session, fake_rates):
+    tx = _quoted(session)
+    txn.view_options(session, tx)
+    later = tx.quote_expires_at + timedelta(minutes=1)
+    with pytest.raises(txn.RequoteRequired):
+        txn.lock_for_payment(session, tx, "EXPRESS", now=later)
+    txn.run_quote(tx.id, fetcher_returning([dict(DHL, way="DHL_Y")]))            # a different supplier method
+    session.expire_all()
+    tx = session.get(type(tx), tx.id)
+    v = txn.view_options(session, tx)
+    assert v["status"] == "ready" and v["changed"] is True
+    assert txn.view_options(session, tx)["changed"] is False                    # seen now
+
+
+def test_method_becoming_unavailable_after_expiry_fails_closed(session, fake_rates):
+    tx = _quoted(session)
+    later = tx.quote_expires_at + timedelta(minutes=1)
+    with pytest.raises(txn.RequoteRequired):
+        txn.lock_for_payment(session, tx, "EXPRESS", now=later)
+    txn.run_quote(tx.id, fetcher_returning([]))
+    session.expire_all()
+    tx = session.get(type(tx), tx.id)
+    assert tx.status == "unavailable" and txn.view_options(session, tx)["status"] == "unavailable"
+    with pytest.raises(ValueError):
+        txn.lock_for_payment(session, tx, "EXPRESS")
+
+
+def test_ambiguous_supplier_method_id_is_flagged_and_keeps_the_dearer_service():
+    opts = rates.normalize([
+        {"way": "ITDIDA_ECO", "title": "International Economy(10-15 workdays)", "price": 3.5},
+        {"way": "ITDIDA_ECO", "title": "International Standard(12-20 workdays)", "price": 5.52},
+        {"way": "DHLI", "title": "DHL Express(4 - 9 workdays, customs duty included)", "price": 53.24}], "US")
+    eco = next(o for o in opts if o["method_id"] == "ITDIDA_ECO")
+    assert eco["ambiguous_method_id"] and eco["supplier_price"] == 5.52
+    assert eco["alternatives"] == [{"title": "International Economy(10-15 workdays)", "price": 3.5}]
+    assert next(o for o in opts if o["method_id"] == "DHLI")["tier"] == "EXPRESS"
+    assert eco["tier"] == "STANDARD"
+
+
+def test_real_silverbene_titles_parse_eta_with_spaces_and_duty_note():
+    assert rates.parse_eta("DHL Express(4 - 9 workdays, customs duty included)")["text"] == "4–9 business days"
+    assert rates.parse_eta("International Standard(12-20 workdays)")["min_days"] == 12
 
 
 # ── payment step ──────────────────────────────────────────────────────────────
@@ -268,7 +392,7 @@ def test_pay_step_pricing_is_identical_to_legacy_guest_checkout(
         client, session, flag_on, fake_rates, stock_ok, stripe_spy):
     make_product(session, price=298.0)
     cid = _delivery(client, "US").json()["checkout_id"]
-    assert client.post(f"/checkout/{cid}/pay", json={"shipping_method_id": "DHL_X"}).status_code == 200
+    assert client.post(f"/checkout/{cid}/pay", json={"shipping_tier": "EXPRESS"}).status_code == 200
     intl = stripe_spy.calls[-1]
 
     legacy = client.post("/payments/guest-checkout", json={
@@ -290,7 +414,7 @@ def test_supplier_payment_link_and_cost_never_reach_the_customer(
     make_product(session)
     d = _delivery(client, "US")
     cid = d.json()["checkout_id"]
-    p = client.post(f"/checkout/{cid}/pay", json={"shipping_method_id": "DHL_X"})
+    p = client.post(f"/checkout/{cid}/pay", json={"shipping_tier": "EXPRESS"})
     text = d.text + p.text
     for leak in ("pay_url", "31.5", "silverbene", "amount_due"):
         assert leak not in text.lower()
@@ -299,7 +423,7 @@ def test_supplier_payment_link_and_cost_never_reach_the_customer(
 def test_pay_requote_is_409_with_fresh_options(client, session, flag_on, fake_rates, stock_ok, stripe_spy):
     make_product(session)
     cid = _delivery(client, "US").json()["checkout_id"]
-    r = client.post(f"/checkout/{cid}/pay", json={"shipping_method_id": "NOPE"})
+    r = client.post(f"/checkout/{cid}/pay", json={"shipping_tier": "STANDARD"})
     assert r.status_code == 409 and r.json()["detail"]["code"] == "requote"
     assert stripe_spy.calls == []
 
@@ -308,16 +432,16 @@ def test_completed_checkout_cannot_be_paid_again(client, session, flag_on, fake_
     from app.checkout_intl import fulfillment
     make_product(session)
     cid = _delivery(client, "US").json()["checkout_id"]
-    client.post(f"/checkout/{cid}/pay", json={"shipping_method_id": "DHL_X"})
+    client.post(f"/checkout/{cid}/pay", json={"shipping_tier": "EXPRESS"})
     fulfillment.mark_paid(cid, "cs_test_1")
-    r = client.post(f"/checkout/{cid}/pay", json={"shipping_method_id": "DHL_X"})
+    r = client.post(f"/checkout/{cid}/pay", json={"shipping_tier": "EXPRESS"})
     assert r.status_code == 409
 
 
 def test_paypal_slot_is_declared_but_disabled(client, session, flag_on, fake_rates, stock_ok, stripe_spy):
     make_product(session)
     cid = _delivery(client, "US").json()["checkout_id"]
-    r = client.post(f"/checkout/{cid}/pay", json={"shipping_method_id": "DHL_X", "payment_provider": "paypal"})
+    r = client.post(f"/checkout/{cid}/pay", json={"shipping_tier": "EXPRESS", "payment_provider": "paypal"})
     assert r.status_code == 400 and stripe_spy.calls == []
 
 
@@ -374,9 +498,8 @@ def _locked_au_tx(session):
     make_product(session)
     a = addr_mod.StructuredAddress(**valid_address("AU"))
     items = [{"product_id": 1, "quantity": 1, "supplier_option_id": "OPT1"}]
-    tx = txn.create_quoted(session, address=a, items=items, is_guest=True,
-                           fetcher=fetcher_returning([DHL, EPACKET]))
-    return txn.lock_for_payment(session, tx, "DHL_X")
+    tx = quoted_tx(session, a, items, fetcher=fetcher_returning([DHL, EPACKET]))
+    return txn.lock_for_payment(session, tx, "EXPRESS")
 
 
 def test_fulfillment_uses_exact_chosen_method_and_never_looks_up_rates(session, fulfil_env):
@@ -476,3 +599,14 @@ def test_strict_rate_mode_never_fabricates_a_method(monkeypatch):
     monkeypatch.setattr(sb, "_post", lambda ep, payload: {"code": 0, "data": []})
     assert sb.get_shipping_methods("DE", products=[{"option_id": "A", "qty": 1}], allow_fallback=False) == []
     assert sb.get_shipping_methods("US", option_id="A")[0]["way"] == "SUX"   # legacy fallback preserved
+
+
+def test_frozen_exposure_prefers_dhl_over_a_cheaper_express_carrier():
+    """Real probe evidence: FedEx is cheaper than DHL to GB/DE/FR; the standing rule is DHL."""
+    opts = rates.normalize([
+        {"way": "DHL", "title": "DHL Express(4 - 9 workdays)", "price": 49.37},
+        {"way": "Fedex", "title": "FedEx(4 - 9 workdays)", "price": 32.13},
+        {"way": "cainiao", "title": "Cainiao International", "price": 15.57}], "DE")
+    assert [o["method_id"] for o in rates.present(opts)] == ["DHL"]
+    no_dhl = [o for o in opts if o["method_id"] != "DHL"]
+    assert [o["method_id"] for o in rates.present(no_dhl)] == ["Fedex"]

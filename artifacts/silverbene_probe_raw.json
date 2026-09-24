@@ -1,0 +1,1635 @@
+{
+ "probed_at": "2026-09-24T01:31:18.920224+00:00",
+ "options": [
+  {
+   "option_id": "57451",
+   "name": "925 Sterling Silver Geometric Cubic Zirconia Multi Band Open",
+   "unit_cost": 26.68,
+   "stock": 101
+  },
+  {
+   "option_id": "57442",
+   "name": "Fashion Commuter Elegant Modern Minimalist Jewelry Geometric",
+   "unit_cost": 16.27,
+   "stock": 103
+  },
+  {
+   "option_id": "57439",
+   "name": "Modern Fashion Commuter Jewelry Irregular Geometric Cubic Zi",
+   "unit_cost": 21,
+   "stock": 101
+  }
+ ],
+ "country_list_guesses": [
+  {
+   "endpoint": "/api/dropshipping/get_country",
+   "http_status": 404,
+   "body_head": "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\">\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\n        <title>Not Found</title>\n\n        <!-- "
+  },
+  {
+   "endpoint": "/api/dropshipping/country_list",
+   "http_status": 404,
+   "body_head": "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\">\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\n        <title>Not Found</title>\n\n        <!-- "
+  },
+  {
+   "endpoint": "/api/dropshipping/countries",
+   "http_status": 404,
+   "body_head": "<!DOCTYPE html>\n<html lang=\"en\">\n    <head>\n        <meta charset=\"utf-8\">\n        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n\n        <title>Not Found</title>\n\n        <!-- "
+  },
+  {
+   "endpoint": "/api/dropshipping/get_countries",
+   "error": "HTTPSConnectionPool(host='s.silverbene.com', port=443): Max retries exceeded with url: /api/dropshipping/get_countries?token=<redacted> (Caused by ConnectTimeoutError(<HTTPSConnection(host='s.silverbene.com', port=443) at 0x14f97a47250>, 'Connection to s.silverbene.com timed out. (connect timeout=20)'))"
+  }
+ ],
+ "rate_calls": [
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 45.89
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 27.56
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 10.64
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 4.21
+     }
+    ]
+   },
+   "error": null,
+   "seconds": 26.55,
+   "label": "single_A",
+   "country": "GB",
+   "city": "London",
+   "postcode": "SW1A 1AA",
+   "request": {
+    "country_id": "GB",
+    "postcode": "SW1A 1AA",
+    "city": "London",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:42:04.185788+00:00",
+   "retried": true
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHLI",
+      "title": "DHL Express(4 - 9 workdays, customs duty included)",
+      "price": 57.83
+     },
+     {
+      "way": "FedexI",
+      "title": "FedEx(4 - 9 workdays, customs duty included)",
+      "price": 62.41
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(10-15 workdays)",
+      "price": 3.5
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Standard(12-20 workdays)",
+      "price": 5.52
+     }
+    ]
+   },
+   "error": null,
+   "seconds": 30.87,
+   "label": "single_A",
+   "country": "US",
+   "city": "Chicago",
+   "postcode": "60601",
+   "request": {
+    "country_id": "US",
+    "postcode": "60601",
+    "city": "Chicago",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:42:37.055432+00:00",
+   "retried": true
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHLI",
+      "title": "DHL Express(4 - 9 workdays, customs duty included)",
+      "price": 57.83
+     },
+     {
+      "way": "FedexI",
+      "title": "FedEx(4 - 9 workdays, customs duty included)",
+      "price": 62.41
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(10-15 workdays)",
+      "price": 3.5
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Standard(12-20 workdays)",
+      "price": 5.52
+     }
+    ]
+   },
+   "seconds": 53.36,
+   "label": "single_A",
+   "country": "US",
+   "city": "Atlanta",
+   "postcode": "30303",
+   "request": {
+    "country_id": "US",
+    "postcode": "30303",
+    "city": "Atlanta",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:35:26.897679+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHLI",
+      "title": "DHL Express(4 - 9 workdays, customs duty included)",
+      "price": 57.83
+     },
+     {
+      "way": "FedexI",
+      "title": "FedEx(4 - 9 workdays, customs duty included)",
+      "price": 62.61
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(10-15 workdays)",
+      "price": 3.5
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Standard(12-20 workdays)",
+      "price": 5.52
+     }
+    ]
+   },
+   "seconds": 75.32,
+   "label": "single_A",
+   "country": "US",
+   "city": "Los Angeles",
+   "postcode": "90012",
+   "request": {
+    "country_id": "US",
+    "postcode": "90012",
+    "city": "Los Angeles",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:35:48.866057+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 45.89
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 27.56
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 13.22
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 10.64
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 4.21
+     }
+    ]
+   },
+   "seconds": 76.22,
+   "label": "single_A",
+   "country": "GB",
+   "city": "Manchester",
+   "postcode": "M1 1AE",
+   "request": {
+    "country_id": "GB",
+    "postcode": "M1 1AE",
+    "city": "Manchester",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:36:11.065697+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 49.37
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 32.13
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 17.76
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 15.57
+     }
+    ]
+   },
+   "seconds": 110.02,
+   "label": "single_A",
+   "country": "DE",
+   "city": "Berlin",
+   "postcode": "10115",
+   "request": {
+    "country_id": "DE",
+    "postcode": "10115",
+    "city": "Berlin",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:36:44.881125+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 49.37
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 32.13
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 17.76
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 15.57
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 12.18
+     }
+    ]
+   },
+   "seconds": 93.17,
+   "label": "single_A",
+   "country": "DE",
+   "city": "Munich",
+   "postcode": "80331",
+   "request": {
+    "country_id": "DE",
+    "postcode": "80331",
+    "city": "Munich",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:37:00.356438+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 49.37
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 32.13
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 17.9
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 16.48
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 11.93
+     }
+    ]
+   },
+   "seconds": 86.85,
+   "label": "single_A",
+   "country": "FR",
+   "city": "Paris",
+   "postcode": "75001",
+   "request": {
+    "country_id": "FR",
+    "postcode": "75001",
+    "city": "Paris",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:37:16.005418+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 36.02
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 36.36
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 16.34
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 9.96
+     }
+    ]
+   },
+   "error": null,
+   "seconds": 6.21,
+   "label": "single_A",
+   "country": "AU",
+   "city": "Melbourne",
+   "postcode": "3000",
+   "request": {
+    "country_id": "AU",
+    "postcode": "3000",
+    "city": "Melbourne",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:43:42.079417+00:00",
+   "retried": true
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 49.37
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 32.13
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 17.9
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 16.48
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 11.93
+     }
+    ]
+   },
+   "seconds": 80.02,
+   "label": "single_A",
+   "country": "FR",
+   "city": "Lyon",
+   "postcode": "69001",
+   "request": {
+    "country_id": "FR",
+    "postcode": "69001",
+    "city": "Lyon",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:37:31.364759+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 36.02
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 36.36
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 16.34
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 9.96
+     }
+    ]
+   },
+   "seconds": 51.15,
+   "label": "single_A",
+   "country": "AU",
+   "city": "Sydney",
+   "postcode": "2000",
+   "request": {
+    "country_id": "AU",
+    "postcode": "2000",
+    "city": "Sydney",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:37:36.309140+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 36.93
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 33.71
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 15.02
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 14.13
+     }
+    ]
+   },
+   "seconds": 17.52,
+   "label": "single_A",
+   "country": "CA",
+   "city": "Vancouver",
+   "postcode": "V6B 1A1",
+   "request": {
+    "country_id": "CA",
+    "postcode": "V6B 1A1",
+    "city": "Vancouver",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:37:39.470774+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 36.93
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 33.71
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 15.02
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 14.13
+     }
+    ]
+   },
+   "seconds": 26.0,
+   "label": "single_A",
+   "country": "CA",
+   "city": "Toronto",
+   "postcode": "M5H 2N2",
+   "request": {
+    "country_id": "CA",
+    "postcode": "M5H 2N2",
+    "city": "Toronto",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:37:42.301105+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHLI",
+      "title": "DHL Express(4 - 9 workdays, customs duty included)",
+      "price": 55.49
+     },
+     {
+      "way": "FedexI",
+      "title": "FedEx(4 - 9 workdays, customs duty included)",
+      "price": 60.07
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(10-15 workdays)",
+      "price": 3.5
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Standard(12-20 workdays)",
+      "price": 5.52
+     }
+    ]
+   },
+   "seconds": 34.6,
+   "label": "single_B",
+   "country": "US",
+   "city": "Chicago",
+   "postcode": "60601",
+   "request": {
+    "country_id": "US",
+    "postcode": "60601",
+    "city": "Chicago",
+    "products": [
+     {
+      "option_id": "57442",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:38:06.253604+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHLI",
+      "title": "DHL Express(4 - 9 workdays, customs duty included)",
+      "price": 56.55
+     },
+     {
+      "way": "FedexI",
+      "title": "FedEx(4 - 9 workdays, customs duty included)",
+      "price": 61.13
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(10-15 workdays)",
+      "price": 3.5
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Standard(12-20 workdays)",
+      "price": 5.52
+     }
+    ]
+   },
+   "seconds": 59.22,
+   "label": "single_C",
+   "country": "US",
+   "city": "Chicago",
+   "postcode": "60601",
+   "request": {
+    "country_id": "US",
+    "postcode": "60601",
+    "city": "Chicago",
+    "products": [
+     {
+      "option_id": "57439",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:38:35.813673+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHLI",
+      "title": "DHL Express(4 - 9 workdays, customs duty included)",
+      "price": 66.22
+     },
+     {
+      "way": "FedexI",
+      "title": "FedEx(4 - 9 workdays, customs duty included)",
+      "price": 70.79
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Standard(12-20 workdays)",
+      "price": 5.52
+     }
+    ]
+   },
+   "seconds": 74.04,
+   "label": "combined_ABC",
+   "country": "US",
+   "city": "Chicago",
+   "postcode": "60601",
+   "request": {
+    "country_id": "US",
+    "postcode": "60601",
+    "city": "Chicago",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     },
+     {
+      "option_id": "57442",
+      "qty": 1
+     },
+     {
+      "option_id": "57439",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:38:53.797543+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "GTG",
+      "title": "Royal Mail(5-9 workdays)",
+      "price": 5
+     },
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 45.89
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 27.56
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 10.09
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 10.64
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 4.21
+     }
+    ]
+   },
+   "seconds": 83.48,
+   "label": "single_B",
+   "country": "GB",
+   "city": "London",
+   "postcode": "SW1A 1AA",
+   "request": {
+    "country_id": "GB",
+    "postcode": "SW1A 1AA",
+    "city": "London",
+    "products": [
+     {
+      "option_id": "57442",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:39:06.068448+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "GTG",
+      "title": "Royal Mail(5-9 workdays)",
+      "price": 5
+     },
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 45.89
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 27.56
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 11.51
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 10.64
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 4.21
+     }
+    ]
+   },
+   "seconds": 70.59,
+   "label": "single_C",
+   "country": "GB",
+   "city": "London",
+   "postcode": "SW1A 1AA",
+   "request": {
+    "country_id": "GB",
+    "postcode": "SW1A 1AA",
+    "city": "London",
+    "products": [
+     {
+      "option_id": "57439",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:39:17.125669+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 27.56
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 24.47
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 10.64
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 4.21
+     }
+    ]
+   },
+   "seconds": 58.27,
+   "label": "combined_ABC",
+   "country": "GB",
+   "city": "London",
+   "postcode": "SW1A 1AA",
+   "request": {
+    "country_id": "GB",
+    "postcode": "SW1A 1AA",
+    "city": "London",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     },
+     {
+      "option_id": "57442",
+      "qty": 1
+     },
+     {
+      "option_id": "57439",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:39:34.361437+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 49.37
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 32.13
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 14.62
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 15.57
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 12.18
+     }
+    ]
+   },
+   "seconds": 51.08,
+   "label": "single_B",
+   "country": "DE",
+   "city": "Berlin",
+   "postcode": "10115",
+   "request": {
+    "country_id": "DE",
+    "postcode": "10115",
+    "city": "Berlin",
+    "products": [
+     {
+      "option_id": "57442",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:39:45.177099+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 49.37
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 32.13
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 15.57
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 12.18
+     }
+    ]
+   },
+   "seconds": 55.4,
+   "label": "single_C",
+   "country": "DE",
+   "city": "Berlin",
+   "postcode": "10115",
+   "request": {
+    "country_id": "DE",
+    "postcode": "10115",
+    "city": "Berlin",
+    "products": [
+     {
+      "option_id": "57439",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:40:01.761030+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 49.37
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 32.13
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 29.03
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 15.57
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 12.18
+     }
+    ]
+   },
+   "seconds": 57.5,
+   "label": "combined_ABC",
+   "country": "DE",
+   "city": "Berlin",
+   "postcode": "10115",
+   "request": {
+    "country_id": "DE",
+    "postcode": "10115",
+    "city": "Berlin",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     },
+     {
+      "option_id": "57442",
+      "qty": 1
+     },
+     {
+      "option_id": "57439",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:40:14.904779+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 49.37
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 32.13
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 16.18
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 16.48
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 11.93
+     }
+    ]
+   },
+   "seconds": 42.03,
+   "label": "single_C",
+   "country": "FR",
+   "city": "Paris",
+   "postcode": "75001",
+   "request": {
+    "country_id": "FR",
+    "postcode": "75001",
+    "city": "Paris",
+    "products": [
+     {
+      "option_id": "57439",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:40:27.492139+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 49.37
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 32.13
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 14.76
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 16.48
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 11.93
+     }
+    ]
+   },
+   "seconds": 66.34,
+   "label": "single_B",
+   "country": "FR",
+   "city": "Paris",
+   "postcode": "75001",
+   "request": {
+    "country_id": "FR",
+    "postcode": "75001",
+    "city": "Paris",
+    "products": [
+     {
+      "option_id": "57442",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:40:40.969506+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 49.37
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 32.13
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 29.16
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 16.48
+     },
+     {
+      "way": "ITDIDA_ECO",
+      "title": "International Economy(9 workdays)",
+      "price": 11.93
+     }
+    ]
+   },
+   "seconds": 51.42,
+   "label": "combined_ABC",
+   "country": "FR",
+   "city": "Paris",
+   "postcode": "75001",
+   "request": {
+    "country_id": "FR",
+    "postcode": "75001",
+    "city": "Paris",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     },
+     {
+      "option_id": "57442",
+      "qty": 1
+     },
+     {
+      "option_id": "57439",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:40:53.468131+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 36.02
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 36.36
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 9.96
+     }
+    ]
+   },
+   "seconds": 45.52,
+   "label": "single_B",
+   "country": "AU",
+   "city": "Sydney",
+   "postcode": "2000",
+   "request": {
+    "country_id": "AU",
+    "postcode": "2000",
+    "city": "Sydney",
+    "products": [
+     {
+      "option_id": "57442",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:41:00.701855+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 36.02
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 36.36
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 14.62
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 9.96
+     }
+    ]
+   },
+   "seconds": 38.19,
+   "label": "single_C",
+   "country": "AU",
+   "city": "Sydney",
+   "postcode": "2000",
+   "request": {
+    "country_id": "AU",
+    "postcode": "2000",
+    "city": "Sydney",
+    "products": [
+     {
+      "option_id": "57439",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:41:05.962838+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 36.02
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 36.36
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 27.57
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 9.96
+     }
+    ]
+   },
+   "seconds": 27.72,
+   "label": "combined_ABC",
+   "country": "AU",
+   "city": "Sydney",
+   "postcode": "2000",
+   "request": {
+    "country_id": "AU",
+    "postcode": "2000",
+    "city": "Sydney",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     },
+     {
+      "option_id": "57442",
+      "qty": 1
+     },
+     {
+      "option_id": "57439",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:41:08.982251+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 36.93
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 33.71
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 11.9
+     }
+    ]
+   },
+   "seconds": 20.44,
+   "label": "single_B",
+   "country": "CA",
+   "city": "Toronto",
+   "postcode": "M5H 2N2",
+   "request": {
+    "country_id": "CA",
+    "postcode": "M5H 2N2",
+    "city": "Toronto",
+    "products": [
+     {
+      "option_id": "57442",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:41:14.190611+00:00"
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 36.93
+     },
+     {
+      "way": "Fedex",
+      "title": "FedEx(4 - 9 workdays)",
+      "price": 33.71
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 13.32
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 14.13
+     }
+    ]
+   },
+   "error": null,
+   "seconds": 31.77,
+   "label": "single_C",
+   "country": "CA",
+   "city": "Toronto",
+   "postcode": "M5H 2N2",
+   "request": {
+    "country_id": "CA",
+    "postcode": "M5H 2N2",
+    "city": "Toronto",
+    "products": [
+     {
+      "option_id": "57439",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:43:33.869130+00:00",
+   "retried": true
+  },
+  {
+   "http_status": 200,
+   "response": {
+    "code": 0,
+    "message": "success",
+    "currency": "USD",
+    "data": [
+     {
+      "way": "DHL",
+      "title": "DHL Express(4 - 9 workdays)",
+      "price": 36.93
+     },
+     {
+      "way": "BKPHR",
+      "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)",
+      "price": 26.2
+     },
+     {
+      "way": "cainiao",
+      "title": "Cainiao International",
+      "price": 14.13
+     }
+    ]
+   },
+   "seconds": 24.55,
+   "label": "combined_ABC",
+   "country": "CA",
+   "city": "Toronto",
+   "postcode": "M5H 2N2",
+   "request": {
+    "country_id": "CA",
+    "postcode": "M5H 2N2",
+    "city": "Toronto",
+    "products": [
+     {
+      "option_id": "57451",
+      "qty": 1
+     },
+     {
+      "option_id": "57442",
+      "qty": 1
+     },
+     {
+      "option_id": "57439",
+      "qty": 1
+     }
+    ]
+   },
+   "outcome": "ok",
+   "at": "2026-09-24T01:41:30.797253+00:00"
+  }
+ ]
+}
