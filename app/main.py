@@ -26,6 +26,7 @@ from app.routes.tiktok_auth import router as tiktok_auth_router
 from app.routes.pinterest_auth import router as pinterest_auth_router
 from app.routes.meta_feed import router as meta_feed_router
 from app.routes.meta_checkout import router as meta_checkout_router
+from app.routes.intl_checkout import router as intl_checkout_router
 
 app = FastAPI(title=os.getenv("APP_NAME", "MyAPI"))
 
@@ -54,6 +55,7 @@ app.include_router(tiktok_auth_router)
 app.include_router(pinterest_auth_router)
 app.include_router(meta_feed_router)
 app.include_router(meta_checkout_router)
+app.include_router(intl_checkout_router)
 
 
 _NO_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}

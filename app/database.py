@@ -16,6 +16,7 @@ from app.models.instagram_post import InstagramPost
 from app.models.platform_analytics import PlatformAnalytics
 from app.models.order_variant_check import OrderVariantCheck
 from app.models.product_variant import ProductVariant
+from app.models.checkout_transaction import CheckoutTransaction
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./users.db")
@@ -132,6 +133,9 @@ def create_db():
         # out of stock" — found live 2026-09-12 reverting product 1405's fix
         # within 24h. This flag is the missing distinction.
         conn.execute(text("ALTER TABLE product_variant ADD COLUMN IF NOT EXISTS admin_hidden boolean NOT NULL DEFAULT false"))
+        # International checkout Stage 1 (app/checkout_intl) -- nullable link from an
+        # Order to its locked CheckoutTransaction; NULL for every legacy order.
+        conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS checkout_id varchar(64)'))
         conn.commit()
 
     _setup_defaults()

@@ -609,17 +609,27 @@ class SilverbeneAdapter(SupplierAdapter):
 
     def get_shipping_methods(self, country_code: str = "US",
                              option_id: str = None, qty: int = 1,
-                             postcode: str = "", city: str = "") -> list:
+                             postcode: str = "", city: str = "",
+                             products: list = None,
+                             allow_fallback: bool = True) -> list:
         """
         Get available shipping methods for a country + product.
         postcode and city are required by Silverbene for accurate rates.
         Returns list of dicts with: way, title, price, carrier_code, method_code.
+
+        `products` ([{"option_id", "qty"}, ...]) quotes a whole cart in one
+        call; when omitted, the single option_id/qty above is used (legacy).
+        `allow_fallback=False` (international checkout) returns [] instead of
+        fabricating the US-only "SUX" method when Silverbene answers empty --
+        a made-up method must never be offered for a real destination.
         """
+        if products is None:
+            products = [{"option_id": str(option_id), "qty": qty}] if option_id else []
         payload = {
             "country_id": country_code,
             "postcode":   postcode,
             "city":       city,
-            "products":   [{"option_id": str(option_id), "qty": qty}] if option_id else [],
+            "products":   [{"option_id": str(p["option_id"]), "qty": p["qty"]} for p in products],
         }
         for attempt in range(2):
             resp = self._post(ENDPOINT_SHIPPING, payload)
@@ -637,12 +647,17 @@ class SilverbeneAdapter(SupplierAdapter):
                     ]
             import time; time.sleep(2)
 
+        if not allow_fallback:
+            print("[Silverbene] Shipping methods empty after retry — no fallback (strict mode)")
+            return []
         # Silverbene intermittently returns empty methods — fall back to known US method
         print("[Silverbene] Shipping methods empty after retry — using fallback SUX")
         return [{"carrier_code": "SUX", "method_code": "SUX", "way": "SUX"}]
 
     def place_order(self, product_id: str, customer: dict, address: dict,
-                    quantity: int = 1, option_id: str = None) -> dict:
+                    quantity: int = 1, option_id: str = None,
+                    shipping_method: str = None, shipping_price: float = None,
+                    shipping_title: str = None) -> dict:
         """
         Place a dropship order with Silverbene.
         product_id = Silverbene option_id (NOT sku — orders use option_id).
@@ -660,8 +675,20 @@ class SilverbeneAdapter(SupplierAdapter):
         IMPORTANT: We use our admin email (not customer email) in the Silverbene
         shipping address so any Silverbene payment/status emails go to us, never
         to the customer. Customers should never know Silverbene exists.
+
+        International checkout (app/checkout_intl): when `shipping_method` (the
+        exact Silverbene "way" the customer chose BEFORE paying) is given, no
+        rate lookup or carrier re-decision happens here at all -- that method
+        is sent as-is. `shipping_price`/`shipping_title` are the pre-payment
+        quote snapshot, recorded for cost bookkeeping only. Omitting these
+        keeps the legacy choose-cheapest-DHL-after-payment behavior unchanged.
         """
         use_option = option_id or product_id
+        if shipping_method:
+            return self._place_order_with_method(
+                use_option, customer, address, quantity,
+                shipping_method, shipping_price, shipping_title,
+            )
         methods = self.get_shipping_methods(
             address.get("country_code", "US"),
             option_id=use_option,
@@ -703,7 +730,22 @@ class SilverbeneAdapter(SupplierAdapter):
         carrier_code = chosen.get("carrier_code", "")
         print(f"[Silverbene] Selected shipping method: {chosen.get('title', carrier_code)} (${chosen.get('price', '?')})")
 
-        order_option_id = option_id or product_id
+        return self._submit_order(
+            option_id or product_id, customer, address, quantity,
+            carrier_code, chosen.get("price"), chosen.get("title", carrier_code),
+        )
+
+    def _place_order_with_method(self, use_option, customer, address, quantity,
+                                 shipping_method, shipping_price, shipping_title) -> dict:
+        print(f"[Silverbene] Using pre-selected shipping method: {shipping_title or shipping_method} "
+              f"(${shipping_price if shipping_price is not None else '?'})")
+        return self._submit_order(
+            use_option, customer, address, quantity,
+            shipping_method, shipping_price, shipping_title or shipping_method,
+        )
+
+    def _submit_order(self, order_option_id, customer, address, quantity,
+                      carrier_code, shipping_price, shipping_title) -> dict:
         admin_email = "hello@mikisi.co"  # Silverbene must never have the customer's real email
 
         payload = {
@@ -739,8 +781,8 @@ class SilverbeneAdapter(SupplierAdapter):
         # though today's known fields are only a subset of it.
         import json as _json
         cost_detail = {
-            "shipping_cost":    chosen.get("price"),
-            "shipping_carrier": chosen.get("title", carrier_code),
+            "shipping_cost":    shipping_price,
+            "shipping_carrier": shipping_title,
             "total_charged":    data.get("amount_due") or data.get("total_price"),
             "currency":         result.get("currency", "USD"),
             "raw_response":     _json.dumps(result),

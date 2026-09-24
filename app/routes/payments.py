@@ -507,6 +507,9 @@ def process_order_background(checkout_data: dict):
         last_name = checkout_data["metadata"].get("last_name", "")
         guest_items_raw = checkout_data["metadata"].get("guest_items", "[]")
         stripe_session_id = checkout_data["metadata"].get("stripe_session_id")
+        # Present only for the international two-step checkout (app/checkout_intl);
+        # every legacy order leaves this None and follows the untouched legacy path.
+        checkout_id = checkout_data["metadata"].get("checkout_id") or None
 
         # Idempotency guard — Stripe explicitly documents that the same webhook
         # event can be delivered more than once, and the admin recover-order
@@ -523,6 +526,33 @@ def process_order_background(checkout_data: dict):
                 ).first()
             if already:
                 print(f"[Payments] Session {stripe_session_id} already processed (order #{already.id}) — skipping duplicate webhook/recovery delivery")
+                return
+
+        # International checkout: one CheckoutTransaction fulfills exactly once. A
+        # customer who opened two Stripe sessions for the same checkout and paid
+        # both must not cause a second supplier order -- alert instead (refund is
+        # a payments decision, not something this path should do silently).
+        if checkout_id:
+            with Session(engine) as _dup_session:
+                _prior = _dup_session.exec(
+                    select(Order).where(Order.checkout_id == checkout_id,
+                                        Order.stripe_session_id != stripe_session_id)
+                ).first()
+            if _prior:
+                print(f"[Payments] checkout {checkout_id} already fulfilled via session {_prior.stripe_session_id} — duplicate payment {stripe_session_id}, NOT creating a second supplier order")
+                try:
+                    from app.agents.email_partner import send_email
+                    _dennis = os.getenv("DENNIS_EMAIL")
+                    if _dennis:
+                        send_email(
+                            to=_dennis,
+                            subject="⚠️ Duplicate payment for one checkout — refund needed",
+                            body=(f"<p>Checkout <b>{checkout_id}</b> was paid twice "
+                                  f"(Stripe sessions {_prior.stripe_session_id} and {stripe_session_id}). "
+                                  f"Only the first was fulfilled; refund the second.</p>"),
+                            is_html=True)
+                except Exception as _e:
+                    print(f"[Payments] duplicate-payment alert failed: {_e}")
                 return
 
         order_details = []
@@ -572,6 +602,7 @@ def process_order_background(checkout_data: dict):
                             shipping_method=shipping_method,
                             variant_id=sel_variant_id,
                             stripe_session_id=stripe_session_id,
+                            checkout_id=checkout_id,
                         )
                         product.stock -= qty
                         _decrement_variant_stock(session, sel_variant_id, qty)
@@ -622,6 +653,7 @@ def process_order_background(checkout_data: dict):
                             shipping_method=shipping_method,
                             variant_id=item.variant_id,
                             stripe_session_id=stripe_session_id,
+                            checkout_id=checkout_id,
                         )
                         product.stock -= item.quantity
                         _decrement_variant_stock(session, item.variant_id, item.quantity)
@@ -669,6 +701,21 @@ def process_order_background(checkout_data: dict):
             # an incomplete address before Stripe checkout is ever created.
             address = _parse_address(shipping_address)
 
+            # International checkout: the customer's pre-payment address and EXACT
+            # chosen shipping method come from the locked CheckoutTransaction, not
+            # from re-parsing a string or re-picking a carrier here.
+            _intl_ctx = None
+            if checkout_id:
+                from app.checkout_intl import fulfillment as _intl_fulfillment
+                _intl_ctx = _intl_fulfillment.load_context(checkout_id)
+                _intl_fulfillment.mark_paid(checkout_id, stripe_session_id)
+                if _intl_ctx:
+                    address = _intl_ctx["address"]
+                    customer_first = _intl_ctx["customer_first"]
+                    customer_last = _intl_ctx["customer_last"]
+                else:
+                    print(f"[Payments] checkout_id={checkout_id} has no locked shipping method — falling back to legacy fulfillment")
+
             customer = {
                 "first_name": customer_first,
                 "last_name":  customer_last,
@@ -681,6 +728,8 @@ def process_order_background(checkout_data: dict):
                 # Stripe metadata, same path as shipping_address.
                 "phone":      phone,
             }
+            if _intl_ctx:
+                customer = _intl_ctx["customer"]
 
             # Get saved orders for tracking linkage
             with Session(engine) as session:
@@ -789,6 +838,7 @@ def process_order_background(checkout_data: dict):
                     address=address,
                     quantity=d["qty"],
                     option_id=str(option_id),
+                    **(_intl_fulfillment.place_kwargs(_intl_ctx) if _intl_ctx else {}),
                 )
                 print(f"[Payments] Silverbene order result: {result}")
 
@@ -1014,6 +1064,7 @@ async def stripe_webhook(
             "guest_items":      _stripe_meta(raw, "guest_items"),
             "first_name":       _stripe_meta(raw, "first_name"),
             "last_name":        _stripe_meta(raw, "last_name"),
+            "checkout_id":      _stripe_meta(raw, "checkout_id"),
             # Idempotency key — Stripe explicitly documents that the same
             # webhook event can be delivered more than once (retries on
             # timeout/non-2xx, or plain duplicate delivery). Checked in
@@ -1066,6 +1117,7 @@ async def recover_missed_order(
             "guest_items":      _stripe_meta(raw, "guest_items"),
             "first_name":       _stripe_meta(raw, "first_name"),
             "last_name":        _stripe_meta(raw, "last_name"),
+            "checkout_id":      _stripe_meta(raw, "checkout_id"),
             "stripe_session_id": session_id,
         }
         background_tasks.add_task(process_order_background, {"metadata": metadata})

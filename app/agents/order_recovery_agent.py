@@ -97,12 +97,25 @@ def run_order_recovery_agent():
                     "country_code": addr_parts[4].upper() if len(addr_parts) > 4 else "US",
                 }
 
+                # International checkout orders: use the customer's real phone/name/
+                # address and the exact shipping method chosen BEFORE payment --
+                # never the email-derived name, empty phone or a fresh carrier pick.
+                place_extra = {}
+                if getattr(order, "checkout_id", None):
+                    from app.checkout_intl import fulfillment as _intl_fulfillment
+                    ctx = _intl_fulfillment.load_context(order.checkout_id)
+                    if ctx:
+                        customer = ctx["customer"]
+                        address = ctx["address"]
+                        place_extra = _intl_fulfillment.place_kwargs(ctx)
+
                 result = sb.place_order(
                     product_id=str(option_id),
                     customer=customer,
                     address=address,
                     quantity=order.quantity,
                     option_id=str(option_id),
+                    **place_extra,
                 )
 
                 if result.get("success"):

@@ -1745,6 +1745,42 @@ footer{background:var(--black);padding:40px 48px 36px;}
   </div>
 </div>
 
+<!-- INTL CHECKOUT MODAL (two-step: Delivery -> Payment). Only opened when the backend
+     INTL_CHECKOUT flag is on (see /checkout/config); otherwise the legacy modal below is used. -->
+<div class="modal-overlay" id="intl-modal">
+  <div class="co-modal modal">
+    <button class="close-modal" onclick="closeIntlCheckout()">×</button>
+    <div class="modal-top"><h2 id="ic-title">Delivery</h2><p id="ic-sub">Where should we send your order?</p></div>
+    <div class="modal-body">
+      <div id="ic-msg" class="m-msg"></div>
+      <div id="ic-step-delivery">
+        <div class="m-row">
+          <div class="m-group"><label>First Name</label><input type="text" id="ic-fname" autocomplete="given-name"/></div>
+          <div class="m-group"><label>Last Name</label><input type="text" id="ic-lname" autocomplete="family-name"/></div>
+        </div>
+        <div class="m-group"><label>Email Address</label><input type="email" id="ic-email" autocomplete="email"/></div>
+        <div class="m-group"><label>Phone Number</label><input type="tel" id="ic-phone" autocomplete="tel"/></div>
+        <div class="m-group"><label>Country</label><select id="ic-country" onchange="_icCountryChanged()"></select></div>
+        <div class="m-group"><label>Address</label><input type="text" id="ic-line1" autocomplete="address-line1"/></div>
+        <div class="m-group"><label>Apartment, suite, etc. (optional)</label><input type="text" id="ic-line2" autocomplete="address-line2"/></div>
+        <div class="m-group"><label>City</label><input type="text" id="ic-city" autocomplete="address-level2"/></div>
+        <div class="m-row">
+          <div class="m-group"><label id="ic-state-label">State</label><input type="text" id="ic-state" autocomplete="address-level1"/></div>
+          <div class="m-group"><label id="ic-zip-label">Postal code</label><input type="text" id="ic-zip" autocomplete="postal-code"/></div>
+        </div>
+        <div class="m-group"><label>Company (optional)</label><input type="text" id="ic-company" autocomplete="organization"/></div>
+        <button class="m-btn pink" id="ic-continue" onclick="icContinue()">Continue to delivery options</button>
+      </div>
+      <div id="ic-step-shipping" style="display:none;">
+        <div id="ic-options"></div>
+        <button class="m-btn pink" id="ic-pay" onclick="icPay()">Pay Securely</button>
+        <div class="m-switch"><a onclick="icBack()">← Edit delivery details</a></div>
+        <div class="cart-trust" style="margin-top:8px">✦ 256-bit SSL · Powered by Stripe</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- CHECKOUT MODAL -->
 <div class="modal-overlay" id="checkout-modal">
   <div class="co-modal modal">
@@ -4549,6 +4585,7 @@ function openCheckout(){
   _openCheckoutForm();
 }
 function _openCheckoutForm(){
+  if(window._INTL&&window._INTL.enabled){_openIntlCheckout();return;}   // flag on: two-step international checkout
   document.getElementById('guest-fields').style.display=token?'none':'block';
   const summary=document.getElementById('co-summary');
   const total=cartItems.reduce((s,i)=>s+i.subtotal,0);
@@ -4622,6 +4659,85 @@ async function placeOrder(){
     else{showCoMsg(data.detail||'Something went wrong','error');btn.textContent='Pay Securely';btn.disabled=false;}
   }catch{showCoMsg('Connection error','error');btn.textContent='Pay Securely';btn.disabled=false;}
 }
+// ── INTERNATIONAL CHECKOUT (two-step; only active when /checkout/config says enabled) ──
+window._INTL=null;window._icCheckoutId=null;window._icChosen=null;
+fetch(`${API}/checkout/config`).then(r=>r.json()).then(c=>{if(c&&c.enabled)window._INTL=c;}).catch(()=>{});
+function _icEsc(t){const d=document.createElement('div');d.textContent=t==null?'':String(t);return d.innerHTML;}
+function _icMsg(m,t){const el=document.getElementById('ic-msg');el.textContent=m||'';el.className=`m-msg ${t||'error'}`;el.style.display=m?'block':'none';}
+function _openIntlCheckout(){
+  const sel=document.getElementById('ic-country');
+  if(!sel.options.length){
+    sel.innerHTML=window._INTL.markets.map(m=>`<option value="${_icEsc(m.code)}">${_icEsc(m.name)}</option>`).join('');
+    const us=[...sel.options].find(o=>o.value==='US');if(us)sel.value='US';
+  }
+  if(token&&userEmail){document.getElementById('ic-email').value=userEmail;}
+  _icCountryChanged();icBack();_icMsg('');
+  document.getElementById('intl-modal').classList.add('open');
+}
+function closeIntlCheckout(){document.getElementById('intl-modal').classList.remove('open');}
+function _icMarket(){const c=document.getElementById('ic-country').value;return window._INTL.markets.find(m=>m.code===c)||{};}
+function _icCountryChanged(){
+  const m=_icMarket();
+  document.getElementById('ic-state-label').textContent=m.state_label||'State / Province / Region';
+  document.getElementById('ic-zip-label').textContent=m.postal_label||'Postal code';
+  document.getElementById('ic-zip').placeholder=m.postal_example||'';
+}
+function icBack(){
+  document.getElementById('ic-step-delivery').style.display='block';
+  document.getElementById('ic-step-shipping').style.display='none';
+  document.getElementById('ic-title').textContent='Delivery';
+  document.getElementById('ic-sub').textContent='Where should we send your order?';
+  window._icCheckoutId=null;window._icChosen=null;
+}
+function _icRenderOptions(options){
+  const box=document.getElementById('ic-options');
+  window._icChosen=options.length===1?options[0].method_id:null;
+  box.innerHTML=options.map(o=>`<label style="display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);margin-bottom:10px;cursor:pointer;">
+    <input type="radio" name="ic-ship" value="${_icEsc(o.method_id)}" ${options.length===1?'checked':''} onchange="window._icChosen=this.value" style="width:auto;"/>
+    <span style="flex:1"><span style="font-size:13px;color:var(--black);display:block;">${_icEsc(o.name)}</span>
+    ${o.eta_text?`<span style="font-size:11px;color:var(--mid);">${_icEsc(o.eta_text)}</span>`:''}</span>
+    <span style="font-size:12px;color:var(--gold);">${o.included?'Included':'$'+Number(o.customer_price).toFixed(2)}</span></label>`).join('');
+}
+function _icShowShipping(options){
+  _icRenderOptions(options);
+  document.getElementById('ic-step-delivery').style.display='none';
+  document.getElementById('ic-step-shipping').style.display='block';
+  document.getElementById('ic-title').textContent='Delivery method';
+  document.getElementById('ic-sub').textContent='Choose how your order should travel';
+}
+async function icContinue(){
+  const v=id=>document.getElementById(id).value.trim();
+  const address={first_name:v('ic-fname'),last_name:v('ic-lname'),email:v('ic-email'),phone:v('ic-phone'),
+    country_code:v('ic-country'),line1:v('ic-line1'),line2:v('ic-line2'),city:v('ic-city'),
+    admin_area:v('ic-state'),postal_code:v('ic-zip'),company:v('ic-company')};
+  const btn=document.getElementById('ic-continue');btn.disabled=true;btn.textContent='Checking delivery…';_icMsg('');
+  const headers={'Content-Type':'application/json'};if(token)headers['Authorization']=`Bearer ${token}`;
+  const items=token?[]:getGuestCart().map(i=>({product_id:i.product_id,quantity:i.quantity,selected_size:i.selected_size||null,selected_color:i.selected_color||null,selected_option_id:i.selected_option_id||null,variant_id:i.variant_id||null}));
+  try{
+    const res=await fetch(`${API}/checkout/delivery`,{method:'POST',headers,body:JSON.stringify({address,items})});
+    const data=await res.json();
+    if(res.status===401){_sessionExpired();closeIntlCheckout();openAuth();return;}
+    if(!res.ok){_icMsg(typeof data.detail==='string'?data.detail:'Please check your details','error');return;}
+    window._icCheckoutId=data.checkout_id;_icShowShipping(data.options);
+  }catch{_icMsg('Connection error','error');}
+  finally{btn.disabled=false;btn.textContent='Continue to delivery options';}
+}
+async function icPay(){
+  if(!window._icChosen){_icMsg('Please choose a delivery method','error');return;}
+  const btn=document.getElementById('ic-pay');btn.disabled=true;btn.textContent='Preparing payment…';_icMsg('');
+  const headers={'Content-Type':'application/json'};if(token)headers['Authorization']=`Bearer ${token}`;
+  try{
+    const res=await fetch(`${API}/checkout/${window._icCheckoutId}/pay`,{method:'POST',headers,body:JSON.stringify({shipping_method_id:window._icChosen})});
+    const data=await res.json();
+    if(res.ok){if(!token)sessionStorage.removeItem('mikisi_guest_cart');window.location.href=data.checkout_url;return;}
+    const d=data.detail;
+    if(d&&d.code==='requote'){_icMsg(d.message+' — please choose again.','error');_icRenderOptions(d.options||[]);if(!(d.options||[]).length)icBack();}
+    else if(d&&d.code==='cart_changed'){_icMsg(d.message,'error');icBack();}
+    else _icMsg(typeof d==='string'?d:'Something went wrong','error');
+  }catch{_icMsg('Connection error','error');}
+  finally{btn.disabled=false;btn.textContent='Pay Securely';}
+}
+
 function showCoMsg(m,t){const el=document.getElementById('co-msg');el.textContent=m;el.className=`m-msg ${t}`;el.style.display='block';}
 
 // ── AUTH ──

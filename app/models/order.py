@@ -32,6 +32,10 @@ class Order(SQLModel, table=True):
     # charge Silverbene or double-decrement stock. NULL on orders placed before
     # this column existed.
     stripe_session_id: Optional[str] = Field(default=None, index=True)
+    # Set only for orders created through the international two-step checkout
+    # (app/checkout_intl). Fulfillment and order recovery use it to load the
+    # customer's pre-payment shipping choice instead of re-deciding it.
+    checkout_id: Optional[str] = Field(default=None, index=True)
 
 class OrderTracking(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
