@@ -177,6 +177,25 @@ def tx_dump(cid: str):
         return tx.model_dump(mode="json") if tx else {}
 
 
+@app.get("/__harness/paypal-mock")
+def paypal_mock(code: str = ""):
+    """Sandbox negative testing: code=INSTRUMENT_DECLINED (etc.) makes captures fail; empty clears it."""
+    if code:
+        os.environ["PAYPAL_SANDBOX_MOCK"] = code
+    else:
+        os.environ.pop("PAYPAL_SANDBOX_MOCK", None)
+    return {"PAYPAL_SANDBOX_MOCK": os.environ.get("PAYPAL_SANDBOX_MOCK")}
+
+
+@app.get("/__harness/checkouts")
+def checkouts():
+    with Session(db.engine) as s:
+        from sqlmodel import select
+        rows = s.exec(select(CheckoutTransaction).order_by(CheckoutTransaction.created_at.desc())).all()
+        return [{"id": t.id[:8], "status": t.status, "provider": t.payment_provider, "attempts": t.payment_attempts,
+                 "ref": t.payment_ref, "capture": t.payment_capture_id} for t in rows[:5]]
+
+
 @app.get("/__harness/fulfilment")
 def fulfilment():
     return {"test_double_calls": fulfilment_calls, "note": "Silverbene/email/Meta are never invoked in the harness"}

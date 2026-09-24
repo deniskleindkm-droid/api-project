@@ -92,6 +92,11 @@ class PayPalClient:
         headers = {"Authorization": f"Bearer {self._bearer()}", "Content-Type": "application/json"}
         if request_id:
             headers["PayPal-Request-Id"] = request_id
+        # SANDBOX-ONLY negative testing (PayPal's documented PayPal-Mock-Response header), e.g.
+        # PAYPAL_SANDBOX_MOCK=INSTRUMENT_DECLINED makes the next captures fail like a declined payment.
+        mock = os.getenv("PAYPAL_SANDBOX_MOCK")
+        if mock and self.mode == "sandbox" and path.endswith("/capture"):
+            headers["PayPal-Mock-Response"] = '{"mock_application_codes":"%s"}' % mock
         status, body = self._request(method, path, json=json, headers=headers)
         if status not in ok:
             raise PayPalError(f"PayPal {method} {path} -> {status}", status, body)
