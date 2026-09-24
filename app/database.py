@@ -136,6 +136,9 @@ def create_db():
         # International checkout Stage 1 (app/checkout_intl) -- nullable link from an
         # Order to its locked CheckoutTransaction; NULL for every legacy order.
         conn.execute(text('ALTER TABLE "order" ADD COLUMN IF NOT EXISTS checkout_id varchar(64)'))
+        # CheckoutTransaction columns added after the table was first created (create_all never alters an
+        # existing table): real supplier method resolved after payment for a Standard/Express class choice.
+        conn.execute(text("ALTER TABLE checkouttransaction ADD COLUMN IF NOT EXISTS shipping_resolved_json text"))
         conn.commit()
 
     _setup_defaults()
