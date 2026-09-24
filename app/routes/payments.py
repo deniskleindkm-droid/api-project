@@ -778,6 +778,12 @@ def process_order_background(checkout_data: dict):
             print(f"[Payments] Silverbene balance: {'${:.2f}'.format(sb_balance) if sb_balance >= 0 else 'unknown'} — proceed={balance_ok}")
 
             for i, d in enumerate(order_details):
+                if _intl_ctx and _intl_ctx.get("resolution_failed"):
+                    # Class choice could not be turned into a real supplier method right now
+                    # (supplier slow/down, or nothing suitable). Leave the order paid + un-notified:
+                    # order_recovery_agent retries every 30 min and alerts after 2 h.
+                    print(f"[Payments] checkout {checkout_id}: shipping unresolved ({_intl_ctx.get('resolution_note')}) — held for recovery")
+                    continue
                 # The internal variant_id (the ProductVariant primary key) is the
                 # primary field going forward — resolved once by the frontend when
                 # the customer made their selection, carried straight through cart

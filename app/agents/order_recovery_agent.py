@@ -104,6 +104,9 @@ def run_order_recovery_agent():
                 if getattr(order, "checkout_id", None):
                     from app.checkout_intl import fulfillment as _intl_fulfillment
                     ctx = _intl_fulfillment.load_context(order.checkout_id)
+                    if ctx and ctx.get("resolution_failed"):
+                        failed.append({"order_id": order.id, "reason": f"shipping unresolved: {ctx.get('resolution_note')}"})
+                        continue
                     if ctx:
                         customer = ctx["customer"]
                         address = ctx["address"]

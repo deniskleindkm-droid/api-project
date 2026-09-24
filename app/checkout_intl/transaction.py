@@ -70,7 +70,10 @@ def fetch_quote(address: addr_mod.StructuredAddress, items: List[dict],
     raw = None
     if fetcher is None and flags.quote_source() == "catalog":
         from app.checkout_intl import catalog
-        raw = catalog.methods_for(parsed["country_code"])      # instant; None if the country isn't catalogued
+        class_opts = catalog.class_options(parsed["country_code"])   # instant: STANDARD + EXPRESS classes
+        if class_opts:
+            return {"options": class_opts, "offered": [o["method_id"] for o in class_opts],
+                    "fallback": False, "class_quote": True}
     if raw is None:
         fetcher = fetcher or default_rate_fetcher
         raw = fetcher(parsed["country_code"], parsed["postal_code"], parsed["city"], _supplier_products(items))

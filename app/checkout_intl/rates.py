@@ -150,6 +150,45 @@ def display_name(option: dict) -> str:
     return base
 
 
+def resolve_class_method(country: str, live_methods: list, cls: str) -> Optional[dict]:
+    """
+    Pick the real supplier method for a customer's chosen CLASS ("EXPRESS" / "STANDARD") from the live
+    rates for the exact cart + address. Returns {method_id, name, supplier_price, tier, fallback,
+    reason} or None when nothing suitable is available (caller must hold the order, never guess).
+
+    EXPRESS  : DHL; if the supplier has no DHL for this cart, FedEx (fallback=True -> owner alert).
+    STANDARD : the country's preferred order (national post first, e.g. Royal Mail); then any other
+               STANDARD-tier method by price (fallback=True). NEVER upgraded to express on its own:
+               that would silently raise the cost.
+    """
+    from app.checkout_intl import catalog
+    opts = normalize(live_methods, country)
+    by_way = {o["method_id"]: o for o in opts}
+
+    def pick(way, fallback=False, reason=""):
+        o = by_way[way]
+        return {"method_id": o["method_id"], "name": o["name"], "supplier_price": o["supplier_price"],
+                "tier": o["tier"], "fallback": fallback, "reason": reason}
+
+    if cls == EXPRESS:
+        for way in catalog.EXPRESS_PREFERENCE:
+            if way in by_way:
+                return pick(way)
+        for way in catalog.EXPRESS_FALLBACK:
+            if way in by_way:
+                return pick(way, True, "DHL not offered for this cart/address")
+        return None
+    if cls == STANDARD:
+        for way in catalog.STANDARD_PREFERENCE.get(country.upper(), ()):
+            if way in by_way and by_way[way]["tier"] == STANDARD:
+                return pick(way)
+        others = _by_price([o for o in opts if o["tier"] == STANDARD])
+        if others:
+            return pick(others[0]["method_id"], True, "no preferred standard method available")
+        return None
+    return None
+
+
 def customer_view(option: dict) -> dict:
     """What the browser sees. Never the supplier price."""
     return {

@@ -1,11 +1,17 @@
-"""New defaults: instant catalog quotes + every supplier method offered, chosen by method id."""
+"""Two-class checkout (STANDARD / EXPRESS): instant rate-card quotes with max-observed cost basis,
+and the real carrier chosen AFTER payment from live rates for the exact cart + address."""
 import json
+from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 
+from app.checkout_intl import address as addr_mod
 from app.checkout_intl import catalog, countries, rates
 from app.checkout_intl import transaction as txn
-from conftest import make_product, valid_address
+from conftest import make_product, quoted_tx, valid_address
+
+WAVE1 = countries.LAUNCH_WAVE_1
 
 
 @pytest.fixture(autouse=True)
@@ -22,7 +28,7 @@ def no_supplier_calls(monkeypatch):
 
     def boom(*a):
         calls.append(a)
-        raise AssertionError("live Silverbene lookup must not run for catalogued countries")
+        raise AssertionError("live Silverbene lookup must not run at checkout for catalogued countries")
     monkeypatch.setattr(txn, "default_rate_fetcher", boom)
     return calls
 
@@ -34,87 +40,75 @@ def _delivery(client, country, **addr):
     return client.get(f"/checkout/{r.json()['checkout_id']}/options").json()
 
 
-def test_defaults_are_all_methods_and_catalog(monkeypatch):
+# ── rate card ─────────────────────────────────────────────────────────────────
+
+def test_defaults():
     from app.checkout_intl import flags
     assert flags.tier_exposure() == "all" and flags.quote_source() == "catalog"
 
 
-@pytest.mark.parametrize("cc", ["US", "GB", "DE", "FR", "AU", "CA"])
-def test_every_wave1_country_has_a_catalog_with_express_and_no_supplier_call(cc):
-    methods = catalog.methods_for(cc)
-    assert methods, f"{cc} should be catalogued from the probe"
-    assert any(o["tier"] == "EXPRESS" for o in rates.normalize(methods, cc))
+def test_ratecard_uses_the_maximum_observed_price_per_class():
+    card = catalog.ratecard()
+    assert card["US"]["express"]["max"] == 64.73 and card["GB"]["express"]["max"] == 45.89
+    assert card["DE"]["express"]["max"] == 49.37 and card["AU"]["express"]["max"] == 36.02
+    for cc in WAVE1:
+        for cls in ("express", "standard"):
+            e = card[cc][cls]
+            assert e["max"] >= e["median"] >= e["min"] and e["n"] >= 5, (cc, cls, e)
+    assert card["GB"]["standard"]["max"] == 22.5 and "GTG" in card["GB"]["standard"]["ways"]   # Royal Mail seen
 
 
-CHINA_SYSTEM_AND_UNWANTED = {"cainiao", "ITDIDA_ECO", "BKPHR", "Fedex", "FedexI"}
+def test_ratecard_excludes_fedex_from_the_express_cost_basis():
+    for cc in WAVE1:
+        assert set(catalog.ratecard()[cc]["express"]["ways"]) <= {"DHL", "DHLI"}
 
 
-def test_owner_policy_dhl_everywhere_royal_mail_for_uk_and_no_china_system_methods():
-    for cc in countries.LAUNCH_WAVE_1:
-        ways = [m["way"] for m in catalog.methods_for(cc)]
-        assert not (set(ways) & CHINA_SYSTEM_AND_UNWANTED), (cc, ways)
-        assert any(w in ("DHL", "DHLI") for w in ways), (cc, ways)          # DHL Express in every market
-    assert [m["way"] for m in catalog.methods_for("GB")] == ["GTG", "DHL"]    # Royal Mail + DHL
-    assert [m["title"].split("(")[0] for m in catalog.methods_for("GB")] == ["Royal Mail", "DHL Express"]
-    for cc in ("US", "DE", "FR", "AU", "CA"):                                # no national post offered by the API
-        assert len(catalog.methods_for(cc)) == 1
-    assert catalog.methods_for("ZZ") is None and catalog.methods_for("JP") is None
+@pytest.mark.parametrize("cc", WAVE1)
+def test_every_wave1_country_offers_exactly_standard_and_express(cc):
+    opts = catalog.class_options(cc)
+    assert [o["method_id"] for o in opts] == ["EXPRESS", "STANDARD"]
+    assert opts[0]["name"] == "Express delivery (DHL)" and opts[1]["name"] == "Standard delivery"
+    assert all(o["basis"] == "max_observed" and o["supplier_price"] > 0 for o in opts)
+    assert catalog.class_options("ZZ") is None and catalog.class_options("JP") is None
 
 
-def test_policy_is_data_so_a_new_lane_is_a_one_line_change(monkeypatch):
-    monkeypatch.setitem(catalog.METHOD_POLICY, "US", ("USPSX", "DHLI"))
-    catalog.reset_cache()
-    assert [m["way"] for m in catalog.methods_for("US")] == ["DHLI"]         # USPS not in evidence -> not invented
-    catalog.reset_cache()
+# ── checkout: instant, two options, no supplier call ──────────────────────────
 
-
-def test_delivery_is_instant_from_catalog_and_offers_all_methods(client, session, flag_on, no_supplier_calls):
+def test_delivery_is_instant_and_shows_only_two_options_without_supplier_calls(client, session, flag_on,
+                                                                              no_supplier_calls):
     make_product(session)
-    for cc, expected_min in (("US", 1), ("GB", 2), ("DE", 1), ("FR", 1), ("AU", 1), ("CA", 1)):
-        body = _delivery(client, cc, **({"admin_area": "", "postal_code": {"GB": "SW1A 2AA", "DE": "10117", "FR": "75001"}.get(cc, "")}
-                                        if cc in ("GB", "DE", "FR") else {}))
-        assert body["status"] == "ready", (cc, body)                       # ready on the first poll: no supplier wait
-        assert len(body["options"]) >= expected_min, (cc, body["options"])
-        assert "supplier_price" not in json.dumps(body["options"]) and "57.83" not in json.dumps(body["options"])
+    for cc in WAVE1:
+        addr = {"admin_area": "", "postal_code": {"GB": "SW1A 2AA", "DE": "10117", "FR": "75001"}[cc]} \
+            if cc in ("GB", "DE", "FR") else {}
+        body = _delivery(client, cc, **addr)
+        assert body["status"] == "ready"
+        assert [o["method_id"] for o in body["options"]] == ["EXPRESS", "STANDARD"], cc
+        blob = json.dumps(body["options"])
+        assert "supplier" not in blob and "64.73" not in blob and "cost" not in blob.lower()
     assert no_supplier_calls == []
 
 
-def test_options_are_named_by_service_with_eta_and_express_first(client, session, flag_on, no_supplier_calls):
-    make_product(session)
-    opts = _delivery(client, "US")["options"]
-    assert opts[0]["tier"] == "EXPRESS" and opts[0]["name"] == "DHL Express"
-    assert opts[0]["eta_text"] == "4–9 business days"
-    assert [o["name"] for o in opts] == ["DHL Express"]                      # US: DHL only (no USPS from the API yet)
-    assert all("(" not in o["name"] for o in opts)                           # supplier parentheses stripped
-    uk = _delivery(client, "GB", admin_area="", postal_code="SW1A 2AA")["options"]
-    assert [(o["tier"], o["name"], o["eta_text"]) for o in uk] == [
-        ("EXPRESS", "DHL Express", "4–9 business days"), ("STANDARD", "Royal Mail", "5–9 business days")]
-
-
-def test_customer_can_pick_any_offered_method_and_that_exact_one_is_locked(client, session, flag_on,
-                                                                          no_supplier_calls, monkeypatch):
-    from types import SimpleNamespace
+def test_customer_choice_is_a_class_and_the_max_basis_is_recorded(client, session, flag_on, no_supplier_calls,
+                                                                  monkeypatch):
     monkeypatch.setattr("stripe.checkout.Session.create", lambda **kw: SimpleNamespace(id="cs", url="https://x"))
     make_product(session)
     body = _delivery(client, "GB", admin_area="", postal_code="SW1A 2AA")
-    cheapest_standard = next(o for o in body["options"] if o["name"] == "Royal Mail")
-    r = client.post(f"/checkout/{body['checkout_id']}/pay", json={"shipping_method_id": cheapest_standard["method_id"]})
+    r = client.post(f"/checkout/{body['checkout_id']}/pay", json={"shipping_method_id": "STANDARD"})
     assert r.status_code == 200
     from app.models.checkout_transaction import CheckoutTransaction
     session.expire_all()
     tx = session.get(CheckoutTransaction, body["checkout_id"])
-    assert tx.shipping_method_id == cheapest_standard["method_id"] and tx.shipping_tier == "STANDARD"
+    assert (tx.shipping_method_id, tx.shipping_tier, tx.shipping_supplier_price) == ("STANDARD", "STANDARD", 22.5)
 
 
-def test_unknown_method_id_is_refused(client, session, flag_on, no_supplier_calls):
+def test_unknown_choice_is_refused(client, session, flag_on, no_supplier_calls):
     make_product(session)
     body = _delivery(client, "US")
-    r = client.post(f"/checkout/{body['checkout_id']}/pay", json={"shipping_method_id": "NOT_OFFERED"})
-    assert r.status_code == 409 and r.json()["detail"]["code"] == "requote"
+    r = client.post(f"/checkout/{body['checkout_id']}/pay", json={"shipping_method_id": "DHL"})
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "requote"      # a carrier id is not a valid choice
 
 
-def test_uncatalogued_country_falls_back_to_live_lookup(session, monkeypatch):
-    from app.checkout_intl import address as addr_mod
+def test_uncatalogued_country_still_uses_live_per_method_lookup(session, monkeypatch):
     monkeypatch.setenv("INTL_ENABLED_COUNTRIES", "US,JP")
     seen = []
     monkeypatch.setattr(txn, "default_rate_fetcher", lambda *a: seen.append(a) or [
@@ -122,14 +116,172 @@ def test_uncatalogued_country_falls_back_to_live_lookup(session, monkeypatch):
     make_product(session)
     a = addr_mod.StructuredAddress(**valid_address("US", country_code="JP", admin_area="Tokyo", postal_code="100-0001"))
     q = txn.fetch_quote(a, [{"product_id": 1, "quantity": 1, "supplier_option_id": "O"}])
-    assert seen and q["offered"] == ["DHL"]
+    assert seen and q["offered"] == ["DHL"] and "class_quote" not in q
 
 
-def test_live_source_still_available(session, monkeypatch):
-    from app.checkout_intl import address as addr_mod
-    monkeypatch.setenv("INTL_QUOTE_SOURCE", "live")
-    seen = []
-    monkeypatch.setattr(txn, "default_rate_fetcher", lambda *a: seen.append(a) or [])
-    a = addr_mod.StructuredAddress(**valid_address("US"))
-    txn.fetch_quote(a, [{"product_id": 1, "quantity": 1, "supplier_option_id": "O"}])
-    assert seen
+# ── real carrier chosen from live rates ───────────────────────────────────────
+
+LIVE_GB = [{"way": "DHL", "title": "DHL Express(4 - 9 workdays)", "price": 45.89},
+           {"way": "Fedex", "title": "FedEx(4 - 9 workdays)", "price": 27.56},
+           {"way": "GTG", "title": "Royal Mail(5-9 workdays)", "price": 5},
+           {"way": "cainiao", "title": "Cainiao International", "price": 10.64},
+           {"way": "BKPHR", "title": "YunExpress Registered Priority General(2-10 workdays,TAX included)", "price": 13.22}]
+
+
+def test_express_resolves_to_dhl_even_when_fedex_is_cheaper():
+    r = rates.resolve_class_method("GB", LIVE_GB, "EXPRESS")
+    assert (r["method_id"], r["fallback"]) == ("DHL", False)
+
+
+def test_express_falls_back_to_fedex_only_with_a_flag_when_dhl_is_missing():
+    no_dhl = [m for m in LIVE_GB if m["way"] != "DHL"]
+    r = rates.resolve_class_method("GB", no_dhl, "EXPRESS")
+    assert r["method_id"] == "Fedex" and r["fallback"] is True and "DHL" in r["reason"]
+    assert rates.resolve_class_method("GB", [m for m in no_dhl if m["way"] != "Fedex"], "EXPRESS") is None
+
+
+def test_standard_prefers_the_national_post_then_the_rest_in_order():
+    assert rates.resolve_class_method("GB", LIVE_GB, "STANDARD")["method_id"] == "GTG"          # Royal Mail
+    no_rm = [m for m in LIVE_GB if m["way"] != "GTG"]
+    assert rates.resolve_class_method("GB", no_rm, "STANDARD")["method_id"] == "BKPHR"
+    us = [{"way": "SUX", "title": "USPS(8-10 workdays, accepts packages under $60, customs duty included)", "price": 7.28},
+          {"way": "ITDIDA_ECO", "title": "International Standard(12-20 workdays)", "price": 5.52}]
+    assert rates.resolve_class_method("US", us, "STANDARD")["method_id"] == "SUX"               # USPS when Silverbene offers it
+    assert rates.resolve_class_method("US", us[1:], "STANDARD")["method_id"] == "ITDIDA_ECO"
+
+
+def test_standard_never_silently_upgrades_to_express():
+    only_express = [m for m in LIVE_GB if m["way"] in ("DHL", "Fedex")]
+    assert rates.resolve_class_method("GB", only_express, "STANDARD") is None
+
+
+def test_unknown_class_or_empty_rates_resolve_to_nothing():
+    assert rates.resolve_class_method("GB", [], "EXPRESS") is None
+    assert rates.resolve_class_method("GB", LIVE_GB, "WEIRD") is None
+
+
+# ── fulfillment: class -> real carrier after payment ──────────────────────────
+
+class FakeSB:
+    placed, lookups = [], 0
+
+    def check_balance(self):
+        return 500.0
+
+    def _alert_low_credit(self, **kw):
+        pass
+
+    def place_order(self, **kw):
+        FakeSB.placed.append(kw)
+        return {"success": True, "supplier_order_id": "SB1", "shipping_cost": kw.get("shipping_price"),
+                "shipping_carrier": kw.get("shipping_title"), "total_charged": 1.0, "currency": "USD", "raw_response": "{}"}
+
+
+@pytest.fixture()
+def fulfil(monkeypatch):
+    FakeSB.placed, FakeSB.lookups = [], 0
+    emails = []
+    monkeypatch.setattr("app.agents.suppliers.silverbene_adapter.SilverbeneAdapter", FakeSB)
+    monkeypatch.setattr("app.agents.tracking_agent.create_tracking_entry", lambda **kw: None)
+    monkeypatch.setattr("app.agents.order_variant_tracker.check_order_item", lambda **kw: SimpleNamespace(match_status="ok"))
+    monkeypatch.setattr("app.agents.order_variant_tracker.send_batched_order_alert", lambda *a, **k: None)
+    monkeypatch.setattr("app.agents.email_partner.send_email", lambda **kw: emails.append(kw))
+    monkeypatch.setattr("app.routes.payments._send_meta_capi_event", lambda *a, **k: None)
+    monkeypatch.setenv("PAYPAL_MODE", "live")            # so the payment reference is treated as a real payment
+    monkeypatch.setenv("DENNIS_EMAIL", "owner@example.com")
+    return emails
+
+
+def _class_tx(session, cls="STANDARD"):
+    make_product(session)
+    a = addr_mod.StructuredAddress(**valid_address("GB"))
+    tx = quoted_tx(session, a, [{"product_id": 1, "quantity": 1, "supplier_option_id": "OPT1"}])
+    return txn.lock_for_payment(session, tx, cls)
+
+
+def _meta(cid, sid):
+    from test_intl_checkout import _paid_metadata
+    return _paid_metadata(cid, sid)
+
+
+def _live(monkeypatch, methods, calls=None):
+    def f(country, postcode, city, products):
+        if calls is not None:
+            calls.append((country, postcode, city, products))
+        if isinstance(methods, Exception):
+            raise methods
+        return methods
+    monkeypatch.setattr(txn, "default_rate_fetcher", f)
+
+
+def test_standard_order_ships_with_royal_mail_chosen_from_live_rates(session, fulfil, monkeypatch):
+    from app.routes.payments import process_order_background
+    tx = _class_tx(session, "STANDARD")
+    assert tx.shipping_method_id == "STANDARD"                       # the customer chose a class, not a carrier
+    calls = []
+    _live(monkeypatch, LIVE_GB, calls)
+    process_order_background(_meta(tx.id, "cs_1"))
+    assert len(FakeSB.placed) == 1
+    p = FakeSB.placed[0]
+    assert p["shipping_method"] == "GTG" and p["shipping_price"] == 5 and p["shipping_title"].startswith("Royal Mail")
+    assert calls and calls[0][0] == "GB" and calls[0][3] == [{"option_id": "OPT1", "qty": 1}]   # real cart + address
+    assert not any("fallback" in e["subject"].lower() for e in fulfil)   # preferred method available -> no fallback alert
+
+
+def test_express_order_ships_dhl(session, fulfil, monkeypatch):
+    from app.routes.payments import process_order_background
+    tx = _class_tx(session, "EXPRESS")
+    _live(monkeypatch, LIVE_GB)
+    process_order_background(_meta(tx.id, "cs_2"))
+    assert FakeSB.placed[0]["shipping_method"] == "DHL"
+
+
+def test_fallback_is_used_and_the_owner_is_alerted(session, fulfil, monkeypatch):
+    from app.routes.payments import process_order_background
+    tx = _class_tx(session, "EXPRESS")
+    _live(monkeypatch, [m for m in LIVE_GB if m["way"] != "DHL"])
+    process_order_background(_meta(tx.id, "cs_3"))
+    assert FakeSB.placed[0]["shipping_method"] == "Fedex"
+    assert any("fallback" in e["subject"].lower() for e in fulfil)
+
+
+def test_supplier_lookup_failure_holds_the_order_for_recovery_and_places_nothing(session, fulfil, monkeypatch):
+    from sqlmodel import select
+    from app.models.order import Order
+    from app.routes.payments import process_order_background
+    tx = _class_tx(session, "STANDARD")
+    _live(monkeypatch, TimeoutError("supplier timed out"))
+    process_order_background(_meta(tx.id, "cs_4"))
+    assert FakeSB.placed == []
+    o = session.exec(select(Order)).first()
+    assert o.status == "paid" and o.supplier_notified is False       # recovery agent will retry it
+
+
+def test_recovery_retry_resolves_and_then_reuses_the_same_method(session, fulfil, monkeypatch):
+    from sqlmodel import select
+    from app.agents import order_recovery_agent
+    from app.models.order import Order
+    from app.routes.payments import process_order_background
+    tx = _class_tx(session, "STANDARD")
+    _live(monkeypatch, TimeoutError("down"))
+    process_order_background(_meta(tx.id, "cs_5"))                   # held
+    o = session.exec(select(Order)).first()
+    o.created_at = datetime.utcnow() - timedelta(hours=1)
+    session.add(o)
+    session.commit()
+    monkeypatch.setattr(order_recovery_agent, "engine", session.get_bind())
+    order_recovery_agent.run_order_recovery_agent()                  # still down -> nothing placed
+    assert FakeSB.placed == []
+    _live(monkeypatch, LIVE_GB)                                      # supplier is back
+    order_recovery_agent.run_order_recovery_agent()
+    assert [p["shipping_method"] for p in FakeSB.placed] == ["GTG"]
+    session.expire_all()
+    assert json.loads(session.get(type(tx), tx.id).shipping_resolved_json)["method_id"] == "GTG"
+
+
+def test_no_suitable_standard_method_holds_instead_of_upgrading(session, fulfil, monkeypatch):
+    from app.routes.payments import process_order_background
+    tx = _class_tx(session, "STANDARD")
+    _live(monkeypatch, [m for m in LIVE_GB if m["way"] in ("DHL", "Fedex")])
+    process_order_background(_meta(tx.id, "cs_6"))
+    assert FakeSB.placed == []

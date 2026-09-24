@@ -41,6 +41,7 @@ class CheckoutTransaction(SQLModel, table=True):
     shipping_method_id: Optional[str] = None          # exact Silverbene "way" chosen by the customer
     shipping_method_name: Optional[str] = None
     shipping_eta: Optional[str] = None
+    shipping_resolved_json: Optional[str] = None      # the REAL supplier method picked after payment for a class choice
     shipping_tier: Optional[str] = None               # STANDARD | EXPRESS (customer-facing service tier)
     shipping_supplier_price: Optional[float] = None   # supplier cost snapshot (internal; never shown to customers)
 

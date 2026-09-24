@@ -1,0 +1,186 @@
+{
+ "US": {
+  "n_calls": 10,
+  "express": {
+   "max": 64.73,
+   "min": 53.24,
+   "median": 57.63,
+   "n": 9,
+   "ways": [
+    "DHLI"
+   ],
+   "eta": [
+    4,
+    9
+   ]
+  },
+  "standard": {
+   "max": 5.52,
+   "min": 3.5,
+   "median": 5.52,
+   "n": 19,
+   "ways": [
+    "ITDIDA_ECO"
+   ],
+   "eta": [
+    10,
+    20
+   ]
+  }
+ },
+ "GB": {
+  "n_calls": 8,
+  "express": {
+   "max": 45.89,
+   "min": 45.89,
+   "median": 45.89,
+   "n": 7,
+   "ways": [
+    "DHL"
+   ],
+   "eta": [
+    4,
+    9
+   ]
+  },
+  "standard": {
+   "max": 22.5,
+   "min": 4.21,
+   "median": 8.05,
+   "n": 28,
+   "ways": [
+    "BKPHR",
+    "GTG",
+    "ITDIDA_ECO",
+    "cainiao"
+   ],
+   "eta": [
+    2,
+    10
+   ]
+  }
+ },
+ "DE": {
+  "n_calls": 9,
+  "express": {
+   "max": 49.37,
+   "min": 49.37,
+   "median": 49.37,
+   "n": 8,
+   "ways": [
+    "DHL"
+   ],
+   "eta": [
+    4,
+    9
+   ]
+  },
+  "standard": {
+   "max": 27.06,
+   "min": 11.63,
+   "median": 15.57,
+   "n": 24,
+   "ways": [
+    "BKPHR",
+    "ITDIDA_ECO",
+    "cainiao"
+   ],
+   "eta": [
+    2,
+    10
+   ]
+  }
+ },
+ "FR": {
+  "n_calls": 9,
+  "express": {
+   "max": 49.37,
+   "min": 49.37,
+   "median": 49.37,
+   "n": 9,
+   "ways": [
+    "DHL"
+   ],
+   "eta": [
+    4,
+    9
+   ]
+  },
+  "standard": {
+   "max": 27.19,
+   "min": 11.77,
+   "median": 16.33,
+   "n": 26,
+   "ways": [
+    "BKPHR",
+    "ITDIDA_ECO",
+    "cainiao"
+   ],
+   "eta": [
+    2,
+    10
+   ]
+  }
+ },
+ "AU": {
+  "n_calls": 10,
+  "express": {
+   "max": 36.02,
+   "min": 36.02,
+   "median": 36.02,
+   "n": 10,
+   "ways": [
+    "DHL"
+   ],
+   "eta": [
+    4,
+    9
+   ]
+  },
+  "standard": {
+   "max": 25.59,
+   "min": 9.96,
+   "median": 10.09,
+   "n": 18,
+   "ways": [
+    "BKPHR",
+    "cainiao"
+   ],
+   "eta": [
+    2,
+    10
+   ]
+  }
+ },
+ "CA": {
+  "n_calls": 9,
+  "express": {
+   "max": 36.93,
+   "min": 36.93,
+   "median": 36.93,
+   "n": 8,
+   "ways": [
+    "DHL"
+   ],
+   "eta": [
+    4,
+    9
+   ]
+  },
+  "standard": {
+   "max": 24.22,
+   "min": 4.77,
+   "median": 14.13,
+   "n": 19,
+   "ways": [
+    "BKPHR",
+    "ITDIDA_ECO",
+    "cainiao"
+   ],
+   "eta": [
+    2,
+    15
+   ]
+  }
+ }
+}
