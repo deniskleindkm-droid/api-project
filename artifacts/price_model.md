@@ -1,11 +1,11 @@
-# One worldwide price for a $45 clean profit (REVIEW ONLY, not live)
+# $45 clean profit per product sold (REVIEW ONLY, not live)
 
-Price pays for **DHL Express**. No tax is collected by Mikisi. Two ways the border taxes can be settled:
+Each product is priced on its own, with its own DHL Express shipment (that is how fulfillment works today: one Silverbene order per cart line). No tax is collected by Mikisi.
 
 - **Prepaid (DDP):** Mikisi pays duty + import VAT up front; the customer pays nothing at the door.
 - **Receiver pays:** the customer pays duty + VAT to DHL at the door (a surprise bill); the price is lower.
 
-Assumes target $45/order, one item, Stripe fees, 2% reserve, duty on the wholesale declared value, USD.
+Assumes profit $45 per product, Stripe fees, 2% reserve, duty on the wholesale declared value, USD.
 
 ## Inputs: DHL Express cost basis (max observed) and border rules
 
@@ -18,31 +18,61 @@ Assumes target $45/order, one item, Stripe fees, 2% reserve, duty on the wholesa
 | AU | $36.02 | 0.0% | 0% | unverified |
 | CA | $36.93 | 8.0% | 13% | unverified |
 
-## ONE PRICE — PREPAID (customer pays nothing extra at the door)
+## ONE ITEM PRICE + DHL EXPRESS DELIVERY FEE PER COUNTRY - PREPAID: duty and taxes included in the delivery fee
+
+| Wholesale | ITEM price (worldwide) | US | GB | DE | FR | AU | CA |
+|---|---|---|---|---|---|---|---|
+| $10 | **$60** | +$72 | +$62 | +$70 | +$71 | +$39 | +$47 |
+| $20 | **$71** | +$77 | +$63 | +$72 | +$72 | +$39 | +$50 |
+| $30 | **$82** | +$81 | +$65 | +$73 | +$74 | +$38 | +$52 |
+| $40 | **$92** | +$86 | +$68 | +$76 | +$77 | +$39 | +$55 |
+| $60 | **$114** | +$94 | +$72 | +$80 | +$81 | +$39 | +$59 |
+| $80 | **$135** | +$104 | +$77 | +$84 | +$86 | +$39 | +$64 |
+| $100 | **$157** | +$112 | +$81 | +$88 | +$90 | +$39 | +$68 |
+| $150 | **$211** | +$134 | +$91 | +$98 | +$100 | +$38 | +$80 |
+
+(Delivery fee per country; profit at W=$40 in every country is at least $45.24.)
+
+## ONE ITEM PRICE + DHL EXPRESS DELIVERY FEE PER COUNTRY - RECEIVER PAYS: customer also pays duty + tax to DHL at the door
+
+| Wholesale | ITEM price (worldwide) | US | GB | DE | FR | AU | CA |
+|---|---|---|---|---|---|---|---|
+| $10 | **$60** | +$68 | +$49 | +$53 | +$53 | +$39 | +$40 |
+| $20 | **$71** | +$67 | +$49 | +$53 | +$53 | +$39 | +$40 |
+| $30 | **$82** | +$67 | +$49 | +$53 | +$53 | +$38 | +$39 |
+| $40 | **$92** | +$67 | +$50 | +$53 | +$53 | +$39 | +$40 |
+| $60 | **$114** | +$67 | +$49 | +$53 | +$53 | +$39 | +$40 |
+| $80 | **$135** | +$67 | +$50 | +$54 | +$54 | +$39 | +$40 |
+| $100 | **$157** | +$66 | +$49 | +$53 | +$53 | +$39 | +$40 |
+| $150 | **$211** | +$65 | +$49 | +$53 | +$53 | +$38 | +$39 |
+
+(Delivery fee per country; profit at W=$40 in every country is at least $45.00.)
+
+## ONE ALL-IN PRICE (no separate delivery fee) - PREPAID
 
 | Wholesale | ONE price | Driven by | Live ladder today | Profit in US | GB | DE | FR | AU | CA |
 |---|---|---|---|---|---|---|---|---|---|
-| $10 | **$131** | US | $128 | $45 | $55 | $47 | $47 | $76 | $68 |
-| $20 | **$146** | US | $198 | $45 | $57 | $50 | $49 | $80 | $70 |
-| $30 | **$162** | US | $228 | $46 | $60 | $53 | $52 | $85 | $73 |
-| $40 | **$177** | US | $298 | $46 | $62 | $55 | $54 | $89 | $75 |
-| $60 | **$207** | US | $348 | $46 | $66 | $59 | $58 | $97 | $78 |
-| $80 | **$237** | US | $448 | $45 | $70 | $63 | $62 | $106 | $82 |
-| $100 | **$267** | US | $498 | $45 | $75 | $68 | $66 | $114 | $86 |
-| $150 | **$343** | US | $698 | $45 | $86 | $79 | $77 | $135 | $96 |
+| $10 | **$132** | US | $128 | $45 | $55 | $47 | $47 | $76 | $68 |
+| $20 | **$148** | US | $198 | $46 | $58 | $50 | $50 | $81 | $71 |
+| $30 | **$163** | US | $228 | $46 | $60 | $52 | $52 | $85 | $73 |
+| $40 | **$178** | US | $298 | $45 | $62 | $55 | $54 | $89 | $75 |
+| $60 | **$208** | US | $348 | $45 | $66 | $59 | $58 | $97 | $78 |
+| $80 | **$239** | US | $448 | $46 | $71 | $64 | $62 | $106 | $82 |
+| $100 | **$269** | US | $498 | $45 | $75 | $68 | $66 | $114 | $86 |
+| $150 | **$345** | US | $698 | $45 | $85 | $79 | $77 | $134 | $96 |
 
-## ONE PRICE — RECEIVER PAYS (customer is billed at the door)
+## ONE ALL-IN PRICE (no separate delivery fee) - RECEIVER PAYS
 
 | Wholesale | ONE price | Driven by | Live ladder today | Profit in US | GB | DE | FR | AU | CA |
 |---|---|---|---|---|---|---|---|---|---|
-| $10 | **$127** | US | $128 | $46 | $63 | $59 | $59 | $73 | $72 |
-| $20 | **$137** | US | $198 | $45 | $62 | $59 | $59 | $72 | $71 |
-| $30 | **$148** | US | $228 | $46 | $62 | $59 | $59 | $72 | $71 |
-| $40 | **$158** | US | $298 | $45 | $62 | $58 | $58 | $72 | $71 |
-| $60 | **$179** | US | $348 | $45 | $61 | $58 | $58 | $71 | $70 |
-| $80 | **$200** | US | $448 | $45 | $61 | $58 | $58 | $71 | $70 |
-| $100 | **$221** | US | $498 | $45 | $61 | $57 | $57 | $71 | $70 |
-| $150 | **$274** | US | $698 | $46 | $60 | $57 | $57 | $70 | $69 |
+| $10 | **$128** | US | $128 | $46 | $63 | $59 | $59 | $73 | $72 |
+| $20 | **$138** | US | $198 | $45 | $62 | $58 | $58 | $72 | $71 |
+| $30 | **$149** | US | $228 | $46 | $62 | $59 | $59 | $72 | $71 |
+| $40 | **$159** | US | $298 | $45 | $62 | $58 | $58 | $71 | $70 |
+| $60 | **$181** | US | $348 | $46 | $62 | $58 | $58 | $72 | $71 |
+| $80 | **$202** | US | $448 | $46 | $62 | $58 | $58 | $71 | $70 |
+| $100 | **$223** | US | $498 | $46 | $61 | $58 | $58 | $71 | $70 |
+| $150 | **$276** | US | $698 | $46 | $60 | $57 | $57 | $70 | $69 |
 
 ## What a customer is billed at the door if you do NOT prepay (W=$40)
 
@@ -55,26 +85,17 @@ Assumes target $45/order, one item, Stripe fees, 2% reserve, duty on the wholesa
 | AU | $0.00 | $0.00 | **$0.00** |
 | CA | $3.20 | $10.42 | **$13.62** |
 
-## Sensitivities: the ONE price at W=$40 (prepaid / receiver pays)
+## Sensitivities: the ONE all-in price at W=$40 (prepaid / receiver pays)
 
 | Scenario | Prepaid | Receiver pays |
 |---|---|---|
-| Base | $177 | $158 |
-| US duty LOW 22.5% (not 43.8%) | $168 | $158 |
-| Customs uses RETAIL as declared value | $293 | $158 |
-| DHL duty/tax fee $19 per order | $197 | $158 |
-| Silverbene fee 3% of price | $182 | $163 |
+| Base | $178 | $159 |
+| US duty LOW 22.5% (not 43.8%) | $169 | $159 |
+| Customs uses RETAIL as declared value | $297 | $159 |
+| DHL duty/tax fee $19 per order | $198 | $159 |
+| Silverbene fee 3% of price | $184 | $165 |
 | PayPal instead of Stripe | $178 | $159 |
-| Reserve 5% | $182 | $163 |
-
-## Country-by-country requirement at W=$40 (prepaid): why the US sets the price
-
-- US: needs $176; earns $46 at the one price of $177
-- FR: needs $167; earns $54 at the one price of $177
-- DE: needs $166; earns $55 at the one price of $177
-- GB: needs $159; earns $62 at the one price of $177
-- CA: needs $145; earns $75 at the one price of $177
-- AU: needs $130; earns $89 at the one price of $177
+| Reserve 5% | $184 | $165 |
 
 ## Assumptions still to verify
 

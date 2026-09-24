@@ -61,7 +61,7 @@ def test_us_duty_range_and_declared_value_sensitivity():
 
 def test_unknown_costs_move_the_price_in_the_expected_direction():
     p = lambda **k: pm.solve(pm.MARKETS["DE"], 40, EXPRESS["DE"], pm.Params(**k))["price"]
-    assert p(supplier_pct=0.03) > p() and p(dtp_fixed=19) > p() and p(reserve_pct=0.05) > p() and p(provider="paypal") > p()
+    assert p(supplier_pct=0.03) > p() and p(dtp_fixed=19) > p() and p(reserve_pct=0.05) > p() and p(provider="stripe") < p()
 
 
 @pytest.mark.parametrize("mode", MODES)
@@ -79,3 +79,22 @@ def test_one_global_price_meets_the_target_everywhere_and_the_costliest_country_
 def test_assumptions_are_listed_and_every_market_has_a_status():
     assert len(pm.ASSUMPTIONS_TO_VERIFY) >= 8
     assert all(m.status in ("sourced", "assumed", "unverified") for m in pm.MARKETS.values())
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_split_one_item_price_plus_country_specific_dhl_fee_meets_the_target_everywhere(mode):
+    prm = pm.Params(tax_mode=mode)
+    for w in (10, 20, 40, 100, 150):
+        parts = {cc: pm.split(pm.MARKETS[cc], w, EXPRESS[cc], prm) for cc in COUNTRIES}
+        assert len({p["item_price"] for p in parts.values()}) == 1                       # the item price is ONE
+        for cc, p in parts.items():
+            assert p["contribution"] >= pm.TARGET_CONTRIBUTION - 1e-6, (cc, w, p)
+            assert p["total"] == p["item_price"] + p["delivery_fee"] and p["delivery_fee"] > 0
+        fees = {cc: p["delivery_fee"] for cc, p in parts.items()}
+        assert fees["US"] == max(fees.values()) and fees["AU"] == min(fees.values())    # fee follows DHL cost + duty
+
+
+def test_split_delivery_fee_reflects_dhl_cost_and_prepaid_taxes():
+    pre = pm.split(pm.MARKETS["GB"], 40, EXPRESS["GB"], pm.Params(tax_mode="prepaid"))
+    rec = pm.split(pm.MARKETS["GB"], 40, EXPRESS["GB"], pm.Params(tax_mode="receiver_pays"))
+    assert pre["item_price"] == rec["item_price"] and pre["delivery_fee"] > rec["delivery_fee"] > EXPRESS["GB"]

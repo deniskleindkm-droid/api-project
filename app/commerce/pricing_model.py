@@ -117,7 +117,8 @@ class Params:
     dtp_fixed: float = 0.0             # DHL duty/tax processing fee per order, prepaid mode (unknown)
     duty_rate_override: Optional[Dict[str, float]] = None
     declared_basis: str = "wholesale"  # or "retail" (sensitivity: customs uses the selling price)
-    provider: str = "stripe"           # or "paypal"
+    provider: str = "paypal"           # cost basis (owner: pick ONE). PayPal is dearer than Stripe, so PayPal orders make
+                                       # exactly the target and Stripe orders slightly more. Switch to "stripe" here.
     items: int = 1
     tax_mode: str = "prepaid"          # "prepaid" | "receiver_pays"
     courier_handling_fee: float = 0.0  # courier's fee to the receiver on a duty-unpaid parcel (unknown)
@@ -209,3 +210,25 @@ def global_price(wholesale: float, express_costs: Dict[str, float], params: Opti
     price = round_up(need[driver])
     profits = {cc: contribution_at(markets[cc], price, wholesale, express_costs[cc], params) for cc in need}
     return {"price": price, "driver": driver, "required": need, "profit_at_price": profits}
+
+
+def split(market: Market, wholesale: float, ship_cost: float, params: Optional[Params] = None) -> dict:
+    """
+    ONE worldwide ITEM price + a DHL Express DELIVERY fee specific to the country (owner, 2026-09-24).
+
+    item price   depends only on the wholesale cost (+ profit target + payment/reserve costs, priced at the
+                 worst-case INTERNATIONAL card rate so it is the same everywhere);
+    delivery fee = everything country-specific: DHL cost, duty and prepaid import VAT (each on the cart's
+                 wholesale value), and the payment-fee/reserve on those amounts -- rounded UP to whole dollars.
+    Together they leave AT LEAST the target in every country (exactly the target before rounding, or more where a
+    domestic card rate makes the item price slightly generous).
+    """
+    params = params or Params()
+    pay_i = payment_costs(Market("_", "_", 0, 0, None, 0, False, "assumed"), params.provider)   # international rates
+    d = 1 - pay_i.pct - params.reserve_pct - params.supplier_pct
+    item = round_up((params.target + wholesale + params.supplier_fixed + pay_i.fixed) / d)
+    total_needed = solve(market, wholesale, ship_cost, params)["price"]
+    fee = max(round_up(total_needed - item), 0.0)
+    total = item + fee
+    return {"item_price": item, "delivery_fee": fee, "total": total,
+            "contribution": contribution_at(market, total, wholesale, ship_cost, params)}
