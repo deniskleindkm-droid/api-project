@@ -1774,6 +1774,7 @@ footer{background:var(--black);padding:40px 48px 36px;}
       <div id="ic-step-shipping" style="display:none;">
         <div id="ic-options"></div>
         <button class="m-btn pink" id="ic-pay" onclick="icPay()">Pay Securely</button>
+        <button class="m-btn" id="ic-paypal" onclick="icPay('paypal')" style="display:none;background:#ffc439;color:#111;">Pay with PayPal</button>
         <div class="m-switch"><a onclick="icBack()">← Edit delivery details</a></div>
         <div class="cart-trust" style="margin-top:8px">✦ 256-bit SSL · Powered by Stripe</div>
       </div>
@@ -4672,6 +4673,7 @@ function _openIntlCheckout(){
   }
   if(token&&userEmail){document.getElementById('ic-email').value=userEmail;}
   _icCountryChanged();icBack();_icMsg('');
+  document.getElementById('ic-paypal').style.display=(window._INTL.payment.providers||[]).includes('paypal')?'block':'none';
   document.getElementById('intl-modal').classList.add('open');
 }
 function closeIntlCheckout(){document.getElementById('intl-modal').classList.remove('open');}
@@ -4740,13 +4742,17 @@ async function icContinue(){
   }catch{_icMsg('Connection error','error');}
   finally{btn.disabled=false;btn.textContent='Continue to delivery options';}
 }
-async function icPay(){
+async function icPay(provider){
+  provider=provider||'stripe';
   if(!window._icChosen){_icMsg('Please choose a delivery method','error');return;}
-  const btn=document.getElementById('ic-pay');if(btn.disabled)return;   // double-submit guard
-  btn.disabled=true;btn.textContent='Preparing payment…';_icMsg('');
+  if(window._icPaying)return;window._icPaying=true;   // double-submit guard (covers both pay buttons)
+  const btn=document.getElementById(provider==='paypal'?'ic-paypal':'ic-pay');
+  const label=btn.textContent;
+  document.getElementById('ic-pay').disabled=true;document.getElementById('ic-paypal').disabled=true;
+  btn.textContent='Preparing payment…';_icMsg('');
   const headers={'Content-Type':'application/json'};if(token)headers['Authorization']=`Bearer ${token}`;
   try{
-    const res=await fetch(`${API}/checkout/${window._icCheckoutId}/pay`,{method:'POST',headers,body:JSON.stringify({shipping_tier:window._icChosen})});
+    const res=await fetch(`${API}/checkout/${window._icCheckoutId}/pay`,{method:'POST',headers,body:JSON.stringify({shipping_tier:window._icChosen,payment_provider:provider})});
     const data=await res.json();
     if(res.ok){if(!token)sessionStorage.removeItem('mikisi_guest_cart');window.location.href=data.checkout_url;return;}
     const d=data.detail;
@@ -4757,14 +4763,16 @@ async function icPay(){
       if(fresh.status==='ready'&&fresh.options.length){
         _icRenderOptions(fresh.options);
         if(fresh.changed){_icMsg('Delivery options changed — please choose again.','error');}
-        else{_icMsg('');btn.disabled=false;btn.textContent='Pay Securely';return icPay();}
+        else{_icMsg('');window._icPaying=false;btn.textContent=label;
+             document.getElementById('ic-pay').disabled=false;document.getElementById('ic-paypal').disabled=false;return icPay(provider);}
       }else{_icMsg(fresh.message||'Delivery is currently unavailable to that address.','error');icBack();}
     }
     else if(d&&d.code==='requote'){_icMsg(d.message+' — please choose again.','error');_icRenderOptions(d.options||[]);if(!(d.options||[]).length)icBack();}
     else if(d&&d.code==='cart_changed'){_icMsg(d.message,'error');icBack();}
     else _icMsg(typeof d==='string'?d:'Something went wrong','error');
   }catch{_icMsg('Connection error','error');}
-  finally{btn.disabled=false;btn.textContent='Pay Securely';}
+  finally{window._icPaying=false;btn.textContent=label;
+    document.getElementById('ic-pay').disabled=false;document.getElementById('ic-paypal').disabled=false;}
 }
 
 function showCoMsg(m,t){const el=document.getElementById('co-msg');el.textContent=m;el.className=`m-msg ${t}`;el.style.display='block';}

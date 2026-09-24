@@ -40,7 +40,26 @@ assert os.environ["DATABASE_URL"].startswith("sqlite"), "harness must never touc
 assert os.getenv("STRIPE_SECRET_KEY", "").startswith("sk_test_"), "harness requires a Stripe TEST key"
 
 import json  # noqa: E402
+import re  # noqa: E402
 from datetime import datetime, timedelta  # noqa: E402
+
+# PayPal SANDBOX: .env may name these "Paypal Client_ID" / "Paypal Secret_key" (invalid dotenv keys),
+# so read them tolerantly here without ever printing them or editing .env.
+def _read_paypal_from_env_file():
+    found = {}
+    for line in open(os.path.join(ROOT, ".env"), encoding="utf-8", errors="replace"):
+        m = re.match(r"\s*paypal[ _]*(client[ _]*id|secret[ _]*key|client[ _]*secret|webhook[ _]*id)\s*=\s*(.+?)\s*$", line, re.I)
+        if m:
+            kind = re.sub(r"[ _]", "", m.group(1).lower())
+            found["PAYPAL_CLIENT_ID" if kind == "clientid" else
+                  "PAYPAL_WEBHOOK_ID" if kind == "webhookid" else "PAYPAL_CLIENT_SECRET"] = m.group(2).strip().strip("\"'")
+    return found
+
+for _k, _v in _read_paypal_from_env_file().items():
+    os.environ.setdefault(_k, _v)
+os.environ["INTL_PAYPAL"] = "1"
+os.environ["PAYPAL_MODE"] = "sandbox"                      # live is refused by the client anyway
+os.environ["PUBLIC_API_BASE"] = f"http://127.0.0.1:{os.getenv('HARNESS_PORT', '8123')}"
 
 import uvicorn  # noqa: E402
 from fastapi import FastAPI  # noqa: E402
@@ -93,7 +112,16 @@ payments._live_stock_check_many = lambda pairs: (
     "'Sold out ring' just sold out — sorry! Please remove it to continue."
     if any(p.id == 4 for p, _ in pairs) else None)
 
+import app.routes.intl_checkout as intl_checkout  # noqa: E402
 from app.routes.intl_checkout import router as intl_router  # noqa: E402
+
+# Fulfillment is TEST-DOUBLED: the real order pipeline (Silverbene, emails, Meta CAPI) never runs.
+fulfilment_calls = []
+payments.process_order_background = lambda data: fulfilment_calls.append(
+    {"at": datetime.utcnow().isoformat(), "metadata": {k: v for k, v in data["metadata"].items()
+                                                       if k in ("checkout_id", "stripe_session_id", "is_guest")}})
+# Success redirects stay local so no live storefront / Meta pixel sees a sandbox purchase.
+intl_checkout.GUEST_SUCCESS_URL = f"http://127.0.0.1:{os.getenv('HARNESS_PORT', '8123')}/"
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -149,6 +177,19 @@ def tx_dump(cid: str):
         return tx.model_dump(mode="json") if tx else {}
 
 
+@app.get("/__harness/fulfilment")
+def fulfilment():
+    return {"test_double_calls": fulfilment_calls, "note": "Silverbene/email/Meta are never invoked in the harness"}
+
+
+@app.get("/__harness/refund/{cid}")
+def refund(cid: str, amount: float = None):
+    with Session(db.engine) as s:
+        body = intl_checkout.refund_checkout(s, cid, amount)
+        tx = s.get(CheckoutTransaction, cid)
+        return {"refund": {k: body.get(k) for k in ("id", "status")}, "tx_status": tx.status}
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     html = open(os.path.join(ROOT, "docs", "index.html"), encoding="utf-8").read()
@@ -160,4 +201,5 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8123)
     PORT = ap.parse_args().port
+    assert PORT == int(os.getenv("HARNESS_PORT", "8123")), "set HARNESS_PORT to match --port"
     uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="warning")
