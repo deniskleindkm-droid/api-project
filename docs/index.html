@@ -4708,7 +4708,7 @@ function _icShowShipping(options){
   document.getElementById('ic-sub').textContent='Choose how your order should travel';
 }
 function _icSleep(ms){return new Promise(r=>setTimeout(r,ms));}
-async function _icPollOptions(headers,{maxMs=240000}={}){
+async function _icPollOptions(headers,{maxMs=200000}={}){
   // Delivery rates come from the supplier and can take a minute: poll instead of blocking one request.
   const t0=Date.now();
   while(Date.now()-t0<maxMs){
@@ -4716,6 +4716,7 @@ async function _icPollOptions(headers,{maxMs=240000}={}){
     const data=await res.json();
     if(!res.ok)return {status:'error',message:typeof data.detail==='string'?data.detail:'Please try again'};
     if(data.status!=='pending')return data;
+    if(Date.now()-t0>6000){_icMsg('Checking delivery with our fulfilment partner — this can take up to two minutes. Please keep this page open.','info');}
     await _icSleep(2500);
   }
   return {status:'error',message:'Delivery options are taking longer than expected. Please try again.'};

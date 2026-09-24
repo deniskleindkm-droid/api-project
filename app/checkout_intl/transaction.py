@@ -32,6 +32,8 @@ from app.checkout_intl import address as addr_mod
 from app.checkout_intl import countries, flags, rates
 from app.models.checkout_transaction import CheckoutTransaction
 
+RATE_TIMEOUT_SECONDS = 150
+
 RateFetcher = Callable[[str, str, str, List[dict]], list]   # (country_id, postcode, city, products) -> raw methods
 
 
@@ -52,6 +54,7 @@ def default_rate_fetcher(country_id: str, postcode: str, city: str, products: Li
     return SilverbeneAdapter().get_shipping_methods(
         country_code=country_id, postcode=postcode, city=city,
         products=products, allow_fallback=False,
+        timeout=RATE_TIMEOUT_SECONDS, attempts=1,      # measured 6-110 s per call; do not cut it off at 30 s
     )
 
 

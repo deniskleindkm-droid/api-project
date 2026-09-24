@@ -609,3 +609,27 @@ def test_frozen_exposure_prefers_dhl_over_a_cheaper_express_carrier():
     assert [o["method_id"] for o in rates.present(opts)] == ["DHL"]
     no_dhl = [o for o in opts if o["method_id"] != "DHL"]
     assert [o["method_id"] for o in rates.present(no_dhl)] == ["Fedex"]
+
+
+def test_quote_fetch_uses_long_supplier_timeout_and_single_attempt(monkeypatch):
+    """Silverbene's rate call takes 6-110 s (median ~51 s); a 30 s cutoff made real checkouts fail."""
+    from app.agents.suppliers import silverbene_adapter
+    seen = {}
+
+    def fake_post(self, endpoint, payload, timeout=30):
+        seen.setdefault("calls", []).append(timeout)
+        return {"code": 0, "data": [{"way": "DHLI", "title": "DHL Express(4 - 9 workdays)", "price": 50}]}
+
+    monkeypatch.setattr(silverbene_adapter.SilverbeneAdapter, "_post", fake_post)
+    out = txn.default_rate_fetcher("US", "60640", "Chicago", [{"option_id": "1", "qty": 1}])
+    assert out and seen["calls"] == [txn.RATE_TIMEOUT_SECONDS] and txn.RATE_TIMEOUT_SECONDS >= 120
+
+
+def test_supplier_timeout_yields_unavailable_after_one_attempt_not_two(monkeypatch):
+    from app.agents.suppliers import silverbene_adapter
+    calls = []
+    monkeypatch.setattr(silverbene_adapter.SilverbeneAdapter, "_post",
+                        lambda self, ep, payload, timeout=30: calls.append(timeout) or {})
+    monkeypatch.setattr("time.sleep", lambda s: None)
+    assert txn.default_rate_fetcher("US", "60640", "Chicago", [{"option_id": "1", "qty": 1}]) == []
+    assert len(calls) == 1

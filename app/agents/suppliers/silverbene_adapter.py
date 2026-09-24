@@ -377,14 +377,14 @@ class SilverbeneAdapter(SupplierAdapter):
             print(f"[Silverbene] GET {endpoint} error: {e}")
             return {}
 
-    def _post(self, endpoint: str, payload: dict) -> dict:
+    def _post(self, endpoint: str, payload: dict, timeout: int = 30) -> dict:
         payload["token"] = self.token
         try:
             r = self.session.post(
                 f"{self.base}{endpoint}",
                 json=payload,
                 headers={"Content-Type": "application/json"},
-                timeout=30
+                timeout=timeout
             )
             r.raise_for_status()
             return r.json()
@@ -611,7 +611,8 @@ class SilverbeneAdapter(SupplierAdapter):
                              option_id: str = None, qty: int = 1,
                              postcode: str = "", city: str = "",
                              products: list = None,
-                             allow_fallback: bool = True) -> list:
+                             allow_fallback: bool = True,
+                             timeout: int = 30, attempts: int = 2) -> list:
         """
         Get available shipping methods for a country + product.
         postcode and city are required by Silverbene for accurate rates.
@@ -622,6 +623,10 @@ class SilverbeneAdapter(SupplierAdapter):
         `allow_fallback=False` (international checkout) returns [] instead of
         fabricating the US-only "SUX" method when Silverbene answers empty --
         a made-up method must never be offered for a real destination.
+
+        `timeout`/`attempts`: Silverbene's rate endpoint measured 6-110 s (median ~51 s) per
+        call in the Stage 1B probe, so the international checkout's background quote uses a
+        long timeout and a single attempt. Legacy callers keep 30 s x 2.
         """
         if products is None:
             products = [{"option_id": str(option_id), "qty": qty}] if option_id else []
@@ -631,8 +636,9 @@ class SilverbeneAdapter(SupplierAdapter):
             "city":       city,
             "products":   [{"option_id": str(p["option_id"]), "qty": p["qty"]} for p in products],
         }
-        for attempt in range(2):
-            resp = self._post(ENDPOINT_SHIPPING, payload)
+        post_kw = {} if timeout == 30 else {"timeout": timeout}
+        for attempt in range(attempts):
+            resp = self._post(ENDPOINT_SHIPPING, payload, **post_kw)
             print(f"[Silverbene] Shipping methods response (attempt {attempt + 1}): {resp}")
             if resp.get("code") == 0:
                 raw = resp.get("data", [])
