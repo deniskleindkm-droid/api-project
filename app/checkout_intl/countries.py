@@ -35,12 +35,13 @@ from app.checkout_intl._iso_countries import ISO_COUNTRIES
 LAUNCH_WAVE_1 = ("US", "GB", "DE", "FR", "AU", "CA")
 LAUNCH_WAVE_2_CANDIDATE = ("CH", "JP", "SG", "NZ")
 
-# Markets that are checkout-enabled by default when the flag is on. DE and FR are
-# Wave-1 candidates that stay OFF until they are qualified (shipping probe, EU
-# VAT/payment work) and enabled explicitly via INTL_ENABLED_COUNTRIES or
+# Markets that are checkout-enabled by default when the flag is on: all of Wave 1.
+# Owner decision (2026-09-24): DE and FR enabled because the supplier probe returned
+# rates for both. Known open item: EU VAT/duty is not yet charged or collected at
+# checkout (tax stage). Override without a deploy via INTL_ENABLED_COUNTRIES or
 # StoreConfig 'intl_enabled_countries'. NG and GH were removed from the rollout:
 # they remain inert ISO records (checkout_enabled=False, no qualification work).
-DEFAULT_ENABLED = ("US", "GB", "AU", "CA")
+DEFAULT_ENABLED = LAUNCH_WAVE_1
 
 # Legal/payment-provider market restrictions are NOT a constant here -- they live
 # in the versioned compliance policy (app/checkout_intl/compliance.py) with

@@ -54,9 +54,8 @@ def test_other_and_garbage_are_not_countries():
 def test_launch_waves_and_removed_markets():
     assert countries.LAUNCH_WAVE_1 == ("US", "GB", "DE", "FR", "AU", "CA")
     assert countries.LAUNCH_WAVE_2_CANDIDATE == ("CH", "JP", "SG", "NZ")
-    # DE/FR are Wave-1 candidates but NOT enabled by default; NG/GH are inert ISO records.
-    assert {"DE", "FR"}.isdisjoint(countries.enabled_country_codes())
-    assert set(countries.DEFAULT_ENABLED) <= set(countries.LAUNCH_WAVE_1)
+    # All six Wave-1 markets are enabled by default (owner decision); NG/GH are inert ISO records.
+    assert set(countries.enabled_country_codes()) == set(countries.LAUNCH_WAVE_1)
     for code in ("NG", "GH"):
         m = countries.get_market(code)
         assert m is not None and not m.checkout_enabled and not countries.is_checkout_country(code)
