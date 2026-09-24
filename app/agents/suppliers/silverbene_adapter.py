@@ -762,7 +762,10 @@ class SilverbeneAdapter(SupplierAdapter):
                 "firstname":  customer.get("first_name", ""),
                 "lastname":   customer.get("last_name", ""),
                 "email":      admin_email,   # never expose customer email to supplier
-                "telephone":  customer.get("phone") or "0000000000",
+                # SUPPLIER_CONTACT_PHONE (owner policy: Silverbene/DHL get Mikisi's number, never the
+                # customer's). Unset -> falls back to the customer's number as before. Central here so
+                # checkout, the international checkout and order recovery all obey it.
+                "telephone":  (os.getenv("SUPPLIER_CONTACT_PHONE") or "").strip() or customer.get("phone") or "0000000000",
                 "street":     address.get("line1", ""),
                 "city":       address.get("city", ""),
                 "region":     address.get("state", ""),

@@ -634,3 +634,22 @@ def test_supplier_timeout_yields_unavailable_after_one_attempt_not_two(monkeypat
     monkeypatch.setattr("time.sleep", lambda s: None)
     assert txn.default_rate_fetcher("US", "60640", "Chicago", [{"option_id": "1", "qty": 1}]) == []
     assert len(calls) == 1
+
+
+def test_supplier_contact_phone_setting_overrides_the_customers_number(monkeypatch):
+    """Owner policy: Silverbene/DHL receive Mikisi's number, never the customer's, when configured."""
+    from app.agents.suppliers.silverbene_adapter import SilverbeneAdapter
+    posted = []
+    sb = SilverbeneAdapter()
+    monkeypatch.setattr(sb, "_post", lambda ep, payload, timeout=30: (posted.append(payload) or
+                        {"code": 0, "data": {"order_id": "9", "payment_required": True}}))
+    monkeypatch.setattr(sb, "_alert_low_credit", lambda **kw: None)
+    args = ("OPT1", {"first_name": "A", "last_name": "B", "phone": "+1 312 555 0198"},
+            {"line1": "x", "city": "y", "state": "z", "postal_code": "10001", "country_code": "US"})
+    monkeypatch.delenv("SUPPLIER_CONTACT_PHONE", raising=False)
+    sb.place_order(*args, option_id="OPT1", shipping_method="M", shipping_price=1, shipping_title="t")
+    assert posted[-1]["shipping_address"]["telephone"] == "+1 312 555 0198"           # unset: unchanged behavior
+    monkeypatch.setenv("SUPPLIER_CONTACT_PHONE", " +1 800 555 0100 ")
+    sb.place_order(*args, option_id="OPT1", shipping_method="M", shipping_price=1, shipping_title="t")
+    assert posted[-1]["shipping_address"]["telephone"] == "+1 800 555 0100"           # Mikisi's number, customer's never sent
+    assert "312" not in json.dumps(posted[-1])
