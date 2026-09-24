@@ -12,9 +12,10 @@ but not in the rate API). Promising a specific carrier at checkout is therefore 
   * the actual carrier is chosen AFTER payment from the live rates for the exact cart + address
     (see rates.resolve_class_method and checkout_intl/fulfillment.py).
 
-Owner preferences (2026-09-24): Express = DHL; Standard = the national post when Silverbene offers
-one (Royal Mail to the UK today; USPS for the US once Silverbene exposes it), otherwise the best
-of the remaining methods. Add a way to STANDARD_PREFERENCE when a new lane appears.
+Owner decisions (2026-09-24): Express = DHL. Standard = any reasonably fast NON-express method from a strict
+allow-list: Royal Mail for the UK, YunExpress Registered Priority for DE/FR/AU/CA, nothing for the US
+(Express only) until USPS is exposed. The slow China-system methods (International Economy/Standard,
+10-20 days; Cainiao) are never used. Edit STANDARD_ALLOWED when a new lane appears.
 """
 from __future__ import annotations
 
@@ -27,14 +28,17 @@ from typing import Dict, List, Optional, Tuple
 EXPRESS_PREFERENCE: Tuple[str, ...] = ("DHL", "DHLI")            # DHL Express, always first
 EXPRESS_FALLBACK: Tuple[str, ...] = ("Fedex", "FedexI")          # only if DHL is unavailable (alerts)
 
-# Standard preference order per country (first available wins). Anything not listed is a last resort.
-STANDARD_PREFERENCE: Dict[str, Tuple[str, ...]] = {
-    "US": ("SUX", "ITDIDA_ECO"),                                  # SUX = USPS (not returned by the API so far)
-    "GB": ("GTG", "BKPHR", "cainiao", "ITDIDA_ECO"),              # Royal Mail first
-    "DE": ("BKPHR", "cainiao", "ITDIDA_ECO"),
-    "FR": ("BKPHR", "cainiao", "ITDIDA_ECO"),
-    "AU": ("BKPHR", "cainiao"),
-    "CA": ("BKPHR", "cainiao", "ITDIDA_ECO"),
+# STANDARD = any reasonably fast NON-express method (owner, 2026-09-24). This is a strict allow-list, in
+# preference order: methods not listed are NEVER used as Standard. Deliberately excluded:
+#   ITDIDA_ECO ("International Economy/Standard", 10-20 workdays) and cainiao (no listed time, very slow).
+# A country with an empty tuple offers Express only. Add "SUX" (USPS) for the US when Silverbene exposes it.
+STANDARD_ALLOWED: Dict[str, Tuple[str, ...]] = {
+    "US": (),                          # no acceptable Standard today (USPS not offered by the API)
+    "GB": ("GTG", "BKPHR"),            # Royal Mail (5-9 days), then YunExpress Registered Priority (2-10 days)
+    "DE": ("BKPHR",),
+    "FR": ("BKPHR",),
+    "AU": ("BKPHR",),
+    "CA": ("BKPHR",),
 }
 
 _ART = os.path.join(os.path.dirname(__file__), "..", "..", "artifacts")
@@ -98,6 +102,8 @@ def _build() -> Dict[str, dict]:
                         exp_etas.append(_eta(title))
                 elif way in EXPRESS_FALLBACK:
                     continue                                   # FedEx is a fallback, not a cost basis
+                elif way not in STANDARD_ALLOWED.get(code, ()):
+                    continue                                   # slow / unwanted methods never count as Standard
                 else:
                     std_prices.append(float(m["price"]))
                     std_ways.add(way)

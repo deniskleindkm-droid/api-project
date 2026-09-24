@@ -157,9 +157,10 @@ def resolve_class_method(country: str, live_methods: list, cls: str) -> Optional
     reason} or None when nothing suitable is available (caller must hold the order, never guess).
 
     EXPRESS  : DHL; if the supplier has no DHL for this cart, FedEx (fallback=True -> owner alert).
-    STANDARD : the country's preferred order (national post first, e.g. Royal Mail); then any other
-               STANDARD-tier method by price (fallback=True). NEVER upgraded to express on its own:
-               that would silently raise the cost.
+    STANDARD : ONLY the country's allow-list, in preference order (catalog.STANDARD_ALLOWED: national post
+               / registered priority). Slow methods (International Economy, Cainiao) are never used, and
+               a Standard order is NEVER upgraded to express on its own (that would silently raise the
+               cost). Nothing allowed available -> None (order is held + alerted).
     """
     from app.checkout_intl import catalog
     opts = normalize(live_methods, country)
@@ -179,12 +180,9 @@ def resolve_class_method(country: str, live_methods: list, cls: str) -> Optional
                 return pick(way, True, "DHL not offered for this cart/address")
         return None
     if cls == STANDARD:
-        for way in catalog.STANDARD_PREFERENCE.get(country.upper(), ()):
-            if way in by_way and by_way[way]["tier"] == STANDARD:
+        for way in catalog.STANDARD_ALLOWED.get(country.upper(), ()):
+            if way in by_way:
                 return pick(way)
-        others = _by_price([o for o in opts if o["tier"] == STANDARD])
-        if others:
-            return pick(others[0]["method_id"], True, "no preferred standard method available")
         return None
     return None
 

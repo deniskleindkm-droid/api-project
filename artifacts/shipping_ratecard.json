@@ -13,19 +13,6 @@
     4,
     9
    ]
-  },
-  "standard": {
-   "max": 5.52,
-   "min": 3.5,
-   "median": 5.52,
-   "n": 19,
-   "ways": [
-    "ITDIDA_ECO"
-   ],
-   "eta": [
-    10,
-    20
-   ]
   }
  },
  "GB": {
@@ -45,14 +32,12 @@
   },
   "standard": {
    "max": 22.5,
-   "min": 4.21,
+   "min": 5.0,
    "median": 8.05,
-   "n": 28,
+   "n": 12,
    "ways": [
     "BKPHR",
-    "GTG",
-    "ITDIDA_ECO",
-    "cainiao"
+    "GTG"
    ],
    "eta": [
     2,
@@ -78,12 +63,10 @@
   "standard": {
    "max": 27.06,
    "min": 11.63,
-   "median": 15.57,
-   "n": 24,
+   "median": 17.76,
+   "n": 7,
    "ways": [
-    "BKPHR",
-    "ITDIDA_ECO",
-    "cainiao"
+    "BKPHR"
    ],
    "eta": [
     2,
@@ -109,12 +92,10 @@
   "standard": {
    "max": 27.19,
    "min": 11.77,
-   "median": 16.33,
-   "n": 26,
+   "median": 17.61,
+   "n": 9,
    "ways": [
-    "BKPHR",
-    "ITDIDA_ECO",
-    "cainiao"
+    "BKPHR"
    ],
    "eta": [
     2,
@@ -139,12 +120,11 @@
   },
   "standard": {
    "max": 25.59,
-   "min": 9.96,
-   "median": 10.09,
-   "n": 18,
+   "min": 10.21,
+   "median": 16.06,
+   "n": 9,
    "ways": [
-    "BKPHR",
-    "cainiao"
+    "BKPHR"
    ],
    "eta": [
     2,
@@ -169,17 +149,15 @@
   },
   "standard": {
    "max": 24.22,
-   "min": 4.77,
-   "median": 14.13,
-   "n": 19,
+   "min": 8.91,
+   "median": 14.75,
+   "n": 9,
    "ways": [
-    "BKPHR",
-    "ITDIDA_ECO",
-    "cainiao"
+    "BKPHR"
    ],
    "eta": [
     2,
-    15
+    10
    ]
   }
  }

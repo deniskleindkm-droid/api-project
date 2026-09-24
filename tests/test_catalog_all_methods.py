@@ -53,6 +53,8 @@ def test_ratecard_uses_the_maximum_observed_price_per_class():
     assert card["DE"]["express"]["max"] == 49.37 and card["AU"]["express"]["max"] == 36.02
     for cc in WAVE1:
         for cls in ("express", "standard"):
+            if cls == "standard" and cc == "US":
+                continue
             e = card[cc][cls]
             assert e["max"] >= e["median"] >= e["min"] and e["n"] >= 5, (cc, cls, e)
     assert card["GB"]["standard"]["max"] == 22.5 and "GTG" in card["GB"]["standard"]["ways"]   # Royal Mail seen
@@ -63,13 +65,30 @@ def test_ratecard_excludes_fedex_from_the_express_cost_basis():
         assert set(catalog.ratecard()[cc]["express"]["ways"]) <= {"DHL", "DHLI"}
 
 
+SLOW_OR_UNWANTED = {"ITDIDA_ECO", "cainiao", "Fedex", "FedexI"}
+
+
 @pytest.mark.parametrize("cc", WAVE1)
-def test_every_wave1_country_offers_exactly_standard_and_express(cc):
+def test_standard_is_offered_only_where_an_acceptable_non_express_method_exists(cc):
     opts = catalog.class_options(cc)
-    assert [o["method_id"] for o in opts] == ["EXPRESS", "STANDARD"]
-    assert opts[0]["name"] == "Express delivery (DHL)" and opts[1]["name"] == "Standard delivery"
+    expected = ["EXPRESS"] if cc == "US" else ["EXPRESS", "STANDARD"]        # US: only the slow China-system method exists
+    assert [o["method_id"] for o in opts] == expected
+    assert opts[0]["name"] == "Express delivery (DHL)"
     assert all(o["basis"] == "max_observed" and o["supplier_price"] > 0 for o in opts)
     assert catalog.class_options("ZZ") is None and catalog.class_options("JP") is None
+
+
+def test_slow_china_system_methods_never_count_toward_standard():
+    for cc in WAVE1:
+        std = catalog.ratecard()[cc].get("standard")
+        assert not std or not (set(std["ways"]) & SLOW_OR_UNWANTED), (cc, std)
+        assert not (set(catalog.STANDARD_ALLOWED[cc]) & SLOW_OR_UNWANTED)
+    assert "standard" not in catalog.ratecard()["US"] and catalog.STANDARD_ALLOWED["US"] == ()
+    for cc in ("DE", "FR", "AU", "CA"):
+        assert catalog.STANDARD_ALLOWED[cc] == ("BKPHR",)
+    assert catalog.STANDARD_ALLOWED["GB"] == ("GTG", "BKPHR")                # Royal Mail first
+    eta = catalog.class_options("GB")[1]["eta"]
+    assert eta["max_days"] <= 10                                            # never the 10-20 day service
 
 
 # ── checkout: instant, two options, no supplier call ──────────────────────────
@@ -82,7 +101,7 @@ def test_delivery_is_instant_and_shows_only_two_options_without_supplier_calls(c
             if cc in ("GB", "DE", "FR") else {}
         body = _delivery(client, cc, **addr)
         assert body["status"] == "ready"
-        assert [o["method_id"] for o in body["options"]] == ["EXPRESS", "STANDARD"], cc
+        assert [o["method_id"] for o in body["options"]] == (["EXPRESS"] if cc == "US" else ["EXPRESS", "STANDARD"]), cc
         blob = json.dumps(body["options"])
         assert "supplier" not in blob and "64.73" not in blob and "cost" not in blob.lower()
     assert no_supplier_calls == []
@@ -99,6 +118,13 @@ def test_customer_choice_is_a_class_and_the_max_basis_is_recorded(client, sessio
     session.expire_all()
     tx = session.get(CheckoutTransaction, body["checkout_id"])
     assert (tx.shipping_method_id, tx.shipping_tier, tx.shipping_supplier_price) == ("STANDARD", "STANDARD", 22.5)
+
+
+def test_us_customers_cannot_choose_standard(client, session, flag_on, no_supplier_calls):
+    make_product(session)
+    body = _delivery(client, "US")
+    r = client.post(f"/checkout/{body['checkout_id']}/pay", json={"shipping_method_id": "STANDARD"})
+    assert r.status_code == 409 and r.json()["detail"]["code"] == "requote"
 
 
 def test_unknown_choice_is_refused(client, session, flag_on, no_supplier_calls):
@@ -140,14 +166,18 @@ def test_express_falls_back_to_fedex_only_with_a_flag_when_dhl_is_missing():
     assert rates.resolve_class_method("GB", [m for m in no_dhl if m["way"] != "Fedex"], "EXPRESS") is None
 
 
-def test_standard_prefers_the_national_post_then_the_rest_in_order():
+def test_standard_prefers_the_national_post_then_yunexpress_and_never_the_slow_methods(monkeypatch):
     assert rates.resolve_class_method("GB", LIVE_GB, "STANDARD")["method_id"] == "GTG"          # Royal Mail
     no_rm = [m for m in LIVE_GB if m["way"] != "GTG"]
     assert rates.resolve_class_method("GB", no_rm, "STANDARD")["method_id"] == "BKPHR"
-    us = [{"way": "SUX", "title": "USPS(8-10 workdays, accepts packages under $60, customs duty included)", "price": 7.28},
-          {"way": "ITDIDA_ECO", "title": "International Standard(12-20 workdays)", "price": 5.52}]
-    assert rates.resolve_class_method("US", us, "STANDARD")["method_id"] == "SUX"               # USPS when Silverbene offers it
-    assert rates.resolve_class_method("US", us[1:], "STANDARD")["method_id"] == "ITDIDA_ECO"
+    only_slow = [m for m in LIVE_GB if m["way"] == "cainiao"] + [
+        {"way": "ITDIDA_ECO", "title": "International Standard(12-20 workdays)", "price": 5.52}]
+    assert rates.resolve_class_method("GB", only_slow, "STANDARD") is None                       # never Cainiao / 10-20 day
+    us = [{"way": "ITDIDA_ECO", "title": "International Standard(12-20 workdays)", "price": 5.52}]
+    assert rates.resolve_class_method("US", us, "STANDARD") is None
+    monkeypatch.setitem(catalog.STANDARD_ALLOWED, "US", ("SUX",))                                # USPS enabled later
+    usps = [{"way": "SUX", "title": "USPS(8-10 workdays, accepts packages under $60, customs duty included)", "price": 7.28}] + us
+    assert rates.resolve_class_method("US", usps, "STANDARD")["method_id"] == "SUX"
 
 
 def test_standard_never_silently_upgrades_to_express():
