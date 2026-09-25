@@ -67,6 +67,7 @@ class Market:
     payment_domestic: bool                # True -> domestic card rates
     status: str                           # sourced | assumed | unverified
     notes: List[str] = field(default_factory=list)
+    duty_in_quote: float = 0.0            # ad valorem duty rate ALREADY inside the supplier's shipping quote (US DHLI: 22.5%)
 
 
 # US duty: the sources conflict. LOW = the Silverbene reference stack quoted to the owner (22.5%); HIGH = base ~6.3%
@@ -77,7 +78,9 @@ MARKETS: Dict[str, Market] = {
     "US": Market("US", "United States", US_DUTY_HIGH, 0.0, None, 0.0, True, "unverified", [
         "De minimis suspended (Federal Register 2026-06-24). Duty stack for China-origin silver jewelry uncertain: 22.5%-43.8%.",
         "Owner's DHL sample was charged duty at delivery despite 'customs duty included' -> duty is a real cost.",
-        "US state sales tax not modelled (economic-nexus thresholds not reached; revisit as volume grows)."]),
+        "US state sales tax not modelled (economic-nexus thresholds not reached; revisit as volume grows).",
+        "SilverBene's US DHL quote (~$51.83 + 22.5% x wholesale) already includes duty at 22.5%, so only the excess is added."],
+        duty_in_quote=US_DUTY_LOW),
     "GB": Market("GB", "United Kingdom", 0.0, 0.0, None, 0.20, False, "sourced", [
         "Duty relief on consignments <= GBP135 (2% otherwise) until 2029 (GOV.UK).",
         "VAT 20% is charged on import when the seller has not charged it at checkout (unregistered seller)."]),
@@ -144,7 +147,8 @@ def _costs_borne(market: Market, declared: float, ship_cost: float, params: Para
     duty = duty_cost(market, declared, params)
     if params.tax_mode == "receiver_pays":
         return duty, 0.0, 0.0, 0.0
-    return duty, duty, market.import_tax_rate * (declared + ship_cost + duty), params.dtp_fixed
+    duty_b = max(0.0, duty - market.duty_in_quote * declared)   # the quoted shipping cost already carries this part
+    return duty, duty_b, market.import_tax_rate * (declared + ship_cost + duty), params.dtp_fixed
 
 
 def solve(market: Market, wholesale: float, ship_cost: float, params: Optional[Params] = None) -> dict:

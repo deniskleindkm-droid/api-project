@@ -73,7 +73,7 @@ def test_one_global_price_meets_the_target_everywhere_and_the_costliest_country_
         assert g["driver"] == max(g["required"], key=g["required"].get)
         assert g["price"] >= max(g["required"].values()) - 1e-9
         assert min(g["profit_at_price"].values()) == pytest.approx(pm.TARGET_CONTRIBUTION, abs=1.0)   # the driver is ~exact
-    assert pm.global_price(40, EXPRESS, prm)["driver"] == "US"          # US Express + the 43.8% duty stack is the costliest
+    assert pm.global_price(40, EXPRESS, prm)["driver"] in ("US", "DE", "FR")   # US duty already inside the quote: no longer alone at the top
 
 
 def test_assumptions_are_listed_and_every_market_has_a_status():
@@ -91,10 +91,18 @@ def test_split_one_item_price_plus_country_specific_dhl_fee_meets_the_target_eve
             assert p["contribution"] >= pm.TARGET_CONTRIBUTION - 1e-6, (cc, w, p)
             assert p["total"] == p["item_price"] + p["delivery_fee"] and p["delivery_fee"] > 0
         fees = {cc: p["delivery_fee"] for cc, p in parts.items()}
-        assert fees["US"] == max(fees.values()) and fees["AU"] == min(fees.values())    # fee follows DHL cost + duty
+        assert fees["AU"] == min(fees.values()) and max(fees.values()) in (fees["US"], fees["DE"], fees["FR"])   # fee follows DHL cost + duty
 
 
 def test_split_delivery_fee_reflects_dhl_cost_and_prepaid_taxes():
     pre = pm.split(pm.MARKETS["GB"], 40, EXPRESS["GB"], pm.Params(tax_mode="prepaid"))
     rec = pm.split(pm.MARKETS["GB"], 40, EXPRESS["GB"], pm.Params(tax_mode="receiver_pays"))
     assert pre["item_price"] == rec["item_price"] and pre["delivery_fee"] > rec["delivery_fee"] > EXPRESS["GB"]
+
+
+def test_us_duty_already_inside_the_dhl_quote_is_not_charged_twice():
+    us, w = pm.MARKETS["US"], 40
+    low = pm.solve(us, w, EXPRESS["US"], pm.Params(duty_rate_override={"US": pm.US_DUTY_LOW}))
+    assert low["duty_borne"] == 0                                              # the whole 22.5% is inside the quote
+    high = pm.solve(us, w, EXPRESS["US"])
+    assert high["duty_borne"] == pytest.approx(w * (pm.US_DUTY_HIGH - pm.US_DUTY_LOW))   # only the excess is added

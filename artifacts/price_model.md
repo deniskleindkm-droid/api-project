@@ -22,16 +22,16 @@ Assumes profit $45 per product, Stripe fees, 2% reserve, duty on the wholesale d
 
 | Wholesale | ITEM price (worldwide) | US | GB | DE | FR | AU | CA |
 |---|---|---|---|---|---|---|---|
-| $10 | **$60** | +$72 | +$62 | +$70 | +$71 | +$39 | +$47 |
-| $20 | **$71** | +$77 | +$63 | +$72 | +$72 | +$39 | +$50 |
-| $30 | **$82** | +$81 | +$65 | +$73 | +$74 | +$38 | +$52 |
-| $40 | **$92** | +$86 | +$68 | +$76 | +$77 | +$39 | +$55 |
-| $60 | **$114** | +$94 | +$72 | +$80 | +$81 | +$39 | +$59 |
-| $80 | **$135** | +$104 | +$77 | +$84 | +$86 | +$39 | +$64 |
-| $100 | **$157** | +$112 | +$81 | +$88 | +$90 | +$39 | +$68 |
-| $150 | **$211** | +$134 | +$91 | +$98 | +$100 | +$38 | +$80 |
+| $10 | **$60** | +$70 | +$62 | +$70 | +$71 | +$39 | +$47 |
+| $20 | **$71** | +$72 | +$63 | +$72 | +$72 | +$39 | +$50 |
+| $30 | **$82** | +$74 | +$65 | +$73 | +$74 | +$38 | +$52 |
+| $40 | **$92** | +$76 | +$68 | +$76 | +$77 | +$39 | +$55 |
+| $60 | **$114** | +$80 | +$72 | +$80 | +$81 | +$39 | +$59 |
+| $80 | **$135** | +$85 | +$77 | +$84 | +$86 | +$39 | +$64 |
+| $100 | **$157** | +$88 | +$81 | +$88 | +$90 | +$39 | +$68 |
+| $150 | **$211** | +$99 | +$91 | +$98 | +$100 | +$38 | +$80 |
 
-(Delivery fee per country; profit at W=$40 in every country is at least $45.24.)
+(Delivery fee per country; profit at W=$40 in every country is at least $45.04.)
 
 ## ONE ITEM PRICE + DHL EXPRESS DELIVERY FEE PER COUNTRY - RECEIVER PAYS: customer also pays duty + tax to DHL at the door
 
@@ -52,14 +52,14 @@ Assumes profit $45 per product, Stripe fees, 2% reserve, duty on the wholesale d
 
 | Wholesale | ONE price | Driven by | Live ladder today | Profit in US | GB | DE | FR | AU | CA |
 |---|---|---|---|---|---|---|---|---|---|
-| $10 | **$132** | US | $128 | $45 | $55 | $47 | $47 | $76 | $68 |
-| $20 | **$148** | US | $198 | $46 | $58 | $50 | $50 | $81 | $71 |
-| $30 | **$163** | US | $228 | $46 | $60 | $52 | $52 | $85 | $73 |
-| $40 | **$178** | US | $298 | $45 | $62 | $55 | $54 | $89 | $75 |
-| $60 | **$208** | US | $348 | $45 | $66 | $59 | $58 | $97 | $78 |
-| $80 | **$239** | US | $448 | $46 | $71 | $64 | $62 | $106 | $82 |
-| $100 | **$269** | US | $498 | $45 | $75 | $68 | $66 | $114 | $86 |
-| $150 | **$345** | US | $698 | $45 | $85 | $79 | $77 | $134 | $96 |
+| $10 | **$131** | FR | $128 | $46 | $54 | $47 | $46 | $75 | $67 |
+| $20 | **$143** | FR | $198 | $46 | $53 | $46 | $45 | $76 | $66 |
+| $30 | **$156** | FR | $228 | $46 | $54 | $46 | $45 | $79 | $66 |
+| $40 | **$169** | FR | $298 | $46 | $54 | $46 | $45 | $81 | $66 |
+| $60 | **$195** | FR | $348 | $46 | $54 | $47 | $45 | $85 | $66 |
+| $80 | **$221** | FR | $448 | $47 | $54 | $47 | $46 | $89 | $66 |
+| $100 | **$247** | FR | $498 | $47 | $54 | $47 | $46 | $93 | $65 |
+| $150 | **$311** | FR | $698 | $47 | $54 | $47 | $45 | $103 | $64 |
 
 ## ONE ALL-IN PRICE (no separate delivery fee) - RECEIVER PAYS
 
@@ -89,13 +89,13 @@ Assumes profit $45 per product, Stripe fees, 2% reserve, duty on the wholesale d
 
 | Scenario | Prepaid | Receiver pays |
 |---|---|---|
-| Base | $178 | $159 |
+| Base | $169 | $159 |
 | US duty LOW 22.5% (not 43.8%) | $169 | $159 |
-| Customs uses RETAIL as declared value | $297 | $159 |
-| DHL duty/tax fee $19 per order | $198 | $159 |
-| Silverbene fee 3% of price | $184 | $165 |
-| PayPal instead of Stripe | $178 | $159 |
-| Reserve 5% | $184 | $165 |
+| Customs uses RETAIL as declared value | $207 | $159 |
+| DHL duty/tax fee $19 per order | $190 | $159 |
+| Silverbene fee 3% of price | $175 | $165 |
+| PayPal instead of Stripe | $169 | $159 |
+| Reserve 5% | $175 | $165 |
 
 ## Assumptions still to verify
 
@@ -114,6 +114,7 @@ Assumes profit $45 per product, Stripe fees, 2% reserve, duty on the wholesale d
 - De minimis suspended (Federal Register 2026-06-24). Duty stack for China-origin silver jewelry uncertain: 22.5%-43.8%.
 - Owner's DHL sample was charged duty at delivery despite 'customs duty included' -> duty is a real cost.
 - US state sales tax not modelled (economic-nexus thresholds not reached; revisit as volume grows).
+- SilverBene's US DHL quote (~$51.83 + 22.5% x wholesale) already includes duty at 22.5%, so only the excess is added.
 **GB**
 - Duty relief on consignments <= GBP135 (2% otherwise) until 2029 (GOV.UK).
 - VAT 20% is charged on import when the seller has not charged it at checkout (unregistered seller).
