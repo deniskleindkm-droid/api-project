@@ -179,6 +179,14 @@ def _order_lines(session: Session, tx: CheckoutTransaction):
             "selected_size": line.get("selected_size"), "selected_color": line.get("selected_color"),
             "selected_option_id": line.get("supplier_option_id"), "variant_id": line.get("variant_id"),
         })
+    fee = float(tx.shipping_customer_price or 0.0)
+    if fee > 0:                                       # PRICING_MODEL=flat_v2: Express is charged as its own line
+        line_items.append({
+            "price_data": {"currency": "usd", "product_data": {"name": "Express delivery (DHL)", "description": ""},
+                           "unit_amount": int(round(fee * 100))},
+            "quantity": 1,
+        })
+        value += fee
     return line_items, content_ids, guest_meta, value
 
 

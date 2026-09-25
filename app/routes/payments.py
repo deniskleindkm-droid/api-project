@@ -670,6 +670,19 @@ def process_order_background(checkout_data: dict):
 
                 session.commit()
 
+        if checkout_id:                                   # PRICING_MODEL=flat_v2: the charged Express fee is revenue on the order
+            from app.models.checkout_transaction import CheckoutTransaction as _CT
+            with Session(engine) as _fs:
+                _tx = _fs.get(_CT, checkout_id)
+                _fee = float(getattr(_tx, "shipping_customer_price", 0) or 0)
+                _first = _fs.exec(select(Order).where(Order.checkout_id == checkout_id,
+                                                      Order.stripe_session_id == stripe_session_id).order_by(Order.id)).first() if _fee > 0 else None
+                if _first is not None:
+                    _first.total_price = float(_first.total_price or 0) + _fee
+                    _fs.add(_first)
+                    _fs.commit()
+                    total += _fee
+
         print(f"[Payments] Order details collected: {len(order_details)} items, total ${total:.2f}")
 
         # event_id = stripe_session_id, shared with the client-side fbq()

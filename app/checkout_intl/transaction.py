@@ -117,6 +117,7 @@ def run_quote(checkout_id: str, fetcher: Optional[RateFetcher] = None) -> None:
             try:
                 quote = fetch_quote(load_address(tx), load_items(tx), fetcher)
                 quote = _apply_cart_rules(session, tx, quote)
+                quote = _apply_flat_pricing(session, tx, quote)
                 error = None
             except Exception as e:                       # supplier down / timeout: fail closed, retryable
                 quote, error = {"options": [], "offered": [], "fallback": False}, f"{type(e).__name__}: {e}"
@@ -154,6 +155,34 @@ def _apply_cart_rules(session: Session, tx: CheckoutTransaction, quote: dict) ->
         quote = {**quote, "options": [o for o in quote["options"] if o["method_id"] != "STANDARD"],
                  "offered": [i for i in quote["offered"] if i != "STANDARD"]}
     return quote
+
+
+def cart_wholesale(session: Session, tx: CheckoutTransaction) -> Optional[float]:
+    from app.models.product import Product
+    total = 0.0
+    for line in load_items(tx):
+        p = session.get(Product, line["product_id"])
+        if p is None or p.silverbene_cost is None:
+            return None
+        total += float(p.silverbene_cost) * int(line.get("quantity") or 1)
+    return total
+
+
+def _apply_flat_pricing(session: Session, tx: CheckoutTransaction, quote: dict) -> dict:
+    """PRICING_MODEL=flat_v2: Standard is included in the item price ($0); Express is charged at the full DHL price."""
+    from app.commerce import flat_pricing
+    if not flat_pricing.enabled():
+        return quote
+    w = cart_wholesale(session, tx)
+    opts = []
+    for o in quote.get("options", []):
+        if o["tier"] == "EXPRESS":
+            w_use = w if w is not None else 60.0               # unknown cost: assume a mid-price item, never undercharge
+            o = {**o, "customer_price": flat_pricing.express_price(tx.country_code, w_use, float(o["supplier_price"] or 0))}
+        else:
+            o = {**o, "customer_price": 0.0}
+        opts.append(o)
+    return {**quote, "options": opts}
 
 
 def begin_requote(session: Session, tx: CheckoutTransaction) -> CheckoutTransaction:
@@ -255,6 +284,7 @@ def lock_for_payment(session: Session, tx: CheckoutTransaction, tier: str,
     tx.shipping_method_name = chosen["name"]
     tx.shipping_eta = (chosen.get("eta") or {}).get("text")
     tx.shipping_supplier_price = chosen["supplier_price"]
+    tx.shipping_customer_price = float(chosen.get("customer_price") or 0.0)
     tx.shipping_tier = chosen["tier"]
     tx.status = "locked"
     tx.updated_at = now

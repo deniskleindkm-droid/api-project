@@ -9,6 +9,7 @@ shipping lookup needed. Retail price is picked from a fixed luxury price
 ladder (never an arbitrary number), so the storefront always shows round,
 intentional-looking prices.
 """
+import math
 
 # Constants ── everything a customer sees as "Free DHL Express Delivery"
 DHL_SHIPPING   = 50.0
@@ -161,11 +162,17 @@ def calculate_mikisi_price(silverbene_cost: float, material: str = None,
     anymore. `material` is kept for backward compatibility but doesn't
     affect pricing.
     """
-    retail = round_to_ladder(_interpolated_price(silverbene_cost) + EXTRA_MARGIN)
-    profit = retail - silverbene_cost - FIXED_OVERHEAD
+    from app.commerce import flat_pricing
+    if flat_pricing.enabled():
+        retail = flat_pricing.item_price(silverbene_cost)
+        profit = flat_pricing.profit_standard(retail, silverbene_cost)
+    else:
+        retail = round_to_ladder(_interpolated_price(silverbene_cost) + EXTRA_MARGIN)
+        profit = retail - silverbene_cost - FIXED_OVERHEAD
 
     if discount_percent > 0:
-        original_price = round_to_ladder(retail / (1 - discount_percent / 100))
+        original_price = (float(math.ceil(retail / (1 - discount_percent / 100))) if flat_pricing.enabled()
+                          else round_to_ladder(retail / (1 - discount_percent / 100)))
     else:
         original_price = retail
 

@@ -139,6 +139,7 @@ def create_db():
         # CheckoutTransaction columns added after the table was first created (create_all never alters an
         # existing table): real supplier method resolved after payment for a Standard/Express class choice.
         conn.execute(text("ALTER TABLE checkouttransaction ADD COLUMN IF NOT EXISTS shipping_resolved_json text"))
+        conn.execute(text("ALTER TABLE checkouttransaction ADD COLUMN IF NOT EXISTS shipping_customer_price double precision"))
         conn.commit()
 
     _setup_defaults()

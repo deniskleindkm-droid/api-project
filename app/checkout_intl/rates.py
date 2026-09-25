@@ -194,6 +194,6 @@ def customer_view(option: dict) -> dict:
         "tier": option["tier"],
         "name": display_name(option),
         "eta_text": (option.get("eta") or {}).get("text"),
-        "customer_price": 0.0,          # pricing frozen: shipping absorbed in product price
-        "included": True,
+        "customer_price": float(option.get("customer_price") or 0.0),   # 0 unless PRICING_MODEL=flat_v2 charges Express
+        "included": not option.get("customer_price"),
     }
