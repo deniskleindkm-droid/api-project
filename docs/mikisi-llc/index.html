@@ -102,6 +102,16 @@ section{padding-block:88px 0}
 .sec-head p{margin-top:14px;color:var(--muted);max-width:40em;font-size:17px}
 @media (max-width:760px){.sec-head{grid-template-columns:1fr;gap:12px}section{padding-block:64px 0}}
 
+/* proof + controls */
+.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card3{padding:24px;border:1px solid var(--line);border-radius:6px;background:var(--surface);display:flex;flex-direction:column;gap:8px}
+.card3 h3{font-size:20px;font-stretch:108%;font-weight:700;line-height:1.2}
+.card3 p{color:var(--muted);font-size:14.5px}
+.card3 .tag{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.ctl b{display:block;font-family:var(--display);font-stretch:108%;font-size:17px;font-weight:700;margin-bottom:4px}
+@media (max-width:900px){.cards3{grid-template-columns:1fr}}
+.contact .ctas{margin-top:22px}
+
 /* architecture */
 .body-model{display:grid;gap:10px}
 .layer{display:grid;grid-template-columns:220px 1fr;gap:32px;padding:22px 24px;background:var(--surface);border:1px solid var(--line);border-radius:6px}
@@ -203,8 +213,9 @@ footer .small{font-size:13px;color:var(--muted)}
   <div class="wrap">
     <a class="brand" href="#top"><b>MIKISI</b><span>LLC · Autonomous AI systems</span></a>
     <nav class="links" aria-label="Main">
-      <a href="#systems">Systems</a>
-      <a href="#engine">Marketing engine</a>
+      <a href="#built">What we've built</a>
+      <a href="#safety">Safety</a>
+      <a href="#systems">Architecture</a>
       <a href="#ventures">Ventures</a>
       <a href="#services">Services</a>
       <a href="#about">About</a>
@@ -217,11 +228,12 @@ footer .small{font-size:13px;color:var(--muted)}
   <div class="hero">
     <div>
       <p class="label">AI systems studio</p>
-      <h1 style="margin-top:18px">Businesses that <em>run themselves.</em></h1>
-      <p class="lede">Mikisi LLC builds autonomous AI systems. Our agents take the order, send it to the supplier, track the parcel and email the customer, and they only call a person when something needs judgment. Every system runs on our own ventures before we build it for anyone else.</p>
+      <h1 style="margin-top:18px">AI systems that run the work, and <em>know when to call a human.</em></h1>
+      <p class="lede">Mikisi LLC designs and builds production AI systems for companies that already know what they want automated. We combine autonomous agents, APIs, workflows, memory, verification, observability and human approval, so routine work runs itself without giving AI unlimited authority.</p>
+      <p class="lede" style="margin-top:14px">We build safe autonomous AI systems that take real work off your team, with limits, verification, monitoring and human escalation built in. Proven first inside our own ventures: autonomous commerce, AI orchestration, multilingual generation, decision intelligence, speech pipelines and production QA.</p>
       <div class="ctas">
-        <a class="btn primary" href="#contact">Start a project</a>
-        <a class="btn" href="#systems">See the systems</a>
+        <a class="btn primary" href="#contact">Discuss a project</a>
+        <a class="btn" href="#built">See what we've built</a>
       </div>
     </div>
 
@@ -237,6 +249,45 @@ footer .small{font-size:13px;color:var(--muted)}
     <div><b>3</b><span>social platforms connected by API: TikTok, Instagram, Pinterest</span></div>
     <div><b>38</b><span>marketing and FTC compliance principles in our knowledge base</span></div>
   </div>
+
+  <section id="built">
+    <div class="sec-head">
+      <p class="label">Proof</p>
+      <div>
+        <h2>What we have already built.</h2>
+        <p>Real systems, run in production on our own ventures. Not demos, and not prompts wired together.</p>
+      </div>
+    </div>
+    <div class="cards3">
+      <article class="card3"><span class="tag">Autonomous commerce</span><h3>Commerce backend</h3><p>Payment, stock verification, supplier order, shipping monitoring, customer updates, catalog sync and conversion tracking, with failed hand-offs recovered automatically.</p></article>
+      <article class="card3"><span class="tag">Orchestration</span><h3>ARIA multi-agent brain</h3><p>Memory-enabled orchestration, autonomy rules, event routing, escalations and clear owner decision boundaries.</p></article>
+      <article class="card3"><span class="tag">Speech and audio AI</span><h3>Audiobook platform</h3><p>A multi-stage pipeline from text to finished audio: asynchronous workers, pronunciation control, speech-recognition checks, retries, artifact identity and progressive audio.</p></article>
+      <article class="card3"><span class="tag">Language</span><h3>Multilingual engine</h3><p>Authoritative translation workflows, terminology consistency, pronunciation dictionaries, locale-aware speech and reusable translation artifacts.</p></article>
+      <article class="card3"><span class="tag">Decision intelligence</span><h3>Decision engine</h3><p>Intent, evidence, constraints and uncertainty combined into an explainable action.</p></article>
+      <article class="card3"><span class="tag">Marketing intelligence</span><h3>Marketing engine</h3><p>Behavioral and compliance principles, evidence-backed claims, brand governance, owner authorization and learning from campaign results.</p></article>
+    </div>
+  </section>
+
+  <section id="safety">
+    <div class="sec-head">
+      <p class="label">Why it is different</p>
+      <div>
+        <h2>How autonomy stays controlled.</h2>
+        <p>Anyone can wire prompts together. The hard part is a system you can trust with real money and real customers. These rules are built into everything we ship.</p>
+      </div>
+    </div>
+    <div class="cards3">
+      <div class="card3 ctl"><b>Bounded autonomy</b><p>Every agent has explicit authority. The content agent can post, but it cannot change your prices.</p></div>
+      <div class="card3 ctl"><b>Human escalation</b><p>Judgment-heavy decisions go to a person, with the context needed to decide quickly.</p></div>
+      <div class="card3 ctl"><b>Verification before action</b><p>Outputs are checked against real system state before anything irreversible happens.</p></div>
+      <div class="card3 ctl"><b>Auditability</b><p>Important actions and state changes are recorded, so results can be traced later.</p></div>
+      <div class="card3 ctl"><b>Retry limits</b><p>Failures cannot loop forever. They retry a bounded number of times, then escalate.</p></div>
+      <div class="card3 ctl"><b>State-aware execution</b><p>Workflows know what has and has not happened, so a retry never duplicates an order.</p></div>
+      <div class="card3 ctl"><b>Privacy boundaries</b><p>Sensitive customer data stays inside defined system boundaries.</p></div>
+      <div class="card3 ctl"><b>Compliance gates</b><p>Marketing claims are checked against evidence and rules before they go out.</p></div>
+      <div class="card3 ctl"><b>Provider portability</b><p>Systems are designed around business contracts, not around one AI vendor.</p></div>
+    </div>
+  </section>
 
   <section id="systems">
     <div class="sec-head">
@@ -322,8 +373,8 @@ footer .small{font-size:13px;color:var(--muted)}
     <div class="sec-head">
       <p class="label">Ventures</p>
       <div>
-        <h2>We test every system on our own businesses first.</h2>
-        <p>Our ventures are where each system gets tested with real customers and real money before we offer it to clients.</p>
+        <h2>We test our core patterns on our own ventures.</h2>
+        <p>Before we trust a pattern with client operations, we run it on our own businesses, with real customers and real money.</p>
       </div>
     </div>
     <div class="ventures">
@@ -353,32 +404,33 @@ footer .small{font-size:13px;color:var(--muted)}
     <div class="sec-head">
       <p class="label">Services</p>
       <div>
-        <h2>We build what we already run.</h2>
-        <p>For businesses that want AI to take on real work instead of just writing text. We build it, test it against your live data and hand it over with monitoring in place.</p>
+        <h2>From an idea to a system you can trust.</h2>
+        <p>For companies that want AI to take on real work instead of just writing text. We architect it, build it, test it against your live data and hand it over with monitoring in place.</p>
       </div>
     </div>
     <div class="services">
       <div class="service">
-        <h3>Autonomous agents</h3>
-        <p>Agents that each own one job in your business, act on their own and escalate the exceptions to you.</p>
-        <ul><li>Agent orchestration with memory</li><li>Clear rules for what runs alone and what needs a person</li><li>Alerts and escalation to the owner</li></ul>
+        <h3>Custom AI systems</h3>
+        <p>You know what you want AI to do. We architect and build the production system.</p>
+        <ul><li>AI agents and internal copilots</li><li>RAG and knowledge systems</li><li>Workflow automation and document intelligence</li><li>Custom AI products</li></ul>
       </div>
       <div class="service">
-        <h3>E-commerce automation</h3>
-        <p>The whole path from payment to delivery, running without manual steps.</p>
-        <ul><li>Payment to supplier order forwarding</li><li>Shipping tracking and customer emails</li><li>Product feeds for Meta, TikTok and Pinterest</li></ul>
+        <h3>Autonomous operations</h3>
+        <p>Turn repetitive business processes into monitored autonomous workflows.</p>
+        <ul><li>Agent orchestration with human approval</li><li>Event-driven execution and API integrations</li><li>Monitoring and automatic recovery</li></ul>
       </div>
       <div class="service">
-        <h3>Marketing intelligence</h3>
-        <p>Content grounded in why your customers buy, with brand and compliance rules enforced.</p>
-        <ul><li>Brand Brain setup</li><li>Customer psychology blueprints per product</li><li>Evidence-checked claims</li></ul>
+        <h3>AI product engineering</h3>
+        <p>From prototype to production.</p>
+        <ul><li>Architecture, backend and frontend</li><li>Model integration and evaluation</li><li>Deployment and reliability</li></ul>
       </div>
       <div class="service">
-        <h3>Systems audit</h3>
-        <p>We test your existing automations against real data to find the failures nobody has noticed. In our own store, this found a stock check that had been reporting 999 units for every product.</p>
-        <ul><li>End-to-end tests on live flows</li><li>Pricing and data consistency checks</li><li>Written findings with fixes</li></ul>
+        <h3>AI systems audit</h3>
+        <p>For systems that already exist but may be silently failing. In our own store, this found a stock check that had been reporting 999 units for every product.</p>
+        <ul><li>End-to-end testing and failure-mode analysis</li><li>API and data consistency checks</li><li>Production-hardening recommendations</li></ul>
       </div>
     </div>
+    <p style="margin-top:20px;color:var(--muted);font-size:15px">Example specialization: <b style="color:var(--ink)">e-commerce automation</b>, the full path from payment to supplier order to delivery updates, with product feeds for Meta, TikTok and Pinterest.</p>
     <ol class="process">
       <li><span class="n">01</span><b>Scope call</b><span>What the business does, and where time and money leak.</span></li>
       <li><span class="n">02</span><b>System drawing</b><span>Every agent, signal and rule mapped before any code.</span></li>
@@ -414,9 +466,10 @@ footer .small{font-size:13px;color:var(--muted)}
 
   <div class="contact" id="contact">
     <div>
-      <h2>Tell us what should run itself.</h2>
-      <p>Whether you're a business that needs agents built, an investor looking at our ventures, or a team hiring for AI systems work, start with an email.</p>
-      <div class="who"><span>Clients</span><span>Investors and partners</span><span>Hiring teams</span></div>
+      <h2>Already know what you want AI to do?</h2>
+      <p>Tell us the workflow, product or system you want built. We can start from an idea, an existing prototype, or a live system that needs to become reliable.</p>
+      <div class="ctas"><a class="btn" href="mailto:hello@mikisi.co?subject=Build%20an%20AI%20system">Build an AI system</a><a class="btn" href="mailto:hello@mikisi.co?subject=Discuss%20a%20project">Discuss a project</a></div>
+      <div class="who"><span>Clients</span><span>Partners</span><span>Collaborators</span></div>
     </div>
     <div class="mailbox">
       <span class="label">Email</span>
