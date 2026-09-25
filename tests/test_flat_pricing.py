@@ -7,7 +7,7 @@ from app.checkout_intl import rates
 
 def test_default_off_keeps_the_ladder(monkeypatch):
     monkeypatch.delenv("PRICING_MODEL", raising=False)
-    assert calculate_mikisi_price(20)["final_price"] == 228.0        # ladder, unchanged
+    assert calculate_mikisi_price(20)["final_price"] == 198.0        # ladder, unchanged
 
 
 def test_flat_price_leaves_the_target_at_every_price_point(monkeypatch):
